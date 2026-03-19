@@ -14,6 +14,7 @@ import {
 } from "@huelegood/shared";
 import { loyaltyOverview } from "@huelegood/shared";
 import { actionResponse, wrapResponse } from "../../common/response";
+import { AuditService } from "../audit/audit.service";
 import { NotificationsService } from "../notifications/notifications.service";
 
 interface LoyaltyAccountRecord extends LoyaltyAccountSummary {
@@ -101,7 +102,10 @@ export class LoyaltyService {
 
   private ruleSequence = 4;
 
-  constructor(private readonly notificationsService: NotificationsService) {
+  constructor(
+    private readonly auditService: AuditService,
+    private readonly notificationsService: NotificationsService
+  ) {
     this.seedData();
   }
 
@@ -221,6 +225,18 @@ export class LoyaltyService {
     });
 
     this.applyMovementToAccount(account, movement);
+    this.auditService.recordAdminAction({
+      actionType: "loyalty.points.assigned",
+      targetType: "loyalty_account",
+      targetId: account.id,
+      summary: `Se asignaron ${movement.points} puntos a ${customer}.`,
+      actorName: movement.reviewer,
+      metadata: {
+        orderNumber: movement.orderNumber,
+        status: movement.status,
+        reason: movement.reason
+      }
+    });
     this.notificationsService.recordEvent(
       "loyalty.points.updated",
       movement.source,
@@ -290,6 +306,19 @@ export class LoyaltyService {
     movement.balanceAfter = account.availablePoints + account.pendingPoints;
     account.recentMovement = movement.status;
     account.updatedAt = movement.updatedAt;
+    this.auditService.recordAudit({
+      module: "loyalty",
+      action: "order_points_settled",
+      entityType: "loyalty_movement",
+      entityId: movement.id,
+      summary: `Se liberaron ${movement.points} puntos del pedido ${orderNumber}.`,
+      actorName: reviewer ?? "operaciones",
+      payload: {
+        orderNumber,
+        points: movement.points,
+        customer: account.customer
+      }
+    });
 
     this.notificationsService.recordEvent(
       "loyalty.points.available",
@@ -336,6 +365,19 @@ export class LoyaltyService {
     movement.balanceAfter = account.availablePoints + account.pendingPoints;
     account.recentMovement = movement.status;
     account.updatedAt = movement.updatedAt;
+    this.auditService.recordAudit({
+      module: "loyalty",
+      action: "order_points_reversed",
+      entityType: "loyalty_movement",
+      entityId: movement.id,
+      summary: `Se revirtieron ${movement.points} puntos del pedido ${orderNumber}.`,
+      actorName: reviewer ?? "operaciones",
+      payload: {
+        orderNumber,
+        points: movement.points,
+        customer: account.customer
+      }
+    });
 
     this.notificationsService.recordEvent(
       "loyalty.points.reversed",
@@ -430,6 +472,18 @@ export class LoyaltyService {
       relatedId: redemption.id,
       status: NotificationStatus.Pending
     });
+    this.auditService.recordAdminAction({
+      actionType: "loyalty.redemption.created",
+      targetType: "redemption",
+      targetId: redemption.id,
+      summary: `El canje ${redemption.id} quedó en revisión.`,
+      actorName: redemption.reviewer,
+      metadata: {
+        customer,
+        reward,
+        points
+      }
+    });
 
     return {
       ...actionResponse("queued", "El canje quedó registrado para revisión.", redemption.id),
@@ -509,6 +563,19 @@ export class LoyaltyService {
       relatedType: "redemption",
       relatedId: redemption.id,
       status: NotificationStatus.Sent
+    });
+    this.auditService.recordAdminAction({
+      actionType: `loyalty.redemption.${status}`,
+      targetType: "redemption",
+      targetId: redemption.id,
+      summary: `El canje ${redemption.id} quedó ${status}.`,
+      actorName: reviewer,
+      metadata: {
+        customer: account.customer,
+        reward: redemption.reward,
+        points: redemption.pointsReserved,
+        notes
+      }
     });
 
     return {

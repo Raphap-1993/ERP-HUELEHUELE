@@ -9,6 +9,7 @@ import {
   type AuthUserSummary
 } from "@huelegood/shared";
 import { actionResponse, wrapResponse } from "../../common/response";
+import { AuditService } from "../audit/audit.service";
 
 type AccountType = AuthUserSummary["accountType"];
 
@@ -123,6 +124,8 @@ function ensureAccount(account?: AuthRecord) {
 
 @Injectable()
 export class AuthService {
+  constructor(private readonly auditService: AuditService) {}
+
   login(body: AuthCredentialsInput) {
     if (!body.email?.trim() || !body.password?.trim()) {
       throw new BadRequestException("Email y contraseña son obligatorios.");
@@ -134,6 +137,20 @@ export class AuthService {
     }
 
     const session = createSession(account);
+    this.auditService.recordAudit({
+      module: "auth",
+      action: "login",
+      entityType: "user",
+      entityId: account.id,
+      summary: "Inicio de sesión correcto.",
+      actorUserId: account.id,
+      actorName: account.name,
+      payload: {
+        accountType: account.accountType,
+        email: account.email,
+        roles: account.roles.map((role) => role.code)
+      }
+    });
     return wrapResponse(session, {
       accountType: account.accountType,
       roles: account.roles.map((role) => role.code)
@@ -174,6 +191,20 @@ export class AuthService {
     accounts.set(email, account);
 
     const session = createSession(account);
+    this.auditService.recordAudit({
+      module: "auth",
+      action: "register",
+      entityType: "user",
+      entityId: account.id,
+      summary: "Registro de cuenta completado.",
+      actorUserId: account.id,
+      actorName: account.name,
+      payload: {
+        accountType,
+        email: account.email,
+        roles: account.roles.map((role) => role.code)
+      }
+    });
     return wrapResponse(session, {
       created: true,
       roles: account.roles.map((role) => role.code)
@@ -201,8 +232,25 @@ export class AuthService {
 
   logout(authorization?: string) {
     const token = parseAuthorization(authorization);
+    const session = token ? sessions.get(token) : undefined;
     if (token) {
       sessions.delete(token);
+    }
+
+    if (session) {
+      this.auditService.recordAudit({
+        module: "auth",
+        action: "logout",
+        entityType: "session",
+        entityId: session.token,
+        summary: "Sesión cerrada correctamente.",
+        actorUserId: session.user.id,
+        actorName: session.user.name,
+        payload: {
+          email: session.user.email,
+          accountType: session.user.accountType
+        }
+      });
     }
 
     return actionResponse("ok", "Sesión cerrada correctamente.");
@@ -210,7 +258,21 @@ export class AuthService {
 
   seedDemoSession(email: string) {
     const account = ensureAccount(accounts.get(normalizeEmail(email)));
-    return wrapResponse(createSession(account), {
+    const session = createSession(account);
+    this.auditService.recordAudit({
+      module: "auth",
+      action: "seed_demo_session",
+      entityType: "user",
+      entityId: account.id,
+      summary: "Sesión demo preparada para pruebas locales.",
+      actorUserId: account.id,
+      actorName: account.name,
+      payload: {
+        email: account.email,
+        accountType: account.accountType
+      }
+    });
+    return wrapResponse(session, {
       seeded: true
     });
   }

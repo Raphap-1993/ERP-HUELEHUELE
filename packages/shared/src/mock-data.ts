@@ -95,6 +95,7 @@ export const adminNavigation: AdminNavigationGroup[] = [
       { label: "Marketing", href: "/marketing" },
       { label: "CRM", href: "/crm" },
       { label: "Notificaciones", href: "/notificaciones" },
+      { label: "Auditoría", href: "/auditoria" },
       { label: "Configuración", href: "/configuracion" }
     ]
   }

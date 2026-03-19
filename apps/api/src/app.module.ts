@@ -13,8 +13,9 @@ import {
   LoyaltyModule,
   MarketingModule,
   NotificationsModule,
-  PaymentsModule,
   OrdersModule,
+  PaymentsModule,
+  SecurityModule,
   VendorsModule,
   WholesaleModule
 } from "./modules";
@@ -34,6 +35,7 @@ import {
     MarketingModule,
     NotificationsModule,
     AuditModule,
+    SecurityModule,
     AuthModule,
     CustomersModule,
     CommerceModule,

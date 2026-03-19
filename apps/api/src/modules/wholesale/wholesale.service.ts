@@ -10,6 +10,7 @@ import {
 } from "@huelegood/shared";
 import { wholesalePlans } from "@huelegood/shared";
 import { actionResponse, wrapResponse } from "../../common/response";
+import { AuditService } from "../audit/audit.service";
 import { MarketingService } from "../marketing/marketing.service";
 
 interface WholesaleLeadHistoryEntry {
@@ -115,7 +116,10 @@ export class WholesaleService {
 
   private quoteSequence = 3;
 
-  constructor(private readonly marketingService: MarketingService) {
+  constructor(
+    private readonly auditService: AuditService,
+    private readonly marketingService: MarketingService
+  ) {
     this.seedData();
   }
 
@@ -194,6 +198,20 @@ export class WholesaleService {
     };
 
     this.leads.set(lead.id, lead);
+    this.auditService.recordAudit({
+      module: "wholesale",
+      action: "lead.submitted",
+      entityType: "wholesale_lead",
+      entityId: lead.id,
+      summary: `Lead mayorista recibido para ${lead.company}.`,
+      actorName: lead.contact,
+      payload: {
+        company: lead.company,
+        email: lead.email,
+        city: lead.city,
+        source: lead.source
+      }
+    });
     this.marketingService.recordEvent(
       "wholesale.lead.created",
       "web",
@@ -228,6 +246,17 @@ export class WholesaleService {
     lead.reviewedAt = now;
     lead.updatedAt = now;
     lead.history.push(leadHistory(nextStatus, reviewer, notes, now));
+    this.auditService.recordAdminAction({
+      actionType: "wholesale.lead.status.updated",
+      targetType: "wholesale_lead",
+      targetId: lead.id,
+      summary: `El lead ${lead.company} fue actualizado a ${nextStatus}.`,
+      actorName: reviewer,
+      metadata: {
+        status: nextStatus,
+        notes
+      }
+    });
 
     this.marketingService.recordEvent(
       `wholesale.lead.${nextStatus}`,
@@ -318,6 +347,18 @@ export class WholesaleService {
         createdAt
       )
     );
+    this.auditService.recordAdminAction({
+      actionType: "wholesale.quote.created",
+      targetType: "wholesale_quote",
+      targetId: quote.id,
+      summary: `Se emitió la cotización ${quote.id} para ${lead.company}.`,
+      actorName: "ventas",
+      metadata: {
+        leadId: lead.id,
+        amount: quote.amount,
+        status: quote.status
+      }
+    });
 
     this.marketingService.recordEvent(
       "wholesale.quote.created",

@@ -18,6 +18,7 @@ import {
   type OrderStatusHistorySummary
 } from "@huelegood/shared";
 import { wrapResponse } from "../../common/response";
+import { AuditService } from "../audit/audit.service";
 import { LoyaltyService } from "../loyalty/loyalty.service";
 import { NotificationsService } from "../notifications/notifications.service";
 
@@ -122,6 +123,7 @@ export class OrdersService {
   private orderSequence = 10042;
 
   constructor(
+    private readonly auditService: AuditService,
     private readonly loyaltyService: LoyaltyService,
     private readonly notificationsService: NotificationsService
   ) {
@@ -257,6 +259,22 @@ export class OrdersService {
       relatedType: "order",
       relatedId: orderNumber,
       status: NotificationStatus.Pending
+    });
+
+    this.auditService.recordAudit({
+      module: "orders",
+      action: "checkout.created",
+      entityType: "order",
+      entityId: orderNumber,
+      summary: `Pedido ${orderNumber} creado desde checkout.`,
+      actorName: customerName,
+      payload: {
+        paymentMethod: order.paymentMethod,
+        orderStatus: order.orderStatus,
+        paymentStatus: order.paymentStatus,
+        vendorCode: order.vendorCode,
+        total: order.total
+      }
     });
 
     return order;
@@ -396,6 +414,17 @@ export class OrdersService {
 
     if (input.status === ManualPaymentRequestStatus.Approved) {
       this.loyaltyService.settleOrderPoints(order.orderNumber, input.reviewer);
+      this.auditService.recordAdminAction({
+        actionType: "payments.manual_request.approved",
+        targetType: "manual_payment_request",
+        targetId: manualRequest.id,
+        summary: `La revisión manual de ${order.orderNumber} fue aprobada.`,
+        actorName: input.reviewer,
+        metadata: {
+          orderNumber: order.orderNumber,
+          reviewer: input.reviewer
+        }
+      });
       this.notificationsService.queueNotification({
         channel: NotificationChannel.Email,
         audience: manualRequest.customerName,
@@ -416,6 +445,17 @@ export class OrdersService {
       );
     } else {
       this.loyaltyService.reverseOrderPoints(order.orderNumber, input.reviewer);
+      this.auditService.recordAdminAction({
+        actionType: "payments.manual_request.rejected",
+        targetType: "manual_payment_request",
+        targetId: manualRequest.id,
+        summary: `La revisión manual de ${order.orderNumber} fue rechazada.`,
+        actorName: input.reviewer,
+        metadata: {
+          orderNumber: order.orderNumber,
+          reviewer: input.reviewer
+        }
+      });
       this.notificationsService.queueNotification({
         channel: NotificationChannel.Email,
         audience: manualRequest.customerName,

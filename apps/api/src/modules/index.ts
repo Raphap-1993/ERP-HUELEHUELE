@@ -10,6 +10,7 @@ export * from "./loyalty/loyalty.module";
 export * from "./marketing/marketing.module";
 export * from "./notifications/notifications.module";
 export * from "./audit/audit.module";
+export * from "./security/security.module";
 export * from "./auth/auth.module";
 export * from "./customers/customers.module";
 export * from "./commerce/commerce.module";

@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { AuditModule } from "../audit/audit.module";
 import { MarketingModule } from "../marketing/marketing.module";
 import {
   AdminWholesaleLeadsController,
@@ -10,7 +11,7 @@ import {
 import { WholesaleService } from "./wholesale.service";
 
 @Module({
-  imports: [MarketingModule],
+  imports: [AuditModule, MarketingModule],
   controllers: [
     WholesaleLeadsController,
     WholesaleTiersController,

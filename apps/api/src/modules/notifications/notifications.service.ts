@@ -7,6 +7,7 @@ import {
   type NotificationSummary
 } from "@huelegood/shared";
 import { actionResponse, wrapResponse } from "../../common/response";
+import { AuditService } from "../audit/audit.service";
 
 interface NotificationRecord extends NotificationSummary {}
 
@@ -55,7 +56,7 @@ export class NotificationsService {
 
   private logSequence = 4;
 
-  constructor() {
+  constructor(private readonly auditService: AuditService) {
     this.seedData();
   }
 
@@ -126,6 +127,22 @@ export class NotificationsService {
     };
 
     this.notifications.set(notification.id, notification);
+    this.auditService.recordAudit({
+      module: "notifications",
+      action: "notification.queued",
+      entityType: "notification",
+      entityId: notification.id,
+      summary: `La notificación ${notification.id} quedó ${status === NotificationStatus.Sent || status === NotificationStatus.Delivered ? "enviada" : "en cola"}.`,
+      actorName: source,
+      payload: {
+        channel,
+        audience,
+        subject,
+        status,
+        relatedType: notification.relatedType,
+        relatedId: notification.relatedId
+      }
+    });
     this.recordEvent(
       status === NotificationStatus.Sent || status === NotificationStatus.Delivered ? "notification.sent" : "notification.queued",
       source,
@@ -178,6 +195,18 @@ export class NotificationsService {
     notification.status = NotificationStatus.Sent;
     notification.sentAt = now;
     notification.updatedAt = now;
+    this.auditService.recordAdminAction({
+      actionType: "notifications.sent",
+      targetType: "notification",
+      targetId: notification.id,
+      summary: `La notificación ${notification.id} quedó enviada.`,
+      actorName: "sistema",
+      metadata: {
+        audience: notification.audience,
+        subject: notification.subject,
+        detail: normalizeText(detail)
+      }
+    });
     this.recordEvent(
       "notification.sent",
       notification.source,

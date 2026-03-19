@@ -13,6 +13,7 @@ import {
   type CommissionSummary
 } from "@huelegood/shared";
 import { actionResponse, wrapResponse } from "../../common/response";
+import { AuditService } from "../audit/audit.service";
 import { OrdersService } from "../orders/orders.service";
 import { VendorsService } from "../vendors/vendors.service";
 
@@ -183,6 +184,7 @@ export class CommissionsService {
   private readonly payouts = new Map<string, CommissionPayoutRecord>();
 
   constructor(
+    private readonly auditService: AuditService,
     private readonly ordersService: OrdersService,
     private readonly vendorsService: VendorsService
   ) {
@@ -199,6 +201,20 @@ export class CommissionsService {
 
     this.reconcilePayouts();
     this.updateVendorSnapshots();
+    if (actor !== "consulta") {
+      this.auditService.recordAudit({
+        module: "commissions",
+        action: "sync_from_orders",
+        entityType: "commission",
+        entityId: "sync",
+        summary: `Comisiones sincronizadas desde pedidos por ${actor}.`,
+        actorName: actor,
+        payload: {
+          commissions: this.commissions.size,
+          payouts: this.payouts.size
+        }
+      });
+    }
 
     return wrapResponse(
       {
@@ -330,6 +346,19 @@ export class CommissionsService {
 
     this.reconcilePayouts();
     this.updateVendorSnapshots();
+    this.auditService.recordAdminAction({
+      actionType: "commissions.payout.created",
+      targetType: "commission_payout",
+      targetId: payout.id,
+      summary: `La liquidación ${payout.id} quedó preparada para ${vendorCode}.`,
+      actorName: "liquidacion",
+      metadata: {
+        vendorCode,
+        period: period.key,
+        grossAmount: payout.grossAmount,
+        commissionIds: payout.commissionIds.length
+      }
+    });
 
     return {
       ...actionResponse("queued", "La liquidación quedó preparada para pago.", payout.id),
@@ -381,6 +410,18 @@ export class CommissionsService {
 
     this.reconcilePayouts();
     this.updateVendorSnapshots();
+    this.auditService.recordAdminAction({
+      actionType: "commissions.payout.settled",
+      targetType: "commission_payout",
+      targetId: payout.id,
+      summary: `La liquidación ${payout.id} quedó pagada.`,
+      actorName: reviewer,
+      metadata: {
+        vendorCode: payout.vendorCode,
+        notes,
+        referenceId: payout.referenceId
+      }
+    });
 
     return {
       ...actionResponse("ok", "La liquidación quedó pagada y conciliada.", id),

@@ -37,6 +37,7 @@ import type {
   AdminOrderSummary,
   AdminPaymentSummary,
   ManualReviewActionInput,
+  OperationalHealthSummary,
   WholesaleLeadInput,
   WholesaleLeadStatusInput,
   WholesaleLeadSummary,
@@ -278,6 +279,36 @@ export async function updateCmsTestimonial(id: string, body: CmsTestimonialInput
   });
 }
 
+export async function fetchAuditOverview() {
+  return requestJson<AuditOverviewEnvelope>("/admin/audit", {
+    cache: "no-store"
+  });
+}
+
+export async function fetchAuditLogs() {
+  return requestJson<AuditLogsEnvelope>("/admin/audit/logs", {
+    cache: "no-store"
+  });
+}
+
+export async function fetchAuditActions() {
+  return requestJson<AdminActionsEnvelope>("/admin/audit/actions", {
+    cache: "no-store"
+  });
+}
+
+export async function fetchSecurityPosture() {
+  return requestJson<SecurityPostureEnvelope>("/admin/security", {
+    cache: "no-store"
+  });
+}
+
+export async function fetchOperationalHealth() {
+  return requestJson<OperationalHealthSummary>("/health/operational", {
+    cache: "no-store"
+  });
+}
+
 export async function fetchLoyaltyAccounts() {
   return requestJson<LoyaltyAccountsEnvelope>("/admin/loyalty/accounts");
 }
@@ -501,6 +532,26 @@ export type NotificationsEnvelope = {
 
 export type NotificationLogsEnvelope = {
   data: NotificationLogSummary[];
+  meta?: Record<string, unknown>;
+};
+
+export type AuditOverviewEnvelope = {
+  data: import("@huelegood/shared").AuditOverviewSummary;
+  meta?: Record<string, unknown>;
+};
+
+export type AuditLogsEnvelope = {
+  data: import("@huelegood/shared").AuditLogSummary[];
+  meta?: Record<string, unknown>;
+};
+
+export type AdminActionsEnvelope = {
+  data: import("@huelegood/shared").AdminActionSummary[];
+  meta?: Record<string, unknown>;
+};
+
+export type SecurityPostureEnvelope = {
+  data: import("@huelegood/shared").SecurityPostureSummary;
   meta?: Record<string, unknown>;
 };
 

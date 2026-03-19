@@ -147,6 +147,122 @@ export interface SiteSetting {
   whatsapp: string;
 }
 
+export type AuditSeverity = "info" | "warning" | "error" | "critical";
+
+export interface AuditLogSummary {
+  id: string;
+  module: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  summary: string;
+  severity: AuditSeverity;
+  actorUserId?: string;
+  actorName?: string;
+  payloadSummary?: string;
+  occurredAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminActionSummary {
+  id: string;
+  actionType: string;
+  targetType: string;
+  targetId: string;
+  summary: string;
+  actorUserId?: string;
+  actorName?: string;
+  metadataSummary?: string;
+  occurredAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuditOverviewSummary {
+  logs: AuditLogSummary[];
+  actions: AdminActionSummary[];
+  totalLogs: number;
+  totalActions: number;
+  severityCounts: Record<AuditSeverity, number>;
+  modules: string[];
+}
+
+export interface SecurityHeaderSummary {
+  name: string;
+  value: string;
+  purpose: string;
+}
+
+export interface SecurityRateLimitSummary {
+  profile: string;
+  routePrefix: string;
+  limit: number;
+  windowMs: number;
+  blockedRequests: number;
+  totalRequests: number;
+  lastSeenAt?: string;
+}
+
+export interface SecurityPostureSummary {
+  service: string;
+  cors: {
+    enabled: boolean;
+    credentials: boolean;
+    originMode: "reflective" | "restricted";
+    exposedHeaders: string[];
+  };
+  trustProxy: boolean;
+  requestIdHeader: string;
+  headers: SecurityHeaderSummary[];
+  rateLimits: SecurityRateLimitSummary[];
+  authPolicy: {
+    sessionTtlHours: number;
+    passwordMinLength: number;
+    demoAccounts: boolean;
+    bearerTokens: boolean;
+  };
+  auditPolicy: {
+    persistence: "memory" | "prisma";
+    lastAuditAt?: string;
+    lastActionAt?: string;
+  };
+  telemetry: {
+    totalRequests: number;
+    blockedRequests: number;
+    lastRequestAt?: string;
+    lastBlockedAt?: string;
+  };
+  updatedAt: string;
+}
+
+export interface HealthDependencySummary {
+  name: string;
+  status: "healthy" | "degraded" | "missing";
+  detail: string;
+  latencyMs?: number;
+  checkedAt: string;
+}
+
+export interface OperationalHealthSummary {
+  service: string;
+  status: "ok" | "degraded";
+  timestamp: string;
+  uptimeSeconds: number;
+  pid: number;
+  nodeVersion: string;
+  platform: string;
+  environment: string;
+  port: number;
+  memory: {
+    rssMb: number;
+    heapUsedMb: number;
+    heapTotalMb: number;
+    externalMb: number;
+  };
+  dependencies: HealthDependencySummary[];
+}
+
 export interface CmsSeoMeta {
   pageSlug: string;
   title: string;

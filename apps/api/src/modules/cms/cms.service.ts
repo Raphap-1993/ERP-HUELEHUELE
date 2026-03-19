@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import {
   cmsTestimonials,
   faqItems,
@@ -27,6 +28,7 @@ import {
   type WebNavigationGroup
 } from "@huelegood/shared";
 import { actionResponse, wrapResponse } from "../../common/response";
+import { AuditService } from "../audit/audit.service";
 
 interface PageBlockDraft {
   type: string;
@@ -173,8 +175,18 @@ export class CmsService {
 
   private testimonialSequence = 1;
 
-  constructor() {
+  constructor(private readonly auditService: AuditService) {
     this.seedData();
+  }
+
+  private recordAdminAction(actionType: string, targetType: string, targetId: string, summary: string, metadata?: Prisma.InputJsonValue) {
+    this.auditService.recordAdminAction({
+      actionType,
+      targetType,
+      targetId,
+      summary,
+      metadata
+    });
   }
 
   getSnapshot() {
@@ -260,6 +272,11 @@ export class CmsService {
       whatsapp
     };
 
+    this.recordAdminAction("cms.site_settings.updated", "site_setting", "global", "La configuración base del storefront quedó actualizada.", {
+      brandName: this.siteSettingData.brandName,
+      supportEmail: this.siteSettingData.supportEmail
+    });
+
     return {
       ...actionResponse("ok", "Los parámetros base quedaron actualizados."),
       siteSetting: { ...this.siteSettingData }
@@ -292,6 +309,10 @@ export class CmsService {
         href: secondaryCtaHref
       }
     };
+
+    this.recordAdminAction("cms.hero_copy.updated", "hero_copy", "global", "El hero del storefront quedó actualizado.", {
+      title: this.heroCopyData.title
+    });
 
     return {
       ...actionResponse("ok", "El hero del storefront quedó actualizado."),
@@ -329,6 +350,11 @@ export class CmsService {
     });
 
     this.webNavigationData = navigation;
+
+    this.recordAdminAction("cms.navigation.updated", "navigation", "global", "La navegación pública quedó actualizada.", {
+      groups: this.webNavigationData.length,
+      items: this.webNavigationData.reduce((sum, group) => sum + group.items.length, 0)
+    });
 
     return {
       ...actionResponse("ok", "La navegación quedó actualizada."),
@@ -368,6 +394,10 @@ export class CmsService {
     };
 
     this.pages.set(pageSlug, page);
+    this.recordAdminAction("cms.page.updated", "page", pageSlug, `La página ${pageSlug} quedó actualizada.`, {
+      status: page.status,
+      blocks: page.blocks.length
+    });
 
     return {
       ...actionResponse("ok", `La página ${pageSlug} quedó actualizada.`, pageSlug),
@@ -391,6 +421,9 @@ export class CmsService {
     page.updatedAt = updatedAt;
     page.seoMeta.updatedAt = updatedAt;
     this.pages.set(pageSlug, page);
+    this.recordAdminAction("cms.page.blocks.updated", "page", pageSlug, `Los bloques de ${pageSlug} quedaron actualizados.`, {
+      blocks: page.blocks.length
+    });
 
     return {
       ...actionResponse("ok", "Los bloques de la página quedaron actualizados.", pageSlug),
@@ -441,6 +474,10 @@ export class CmsService {
     };
 
     this.banners.set(id, banner);
+    this.recordAdminAction("cms.banner.created", "banner", id, "El banner quedó registrado.", {
+      position: banner.position,
+      status: banner.status
+    });
 
     return {
       ...actionResponse("ok", "El banner quedó registrado.", id),
@@ -471,6 +508,10 @@ export class CmsService {
     banner.position = body.position ?? banner.position;
     banner.updatedAt = now;
     this.banners.set(banner.id, banner);
+    this.recordAdminAction("cms.banner.updated", "banner", banner.id, "El banner quedó actualizado.", {
+      position: banner.position,
+      status: banner.status
+    });
 
     return {
       ...actionResponse("ok", "El banner quedó actualizado.", banner.id),
@@ -514,6 +555,10 @@ export class CmsService {
     };
 
     this.faqs.set(id, faq);
+    this.recordAdminAction("cms.faq.created", "faq", id, "La FAQ quedó registrada.", {
+      category: faq.category,
+      status: faq.status
+    });
 
     return {
       ...actionResponse("ok", "La FAQ quedó registrada.", id),
@@ -537,6 +582,10 @@ export class CmsService {
     faq.position = body.position ?? faq.position;
     faq.updatedAt = nowIso();
     this.faqs.set(faq.id, faq);
+    this.recordAdminAction("cms.faq.updated", "faq", faq.id, "La FAQ quedó actualizada.", {
+      category: faq.category,
+      status: faq.status
+    });
 
     return {
       ...actionResponse("ok", "La FAQ quedó actualizada.", faq.id),
@@ -575,6 +624,10 @@ export class CmsService {
     };
 
     this.testimonials.set(id, testimonial);
+    this.recordAdminAction("cms.testimonial.created", "testimonial", id, "El testimonio quedó registrado.", {
+      rating: testimonial.rating,
+      status: testimonial.status
+    });
 
     return {
       ...actionResponse("ok", "El testimonio quedó registrado.", id),
@@ -599,6 +652,10 @@ export class CmsService {
     testimonial.status = body.status === "inactive" ? "inactive" : "active";
     testimonial.updatedAt = nowIso();
     this.testimonials.set(testimonial.id, testimonial);
+    this.recordAdminAction("cms.testimonial.updated", "testimonial", testimonial.id, "El testimonio quedó actualizado.", {
+      rating: testimonial.rating,
+      status: testimonial.status
+    });
 
     return {
       ...actionResponse("ok", "El testimonio quedó actualizado.", testimonial.id),

@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { AuditModule } from "../audit/audit.module";
 import {
   AdminLoyaltyController,
   LoyaltyController,
@@ -10,7 +11,7 @@ import { LoyaltyService } from "./loyalty.service";
 import { NotificationsModule } from "../notifications/notifications.module";
 
 @Module({
-  imports: [NotificationsModule],
+  imports: [AuditModule, NotificationsModule],
   controllers: [LoyaltyController, AdminLoyaltyController, LoyaltyMovementsController, LoyaltyRedemptionsController, LoyaltyRulesController],
   providers: [LoyaltyService],
   exports: [LoyaltyService]

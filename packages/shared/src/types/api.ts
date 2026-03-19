@@ -30,6 +30,12 @@ import type {
   LoyaltyAccountSummary,
   PromoBanner,
   SiteSetting,
+  AdminActionSummary,
+  AuditLogSummary,
+  AuditOverviewSummary,
+  HealthDependencySummary,
+  OperationalHealthSummary,
+  SecurityPostureSummary,
   WebNavigationGroup,
   WholesalePlan
 } from "../domain/models";
@@ -737,6 +743,31 @@ export interface CmsActionEnvelope {
   banner?: CmsBanner;
   faq?: CmsFaq;
   testimonial?: CmsTestimonial;
+}
+
+export interface AuditOverviewEnvelope {
+  data: AuditOverviewSummary;
+  meta?: Record<string, unknown>;
+}
+
+export interface AuditLogsEnvelope {
+  data: AuditLogSummary[];
+  meta?: Record<string, unknown>;
+}
+
+export interface AdminActionsEnvelope {
+  data: AdminActionSummary[];
+  meta?: Record<string, unknown>;
+}
+
+export interface SecurityPostureEnvelope {
+  data: SecurityPostureSummary;
+  meta?: Record<string, unknown>;
+}
+
+export interface OperationalHealthEnvelope {
+  data: OperationalHealthSummary;
+  meta?: Record<string, unknown>;
 }
 
 export interface StorefrontPagePayload {

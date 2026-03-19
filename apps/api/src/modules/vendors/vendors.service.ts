@@ -14,6 +14,7 @@ import {
   type VendorSummary
 } from "@huelegood/shared";
 import { actionResponse, wrapResponse } from "../../common/response";
+import { AuditService } from "../audit/audit.service";
 
 interface VendorApplicationRecord extends VendorApplicationSummary {
   reviewedBy?: string;
@@ -111,7 +112,7 @@ export class VendorsService {
 
   private vendorSequence = 22;
 
-  constructor() {
+  constructor(private readonly auditService: AuditService) {
     this.seedApplications();
     this.seedVendors();
     this.syncApplicationLinks();
@@ -162,6 +163,19 @@ export class VendorsService {
     };
 
     this.applications.set(id, application);
+    this.auditService.recordAudit({
+      module: "vendors",
+      action: "application.submitted",
+      entityType: "vendor_application",
+      entityId: id,
+      summary: `Postulación recibida para ${application.name}.`,
+      actorName: application.name,
+      payload: {
+        email: application.email,
+        city: application.city,
+        source: application.source
+      }
+    });
 
     return {
       ...actionResponse("queued", "La postulación fue registrada y quedará en screening.", id),
@@ -213,6 +227,18 @@ export class VendorsService {
     const vendor = this.upsertVendorFromApplication(application, reviewer, notes, now);
     application.vendorCode = vendor.code;
     application.vendorId = vendor.id;
+    this.auditService.recordAdminAction({
+      actionType: "vendors.application.approved",
+      targetType: "vendor_application",
+      targetId: application.id,
+      summary: `La postulación ${application.id} fue aprobada y generó el vendedor ${vendor.code}.`,
+      actorName: reviewer,
+      metadata: {
+        vendorCode: vendor.code,
+        reviewer,
+        notes
+      }
+    });
 
     return {
       ...actionResponse("ok", "La postulación fue aprobada y el vendedor quedó activo.", id),
@@ -232,6 +258,17 @@ export class VendorsService {
     application.reviewedAt = now;
     application.updatedAt = now;
     application.statusHistory.push(applicationHistory(VendorApplicationStatus.Rejected, reviewer, notes, now));
+    this.auditService.recordAdminAction({
+      actionType: "vendors.application.rejected",
+      targetType: "vendor_application",
+      targetId: application.id,
+      summary: `La postulación ${application.id} fue rechazada.`,
+      actorName: reviewer,
+      metadata: {
+        reviewer,
+        notes
+      }
+    });
 
     return {
       ...actionResponse("rejected", "La postulación fue rechazada y quedó registrada.", id),

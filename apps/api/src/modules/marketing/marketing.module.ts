@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { AuditModule } from "../audit/audit.module";
 import {
   CampaignEventsController,
   CampaignSegmentsController,
@@ -8,6 +9,7 @@ import {
 import { MarketingService } from "./marketing.service";
 
 @Module({
+  imports: [AuditModule],
   controllers: [MarketingController, CampaignSegmentsController, CampaignTemplatesController, CampaignEventsController],
   providers: [MarketingService],
   exports: [MarketingService]

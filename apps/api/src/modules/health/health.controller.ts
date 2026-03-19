@@ -10,9 +10,23 @@ export class HealthController {
     return this.healthService.getLiveness();
   }
 
+  @Get("live")
+  live() {
+    return this.healthService.getLiveness();
+  }
+
   @Get("readiness")
   readiness() {
     return this.healthService.getReadiness();
   }
-}
 
+  @Get("ready")
+  ready() {
+    return this.healthService.getReadiness();
+  }
+
+  @Get("operational")
+  operational() {
+    return this.healthService.getOperational();
+  }
+}

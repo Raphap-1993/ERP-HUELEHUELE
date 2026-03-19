@@ -9,6 +9,7 @@ import {
   type MarketingTemplateSummary
 } from "@huelegood/shared";
 import { actionResponse, wrapResponse } from "../../common/response";
+import { AuditService } from "../audit/audit.service";
 
 interface MarketingSegmentRecord extends MarketingSegmentSummary {
   createdAt: string;
@@ -83,7 +84,7 @@ export class MarketingService {
 
   private eventSequence = 5;
 
-  constructor() {
+  constructor(private readonly auditService: AuditService) {
     this.seedData();
   }
 
@@ -207,6 +208,19 @@ export class MarketingService {
     };
 
     this.campaigns.set(campaign.id, campaign);
+    this.auditService.recordAdminAction({
+      actionType: "marketing.campaign.created",
+      targetType: "campaign",
+      targetId: campaign.id,
+      summary: `La campaña ${campaign.name} quedó registrada.`,
+      actorName: "marketing",
+      metadata: {
+        segmentId: campaign.segmentId,
+        templateId: campaign.templateId,
+        channel: campaign.channel,
+        scheduledAt: campaign.scheduledAt
+      }
+    });
 
     this.recordEvent(
       "campaign.created",
