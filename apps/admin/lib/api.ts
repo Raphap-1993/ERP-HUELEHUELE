@@ -1,5 +1,6 @@
 import type {
   AuthCredentialsInput,
+  AdminRoleDashboardSummary,
   AuthSessionSummary,
   CmsActionEnvelope,
   CmsBannerInput,
@@ -100,6 +101,10 @@ export async function fetchAdminSession(token?: string) {
   return requestJson<AuthSessionEnvelope>("/auth/me", {
     headers: getSessionHeaders(token)
   });
+}
+
+export async function fetchDashboardOverview() {
+  return requestJson<DashboardOverviewEnvelope>("/admin/dashboard/overview");
 }
 
 export async function logoutAdmin(token?: string) {
@@ -570,6 +575,11 @@ export type NotificationsEnvelope = {
 
 export type AuthSessionEnvelope = {
   data: AuthSessionSummary | null;
+  meta?: Record<string, unknown>;
+};
+
+export type DashboardOverviewEnvelope = {
+  data: AdminRoleDashboardSummary;
   meta?: Record<string, unknown>;
 };
 

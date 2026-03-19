@@ -2,6 +2,7 @@ import type {
   AuthCredentialsInput,
   AuthRegisterInput,
   AuthSessionSummary,
+  SellerPanelOverviewSummary,
   CmsSnapshotEnvelope,
   CatalogProduct,
   CatalogSummaryResponse,
@@ -120,6 +121,13 @@ export async function fetchSession(token?: string) {
   });
 }
 
+export async function fetchSellerPanelOverview(token?: string) {
+  return requestJson<SellerPanelOverviewEnvelope>("/seller/panel/overview", {
+    headers: getSessionHeaders(token),
+    cache: "no-store"
+  });
+}
+
 export async function logout(token?: string) {
   return requestJson<{ status: string; message: string }>("/auth/logout", {
     method: "POST",
@@ -144,6 +152,11 @@ export type CatalogProductsEnvelope = {
 
 export type CatalogProductEnvelope = {
   data: CatalogProduct;
+  meta?: Record<string, unknown>;
+};
+
+export type SellerPanelOverviewEnvelope = {
+  data: SellerPanelOverviewSummary;
   meta?: Record<string, unknown>;
 };
 

@@ -256,6 +256,22 @@ export class CommissionsService implements OnModuleInit {
     });
   }
 
+  listCommissionsByVendorCode(vendorCode: string) {
+    this.syncFromOrders("consulta");
+
+    const normalizedVendorCode = normalizeCode(vendorCode);
+    const commissions = this.sortedCommissions()
+      .filter((commission) => commission.vendorCode === normalizedVendorCode)
+      .map((commission) => this.toCommissionSummary(commission));
+
+    return wrapResponse(commissions, {
+      total: commissions.length,
+      ...summarizeCommissionStatuses(
+        this.sortedCommissionRecords().filter((commission) => commission.vendorCode === normalizedVendorCode)
+      )
+    });
+  }
+
   listRules() {
     const rules = Array.from(this.rules.values()).sort((left, right) => left.priority - right.priority);
     return wrapResponse<CommissionRuleSummary[]>(
@@ -280,6 +296,22 @@ export class CommissionsService implements OnModuleInit {
     this.syncFromOrders("consulta");
 
     const payouts = this.sortedPayouts().map((payout) => this.toPayoutSummary(payout));
+    return wrapResponse(payouts, {
+      total: payouts.length,
+      approved: payouts.filter((payout) => payout.status === CommissionPayoutStatus.Approved).length,
+      paid: payouts.filter((payout) => payout.status === CommissionPayoutStatus.Paid).length,
+      cancelled: payouts.filter((payout) => payout.status === CommissionPayoutStatus.Cancelled).length
+    });
+  }
+
+  listPayoutsByVendorCode(vendorCode: string) {
+    this.syncFromOrders("consulta");
+
+    const normalizedVendorCode = normalizeCode(vendorCode);
+    const payouts = this.sortedPayouts()
+      .filter((payout) => payout.vendorCode === normalizedVendorCode)
+      .map((payout) => this.toPayoutSummary(payout));
+
     return wrapResponse(payouts, {
       total: payouts.length,
       approved: payouts.filter((payout) => payout.status === CommissionPayoutStatus.Approved).length,

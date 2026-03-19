@@ -23,6 +23,7 @@ interface AuthRecord {
   password: string;
   accountType: AccountType;
   roles: AuthRoleSummary[];
+  vendorCode?: string;
 }
 
 interface AuthSnapshot {
@@ -51,12 +52,13 @@ const initialAccounts: AuthRecord[] = [
     roles: [RoleCode.SuperAdmin, RoleCode.Admin].map((code) => ({ code, label: roleLabels[code] }))
   },
   {
-    id: "usr-seller-001",
-    name: "Seller Demo",
-    email: "seller@huelegood.com",
+    id: "usr-seller-014",
+    name: "Mónica Herrera",
+    email: "monica@seller.com",
     password: "huelegood123",
     accountType: "seller",
-    roles: [RoleCode.SellerManager, RoleCode.Vendedor].map((code) => ({ code, label: roleLabels[code] }))
+    roles: [RoleCode.SellerManager, RoleCode.Vendedor].map((code) => ({ code, label: roleLabels[code] })),
+    vendorCode: "VEND-014"
   },
   {
     id: "usr-operator-001",
@@ -95,7 +97,8 @@ function createSession(account: AuthRecord): AuthSessionSummary {
       name: account.name,
       email: account.email,
       roles: account.roles,
-      accountType: account.accountType
+      accountType: account.accountType,
+      vendorCode: account.vendorCode
     }
   };
 
@@ -122,9 +125,14 @@ export class AuthService implements OnModuleInit {
     const snapshot = await this.moduleStateService.load<AuthSnapshot>("auth");
     if (snapshot) {
       this.restoreSnapshot(snapshot);
-    } else {
-      await this.persistState();
     }
+
+    const changed = this.ensureOperationalAccounts();
+    if (snapshot && !changed) {
+      return;
+    }
+
+    await this.persistState();
   }
 
   resolveSession(authorization?: string | string[]) {
@@ -189,7 +197,8 @@ export class AuthService implements OnModuleInit {
       phone: body.phone?.trim() || undefined,
       password: body.password,
       accountType,
-      roles: roles.map((code) => ({ code, label: roleLabels[code] }))
+      roles: roles.map((code) => ({ code, label: roleLabels[code] })),
+      vendorCode: undefined
     };
 
     userSequence += 1;
@@ -296,5 +305,22 @@ export class AuthService implements OnModuleInit {
       })),
       userSequence
     };
+  }
+
+  private ensureOperationalAccounts() {
+    let changed = false;
+
+    for (const seed of initialAccounts) {
+      const key = normalizeEmail(seed.email);
+      if (!accounts.has(key)) {
+        accounts.set(key, {
+          ...seed,
+          roles: seed.roles.map((role) => ({ ...role }))
+        });
+        changed = true;
+      }
+    }
+
+    return changed;
   }
 }

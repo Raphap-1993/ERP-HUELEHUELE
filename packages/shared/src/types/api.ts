@@ -18,6 +18,8 @@ import type {
   WholesaleQuoteStatus
 } from "../domain/enums";
 import type {
+  AdminMetric,
+  CommissionRow,
   CatalogProduct,
   CmsBanner,
   CmsFaq,
@@ -77,12 +79,40 @@ export interface AuthUserSummary {
   email: string;
   roles: AuthRoleSummary[];
   accountType: "admin" | "seller" | "customer" | "operator";
+  vendorCode?: string;
 }
 
 export interface AuthSessionSummary {
   token: string;
   expiresAt: string;
   user: AuthUserSummary;
+}
+
+export type AdminDashboardFocus = "executive" | "payments" | "sales" | "marketing";
+
+export interface AdminRoleDashboardSummary {
+  focus: AdminDashboardFocus;
+  title: string;
+  description: string;
+  metrics: AdminMetric[];
+  recentOrders: AdminOrderSummary[];
+  paymentRows: AdminPaymentSummary[];
+  reviewQueue: AdminManualPaymentRequestSummary[];
+  commissionRows: CommissionRow[];
+  payouts: CommissionPayoutSummary[];
+  vendorRows: VendorSummary[];
+  wholesaleLeads: WholesaleLeadSummary[];
+  campaigns: MarketingCampaignSummary[];
+  notifications: NotificationSummary[];
+  loyaltyAccounts: LoyaltyAccountSummary[];
+}
+
+export interface SellerPanelOverviewSummary {
+  seller: VendorSummary;
+  metrics: AdminMetric[];
+  recentOrders: AdminOrderSummary[];
+  commissions: CommissionSummary[];
+  payouts: CommissionPayoutSummary[];
 }
 
 export interface AuthCredentialsInput {

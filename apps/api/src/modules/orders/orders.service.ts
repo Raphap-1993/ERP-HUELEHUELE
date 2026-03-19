@@ -431,6 +431,29 @@ export class OrdersService implements OnModuleInit {
     });
   }
 
+  listOrdersByVendorCode(vendorCode: string) {
+    const normalizedVendorCode = normalizeCode(vendorCode);
+    if (!normalizedVendorCode) {
+      return wrapResponse<AdminOrderSummary[]>([], {
+        total: 0,
+        paid: 0,
+        manualReview: 0,
+        pendingPayment: 0
+      });
+    }
+
+    const orders = this.sortedOrders()
+      .filter((order) => order.vendorCode === normalizedVendorCode)
+      .map((order) => this.toOrderSummary(order));
+
+    return wrapResponse(orders, {
+      total: orders.length,
+      paid: orders.filter((order) => order.paymentStatus === PaymentStatus.Paid).length,
+      manualReview: orders.filter((order) => order.manualStatus === ManualPaymentRequestStatus.UnderReview).length,
+      pendingPayment: orders.filter((order) => order.orderStatus === OrderStatus.PendingPayment).length
+    });
+  }
+
   getOrder(orderNumber: string) {
     return wrapResponse(this.requireOrder(orderNumber), {
       found: true

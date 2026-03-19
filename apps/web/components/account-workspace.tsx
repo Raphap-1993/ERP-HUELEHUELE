@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { type AuthSessionSummary, type LoyaltyAccountSummary } from "@huelegood/shared";
+import { RoleCode, type AuthSessionSummary, type LoyaltyAccountSummary } from "@huelegood/shared";
 import {
   Button,
   Card,
@@ -148,6 +148,15 @@ export function AccountWorkspace() {
     }
 
     return splitName(session.user.name);
+  }, [session]);
+
+  const hasSellerPanelAccess = useMemo(() => {
+    if (!session) {
+      return false;
+    }
+
+    const roles = session.user.roles.map((role) => role.code);
+    return roles.includes(RoleCode.Vendedor) || roles.includes(RoleCode.SellerManager);
   }, [session]);
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
@@ -304,7 +313,25 @@ export function AccountWorkspace() {
                   <p>
                     <strong>Correo:</strong> {session.user.email}
                   </p>
+                  {session.user.vendorCode ? (
+                    <p>
+                      <strong>Código vendedor:</strong> {session.user.vendorCode}
+                    </p>
+                  ) : null}
                 </div>
+
+                {hasSellerPanelAccess ? (
+                  <div className="rounded-3xl border border-[#132016]/10 bg-[#132016]/[0.04] p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-black/40">Acceso comercial</p>
+                    <h4 className="mt-2 text-lg font-semibold text-[#132016]">Tu cuenta tiene panel vendedor</h4>
+                    <p className="mt-2 text-sm leading-6 text-black/65">
+                      Revisa pedidos atribuidos, comisiones y liquidaciones desde tu vista comercial.
+                    </p>
+                    <div className="mt-4">
+                      <Button href="/panel-vendedor">Ir al panel vendedor</Button>
+                    </div>
+                  </div>
+                ) : null}
 
                 <Button type="button" variant="secondary" onClick={handleLogout}>
                   Cerrar sesión

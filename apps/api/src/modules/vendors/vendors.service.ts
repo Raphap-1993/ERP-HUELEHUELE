@@ -8,6 +8,7 @@ import {
 import {
   VendorApplicationStatus,
   VendorStatus,
+  type AuthUserSummary,
   type VendorApplicationActionInput,
   type VendorApplicationInput,
   type VendorApplicationSummary,
@@ -307,7 +308,17 @@ export class VendorsService implements OnModuleInit {
   }
 
   findVendorSummaryByCode(code?: string) {
-    return this.toVendorSummary(this.findVendorByCode(code));
+    const vendor = this.findVendorByCode(code);
+    return vendor ? this.toVendorSummary(vendor) : null;
+  }
+
+  findVendorSummaryByEmail(email?: string) {
+    const vendor = this.findVendorByEmail(email ? normalizeEmail(email) : undefined);
+    return vendor ? this.toVendorSummary(vendor) : null;
+  }
+
+  resolveVendorSummaryForAuthUser(user: Pick<AuthUserSummary, "email" | "vendorCode">) {
+    return this.findVendorSummaryByCode(user.vendorCode) ?? this.findVendorSummaryByEmail(user.email);
   }
 
   applyFinancialSnapshot(code: string, snapshot: VendorFinancialSnapshot) {
