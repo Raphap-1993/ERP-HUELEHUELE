@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException, OnModuleInit } from "@nestjs/common";
 import {
   CampaignRunStatus,
   CampaignStatus,
@@ -10,6 +10,7 @@ import {
 } from "@huelegood/shared";
 import { actionResponse, wrapResponse } from "../../common/response";
 import { AuditService } from "../audit/audit.service";
+import { ModuleStateService } from "../../persistence/module-state.service";
 
 interface MarketingSegmentRecord extends MarketingSegmentSummary {
   createdAt: string;
@@ -38,6 +39,13 @@ interface MarketingCampaignRecord extends MarketingCampaignSummary {
 interface MarketingEventRecord extends MarketingEventSummary {
   relatedType?: string;
   relatedId?: string;
+}
+
+interface MarketingSnapshot {
+  segments: MarketingSegmentRecord[];
+  templates: MarketingTemplateRecord[];
+  campaigns: MarketingCampaignRecord[];
+  events: MarketingEventRecord[];
 }
 
 function nowIso() {
@@ -71,7 +79,7 @@ function describeCampaignState(campaign: MarketingCampaignRecord) {
 }
 
 @Injectable()
-export class MarketingService {
+export class MarketingService implements OnModuleInit {
   private readonly segments = new Map<string, MarketingSegmentRecord>();
 
   private readonly templates = new Map<string, MarketingTemplateRecord>();
@@ -84,8 +92,20 @@ export class MarketingService {
 
   private eventSequence = 5;
 
-  constructor(private readonly auditService: AuditService) {
+  constructor(
+    private readonly auditService: AuditService,
+    private readonly moduleStateService: ModuleStateService
+  ) {
     this.seedData();
+  }
+
+  async onModuleInit() {
+    const snapshot = await this.moduleStateService.load<MarketingSnapshot>("marketing");
+    if (snapshot) {
+      this.restoreSnapshot(snapshot);
+    } else {
+      await this.persistState();
+    }
   }
 
   listCampaigns() {
@@ -242,6 +262,8 @@ export class MarketingService {
       );
     }
 
+    void this.persistState();
+
     return {
       ...actionResponse("queued", "La campaña fue registrada en CRM.", campaign.id),
       campaign: this.toCampaignSummary(campaign)
@@ -269,6 +291,7 @@ export class MarketingService {
     };
     this.eventSequence += 1;
     this.events.unshift(event);
+    void this.persistState();
     return {
       id: event.id,
       eventName: event.eventName,
@@ -486,5 +509,58 @@ export class MarketingService {
       return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
     }, 0);
     this.eventSequence = Math.max(this.eventSequence, eventSequence + 1);
+  }
+
+  private restoreSnapshot(snapshot: MarketingSnapshot) {
+    this.segments.clear();
+    this.templates.clear();
+    this.campaigns.clear();
+    this.events.splice(0, this.events.length);
+
+    for (const segment of snapshot.segments ?? []) {
+      this.segments.set(segment.id, segment);
+    }
+
+    for (const template of snapshot.templates ?? []) {
+      this.templates.set(template.id, template);
+    }
+
+    for (const campaign of snapshot.campaigns ?? []) {
+      this.campaigns.set(campaign.id, campaign);
+    }
+
+    this.events.push(...(snapshot.events ?? []));
+    this.syncSequences();
+  }
+
+  private syncSequences() {
+    const campaignSequence = Array.from(this.campaigns.values()).reduce((max, campaign) => {
+      const numeric = Number(campaign.id.replace(/[^\d]/g, ""));
+      return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
+    }, 0);
+    const eventSequence = this.events.reduce((max, event) => {
+      const numeric = Number(event.id.replace(/[^\d]/g, ""));
+      return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
+    }, 0);
+
+    this.campaignSequence = Math.max(campaignSequence + 1, 1);
+    this.eventSequence = Math.max(eventSequence + 1, 1);
+  }
+
+  private async persistState() {
+    await this.moduleStateService.save<MarketingSnapshot>("marketing", this.buildSnapshot());
+  }
+
+  private buildSnapshot(): MarketingSnapshot {
+    return {
+      segments: Array.from(this.segments.values()).map((segment) => ({ ...segment })),
+      templates: Array.from(this.templates.values()).map((template) => ({ ...template })),
+      campaigns: Array.from(this.campaigns.values()).map((campaign) => ({
+        ...campaign,
+        metrics: { ...campaign.metrics },
+        history: campaign.history.map((entry) => ({ ...entry }))
+      })),
+      events: this.events.map((event) => ({ ...event }))
+    };
   }
 }

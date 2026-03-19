@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException, OnModuleInit } from "@nestjs/common";
 import {
   WholesaleLeadStatus,
   WholesaleQuoteStatus,
@@ -12,6 +12,7 @@ import { wholesalePlans } from "@huelegood/shared";
 import { actionResponse, wrapResponse } from "../../common/response";
 import { AuditService } from "../audit/audit.service";
 import { MarketingService } from "../marketing/marketing.service";
+import { ModuleStateService } from "../../persistence/module-state.service";
 
 interface WholesaleLeadHistoryEntry {
   status: WholesaleLeadStatus;
@@ -96,6 +97,11 @@ function leadHistory(status: WholesaleLeadStatus, actor: string, note: string, o
   };
 }
 
+interface WholesaleSnapshot {
+  leads: WholesaleLeadRecord[];
+  quotes: WholesaleQuoteRecord[];
+}
+
 function quoteHistory(status: WholesaleQuoteStatus, actor: string, note: string, occurredAt: string) {
   return {
     status,
@@ -107,7 +113,7 @@ function quoteHistory(status: WholesaleQuoteStatus, actor: string, note: string,
 }
 
 @Injectable()
-export class WholesaleService {
+export class WholesaleService implements OnModuleInit {
   private readonly leads = new Map<string, WholesaleLeadRecord>();
 
   private readonly quotes = new Map<string, WholesaleQuoteRecord>();
@@ -118,9 +124,19 @@ export class WholesaleService {
 
   constructor(
     private readonly auditService: AuditService,
-    private readonly marketingService: MarketingService
+    private readonly marketingService: MarketingService,
+    private readonly moduleStateService: ModuleStateService
   ) {
     this.seedData();
+  }
+
+  async onModuleInit() {
+    const snapshot = await this.moduleStateService.load<WholesaleSnapshot>("wholesale");
+    if (snapshot) {
+      this.restoreSnapshot(snapshot);
+    } else {
+      await this.persistState();
+    }
   }
 
   listLeads() {
@@ -220,6 +236,7 @@ export class WholesaleService {
       "wholesale_lead",
       lead.id
     );
+    void this.persistState();
 
     return {
       ...actionResponse("queued", "El lead mayorista fue registrado para seguimiento comercial.", lead.id),
@@ -266,6 +283,7 @@ export class WholesaleService {
       "wholesale_lead",
       lead.id
     );
+    void this.persistState();
 
     return {
       ...actionResponse("ok", "El estado del lead fue actualizado.", lead.id),
@@ -381,15 +399,17 @@ export class WholesaleService {
     }
 
     if (quote.status === WholesaleQuoteStatus.Accepted) {
-      this.marketingService.recordEvent(
-        "wholesale.quote.accepted",
-        "ventas",
+    this.marketingService.recordEvent(
+      "wholesale.quote.accepted",
+      "ventas",
         quote.company,
         `Se aceptó la cotización ${quote.id}.`,
         "wholesale_quote",
         quote.id
       );
     }
+
+    void this.persistState();
 
     return {
       ...actionResponse("queued", "La cotización quedó registrada.", quote.id),
@@ -579,5 +599,53 @@ export class WholesaleService {
         this.quoteSequence = Math.max(this.quoteSequence, numeric + 1);
       }
     }
+  }
+
+  private restoreSnapshot(snapshot: WholesaleSnapshot) {
+    this.leads.clear();
+    this.quotes.clear();
+
+    for (const lead of snapshot.leads ?? []) {
+      this.leads.set(lead.id, lead);
+    }
+
+    for (const quote of snapshot.quotes ?? []) {
+      this.quotes.set(quote.id, quote);
+    }
+
+    this.syncSequences();
+  }
+
+  private syncSequences() {
+    const leadSequence = Array.from(this.leads.values()).reduce((max, lead) => {
+      const numeric = Number(lead.id.replace(/[^\d]/g, ""));
+      return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
+    }, 0);
+    const quoteSequence = Array.from(this.quotes.values()).reduce((max, quote) => {
+      const numeric = Number(quote.id.replace(/[^\d]/g, ""));
+      return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
+    }, 0);
+
+    this.leadSequence = Math.max(leadSequence + 1, 1);
+    this.quoteSequence = Math.max(quoteSequence + 1, 1);
+  }
+
+  private async persistState() {
+    await this.moduleStateService.save<WholesaleSnapshot>("wholesale", this.buildSnapshot());
+  }
+
+  private buildSnapshot(): WholesaleSnapshot {
+    return {
+      leads: Array.from(this.leads.values()).map((lead) => ({
+        ...lead,
+        history: lead.history.map((entry) => ({ ...entry })),
+        quoteIds: [...lead.quoteIds]
+      })),
+      quotes: Array.from(this.quotes.values()).map((quote) => ({
+        ...quote,
+        items: quote.items.map((item) => ({ ...item })),
+        history: quote.history.map((entry) => ({ ...entry }))
+      }))
+    };
   }
 }

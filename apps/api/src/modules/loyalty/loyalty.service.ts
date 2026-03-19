@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException, OnModuleInit } from "@nestjs/common";
 import {
   LoyaltyMovementStatus,
   NotificationChannel,
@@ -16,6 +16,7 @@ import { loyaltyOverview } from "@huelegood/shared";
 import { actionResponse, wrapResponse } from "../../common/response";
 import { AuditService } from "../audit/audit.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { ModuleStateService } from "../../persistence/module-state.service";
 
 interface LoyaltyAccountRecord extends LoyaltyAccountSummary {
   id: string;
@@ -32,6 +33,13 @@ interface LoyaltyRedemptionRecord extends LoyaltyRedemptionSummary {
 }
 
 interface LoyaltyRuleRecord extends LoyaltyRuleSummary {}
+
+interface LoyaltySnapshot {
+  accounts: LoyaltyAccountRecord[];
+  movements: LoyaltyMovementRecord[];
+  redemptions: LoyaltyRedemptionRecord[];
+  rules: LoyaltyRuleRecord[];
+}
 
 function nowIso() {
   return new Date().toISOString();
@@ -87,7 +95,7 @@ function normalizeKind(value?: string) {
 }
 
 @Injectable()
-export class LoyaltyService {
+export class LoyaltyService implements OnModuleInit {
   private readonly accounts = new Map<string, LoyaltyAccountRecord>();
 
   private readonly movements = new Map<string, LoyaltyMovementRecord>();
@@ -104,9 +112,19 @@ export class LoyaltyService {
 
   constructor(
     private readonly auditService: AuditService,
-    private readonly notificationsService: NotificationsService
+    private readonly notificationsService: NotificationsService,
+    private readonly moduleStateService: ModuleStateService
   ) {
     this.seedData();
+  }
+
+  async onModuleInit() {
+    const snapshot = await this.moduleStateService.load<LoyaltySnapshot>("loyalty");
+    if (snapshot) {
+      this.restoreSnapshot(snapshot);
+    } else {
+      await this.persistState();
+    }
   }
 
   getSummary() {
@@ -237,7 +255,7 @@ export class LoyaltyService {
         reason: movement.reason
       }
     });
-    this.notificationsService.recordEvent(
+    void this.notificationsService.recordEvent(
       "loyalty.points.updated",
       movement.source,
       customer,
@@ -246,7 +264,7 @@ export class LoyaltyService {
       movement.id
     );
 
-    this.notificationsService.queueNotification({
+    void this.notificationsService.queueNotification({
       channel: NotificationChannel.Email,
       audience: customer,
       subject: "Tus puntos de Huelegood se actualizaron",
@@ -259,6 +277,7 @@ export class LoyaltyService {
       relatedId: movement.id,
       status: movement.status === LoyaltyMovementStatus.Pending ? NotificationStatus.Pending : NotificationStatus.Sent
     });
+    void this.persistState();
 
     return {
       ...actionResponse("queued", "Los puntos de loyalty quedaron registrados.", movement.id),
@@ -320,7 +339,7 @@ export class LoyaltyService {
       }
     });
 
-    this.notificationsService.recordEvent(
+    void this.notificationsService.recordEvent(
       "loyalty.points.available",
       "orders",
       account.customer,
@@ -329,7 +348,7 @@ export class LoyaltyService {
       movement.id
     );
 
-    this.notificationsService.queueNotification({
+    void this.notificationsService.queueNotification({
       channel: NotificationChannel.Email,
       audience: account.customer,
       subject: "Tus puntos ya están disponibles",
@@ -339,6 +358,7 @@ export class LoyaltyService {
       relatedId: movement.id,
       status: NotificationStatus.Sent
     });
+    void this.persistState();
 
     return this.toMovementSummary(movement);
   }
@@ -379,7 +399,7 @@ export class LoyaltyService {
       }
     });
 
-    this.notificationsService.recordEvent(
+    void this.notificationsService.recordEvent(
       "loyalty.points.reversed",
       "orders",
       account.customer,
@@ -388,7 +408,7 @@ export class LoyaltyService {
       movement.id
     );
 
-    this.notificationsService.queueNotification({
+    void this.notificationsService.queueNotification({
       channel: NotificationChannel.Email,
       audience: account.customer,
       subject: "Puntos revertidos",
@@ -398,6 +418,7 @@ export class LoyaltyService {
       relatedId: movement.id,
       status: NotificationStatus.Sent
     });
+    void this.persistState();
 
     return this.toMovementSummary(movement);
   }
@@ -453,7 +474,7 @@ export class LoyaltyService {
     });
     movement.balanceAfter = account.availablePoints + account.pendingPoints;
 
-    this.notificationsService.recordEvent(
+    void this.notificationsService.recordEvent(
       "loyalty.redemption.created",
       "loyalty",
       customer,
@@ -462,7 +483,7 @@ export class LoyaltyService {
       redemption.id
     );
 
-    this.notificationsService.queueNotification({
+    void this.notificationsService.queueNotification({
       channel: NotificationChannel.Email,
       audience: customer,
       subject: "Canje recibido",
@@ -484,6 +505,7 @@ export class LoyaltyService {
         points
       }
     });
+    void this.persistState();
 
     return {
       ...actionResponse("queued", "El canje quedó registrado para revisión.", redemption.id),
@@ -540,7 +562,7 @@ export class LoyaltyService {
     redemption.updatedAt = now;
     account.updatedAt = now;
 
-    this.notificationsService.recordEvent(
+    void this.notificationsService.recordEvent(
       `loyalty.redemption.${status}`,
       "loyalty",
       account.customer,
@@ -549,7 +571,7 @@ export class LoyaltyService {
       redemption.id
     );
 
-    this.notificationsService.queueNotification({
+    void this.notificationsService.queueNotification({
       channel: NotificationChannel.Email,
       audience: account.customer,
       subject: status === RedemptionStatus.Applied ? "Canje aplicado" : "Canje actualizado",
@@ -577,6 +599,7 @@ export class LoyaltyService {
         notes
       }
     });
+    void this.persistState();
 
     return {
       ...actionResponse("ok", "El canje quedó actualizado.", redemption.id),
@@ -940,5 +963,62 @@ export class LoyaltyService {
       return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
     }, 0);
     this.ruleSequence = Math.max(this.ruleSequence, ruleSequence + 1);
+  }
+
+  private restoreSnapshot(snapshot: LoyaltySnapshot) {
+    this.accounts.clear();
+    this.movements.clear();
+    this.redemptions.clear();
+    this.rules.clear();
+
+    for (const account of snapshot.accounts ?? []) {
+      this.accounts.set(account.customer.trim().toLowerCase(), account);
+    }
+
+    for (const movement of snapshot.movements ?? []) {
+      this.movements.set(movement.id, movement);
+    }
+
+    for (const redemption of snapshot.redemptions ?? []) {
+      this.redemptions.set(redemption.id, redemption);
+    }
+
+    for (const rule of snapshot.rules ?? []) {
+      this.rules.set(rule.id, rule);
+    }
+
+    this.syncSequences();
+  }
+
+  private syncSequences() {
+    const movementSequence = Array.from(this.movements.values()).reduce((max, movement) => {
+      const numeric = Number(movement.id.replace(/[^\d]/g, ""));
+      return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
+    }, 0);
+    const redemptionSequence = Array.from(this.redemptions.values()).reduce((max, redemption) => {
+      const numeric = Number(redemption.id.replace(/[^\d]/g, ""));
+      return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
+    }, 0);
+    const ruleSequence = Array.from(this.rules.values()).reduce((max, rule) => {
+      const numeric = Number(rule.id.replace(/[^\d]/g, ""));
+      return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
+    }, 0);
+
+    this.movementSequence = Math.max(movementSequence + 1, 1);
+    this.redemptionSequence = Math.max(redemptionSequence + 1, 1);
+    this.ruleSequence = Math.max(ruleSequence + 1, 1);
+  }
+
+  private async persistState() {
+    await this.moduleStateService.save<LoyaltySnapshot>("loyalty", this.buildSnapshot());
+  }
+
+  private buildSnapshot(): LoyaltySnapshot {
+    return {
+      accounts: Array.from(this.accounts.values()).map((account) => ({ ...account })),
+      movements: Array.from(this.movements.values()).map((movement) => ({ ...movement })),
+      redemptions: Array.from(this.redemptions.values()).map((redemption) => ({ ...redemption })),
+      rules: Array.from(this.rules.values()).map((rule) => ({ ...rule }))
+    };
   }
 }

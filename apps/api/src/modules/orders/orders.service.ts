@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException, OnModuleInit } from "@nestjs/common";
 import {
   ManualPaymentRequestStatus,
   LoyaltyMovementStatus,
@@ -21,6 +21,7 @@ import { wrapResponse } from "../../common/response";
 import { AuditService } from "../audit/audit.service";
 import { LoyaltyService } from "../loyalty/loyalty.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { ModuleStateService } from "../../persistence/module-state.service";
 
 interface CreateCheckoutOrderInput {
   orderNumber: string;
@@ -31,6 +32,10 @@ interface CreateCheckoutOrderInput {
   providerReference: string;
   checkoutUrl?: string;
   manualStatus?: ManualPaymentRequestStatus;
+}
+
+interface OrdersSnapshot {
+  orders: AdminOrderDetail[];
 }
 
 const statusLabels: Record<OrderStatus, string> = {
@@ -117,7 +122,7 @@ function buildOrderItems(items: CheckoutQuoteSummary["items"]): OrderItemSummary
 }
 
 @Injectable()
-export class OrdersService {
+export class OrdersService implements OnModuleInit {
   private readonly orders = new Map<string, AdminOrderDetail>();
 
   private orderSequence = 10042;
@@ -125,9 +130,19 @@ export class OrdersService {
   constructor(
     private readonly auditService: AuditService,
     private readonly loyaltyService: LoyaltyService,
-    private readonly notificationsService: NotificationsService
+    private readonly notificationsService: NotificationsService,
+    private readonly moduleStateService: ModuleStateService
   ) {
     this.seedInitialOrders();
+  }
+
+  async onModuleInit() {
+    const snapshot = await this.moduleStateService.load<OrdersSnapshot>("orders");
+    if (snapshot) {
+      this.restoreSnapshot(snapshot);
+    } else {
+      await this.persistState();
+    }
   }
 
   reserveOrderNumber() {
@@ -238,7 +253,7 @@ export class OrdersService {
           : "Puntos retenidos hasta confirmar el pago."
     });
 
-    this.notificationsService.recordEvent(
+    void this.notificationsService.recordEvent(
       "order.created",
       "orders",
       customerName,
@@ -247,7 +262,7 @@ export class OrdersService {
       orderNumber
     );
 
-    this.notificationsService.queueNotification({
+    void this.notificationsService.queueNotification({
       channel: NotificationChannel.Email,
       audience: customerName,
       subject: `Pedido ${orderNumber} recibido`,
@@ -276,6 +291,8 @@ export class OrdersService {
         total: order.total
       }
     });
+
+    void this.persistState();
 
     return order;
   }
@@ -425,7 +442,7 @@ export class OrdersService {
           reviewer: input.reviewer
         }
       });
-      this.notificationsService.queueNotification({
+      void this.notificationsService.queueNotification({
         channel: NotificationChannel.Email,
         audience: manualRequest.customerName,
         subject: `Pago aprobado para ${order.orderNumber}`,
@@ -435,7 +452,7 @@ export class OrdersService {
         relatedId: order.orderNumber,
         status: NotificationStatus.Sent
       });
-      this.notificationsService.recordEvent(
+      void this.notificationsService.recordEvent(
         "order.manual.approved",
         "payments",
         manualRequest.customerName,
@@ -456,7 +473,7 @@ export class OrdersService {
           reviewer: input.reviewer
         }
       });
-      this.notificationsService.queueNotification({
+      void this.notificationsService.queueNotification({
         channel: NotificationChannel.Email,
         audience: manualRequest.customerName,
         subject: `Pago rechazado para ${order.orderNumber}`,
@@ -466,7 +483,7 @@ export class OrdersService {
         relatedId: order.orderNumber,
         status: NotificationStatus.Sent
       });
-      this.notificationsService.recordEvent(
+      void this.notificationsService.recordEvent(
         "order.manual.rejected",
         "payments",
         manualRequest.customerName,
@@ -475,6 +492,8 @@ export class OrdersService {
         order.orderNumber
       );
     }
+
+    void this.persistState();
   }
 
   private buildInitialHistory(input: {
@@ -855,5 +874,31 @@ export class OrdersService {
       this.orders.set(seed.orderNumber, seed);
       this.syncSequence(seed.orderNumber);
     }
+  }
+
+  private restoreSnapshot(snapshot: OrdersSnapshot) {
+    this.orders.clear();
+    for (const order of snapshot.orders ?? []) {
+      this.orders.set(order.orderNumber, order);
+      this.syncSequence(order.orderNumber);
+    }
+  }
+
+  private async persistState() {
+    await this.moduleStateService.save<OrdersSnapshot>("orders", this.buildSnapshot());
+  }
+
+  private buildSnapshot(): OrdersSnapshot {
+    return {
+      orders: Array.from(this.orders.values()).map((order) => ({
+        ...order,
+        customer: { ...order.customer },
+        address: { ...order.address },
+        items: order.items.map((item) => ({ ...item })),
+        statusHistory: order.statusHistory.map((entry) => ({ ...entry })),
+        payment: { ...order.payment },
+        manualRequest: order.manualRequest ? { ...order.manualRequest } : undefined
+      }))
+    };
   }
 }

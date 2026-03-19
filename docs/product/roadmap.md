@@ -6,7 +6,7 @@ Ordenar la construcción de Huelegood en fases ejecutables, distinguiendo lo ya 
 
 ## Estado actual
 
-Al `19 de marzo de 2026`, la base funcional del proyecto ya existe en el repositorio. El foco deja de ser "arrancar desde cero" y pasa a ser "cerrar endurecimiento, persistencia integral y automatización".
+Al `19 de marzo de 2026`, la base funcional del proyecto ya existe en el repositorio. El foco deja de ser "arrancar desde cero" y pasa a ser "cerrar endurecimiento transaccional, observabilidad y estabilización productiva".
 
 ### Ya entregado
 
@@ -19,12 +19,13 @@ Al `19 de marzo de 2026`, la base funcional del proyecto ya existe en el reposit
 - [x] CMS interno y configuración de storefront
 - [x] auditoría, seguridad operativa y healthchecks
 - [x] RBAC real con guards, permisos persistidos y navegación admin filtrada por rol
+- [x] persistencia operativa en PostgreSQL para módulos stateful mediante `Prisma` + `module_snapshots`
+- [x] BullMQ operativo para notificaciones y base reutilizable para jobs asíncronos
 
 ### Pendiente inmediato
 
-- [ ] persistencia completa en PostgreSQL para los módulos que todavía usan estado local o snapshot
-- [ ] colas BullMQ para procesos asíncronos críticos y reintentos
 - [ ] hardening de checkout, pagos y revisión manual
+- [ ] ampliación de jobs BullMQ a conciliación y liquidación donde aporte valor operativo
 - [ ] observabilidad operativa más completa
 - [ ] despliegue productivo estabilizado sobre VPS, PM2 y Nginx
 
@@ -36,11 +37,11 @@ Convertir la base funcional actual en una operación estable, persistida y segur
 
 ### Entregables
 
-- persistencia Prisma completa para órdenes, pagos, vendedores, comisiones, mayoristas, loyalty, marketing y auditoría
-- colas BullMQ para jobs de notificación, conciliación y liquidación
+- persistencia operativa en PostgreSQL para órdenes, CMS, vendedores, comisiones, loyalty, marketing, notificaciones y módulos relacionados mediante `Prisma` + `module_snapshots`
+- BullMQ operativo para notificaciones y base preparada para extender jobs de conciliación y liquidación
 - trazabilidad de procesos críticos con reintentos e idempotencia
 - reglas de negocio cerradas para checkout, Openpay y pago manual
-- panel admin conectado a datos persistentes y no a snapshots
+- panel admin conectado a datos persistidos y no a estado efímero en memoria
 - semillas, migraciones y limpieza de datos operativos
 - healthchecks y logs estructurados para operación diaria
 
@@ -79,7 +80,7 @@ Escalar la plataforma con más automatización, control de negocio y lectura ana
 
 ## Dependencias entre fases
 
-- Fase 1 depende de cerrar la persistencia real y la autorización por rol.
+- Fase 1 se apoya en la base ya entregada de persistencia real y autorización por rol.
 - Fase 2 depende de que el circuito transaccional y los jobs asíncronos queden estables.
 - Fase 3 depende de señales reales de uso, volumen y estabilidad operativa.
 - Ninguna fase justifica adelantar microservicios sin evidencia clara.
@@ -91,7 +92,7 @@ Escalar la plataforma con más automatización, control de negocio y lectura ana
 - operación diaria estable
 - flujos críticos con trazabilidad y reintentos resueltos
 - métricas básicas de conversión, pagos, comisiones y notificaciones disponibles
-- admin operativo sin dependencia de datos en memoria o snapshots
+- admin operativo sin dependencia de estado efímero en memoria
 
 ### De Fase 2 a Fase 3
 

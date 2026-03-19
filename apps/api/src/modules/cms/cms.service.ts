@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException, OnModuleInit } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import {
   cmsTestimonials,
@@ -29,6 +29,7 @@ import {
 } from "@huelegood/shared";
 import { actionResponse, wrapResponse } from "../../common/response";
 import { AuditService } from "../audit/audit.service";
+import { ModuleStateService } from "../../persistence/module-state.service";
 
 interface PageBlockDraft {
   type: string;
@@ -154,7 +155,7 @@ function cloneTestimonial(testimonial: CmsTestimonial): CmsTestimonial {
 }
 
 @Injectable()
-export class CmsService {
+export class CmsService implements OnModuleInit {
   private siteSettingData: SiteSetting = { ...defaultSiteSetting };
 
   private heroCopyData: HeroCopy = cloneHeroCopy(defaultHeroCopy);
@@ -175,8 +176,20 @@ export class CmsService {
 
   private testimonialSequence = 1;
 
-  constructor(private readonly auditService: AuditService) {
+  constructor(
+    private readonly auditService: AuditService,
+    private readonly moduleStateService: ModuleStateService
+  ) {
     this.seedData();
+  }
+
+  async onModuleInit() {
+    const snapshot = await this.moduleStateService.load<CmsSnapshotResponse>("cms");
+    if (snapshot) {
+      this.restoreSnapshot(snapshot);
+    } else {
+      await this.persistState();
+    }
   }
 
   private recordAdminAction(actionType: string, targetType: string, targetId: string, summary: string, metadata?: Prisma.InputJsonValue) {
@@ -276,6 +289,7 @@ export class CmsService {
       brandName: this.siteSettingData.brandName,
       supportEmail: this.siteSettingData.supportEmail
     });
+    void this.persistState();
 
     return {
       ...actionResponse("ok", "Los parámetros base quedaron actualizados."),
@@ -313,6 +327,7 @@ export class CmsService {
     this.recordAdminAction("cms.hero_copy.updated", "hero_copy", "global", "El hero del storefront quedó actualizado.", {
       title: this.heroCopyData.title
     });
+    void this.persistState();
 
     return {
       ...actionResponse("ok", "El hero del storefront quedó actualizado."),
@@ -355,6 +370,7 @@ export class CmsService {
       groups: this.webNavigationData.length,
       items: this.webNavigationData.reduce((sum, group) => sum + group.items.length, 0)
     });
+    void this.persistState();
 
     return {
       ...actionResponse("ok", "La navegación quedó actualizada."),
@@ -398,6 +414,7 @@ export class CmsService {
       status: page.status,
       blocks: page.blocks.length
     });
+    void this.persistState();
 
     return {
       ...actionResponse("ok", `La página ${pageSlug} quedó actualizada.`, pageSlug),
@@ -424,6 +441,7 @@ export class CmsService {
     this.recordAdminAction("cms.page.blocks.updated", "page", pageSlug, `Los bloques de ${pageSlug} quedaron actualizados.`, {
       blocks: page.blocks.length
     });
+    void this.persistState();
 
     return {
       ...actionResponse("ok", "Los bloques de la página quedaron actualizados.", pageSlug),
@@ -478,6 +496,7 @@ export class CmsService {
       position: banner.position,
       status: banner.status
     });
+    void this.persistState();
 
     return {
       ...actionResponse("ok", "El banner quedó registrado.", id),
@@ -512,6 +531,7 @@ export class CmsService {
       position: banner.position,
       status: banner.status
     });
+    void this.persistState();
 
     return {
       ...actionResponse("ok", "El banner quedó actualizado.", banner.id),
@@ -559,6 +579,7 @@ export class CmsService {
       category: faq.category,
       status: faq.status
     });
+    void this.persistState();
 
     return {
       ...actionResponse("ok", "La FAQ quedó registrada.", id),
@@ -586,6 +607,7 @@ export class CmsService {
       category: faq.category,
       status: faq.status
     });
+    void this.persistState();
 
     return {
       ...actionResponse("ok", "La FAQ quedó actualizada.", faq.id),
@@ -628,6 +650,7 @@ export class CmsService {
       rating: testimonial.rating,
       status: testimonial.status
     });
+    void this.persistState();
 
     return {
       ...actionResponse("ok", "El testimonio quedó registrado.", id),
@@ -656,11 +679,64 @@ export class CmsService {
       rating: testimonial.rating,
       status: testimonial.status
     });
+    void this.persistState();
 
     return {
       ...actionResponse("ok", "El testimonio quedó actualizado.", testimonial.id),
       testimonial: cloneTestimonial(testimonial)
     };
+  }
+
+  private restoreSnapshot(snapshot: CmsSnapshotResponse) {
+    this.siteSettingData = { ...snapshot.siteSetting };
+    this.heroCopyData = cloneHeroCopy(snapshot.heroCopy);
+    this.webNavigationData = cloneNavigation(snapshot.webNavigation);
+
+    this.banners.clear();
+    this.faqs.clear();
+    this.pages.clear();
+    this.testimonials.clear();
+
+    for (const banner of snapshot.banners ?? []) {
+      this.banners.set(banner.id, cloneBanner(banner));
+    }
+
+    for (const faq of snapshot.faqs ?? []) {
+      this.faqs.set(faq.id, cloneFaq(faq));
+    }
+
+    for (const page of snapshot.pages ?? []) {
+      this.pages.set(page.slug, clonePage(page));
+    }
+
+    for (const testimonial of snapshot.testimonials ?? []) {
+      this.testimonials.set(testimonial.id, cloneTestimonial(testimonial));
+    }
+
+    this.syncSequences();
+  }
+
+  private syncSequences() {
+    const bannerSequence = Array.from(this.banners.keys()).reduce((max, id) => {
+      const numeric = Number(id.replace(/[^\d]/g, ""));
+      return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
+    }, 0);
+    const faqSequence = Array.from(this.faqs.keys()).reduce((max, id) => {
+      const numeric = Number(id.replace(/[^\d]/g, ""));
+      return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
+    }, 0);
+    const testimonialSequence = Array.from(this.testimonials.keys()).reduce((max, id) => {
+      const numeric = Number(id.replace(/[^\d]/g, ""));
+      return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
+    }, 0);
+
+    this.bannerSequence = Math.max(bannerSequence + 1, 1);
+    this.faqSequence = Math.max(faqSequence + 1, 1);
+    this.testimonialSequence = Math.max(testimonialSequence + 1, 1);
+  }
+
+  private async persistState() {
+    await this.moduleStateService.save<CmsSnapshotResponse>("cms", this.buildSnapshot(false));
   }
 
   private buildSnapshot(publicView: boolean): CmsSnapshotResponse {

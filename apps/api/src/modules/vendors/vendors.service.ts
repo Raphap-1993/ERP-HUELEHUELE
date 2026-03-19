@@ -2,7 +2,8 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
-  NotFoundException
+  NotFoundException,
+  OnModuleInit
 } from "@nestjs/common";
 import {
   VendorApplicationStatus,
@@ -15,6 +16,7 @@ import {
 } from "@huelegood/shared";
 import { actionResponse, wrapResponse } from "../../common/response";
 import { AuditService } from "../audit/audit.service";
+import { ModuleStateService } from "../../persistence/module-state.service";
 
 interface VendorApplicationRecord extends VendorApplicationSummary {
   reviewedBy?: string;
@@ -47,6 +49,11 @@ interface VendorFinancialSnapshot {
   pendingCommissions: number;
   paidCommissions: number;
   ordersCount: number;
+}
+
+interface VendorsSnapshot {
+  applications: VendorApplicationRecord[];
+  vendors: VendorRecord[];
 }
 
 const applicationStatusLabel: Record<VendorApplicationStatus, string> = {
@@ -105,17 +112,29 @@ function vendorHistory(status: VendorStatus, actor: string, note: string, occurr
 }
 
 @Injectable()
-export class VendorsService {
+export class VendorsService implements OnModuleInit {
   private readonly applications = new Map<string, VendorApplicationRecord>();
 
   private readonly vendors = new Map<string, VendorRecord>();
 
   private vendorSequence = 22;
 
-  constructor(private readonly auditService: AuditService) {
+  constructor(
+    private readonly auditService: AuditService,
+    private readonly moduleStateService: ModuleStateService
+  ) {
     this.seedApplications();
     this.seedVendors();
     this.syncApplicationLinks();
+  }
+
+  async onModuleInit() {
+    const snapshot = await this.moduleStateService.load<VendorsSnapshot>("vendors");
+    if (snapshot) {
+      this.restoreSnapshot(snapshot);
+    } else {
+      await this.persistState();
+    }
   }
 
   listApplications() {
@@ -176,6 +195,7 @@ export class VendorsService {
         source: application.source
       }
     });
+    void this.persistState();
 
     return {
       ...actionResponse("queued", "La postulación fue registrada y quedará en screening.", id),
@@ -239,6 +259,7 @@ export class VendorsService {
         notes
       }
     });
+    void this.persistState();
 
     return {
       ...actionResponse("ok", "La postulación fue aprobada y el vendedor quedó activo.", id),
@@ -269,6 +290,7 @@ export class VendorsService {
         notes
       }
     });
+    void this.persistState();
 
     return {
       ...actionResponse("rejected", "La postulación fue rechazada y quedó registrada.", id),
@@ -300,6 +322,7 @@ export class VendorsService {
     vendor.paidCommissions = snapshot.paidCommissions;
     vendor.ordersCount = snapshot.ordersCount;
     vendor.updatedAt = nowIso();
+    void this.persistState();
 
     return this.toVendorSummary(vendor);
   }
@@ -499,6 +522,49 @@ export class VendorsService {
         this.vendorSequence = Math.max(this.vendorSequence, numericCode + 1);
       }
     }
+  }
+
+  private restoreSnapshot(snapshot: VendorsSnapshot) {
+    this.applications.clear();
+    this.vendors.clear();
+
+    for (const application of snapshot.applications ?? []) {
+      this.applications.set(application.id, application);
+    }
+
+    for (const vendor of snapshot.vendors ?? []) {
+      this.vendors.set(vendor.code, vendor);
+    }
+
+    this.syncApplicationLinks();
+    this.syncVendorSequence();
+  }
+
+  private syncVendorSequence() {
+    const sequence = Array.from(this.vendors.values()).reduce((max, vendor) => {
+      const numeric = Number(vendor.code.replace(/[^\d]/g, ""));
+      return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
+    }, 0);
+
+    this.vendorSequence = Math.max(sequence + 1, 1);
+  }
+
+  private async persistState() {
+    await this.moduleStateService.save<VendorsSnapshot>("vendors", this.buildSnapshot());
+  }
+
+  private buildSnapshot(): VendorsSnapshot {
+    return {
+      applications: Array.from(this.applications.values()).map((application) => ({
+        ...application,
+        statusHistory: application.statusHistory.map((entry) => ({ ...entry }))
+      })),
+      vendors: Array.from(this.vendors.values()).map((vendor) => ({
+        ...vendor,
+        applicationIds: [...vendor.applicationIds],
+        statusHistory: vendor.statusHistory.map((entry) => ({ ...entry }))
+      }))
+    };
   }
 
   private toApplicationSummary(application: VendorApplicationRecord): VendorApplicationSummary {

@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException, OnModuleInit } from "@nestjs/common";
 import {
   CommissionPayoutStatus,
   CommissionStatus,
@@ -16,6 +16,7 @@ import { actionResponse, wrapResponse } from "../../common/response";
 import { AuditService } from "../audit/audit.service";
 import { OrdersService } from "../orders/orders.service";
 import { VendorsService } from "../vendors/vendors.service";
+import { ModuleStateService } from "../../persistence/module-state.service";
 
 interface CommissionHistoryEntry {
   status: CommissionStatus;
@@ -54,6 +55,12 @@ interface CommissionPayoutRecord extends CommissionPayoutSummary {
 interface PeriodDescriptor {
   key: string;
   label: string;
+}
+
+interface CommissionsSnapshot {
+  rules: CommissionRuleRecord[];
+  commissions: CommissionRecord[];
+  payouts: CommissionPayoutRecord[];
 }
 
 const commissionStatusLabels: Record<CommissionStatus, string> = {
@@ -176,7 +183,7 @@ function summarizeCommissionStatuses(commissions: CommissionRecord[]) {
 }
 
 @Injectable()
-export class CommissionsService {
+export class CommissionsService implements OnModuleInit {
   private readonly rules = new Map<string, CommissionRuleRecord>();
 
   private readonly commissions = new Map<string, CommissionRecord>();
@@ -186,9 +193,19 @@ export class CommissionsService {
   constructor(
     private readonly auditService: AuditService,
     private readonly ordersService: OrdersService,
-    private readonly vendorsService: VendorsService
+    private readonly vendorsService: VendorsService,
+    private readonly moduleStateService: ModuleStateService
   ) {
     this.seedRules();
+  }
+
+  async onModuleInit() {
+    const snapshot = await this.moduleStateService.load<CommissionsSnapshot>("commissions");
+    if (snapshot) {
+      this.restoreSnapshot(snapshot);
+    } else {
+      await this.persistState();
+    }
   }
 
   syncFromOrders(actor = "sistema") {
@@ -214,6 +231,7 @@ export class CommissionsService {
           payouts: this.payouts.size
         }
       });
+      void this.persistState();
     }
 
     return wrapResponse(
@@ -360,6 +378,8 @@ export class CommissionsService {
       }
     });
 
+    void this.persistState();
+
     return {
       ...actionResponse("queued", "La liquidación quedó preparada para pago.", payout.id),
       payout: this.toPayoutSummary(payout)
@@ -422,6 +442,8 @@ export class CommissionsService {
         referenceId: payout.referenceId
       }
     });
+
+    void this.persistState();
 
     return {
       ...actionResponse("ok", "La liquidación quedó pagada y conciliada.", id),
@@ -777,5 +799,42 @@ export class CommissionsService {
     for (const rule of rules) {
       this.rules.set(rule.id, rule);
     }
+  }
+
+  private restoreSnapshot(snapshot: CommissionsSnapshot) {
+    this.rules.clear();
+    this.commissions.clear();
+    this.payouts.clear();
+
+    for (const rule of snapshot.rules ?? []) {
+      this.rules.set(rule.id, rule);
+    }
+
+    for (const commission of snapshot.commissions ?? []) {
+      this.commissions.set(commission.id, commission);
+    }
+
+    for (const payout of snapshot.payouts ?? []) {
+      this.payouts.set(payout.id, payout);
+    }
+  }
+
+  private async persistState() {
+    await this.moduleStateService.save<CommissionsSnapshot>("commissions", this.buildSnapshot());
+  }
+
+  private buildSnapshot(): CommissionsSnapshot {
+    return {
+      rules: Array.from(this.rules.values()).map((rule) => ({ ...rule })),
+      commissions: Array.from(this.commissions.values()).map((commission) => ({
+        ...commission,
+        statusHistory: commission.statusHistory.map((entry) => ({ ...entry }))
+      })),
+      payouts: Array.from(this.payouts.values()).map((payout) => ({
+        ...payout,
+        commissionIds: [...payout.commissionIds],
+        statusHistory: payout.statusHistory.map((entry) => ({ ...entry }))
+      }))
+    };
   }
 }

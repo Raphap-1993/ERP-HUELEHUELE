@@ -1,15 +1,23 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException, OnModuleInit } from "@nestjs/common";
 import {
   NotificationChannel,
   NotificationStatus,
+  type NotificationDispatchJobData,
   type NotificationInput,
   type NotificationLogSummary,
   type NotificationSummary
 } from "@huelegood/shared";
 import { actionResponse, wrapResponse } from "../../common/response";
 import { AuditService } from "../audit/audit.service";
+import { BullMqService } from "../../persistence/bullmq.service";
+import { ModuleStateService } from "../../persistence/module-state.service";
 
 interface NotificationRecord extends NotificationSummary {}
+
+interface NotificationsSnapshot {
+  notifications: NotificationRecord[];
+  logs: NotificationLogSummary[];
+}
 
 function nowIso() {
   return new Date().toISOString();
@@ -47,7 +55,7 @@ function normalizeStatus(value?: string) {
 }
 
 @Injectable()
-export class NotificationsService {
+export class NotificationsService implements OnModuleInit {
   private readonly notifications = new Map<string, NotificationRecord>();
 
   private readonly logs: NotificationLogSummary[] = [];
@@ -56,11 +64,27 @@ export class NotificationsService {
 
   private logSequence = 4;
 
-  constructor(private readonly auditService: AuditService) {
+  constructor(
+    private readonly auditService: AuditService,
+    private readonly moduleStateService: ModuleStateService,
+    private readonly bullMqService: BullMqService
+  ) {
     this.seedData();
   }
 
-  listNotifications() {
+  async onModuleInit() {
+    const snapshot = await this.moduleStateService.load<NotificationsSnapshot>("notifications");
+    if (snapshot) {
+      this.restoreSnapshot(snapshot);
+    } else {
+      await this.persistState();
+    }
+
+    await this.enqueuePendingNotifications();
+  }
+
+  async listNotifications() {
+    await this.refreshState();
     const notifications = Array.from(this.notifications.values()).sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
     return wrapResponse<NotificationSummary[]>(
       notifications.map((notification) => ({
@@ -88,14 +112,16 @@ export class NotificationsService {
     );
   }
 
-  listLogs() {
+  async listLogs() {
+    await this.refreshState();
     const logs = [...this.logs].sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
     return wrapResponse<NotificationLogSummary[]>(logs, {
       total: logs.length
     });
   }
 
-  createNotification(body: NotificationInput) {
+  async createNotification(body: NotificationInput) {
+    await this.refreshState();
     const channel = normalizeChannel(body.channel);
     const audience = normalizeText(body.audience);
     const subject = normalizeText(body.subject);
@@ -127,6 +153,13 @@ export class NotificationsService {
     };
 
     this.notifications.set(notification.id, notification);
+    await this.persistState();
+    void this.dispatchNotification({
+      notificationId: notification.id,
+      requestedAt: createdAt,
+      reason: status === NotificationStatus.Pending ? "pending" : "immediate",
+      actor: source
+    });
     this.auditService.recordAudit({
       module: "notifications",
       action: "notification.queued",
@@ -143,7 +176,7 @@ export class NotificationsService {
         relatedId: notification.relatedId
       }
     });
-    this.recordEvent(
+    await this.recordEvent(
       status === NotificationStatus.Sent || status === NotificationStatus.Delivered ? "notification.sent" : "notification.queued",
       source,
       audience,
@@ -163,7 +196,7 @@ export class NotificationsService {
     return this.createNotification(body);
   }
 
-  recordEvent(
+  async recordEvent(
     eventName: string,
     source: string,
     subject: string,
@@ -172,6 +205,7 @@ export class NotificationsService {
     relatedId?: string,
     notificationId?: string
   ) {
+    await this.refreshState();
     const occurredAt = nowIso();
     const log: NotificationLogSummary = {
       id: `nlog-${String(this.logSequence).padStart(3, "0")}`,
@@ -186,10 +220,12 @@ export class NotificationsService {
     };
     this.logSequence += 1;
     this.logs.unshift(log);
+    await this.persistState();
     return log;
   }
 
-  markNotificationSent(id: string, detail?: string) {
+  async markNotificationSent(id: string, detail?: string) {
+    await this.refreshState();
     const notification = this.requireNotification(id);
     const now = nowIso();
     notification.status = NotificationStatus.Sent;
@@ -207,7 +243,7 @@ export class NotificationsService {
         detail: normalizeText(detail)
       }
     });
-    this.recordEvent(
+    await this.recordEvent(
       "notification.sent",
       notification.source,
       notification.subject,
@@ -216,6 +252,7 @@ export class NotificationsService {
       notification.relatedId,
       notification.id
     );
+    await this.persistState();
     return this.toSummary(notification);
   }
 
@@ -243,6 +280,63 @@ export class NotificationsService {
       sentAt: notification.sentAt,
       createdAt: notification.createdAt,
       updatedAt: notification.updatedAt
+    };
+  }
+
+  private async enqueuePendingNotifications() {
+    const pending = Array.from(this.notifications.values()).filter((notification) => notification.status === NotificationStatus.Pending);
+    for (const notification of pending) {
+      await this.dispatchNotification({
+        notificationId: notification.id,
+        requestedAt: notification.updatedAt,
+        reason: "requeue",
+        actor: notification.source
+      });
+    }
+  }
+
+  private async dispatchNotification(job: NotificationDispatchJobData) {
+    await this.bullMqService.enqueueNotificationDispatch(job);
+  }
+
+  private async refreshState() {
+    const snapshot = await this.moduleStateService.load<NotificationsSnapshot>("notifications");
+    if (snapshot) {
+      this.restoreSnapshot(snapshot);
+    }
+  }
+
+  private async persistState() {
+    await this.moduleStateService.save<NotificationsSnapshot>("notifications", this.buildSnapshot());
+  }
+
+  private restoreSnapshot(snapshot: NotificationsSnapshot) {
+    this.notifications.clear();
+    for (const notification of snapshot.notifications ?? []) {
+      this.notifications.set(notification.id, notification);
+    }
+
+    this.logs.splice(0, this.logs.length, ...(snapshot.logs ?? []));
+    this.syncSequences();
+  }
+
+  private syncSequences() {
+    const notificationSequence = Array.from(this.notifications.values()).reduce((max, notification) => {
+      const numeric = Number(notification.id.replace(/[^\d]/g, ""));
+      return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
+    }, 0);
+    const logSequence = this.logs.reduce((max, log) => {
+      const numeric = Number(log.id.replace(/[^\d]/g, ""));
+      return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
+    }, 0);
+    this.notificationSequence = Math.max(notificationSequence + 1, 1);
+    this.logSequence = Math.max(logSequence + 1, 1);
+  }
+
+  private buildSnapshot(): NotificationsSnapshot {
+    return {
+      notifications: Array.from(this.notifications.values()).map((notification) => ({ ...notification })),
+      logs: this.logs.map((log) => ({ ...log }))
     };
   }
 

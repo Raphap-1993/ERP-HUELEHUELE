@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, OnModuleInit, UnauthorizedException } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import {
   RoleCode,
@@ -10,6 +10,7 @@ import {
 } from "@huelegood/shared";
 import { actionResponse, wrapResponse } from "../../common/response";
 import { AuditService } from "../audit/audit.service";
+import { ModuleStateService } from "../../persistence/module-state.service";
 import { parseAuthorizationToken, resolveSession as resolveStoredSession, revokeSession, storeSession } from "./auth-session";
 
 type AccountType = AuthUserSummary["accountType"];
@@ -22,6 +23,11 @@ interface AuthRecord {
   password: string;
   accountType: AccountType;
   roles: AuthRoleSummary[];
+}
+
+interface AuthSnapshot {
+  accounts: AuthRecord[];
+  userSequence: number;
 }
 
 const roleLabels: Record<RoleCode, string> = {
@@ -106,8 +112,20 @@ function ensureAccount(account?: AuthRecord) {
 }
 
 @Injectable()
-export class AuthService {
-  constructor(private readonly auditService: AuditService) {}
+export class AuthService implements OnModuleInit {
+  constructor(
+    private readonly auditService: AuditService,
+    private readonly moduleStateService: ModuleStateService
+  ) {}
+
+  async onModuleInit() {
+    const snapshot = await this.moduleStateService.load<AuthSnapshot>("auth");
+    if (snapshot) {
+      this.restoreSnapshot(snapshot);
+    } else {
+      await this.persistState();
+    }
+  }
 
   resolveSession(authorization?: string | string[]) {
     return resolveStoredSession(authorization);
@@ -176,6 +194,7 @@ export class AuthService {
 
     userSequence += 1;
     accounts.set(email, account);
+    void this.persistState();
 
     const session = createSession(account);
     this.auditService.recordAudit({
@@ -254,5 +273,28 @@ export class AuthService {
     return wrapResponse(session, {
       seeded: true
     });
+  }
+
+  private restoreSnapshot(snapshot: AuthSnapshot) {
+    accounts.clear();
+    for (const account of snapshot.accounts ?? []) {
+      accounts.set(normalizeEmail(account.email), account);
+    }
+
+    userSequence = Math.max(snapshot.userSequence ?? userSequence, 1);
+  }
+
+  private async persistState() {
+    await this.moduleStateService.save<AuthSnapshot>("auth", this.buildSnapshot());
+  }
+
+  private buildSnapshot(): AuthSnapshot {
+    return {
+      accounts: Array.from(accounts.values()).map((account) => ({
+        ...account,
+        roles: account.roles.map((role) => ({ ...role }))
+      })),
+      userSequence
+    };
   }
 }

@@ -1270,3 +1270,14 @@ model AdminAction {
   @@index([actionType, occurredAt])
   @@map("admin_actions")
 }
+
+model ModuleSnapshot {
+  id          String   @id @default(uuid()) @db.Uuid
+  moduleName  String   @unique
+  snapshot    Json
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("module_snapshots")
+}

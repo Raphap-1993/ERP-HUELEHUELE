@@ -14,6 +14,7 @@ Ya están cubiertos en el repositorio, entre otros, los siguientes bloques:
 
 - `MVP-001` estructura base de aplicaciones
 - `MVP-002` auth y RBAC
+- `MVP-003` modelo de datos inicial con Prisma y persistencia operativa en PostgreSQL
 - `MVP-004` CMS interno básico
 - `MVP-005` catálogo y variantes
 - `MVP-008` checkout con Openpay
@@ -34,13 +35,15 @@ Ya están cubiertos en el repositorio, entre otros, los siguientes bloques:
 - `MVP-024` upload seguro de evidencias y assets
 - `MVP-025` healthchecks y logs estructurados
 
+En este punto, la cobertura de `MVP-023` ya existe para notificaciones y deja lista la infraestructura BullMQ para ampliar jobs hacia conciliación y liquidación sin rehacer la base.
+
 ## Prioridad crítica
 
 | ID | Ítem | Resultado esperado |
 | --- | --- | --- |
 | MVP-001 | Estructura base de aplicaciones `web`, `admin`, `api`, `worker` | Repositorio listo para arrancar implementación y despliegue |
 | MVP-002 | Modelo de auth y RBAC | Roles y permisos funcionales en admin, vendedor y cliente. Implementado en el repo y conectado a guards y navegación filtrada. |
-| MVP-003 | Modelo de datos inicial con Prisma | Entidades núcleo y migraciones iniciales definidas |
+| MVP-003 | Modelo de datos inicial con Prisma | Entidades núcleo y persistencia operativa en PostgreSQL definidas. Implementado en el repo con `schema.prisma`, `module_snapshots` y Prisma Client generado. |
 | MVP-004 | CMS interno básico | Home, páginas, banners, FAQs, navegación y SEO editables |
 | MVP-005 | Catálogo y variantes | Productos publicados y administrables con stock lógico |
 | MVP-006 | Promociones y cupones | Descuentos aplicables y auditables |
@@ -65,7 +68,7 @@ Ya están cubiertos en el repositorio, entre otros, los siguientes bloques:
 | MVP-020 | Seller panel básico | Vendedor consulta código, pedidos atribuidos y comisiones |
 | MVP-021 | Gestión de reglas de comisión | Configuración administrable por vigencia y alcance |
 | MVP-022 | Reglas de compatibilidad entre cupones y vendedor | Política clara en checkout y atribución |
-| MVP-023 | Cola de jobs y reintentos | Procesos asíncronos trazables |
+| MVP-023 | Cola de jobs y reintentos | Procesos asíncronos trazables. Implementado en el repo para notificaciones, con base reutilizable para extender otros jobs críticos. |
 | MVP-024 | Upload seguro de evidencias y assets | Activos públicos y privados gestionados de forma segura |
 | MVP-025 | Healthchecks y logs estructurados | Operación mínima observable en producción |
 
