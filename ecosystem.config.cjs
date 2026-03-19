@@ -2,6 +2,15 @@ const webPort = Number(process.env.WEB_PORT || 3000);
 const adminPort = Number(process.env.ADMIN_PORT || 3001);
 const apiPort = Number(process.env.API_PORT || 4000);
 const workerConcurrency = Number(process.env.WORKER_CONCURRENCY || 5);
+const appRelease = process.env.APP_RELEASE_SHA || "dev";
+
+function withBaseEnv(overrides = {}) {
+  return {
+    NODE_ENV: "production",
+    APP_RELEASE_SHA: appRelease,
+    ...overrides
+  };
+}
 
 module.exports = {
   apps: [
@@ -21,10 +30,12 @@ module.exports = {
       kill_timeout: 10000,
       out_file: "../../logs/web.out.log",
       error_file: "../../logs/web.error.log",
-      env: {
-        NODE_ENV: "production",
+      env: withBaseEnv({
         PORT: webPort
-      }
+      }),
+      env_production: withBaseEnv({
+        PORT: webPort
+      })
     },
     {
       name: "huelegood-admin",
@@ -42,10 +53,12 @@ module.exports = {
       kill_timeout: 10000,
       out_file: "../../logs/admin.out.log",
       error_file: "../../logs/admin.error.log",
-      env: {
-        NODE_ENV: "production",
+      env: withBaseEnv({
         PORT: adminPort
-      }
+      }),
+      env_production: withBaseEnv({
+        PORT: adminPort
+      })
     },
     {
       name: "huelegood-api",
@@ -63,10 +76,12 @@ module.exports = {
       kill_timeout: 10000,
       out_file: "../../logs/api.out.log",
       error_file: "../../logs/api.error.log",
-      env: {
-        NODE_ENV: "production",
+      env: withBaseEnv({
         PORT: apiPort
-      }
+      }),
+      env_production: withBaseEnv({
+        PORT: apiPort
+      })
     },
     {
       name: "huelegood-worker",
@@ -84,10 +99,12 @@ module.exports = {
       kill_timeout: 10000,
       out_file: "../../logs/worker.out.log",
       error_file: "../../logs/worker.error.log",
-      env: {
-        NODE_ENV: "production",
+      env: withBaseEnv({
         WORKER_CONCURRENCY: workerConcurrency
-      }
+      }),
+      env_production: withBaseEnv({
+        WORKER_CONCURRENCY: workerConcurrency
+      })
     }
   ]
 }
