@@ -28,42 +28,87 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const cms = await loadLayoutCms();
   const settings = cms?.siteSetting ?? siteSetting;
   const navigation = cms?.webNavigation ?? webNavigation;
+  const links = navigation.flatMap((group) => group.items);
 
   return (
     <html lang="es">
       <body>
-        <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-4 md:px-6">
-          <header className="sticky top-4 z-20 mb-6 rounded-[1.9rem] border border-black/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.82)_0%,rgba(244,247,239,0.92)_100%)] px-5 py-4 shadow-soft backdrop-blur">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="space-y-2">
-                <div className="text-xs uppercase tracking-[0.24em] text-black/45">Huelegood</div>
-                <PublicBrandStrip />
-              </div>
-              <nav className="flex flex-wrap items-center gap-2">
-                {navigation.flatMap((group) => group.items).map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="rounded-full px-4 py-2 text-sm text-black/70 transition hover:bg-black/5 hover:text-[#132016]"
-                  >
-                    {item.label}
+        <div className="mx-auto flex min-h-screen w-full max-w-[1380px] flex-col px-4 py-4 md:px-6 md:py-6">
+          <header className="sticky top-4 z-30 mb-8 overflow-hidden rounded-[2.25rem] border border-black/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.86)_0%,rgba(246,248,240,0.94)_100%)] px-5 py-4 shadow-[0_26px_80px_rgba(22,34,20,0.09)] backdrop-blur-xl md:px-7 md:py-5">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(171,192,154,0.18),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(201,166,109,0.12),transparent_26%)]" />
+            <div className="relative flex flex-col gap-5">
+              <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+                <div className="space-y-3">
+                  <Link href="/" className="block text-xs uppercase tracking-[0.38em] text-black/42">
+                    {settings.brandName}
                   </Link>
-                ))}
-                <Button href="/catalogo" size="sm">
-                  Comprar ahora
-                </Button>
-              </nav>
+                  <div className="space-y-2">
+                    <PublicBrandStrip />
+                    <p className="max-w-xl text-sm leading-6 text-black/52">{settings.tagline}</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-4 xl:items-end">
+                  <nav className="flex flex-wrap items-center gap-2 xl:justify-end">
+                    {links.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className="rounded-full px-4 py-2 text-sm text-black/68 transition hover:bg-white/80 hover:text-[#132016]"
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+                  </nav>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="text-xs uppercase tracking-[0.24em] text-black/38">Compra directa</span>
+                    <Button href="/catalogo" size="sm">
+                      Comprar ahora
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/6 pt-4 text-xs uppercase tracking-[0.2em] text-black/38">
+                <span>Envíos nacionales</span>
+                <span>Pago con tarjeta o comprobante</span>
+                <span>Atención comercial por WhatsApp</span>
+              </div>
             </div>
           </header>
           <main className="flex-1">{children}</main>
-          <footer className="mt-10 rounded-[2rem] border border-black/8 bg-[linear-gradient(135deg,#132016_0%,#1f3725_100%)] px-6 py-6 text-white shadow-soft">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <div className="text-sm uppercase tracking-[0.24em] text-white/45">{settings.brandName}</div>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-white/72">{settings.tagline}</p>
+          <footer className="mt-12 overflow-hidden rounded-[2.5rem] border border-black/8 bg-[linear-gradient(135deg,#132016_0%,#1d3422_54%,#243d28_100%)] px-6 py-8 text-white shadow-[0_30px_90px_rgba(19,32,22,0.32)] md:px-8">
+            <div className="grid gap-8 lg:grid-cols-[1.25fr_0.75fr_0.7fr]">
+              <div className="space-y-4">
+                <div className="text-sm uppercase tracking-[0.28em] text-white/42">{settings.brandName}</div>
+                <p className="max-w-2xl text-sm leading-7 text-white/74">{settings.tagline}</p>
+                <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em] text-white/45">
+                  <span>Frescura</span>
+                  <span>Portabilidad</span>
+                  <span>Viajes</span>
+                  <span>Tráfico</span>
+                  <span>Altura</span>
+                </div>
               </div>
-              <div className="text-sm text-white/70">
-                Soporte: {settings.supportEmail} · WhatsApp: {settings.whatsapp}
+
+              <div className="space-y-3">
+                <p className="text-xs uppercase tracking-[0.24em] text-white/42">Explorar</p>
+                <div className="grid gap-2 text-sm text-white/76">
+                  {links.map((item) => (
+                    <Link key={item.href} href={item.href} className="transition hover:text-white">
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-xs uppercase tracking-[0.24em] text-white/42">Contacto</p>
+                <div className="space-y-2 text-sm leading-6 text-white/76">
+                  <p>{settings.supportEmail}</p>
+                  <p>{settings.whatsapp}</p>
+                  <p>Respuesta comercial y soporte de compra.</p>
+                </div>
               </div>
             </div>
           </footer>

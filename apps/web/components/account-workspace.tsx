@@ -16,6 +16,8 @@ import {
 } from "@huelegood/ui";
 import { clearStoredSessionToken, readStoredSessionToken, writeStoredSessionToken } from "../lib/session";
 import { fetchLoyaltySummary, fetchSession, login, logout, register } from "../lib/api";
+import { brandArt, EditorialMedia } from "./public-brand";
+import { PublicField, PublicPageHero, PublicPanel, PublicSectionHeading } from "./public-shell";
 
 function splitName(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -206,11 +208,25 @@ export function AccountWorkspace() {
   }
 
   return (
-    <div className="space-y-8 py-6 md:py-10">
-      <SectionHeader title="Mi cuenta" description="Accede a tus datos, revisa tu compra y consulta tus puntos cuando tengas sesión activa." />
+    <div className="space-y-10 py-6 md:space-y-14 md:py-10">
+      <PublicPageHero
+        eyebrow="Mi cuenta"
+        title="Tu acceso personal a compras, puntos y seguimiento."
+        description="La página de cuenta también debe sentirse terminada: acceso claro, estado de sesión visible y beneficios explicados sin ambigüedad."
+        actions={[
+          { label: mode === "login" ? "Entrar" : "Crear cuenta", href: "#acceso" },
+          { label: "Ver checkout", href: "/checkout", variant: "secondary" }
+        ]}
+        metrics={[
+          { label: "Acceso", value: session ? "Activo" : "Seguro", detail: session ? "Tu sesión está abierta." : "Ingresa o crea tu cuenta." },
+          { label: "Cuenta", value: session ? (session.user.accountType === "customer" ? "Cliente" : "Registrada") : "Nueva", detail: "Compra, seguimiento y beneficios." },
+          { label: "Loyalty", value: session && loyaltySummary ? String(loyaltySummary.availablePoints) : "Puntos", detail: "Disponibles cuando la compra queda confirmada." }
+        ]}
+        aside={<EditorialMedia src={brandArt.office} alt="Visual editorial de cuenta Huelegood" className="min-h-[440px]" />}
+      />
 
-      <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-        <Card>
+      <section className="grid gap-6 xl:grid-cols-[0.96fr_1.04fr]">
+        <Card id="acceso" className="rounded-[2.4rem] border-black/8 bg-[linear-gradient(180deg,#ffffff_0%,#f2f6ee_100%)]">
           <CardHeader>
             <CardTitle>Acceso</CardTitle>
             <CardDescription>Inicia sesión o crea tu cuenta para gestionar tu experiencia de compra.</CardDescription>
@@ -229,46 +245,60 @@ export function AccountWorkspace() {
 
             {mode === "login" ? (
               <form className="space-y-4" onSubmit={handleLogin}>
-                <Input
-                  type="email"
-                  value={loginForm.email}
-                  onChange={(event) => setLoginForm((current) => ({ ...current, email: event.target.value }))}
-                  placeholder="correo@huelegood.com"
-                />
-                <Input
-                  type="password"
-                  value={loginForm.password}
-                  onChange={(event) => setLoginForm((current) => ({ ...current, password: event.target.value }))}
-                  placeholder="Contraseña"
-                />
+                <PublicField label="Correo electrónico">
+                  <Input
+                    type="email"
+                    value={loginForm.email}
+                    onChange={(event) => setLoginForm((current) => ({ ...current, email: event.target.value }))}
+                    placeholder="correo@huelegood.com"
+                  />
+                </PublicField>
+                <PublicField label="Contraseña">
+                  <Input
+                    type="password"
+                    value={loginForm.password}
+                    onChange={(event) => setLoginForm((current) => ({ ...current, password: event.target.value }))}
+                    placeholder="Contraseña"
+                  />
+                </PublicField>
                 <Button type="submit" disabled={submitting || loadingSession}>
                   {submitting ? "Validando..." : "Ingresar"}
                 </Button>
               </form>
             ) : (
               <form className="space-y-4" onSubmit={handleRegister}>
-                <Input
-                  value={registerForm.name}
-                  onChange={(event) => setRegisterForm((current) => ({ ...current, name: event.target.value }))}
-                  placeholder="Nombre y apellido"
-                />
-                <Input
-                  type="email"
-                  value={registerForm.email}
-                  onChange={(event) => setRegisterForm((current) => ({ ...current, email: event.target.value }))}
-                  placeholder="correo@huelegood.com"
-                />
-                <Input
-                  type="password"
-                  value={registerForm.password}
-                  onChange={(event) => setRegisterForm((current) => ({ ...current, password: event.target.value }))}
-                  placeholder="Contraseña"
-                />
-                <Input
-                  value={registerForm.phone}
-                  onChange={(event) => setRegisterForm((current) => ({ ...current, phone: event.target.value }))}
-                  placeholder="Teléfono"
-                />
+                <div className="grid gap-4 md:grid-cols-2">
+                  <PublicField label="Nombre y apellido">
+                    <Input
+                      value={registerForm.name}
+                      onChange={(event) => setRegisterForm((current) => ({ ...current, name: event.target.value }))}
+                      placeholder="Nombre y apellido"
+                    />
+                  </PublicField>
+                  <PublicField label="Correo electrónico">
+                    <Input
+                      type="email"
+                      value={registerForm.email}
+                      onChange={(event) => setRegisterForm((current) => ({ ...current, email: event.target.value }))}
+                      placeholder="correo@huelegood.com"
+                    />
+                  </PublicField>
+                  <PublicField label="Contraseña">
+                    <Input
+                      type="password"
+                      value={registerForm.password}
+                      onChange={(event) => setRegisterForm((current) => ({ ...current, password: event.target.value }))}
+                      placeholder="Contraseña"
+                    />
+                  </PublicField>
+                  <PublicField label="Teléfono">
+                    <Input
+                      value={registerForm.phone}
+                      onChange={(event) => setRegisterForm((current) => ({ ...current, phone: event.target.value }))}
+                      placeholder="Teléfono"
+                    />
+                  </PublicField>
+                </div>
                 <Button type="submit" disabled={submitting || loadingSession}>
                   {submitting ? "Creando..." : "Crear cuenta"}
                 </Button>
@@ -277,7 +307,7 @@ export function AccountWorkspace() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-[2.4rem] border-black/8 bg-white/92">
           <CardHeader>
             <CardTitle>Sesión activa</CardTitle>
             <CardDescription>Consulta los datos principales de tu cuenta cuando hayas iniciado sesión.</CardDescription>
@@ -338,23 +368,29 @@ export function AccountWorkspace() {
                 </Button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <PublicPanel className="space-y-4 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(243,246,238,0.98)_100%)]">
                 <p className="text-sm text-black/60">Aún no has iniciado sesión. Entra con tu cuenta o crea una para ver tus pedidos y beneficios.</p>
                 <div className="rounded-2xl border border-black/10 bg-black/[0.02] p-4 text-sm text-black/65">
                   Tu cuenta te permitirá guardar tus datos, revisar tu compra y consultar tus puntos cuando estén disponibles.
                 </div>
-              </div>
+              </PublicPanel>
             )}
           </CardContent>
         </Card>
-      </div>
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Fidelización</CardTitle>
-          <CardDescription>Consulta tus puntos disponibles, pendientes y canjes desde tu cuenta.</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <section className="space-y-6">
+        <PublicSectionHeading
+          eyebrow="Fidelización"
+          title="Tus puntos y movimientos viven dentro de la misma cuenta."
+          description="La vista de cuenta debe explicar con claridad cómo se refleja la actividad de loyalty una vez confirmadas las compras."
+        />
+        <Card className="rounded-[2.4rem] border-black/8 bg-white/92">
+          <CardHeader>
+            <CardTitle>Fidelización</CardTitle>
+            <CardDescription>Consulta tus puntos disponibles, pendientes y canjes desde tu cuenta.</CardDescription>
+          </CardHeader>
+          <CardContent>
           {!session ? (
             <p className="text-sm text-black/55">Inicia sesión para consultar tu saldo de puntos y tus movimientos.</p>
           ) : loadingLoyalty ? (
@@ -387,8 +423,9 @@ export function AccountWorkspace() {
           ) : (
             <p className="text-sm text-black/55">No encontramos una cuenta de loyalty para mostrar.</p>
           )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </section>
     </div>
   );
 }

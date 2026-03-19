@@ -38,23 +38,33 @@ export function EditorialMedia({
   alt,
   className,
   overlay,
-  imageClassName
+  imageClassName,
+  priority = false
 }: {
   src: string;
   alt: string;
   className?: string;
   overlay?: ReactNode;
   imageClassName?: string;
+  priority?: boolean;
 }) {
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-[2rem] border border-black/8 bg-gradient-to-br from-[#edf2e7] via-white to-[#dce3d1] shadow-soft",
+        "group relative overflow-hidden rounded-[2.55rem] border border-black/8 bg-[linear-gradient(145deg,#edf2e6_0%,#f9faf5_46%,#dde7d2_100%)] shadow-[0_28px_80px_rgba(20,32,22,0.1)]",
         className
       )}
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(19,32,22,0.08),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(196,155,93,0.18),transparent_26%)]" />
-      <Image fill src={src} alt={alt} className={cn("object-cover", imageClassName)} />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(19,32,22,0.08),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(196,155,93,0.22),transparent_28%)]" />
+      <div className="absolute inset-[1px] rounded-[2.45rem] border border-white/35" />
+      <Image
+        fill
+        priority={priority}
+        sizes="(min-width: 1280px) 42vw, (min-width: 768px) 50vw, 100vw"
+        src={src}
+        alt={alt}
+        className={cn("object-cover transition-transform duration-500 group-hover:scale-[1.025]", imageClassName)}
+      />
       {overlay ? <div className="absolute inset-0">{overlay}</div> : null}
     </div>
   );
@@ -67,9 +77,13 @@ export function EditorialProductGrid({ products }: { products: CatalogProduct[] 
         const art = productArtBySlug[product.slug] ?? brandArt.hero;
 
         return (
-          <Card key={product.id} className="overflow-hidden rounded-[2rem] border-black/8 bg-white/92">
-            <div className={cn("relative aspect-[4/4.35] overflow-hidden bg-gradient-to-br", toneFrame(product.tone))}>
-              <Image fill src={art} alt={product.name} className="object-cover" />
+          <Card
+            key={product.id}
+            className="overflow-hidden rounded-[2.2rem] border-black/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(248,249,244,0.96)_100%)] shadow-[0_24px_70px_rgba(22,34,20,0.07)]"
+          >
+            <div className={cn("relative aspect-[4/4.4] overflow-hidden bg-gradient-to-br p-4", toneFrame(product.tone))}>
+              <div className="absolute inset-4 rounded-[1.75rem] border border-white/35" />
+              <Image fill src={art} alt={product.name} sizes="(min-width: 1280px) 28vw, (min-width: 768px) 42vw, 100vw" className="object-cover" />
               <div className="absolute left-4 top-4">
                 <Badge
                   className={cn(
@@ -85,15 +99,15 @@ export function EditorialProductGrid({ products }: { products: CatalogProduct[] 
                 </Badge>
               </div>
             </div>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-5">
               <div className="space-y-2">
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-1">
-                    <CardTitle className="text-xl">{product.name}</CardTitle>
+                    <CardTitle className="text-[1.45rem]">{product.name}</CardTitle>
                     <CardDescription className="text-sm leading-6">{product.tagline}</CardDescription>
                   </div>
                   <div className="text-right text-[#132016]">
-                    <div className="text-2xl font-semibold">${product.price}</div>
+                    <div className="text-[1.9rem] font-semibold tracking-tight">${product.price}</div>
                     {product.compareAtPrice ? (
                       <div className="text-sm text-black/35 line-through">${product.compareAtPrice}</div>
                     ) : null}
@@ -103,7 +117,7 @@ export function EditorialProductGrid({ products }: { products: CatalogProduct[] 
               </div>
               <div className="flex flex-wrap gap-2">
                 {product.benefits.map((benefit) => (
-                  <Badge key={benefit} tone="neutral" className="bg-[#f3f4ee]">
+                  <Badge key={benefit} tone="neutral" className="bg-[#eef3e8] text-[#213523]">
                     {benefit}
                   </Badge>
                 ))}

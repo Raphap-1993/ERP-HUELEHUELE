@@ -5,6 +5,7 @@ import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitl
 import { wholesalePlans } from "@huelegood/shared";
 import { fetchWholesaleTiers, submitWholesaleLead } from "../lib/api";
 import { brandArt, EditorialMedia } from "./public-brand";
+import { PublicChecklist, PublicField, PublicPageHero, PublicPanel, PublicSectionHeading } from "./public-shell";
 
 export function WholesaleWorkspace() {
   const [tiers, setTiers] = useState(wholesalePlans);
@@ -82,71 +83,51 @@ export function WholesaleWorkspace() {
   }
 
   return (
-    <div className="space-y-8 py-6 md:py-10">
-      <section className="grid gap-6 lg:grid-cols-[1fr_0.92fr]">
-        <Card className="rounded-[2.4rem] border-black/8 bg-[linear-gradient(180deg,#ffffff_0%,#f2f6ee_100%)]">
-          <CardContent className="space-y-5">
-            <Badge className="bg-[#132016] text-white">Canal comercial</Badge>
-            <div className="space-y-3">
-              <h1 className="text-4xl font-semibold tracking-tight text-[#132016] md:text-5xl">Mayoristas y distribuidores</h1>
-              <p className="max-w-2xl text-base leading-7 text-black/66">
-                Huele Huele tambien se puede mover por volumen. Presenta tu negocio, deja tu contacto y te compartimos
-                condiciones comerciales claras segun volumen y continuidad.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Badge tone="neutral" className="bg-[#eef2e8]">Compra por volumen</Badge>
-              <Badge tone="neutral" className="bg-[#eef2e8]">Cotizacion rapida</Badge>
-              <Badge tone="neutral" className="bg-[#eef2e8]">Seguimiento comercial</Badge>
-            </div>
-          </CardContent>
-        </Card>
-        <EditorialMedia src={brandArt.wholesale} alt="Visual editorial de canal mayorista" className="min-h-[320px]" />
-      </section>
+    <div className="space-y-10 py-6 md:space-y-14 md:py-10">
+      <PublicPageHero
+        eyebrow="Canal comercial"
+        title="Mayoristas y distribuidores con una entrada clara y seria."
+        description="Si el canal público quiere verse profesional, el módulo mayorista debe sentirse igual de bien resuelto: propuesta de valor clara, formulario sólido y condiciones visibles."
+        actions={[
+          { label: "Solicitar cotización", href: "#form-mayoristas" },
+          { label: "Ver planes", href: "#planes", variant: "secondary" }
+        ]}
+        metrics={[
+          { label: "Canal", value: "B2B", detail: "Compra por volumen para distribuidores y puntos de venta." },
+          { label: "Proceso", value: "Ágil", detail: "Solicitud, revisión y cotización comercial." },
+          { label: "Relación", value: "Directa", detail: "Seguimiento real con ventas, no formularios vacíos." }
+        ]}
+        aside={<EditorialMedia src={brandArt.wholesale} alt="Visual editorial de canal mayorista" className="min-h-[460px]" />}
+      />
 
-      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <Card>
+      <section className="grid gap-6 xl:grid-cols-[0.98fr_1.02fr]">
+        <Card id="form-mayoristas" className="rounded-[2.4rem] border-black/8 bg-[linear-gradient(180deg,#ffffff_0%,#f2f6ee_100%)]">
           <CardHeader>
-            <CardTitle>Formulario comercial</CardTitle>
-            <CardDescription>Tu solicitud será revisada por nuestro equipo comercial.</CardDescription>
+            <CardTitle>Solicitud comercial</CardTitle>
+            <CardDescription>Déjanos tus datos y el contexto de compra para responder con una propuesta seria.</CardDescription>
           </CardHeader>
           <CardContent>
             <form className="space-y-4" onSubmit={handleSubmit}>
-              <Input
-                value={company}
-                onChange={(event) => setCompany(event.target.value)}
-                placeholder="Empresa o distribuidora"
-                required
-              />
-              <Input
-                value={contact}
-                onChange={(event) => setContact(event.target.value)}
-                placeholder="Nombre de contacto"
-                required
-              />
-              <Input
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="Correo electrónico"
-                type="email"
-                required
-              />
-              <Input
-                value={city}
-                onChange={(event) => setCity(event.target.value)}
-                placeholder="Ciudad"
-                required
-              />
-              <Input
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
-                placeholder="Teléfono"
-              />
-              <Textarea
-                value={notes}
-                onChange={(event) => setNotes(event.target.value)}
-                placeholder="Cuéntanos el volumen aproximado o el tipo de compra que buscas"
-              />
+              <div className="grid gap-4 md:grid-cols-2">
+                <PublicField label="Empresa o distribuidora">
+                  <Input value={company} onChange={(event) => setCompany(event.target.value)} placeholder="Ej. Distribuciones del Pacífico" required />
+                </PublicField>
+                <PublicField label="Nombre de contacto">
+                  <Input value={contact} onChange={(event) => setContact(event.target.value)} placeholder="Nombre completo" required />
+                </PublicField>
+                <PublicField label="Correo electrónico">
+                  <Input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="contacto@empresa.com" type="email" required />
+                </PublicField>
+                <PublicField label="Ciudad">
+                  <Input value={city} onChange={(event) => setCity(event.target.value)} placeholder="Ciudad base" required />
+                </PublicField>
+                <PublicField label="Teléfono">
+                  <Input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="WhatsApp o teléfono" />
+                </PublicField>
+                <PublicField label="Volumen y contexto" helper="Cuéntanos qué tipo de negocio operas o el volumen estimado." className="md:col-span-2">
+                  <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Tipo de negocio, volumen aproximado y expectativa comercial" />
+                </PublicField>
+              </div>
               <Button type="submit" disabled={submitting}>
                 {submitting ? "Enviando..." : "Enviar solicitud"}
               </Button>
@@ -167,26 +148,45 @@ export function WholesaleWorkspace() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Como funciona</CardTitle>
-            <CardDescription>Proceso corto, comercial y facil de seguir.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm leading-6 text-black/70">
-            <p>1. Registras tu empresa y un contacto valido.</p>
-            <p>2. El equipo comercial revisa potencial, ciudad y volumen estimado.</p>
-            <p>3. Si aplica, recibes una cotizacion con condiciones por compra y continuidad.</p>
-            <p>4. El seguimiento se hace contigo hasta cerrar negociacion o primer pedido.</p>
-            <p>5. Si el canal funciona, se escala la relacion comercial con mayor claridad.</p>
+        <Card className="overflow-hidden rounded-[2.4rem] border-black/8 bg-[#132016] text-white shadow-[0_28px_90px_rgba(19,32,22,0.24)]">
+          <CardContent className="space-y-6">
+            <div className="space-y-3">
+              <Badge className="w-fit bg-white/14 text-white">Proceso</Badge>
+              <h2 className="text-3xl font-semibold tracking-[-0.03em] text-white">Cómo avanzamos contigo.</h2>
+              <p className="text-sm leading-7 text-white/72">
+                El canal mayorista no debe parecer un formulario de prueba. Debe explicar claramente cómo se atiende la oportunidad.
+              </p>
+            </div>
+            <PublicChecklist
+              tone="dark"
+              items={[
+                "Recibimos tu empresa, ciudad y contexto comercial.",
+                "Ventas revisa potencial, fit y volumen estimado.",
+                "Si aplica, enviamos condiciones, cotización y siguiente paso.",
+                "El seguimiento continúa hasta primer pedido o cierre comercial."
+              ]}
+            />
+            <EditorialMedia
+              src={brandArt.travel}
+              alt="Escena editorial de canal comercial"
+              className="min-h-[260px] border-white/10 bg-white/8 shadow-none"
+            />
           </CardContent>
         </Card>
-      </div>
+      </section>
 
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {tiers.map((plan) => (
-          <WholesalePlanCard key={plan.tier} plan={plan} />
-        ))}
-      </div>
+      <section id="planes" className="space-y-6">
+        <PublicSectionHeading
+          eyebrow="Planes por volumen"
+          title="Escala la compra según el tamaño de tu operación."
+          description="Mostramos condiciones visibles para que el visitante entienda el canal antes de hablar con ventas."
+        />
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {tiers.map((plan) => (
+            <WholesalePlanCard key={plan.tier} plan={plan} />
+          ))}
+        </div>
+      </section>
 
       {loadingTiers ? <p className="text-sm text-black/55">Cargando tiers mayoristas...</p> : null}
     </div>

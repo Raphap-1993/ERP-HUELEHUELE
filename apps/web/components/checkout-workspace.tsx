@@ -40,6 +40,7 @@ import {
   writeStoredCart
 } from "../lib/session";
 import { brandArt, EditorialMedia } from "./public-brand";
+import { PublicField, PublicPageHero, PublicSectionHeading } from "./public-shell";
 
 type PaymentMethod = "openpay" | "manual";
 
@@ -344,26 +345,26 @@ export function CheckoutWorkspace() {
   };
 
   return (
-    <div className="space-y-8 py-6 md:py-10">
-      <section className="grid gap-6 lg:grid-cols-[1fr_0.92fr]">
-        <Card className="rounded-[2.4rem] border-black/8 bg-[linear-gradient(180deg,#ffffff_0%,#f2f6ee_100%)]">
-          <CardContent className="space-y-5">
-            <Badge className="bg-[#132016] text-white">Cierre de compra</Badge>
-            <div className="space-y-3">
-              <h1 className="text-4xl font-semibold tracking-tight text-[#132016] md:text-5xl">Checkout claro, rapido y sin ruido.</h1>
-              <p className="max-w-2xl text-base leading-7 text-black/66">
-                Elige tu formato, completa tus datos y paga con Openpay o comprobante manual. La marca acompaña la compra;
-                el flujo no compite con ella.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-        <EditorialMedia src={brandArt.checkout} alt="Visual editorial del checkout" className="min-h-[300px]" />
-      </section>
+    <div className="space-y-10 py-6 md:space-y-14 md:py-10">
+      <PublicPageHero
+        eyebrow="Checkout"
+        title="Compra clara, elegante y sin pasos que distraigan."
+        description="La experiencia de cierre debe verse tan cuidada como la home: producto, datos, pago y confirmación en un flujo limpio."
+        actions={[
+          { label: "Ver catálogo", href: "/catalogo" },
+          { label: "Mi cuenta", href: "/cuenta", variant: "secondary" }
+        ]}
+        metrics={[
+          { label: "Métodos", value: "2", detail: "Openpay o comprobante manual con revisión." },
+          { label: "Compra", value: session ? "Autocompleta" : "Invitado", detail: "Puedes comprar con o sin sesión activa." },
+          { label: "Resumen", value: quote ? `$${quote.grandTotal}` : "En vivo", detail: "Los totales se recalculan durante tu compra." }
+        ]}
+        aside={<EditorialMedia src={brandArt.checkout} alt="Visual editorial del checkout" className="min-h-[440px]" />}
+      />
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <div className="space-y-6">
-          <Card>
+          <Card className="rounded-[2.3rem] border-black/8 bg-white/92">
             <CardHeader>
               <CardTitle>Productos seleccionados</CardTitle>
               <CardDescription>Agrega productos desde el catálogo o ajusta la cantidad aquí mismo.</CardDescription>
@@ -426,79 +427,101 @@ export function CheckoutWorkspace() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="rounded-[2.3rem] border-black/8 bg-[linear-gradient(180deg,#ffffff_0%,#f2f6ee_100%)]">
             <CardHeader>
               <CardTitle>Datos del cliente y envío</CardTitle>
               <CardDescription>Completa los datos necesarios para entregar tu pedido correctamente.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
-              <Input
-                value={customer.firstName}
-                onChange={(event) => setCustomer((current) => ({ ...current, firstName: event.target.value }))}
-                placeholder="Nombre"
-              />
-              <Input
-                value={customer.lastName}
-                onChange={(event) => setCustomer((current) => ({ ...current, lastName: event.target.value }))}
-                placeholder="Apellido"
-              />
-              <Input
-                type="email"
-                value={customer.email}
-                onChange={(event) => setCustomer((current) => ({ ...current, email: event.target.value }))}
-                placeholder="Email"
-              />
-              <Input
-                value={customer.phone}
-                onChange={(event) => setCustomer((current) => ({ ...current, phone: event.target.value }))}
-                placeholder="Teléfono"
-              />
-              <Input
-                value={address.recipientName}
-                onChange={(event) => setAddress((current) => ({ ...current, recipientName: event.target.value }))}
-                placeholder="Destinatario"
-              />
-              <Input
-                value={address.label}
-                onChange={(event) => setAddress((current) => ({ ...current, label: event.target.value }))}
-                placeholder="Etiqueta"
-              />
-              <Input
-                className="md:col-span-2"
-                value={address.line1}
-                onChange={(event) => setAddress((current) => ({ ...current, line1: event.target.value }))}
-                placeholder="Dirección 1"
-              />
-              <Input
-                className="md:col-span-2"
-                value={address.line2}
-                onChange={(event) => setAddress((current) => ({ ...current, line2: event.target.value }))}
-                placeholder="Dirección 2"
-              />
-              <Input
-                value={address.city}
-                onChange={(event) => setAddress((current) => ({ ...current, city: event.target.value }))}
-                placeholder="Ciudad"
-              />
-              <Input
-                value={address.region}
-                onChange={(event) => setAddress((current) => ({ ...current, region: event.target.value }))}
-                placeholder="Región"
-              />
-              <Input
-                value={address.postalCode}
-                onChange={(event) => setAddress((current) => ({ ...current, postalCode: event.target.value }))}
-                placeholder="Código postal"
-              />
-              <Input
-                value={address.countryCode}
-                onChange={(event) => setAddress((current) => ({ ...current, countryCode: event.target.value }))}
-                placeholder="País"
-              />
+              <PublicField label="Nombre">
+                <Input
+                  value={customer.firstName}
+                  onChange={(event) => setCustomer((current) => ({ ...current, firstName: event.target.value }))}
+                  placeholder="Nombre"
+                />
+              </PublicField>
+              <PublicField label="Apellido">
+                <Input
+                  value={customer.lastName}
+                  onChange={(event) => setCustomer((current) => ({ ...current, lastName: event.target.value }))}
+                  placeholder="Apellido"
+                />
+              </PublicField>
+              <PublicField label="Correo electrónico">
+                <Input
+                  type="email"
+                  value={customer.email}
+                  onChange={(event) => setCustomer((current) => ({ ...current, email: event.target.value }))}
+                  placeholder="Email"
+                />
+              </PublicField>
+              <PublicField label="Teléfono">
+                <Input
+                  value={customer.phone}
+                  onChange={(event) => setCustomer((current) => ({ ...current, phone: event.target.value }))}
+                  placeholder="Teléfono"
+                />
+              </PublicField>
+              <PublicField label="Destinatario">
+                <Input
+                  value={address.recipientName}
+                  onChange={(event) => setAddress((current) => ({ ...current, recipientName: event.target.value }))}
+                  placeholder="Destinatario"
+                />
+              </PublicField>
+              <PublicField label="Etiqueta">
+                <Input
+                  value={address.label}
+                  onChange={(event) => setAddress((current) => ({ ...current, label: event.target.value }))}
+                  placeholder="Casa, oficina, etc."
+                />
+              </PublicField>
+              <PublicField label="Dirección principal" className="md:col-span-2">
+                <Input
+                  value={address.line1}
+                  onChange={(event) => setAddress((current) => ({ ...current, line1: event.target.value }))}
+                  placeholder="Dirección 1"
+                />
+              </PublicField>
+              <PublicField label="Complemento" className="md:col-span-2">
+                <Input
+                  value={address.line2}
+                  onChange={(event) => setAddress((current) => ({ ...current, line2: event.target.value }))}
+                  placeholder="Dirección 2"
+                />
+              </PublicField>
+              <PublicField label="Ciudad">
+                <Input
+                  value={address.city}
+                  onChange={(event) => setAddress((current) => ({ ...current, city: event.target.value }))}
+                  placeholder="Ciudad"
+                />
+              </PublicField>
+              <PublicField label="Región o estado">
+                <Input
+                  value={address.region}
+                  onChange={(event) => setAddress((current) => ({ ...current, region: event.target.value }))}
+                  placeholder="Región"
+                />
+              </PublicField>
+              <PublicField label="Código postal">
+                <Input
+                  value={address.postalCode}
+                  onChange={(event) => setAddress((current) => ({ ...current, postalCode: event.target.value }))}
+                  placeholder="Código postal"
+                />
+              </PublicField>
+              <PublicField label="País">
+                <Input
+                  value={address.countryCode}
+                  onChange={(event) => setAddress((current) => ({ ...current, countryCode: event.target.value }))}
+                  placeholder="País"
+                />
+              </PublicField>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="rounded-[2.3rem] border-black/8 bg-white/92">
             <CardHeader>
               <CardTitle>Pago y reglas comerciales</CardTitle>
               <CardDescription>Elige tu método de pago y agrega un código si cuentas con uno.</CardDescription>
@@ -514,10 +537,16 @@ export function CheckoutWorkspace() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <Input value={vendorCode} onChange={(event) => setVendorCode(event.target.value)} placeholder="Código de vendedor o recomendación (opcional)" />
-                <Input value={couponCode} onChange={(event) => setCouponCode(event.target.value)} placeholder="Cupón de descuento (opcional)" />
+                <PublicField label="Código de vendedor o recomendación">
+                  <Input value={vendorCode} onChange={(event) => setVendorCode(event.target.value)} placeholder="Opcional" />
+                </PublicField>
+                <PublicField label="Cupón de descuento">
+                  <Input value={couponCode} onChange={(event) => setCouponCode(event.target.value)} placeholder="Opcional" />
+                </PublicField>
               </div>
-              <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Indicaciones para tu pedido (opcional)" />
+              <PublicField label="Indicaciones del pedido">
+                <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Opcional" />
+              </PublicField>
               {paymentMethod === "manual" ? (
                 <div className="space-y-4 rounded-3xl border border-black/10 bg-black/[0.02] p-4">
                   <div className="space-y-1">
@@ -527,16 +556,20 @@ export function CheckoutWorkspace() {
                     </p>
                   </div>
                   <div className="grid gap-4 md:grid-cols-2">
-                    <Input
-                      value={manualEvidenceReference}
-                      onChange={(event) => setManualEvidenceReference(event.target.value)}
-                      placeholder="Referencia o nombre del comprobante"
-                    />
-                    <Input
-                      value={manualEvidenceNotes}
-                      onChange={(event) => setManualEvidenceNotes(event.target.value)}
-                      placeholder="Ejemplo: transferencia enviada desde banca móvil"
-                    />
+                    <PublicField label="Referencia del comprobante">
+                      <Input
+                        value={manualEvidenceReference}
+                        onChange={(event) => setManualEvidenceReference(event.target.value)}
+                        placeholder="Referencia o nombre del comprobante"
+                      />
+                    </PublicField>
+                    <PublicField label="Notas del comprobante">
+                      <Input
+                        value={manualEvidenceNotes}
+                        onChange={(event) => setManualEvidenceNotes(event.target.value)}
+                        placeholder="Ejemplo: transferencia enviada desde banca móvil"
+                      />
+                    </PublicField>
                   </div>
                 </div>
               ) : null}
@@ -563,7 +596,7 @@ export function CheckoutWorkspace() {
 
         <div className="space-y-6">
           <div className="sticky top-24 space-y-6">
-            <Card>
+            <Card className="rounded-[2.3rem] border-black/8 bg-[linear-gradient(180deg,#ffffff_0%,#f2f6ee_100%)]">
               <CardHeader>
                 <CardTitle>Resumen</CardTitle>
                 <CardDescription>{quoteLoading ? "Calculando totales..." : "Totales actualizados al momento de tu compra."}</CardDescription>
@@ -587,10 +620,17 @@ export function CheckoutWorkspace() {
               </CardContent>
             </Card>
 
-            <EditorialMedia src={brandArt.office} alt="Apoyo visual del checkout" className="min-h-[220px]" />
+            <section className="space-y-4">
+              <PublicSectionHeading
+                eyebrow="Apoyo visual"
+                title="Una compra bien presentada transmite confianza."
+                description="El checkout no tiene que verse técnico; tiene que verse claro."
+              />
+              <EditorialMedia src={brandArt.office} alt="Apoyo visual del checkout" className="min-h-[220px]" />
+            </section>
 
             {result ? (
-              <Card>
+              <Card className="rounded-[2.3rem] border-black/8 bg-white/92">
                 <CardHeader>
                   <CardTitle>Confirmación</CardTitle>
                   <CardDescription>Resumen de tu compra y siguientes pasos.</CardDescription>
@@ -649,7 +689,7 @@ export function CheckoutWorkspace() {
               </Card>
             ) : null}
 
-            <Card>
+            <Card className="rounded-[2.3rem] border-black/8 bg-white/92">
               <CardHeader>
                 <CardTitle>Datos aplicados</CardTitle>
                 <CardDescription>Si tienes sesión activa, tus datos pueden autocompletarse para una compra más rápida.</CardDescription>
