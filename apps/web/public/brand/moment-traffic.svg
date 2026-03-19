@@ -1,0 +1,20 @@
+<svg width="960" height="760" viewBox="0 0 960 760" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="960" height="760" rx="42" fill="url(#bg)"/>
+  <ellipse cx="800" cy="186" rx="150" ry="112" fill="#D4DFC8"/>
+  <path d="M80 562C186 466 250 398 344 332" stroke="#A2B78F" stroke-width="30" stroke-linecap="round"/>
+  <path d="M692 554C754 468 810 386 850 272" stroke="#879E72" stroke-width="22" stroke-linecap="round"/>
+  <rect x="318" y="210" width="186" height="344" rx="46" fill="#181818"/>
+  <rect x="318" y="168" width="186" height="72" rx="36" fill="#1E1E1E"/>
+  <rect x="560" y="280" width="150" height="252" rx="36" fill="#121212"/>
+  <rect x="594" y="204" width="30" height="98" rx="15" fill="#1E1E1E"/>
+  <rect x="646" y="204" width="30" height="98" rx="15" fill="#1E1E1E"/>
+  <rect x="82" y="600" width="796" height="72" rx="20" fill="rgba(255,255,255,.78)"/>
+  <text x="120" y="643" fill="#132016" font-family="Arial, sans-serif" font-size="30" font-weight="700">Frescura lista para trafico, trayecto y movimiento</text>
+  <defs>
+    <linearGradient id="bg" x1="42" y1="20" x2="918" y2="738" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EEF1E6"/>
+      <stop offset=".56" stop-color="#E0E6D8"/>
+      <stop offset="1" stop-color="#C8D2BD"/>
+    </linearGradient>
+  </defs>
+</svg>

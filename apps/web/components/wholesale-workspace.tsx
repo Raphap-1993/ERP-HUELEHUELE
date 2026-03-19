@@ -1,9 +1,10 @@
 "use client";
 
 import { type FormEvent, useEffect, useState } from "react";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, SectionHeader, Textarea, WholesalePlanCard } from "@huelegood/ui";
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Textarea, WholesalePlanCard } from "@huelegood/ui";
 import { wholesalePlans } from "@huelegood/shared";
 import { fetchWholesaleTiers, submitWholesaleLead } from "../lib/api";
+import { brandArt, EditorialMedia } from "./public-brand";
 
 export function WholesaleWorkspace() {
   const [tiers, setTiers] = useState(wholesalePlans);
@@ -82,10 +83,26 @@ export function WholesaleWorkspace() {
 
   return (
     <div className="space-y-8 py-6 md:py-10">
-      <SectionHeader
-        title="Mayoristas y distribuidores"
-        description="Captura leads B2B, revisa tiers y deja trazabilidad comercial desde el primer contacto."
-      />
+      <section className="grid gap-6 lg:grid-cols-[1fr_0.92fr]">
+        <Card className="rounded-[2.4rem] border-black/8 bg-[linear-gradient(180deg,#ffffff_0%,#f2f6ee_100%)]">
+          <CardContent className="space-y-5">
+            <Badge className="bg-[#132016] text-white">Canal comercial</Badge>
+            <div className="space-y-3">
+              <h1 className="text-4xl font-semibold tracking-tight text-[#132016] md:text-5xl">Mayoristas y distribuidores</h1>
+              <p className="max-w-2xl text-base leading-7 text-black/66">
+                Huele Huele tambien se puede mover por volumen. Presenta tu negocio, deja tu contacto y te compartimos
+                condiciones comerciales claras segun volumen y continuidad.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge tone="neutral" className="bg-[#eef2e8]">Compra por volumen</Badge>
+              <Badge tone="neutral" className="bg-[#eef2e8]">Cotizacion rapida</Badge>
+              <Badge tone="neutral" className="bg-[#eef2e8]">Seguimiento comercial</Badge>
+            </div>
+          </CardContent>
+        </Card>
+        <EditorialMedia src={brandArt.wholesale} alt="Visual editorial de canal mayorista" className="min-h-[320px]" />
+      </section>
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <Card>
@@ -152,15 +169,15 @@ export function WholesaleWorkspace() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Proceso mayorista</CardTitle>
-            <CardDescription>Flujo corto, visible y compatible con CRM básico.</CardDescription>
+            <CardTitle>Como funciona</CardTitle>
+            <CardDescription>Proceso corto, comercial y facil de seguir.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-sm leading-6 text-black/70">
-            <p>1. Registras tu empresa y un contacto válido.</p>
-            <p>2. Ventas califica la oportunidad y define si requiere cotización.</p>
-            <p>3. Si aplica, se genera una cotización con condiciones comerciales.</p>
-            <p>4. El seguimiento queda trazado en el módulo de CRM y mayoristas.</p>
-            <p>5. El estado puede avanzar a negociación, ganado o perdido según avance real.</p>
+            <p>1. Registras tu empresa y un contacto valido.</p>
+            <p>2. El equipo comercial revisa potencial, ciudad y volumen estimado.</p>
+            <p>3. Si aplica, recibes una cotizacion con condiciones por compra y continuidad.</p>
+            <p>4. El seguimiento se hace contigo hasta cerrar negociacion o primer pedido.</p>
+            <p>5. Si el canal funciona, se escala la relacion comercial con mayor claridad.</p>
           </CardContent>
         </Card>
       </div>

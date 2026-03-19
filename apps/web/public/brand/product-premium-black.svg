@@ -1,0 +1,22 @@
+<svg width="720" height="840" viewBox="0 0 720 840" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="720" height="840" rx="42" fill="url(#bg)"/>
+  <ellipse cx="188" cy="160" rx="144" ry="110" fill="#C9D7C0"/>
+  <ellipse cx="562" cy="678" rx="170" ry="128" fill="#B5815B" fill-opacity=".18"/>
+  <path d="M68 620C148 482 248 386 366 336" stroke="#92AA7E" stroke-width="28" stroke-linecap="round"/>
+  <path d="M514 234C590 320 630 418 650 560" stroke="#859C70" stroke-width="24" stroke-linecap="round"/>
+  <rect x="256" y="176" width="214" height="414" rx="52" fill="#0F0F0F"/>
+  <rect x="256" y="124" width="214" height="92" rx="46" fill="#1A1A1A"/>
+  <rect x="256" y="386" width="214" height="10" fill="#242424"/>
+  <circle cx="363" cy="280" r="34" fill="#2C2C2C"/>
+  <text x="302" y="492" fill="white" font-family="Arial, sans-serif" font-size="34" font-weight="700">Premium</text>
+  <text x="328" y="534" fill="white" font-family="Arial, sans-serif" font-size="34" font-weight="700">Negro</text>
+  <rect x="90" y="642" width="540" height="92" rx="26" fill="rgba(255,255,255,.84)"/>
+  <text x="122" y="688" fill="#132016" font-family="Arial, sans-serif" font-size="25" font-weight="700">Discreto, sobrio y con look premium</text>
+  <defs>
+    <linearGradient id="bg" x1="54" y1="40" x2="670" y2="814" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EDF1EA"/>
+      <stop offset=".58" stop-color="#DDE4D8"/>
+      <stop offset="1" stop-color="#C7D0C2"/>
+    </linearGradient>
+  </defs>
+</svg>

@@ -1,0 +1,33 @@
+<svg width="1200" height="900" viewBox="0 0 1200 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="900" rx="48" fill="#DDE6D4"/>
+  <rect width="1200" height="900" rx="48" fill="url(#bg)"/>
+  <ellipse cx="280" cy="180" rx="210" ry="150" fill="#C8D5BB" fill-opacity=".9"/>
+  <ellipse cx="960" cy="744" rx="280" ry="180" fill="#C7A56A" fill-opacity=".22"/>
+  <path d="M116 690C212 532 320 442 454 390" stroke="#8DA57F" stroke-width="34" stroke-linecap="round"/>
+  <path d="M196 648C274 544 372 474 484 432" stroke="#AFC3A2" stroke-width="20" stroke-linecap="round"/>
+  <path d="M292 272C330 190 402 128 520 110" stroke="#E8F0DF" stroke-width="22" stroke-linecap="round"/>
+  <path d="M876 164C944 248 1004 318 1070 460" stroke="#89A271" stroke-width="28" stroke-linecap="round"/>
+  <rect x="456" y="302" width="230" height="392" rx="54" fill="#181818"/>
+  <rect x="456" y="248" width="230" height="90" rx="46" fill="#1E1E1E"/>
+  <rect x="742" y="352" width="184" height="248" rx="40" fill="#111111"/>
+  <rect x="782" y="266" width="38" height="112" rx="19" fill="#1D1D1D"/>
+  <rect x="848" y="266" width="38" height="112" rx="19" fill="#1D1D1D"/>
+  <rect x="456" y="480" width="230" height="10" fill="#262626"/>
+  <circle cx="571" cy="360" r="42" fill="#7FC75E"/>
+  <circle cx="594" cy="344" r="16" fill="white"/>
+  <circle cx="547" cy="350" r="16" fill="white"/>
+  <circle cx="550" cy="351" r="5" fill="#1B2318"/>
+  <circle cx="595" cy="345" r="5" fill="#1B2318"/>
+  <path d="M576 374C586 368 598 364 610 364C608 378 600 388 588 394" fill="#D1A35D"/>
+  <path d="M540 314C548 286 568 270 600 264" stroke="#4E8B3E" stroke-width="10" stroke-linecap="round"/>
+  <path d="M480 750H1040" stroke="#6D5E48" stroke-width="56" stroke-linecap="round"/>
+  <text x="507" y="574" fill="white" font-family="Arial, sans-serif" font-size="44" font-weight="700">Huele</text>
+  <text x="500" y="624" fill="white" font-family="Arial, sans-serif" font-size="44" font-weight="700">Huele</text>
+  <defs>
+    <linearGradient id="bg" x1="96" y1="56" x2="1064" y2="856" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EDF2E7"/>
+      <stop offset=".52" stop-color="#D7E1D0"/>
+      <stop offset="1" stop-color="#BAC6AE"/>
+    </linearGradient>
+  </defs>
+</svg>

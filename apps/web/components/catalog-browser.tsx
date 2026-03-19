@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { featuredProducts, type CatalogProduct, type CatalogSummaryResponse } from "@huelegood/shared";
-import { Button, Card, CardContent, CardDescription, Input, ProductGrid, SectionHeader, Badge } from "@huelegood/ui";
+import { Button, Card, CardContent, Input, Badge } from "@huelegood/ui";
 import { fetchCatalogSummary } from "../lib/api";
+import { brandArt, EditorialMedia, EditorialProductGrid } from "./public-brand";
 
 function fallbackCategories() {
   const map = new Map<string, { slug: string; name: string; description: string; productCount: number }>();
@@ -86,14 +87,32 @@ export function CatalogBrowser() {
 
   return (
     <div className="space-y-8 py-6 md:py-10">
-      <SectionHeader
-        title="Catálogo"
-        description="Productos visibles, bundles y ofertas activas para una compra clara."
-        action={{ label: "Ir al checkout", href: "/checkout" }}
-      />
+      <section className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
+        <Card className="rounded-[2.4rem] border-black/8 bg-[linear-gradient(180deg,#ffffff_0%,#f1f6eb_100%)]">
+          <CardContent className="space-y-6">
+            <div className="space-y-3">
+              <Badge className="bg-[#132016] text-white">Catalogo curado</Badge>
+              <h1 className="text-4xl font-semibold tracking-tight text-[#132016] md:text-5xl">
+                Encuentra tu formato ideal de Huele Huele.
+              </h1>
+              <p className="max-w-2xl text-base leading-7 text-black/66">
+                Una seleccion clara y visual para comprar rapido: clasico de uso diario, version premium y combo para
+                tener siempre una unidad a la mano.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button href="/checkout">Ir al checkout</Button>
+              <Button href="/mayoristas" variant="secondary">
+                Compra por volumen
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+        <EditorialMedia src={brandArt.hero} alt="Visual editorial del catalogo Huele Huele" className="min-h-[320px]" />
+      </section>
 
-      <Card>
-        <CardContent className="space-y-4">
+        <Card>
+          <CardContent className="space-y-4">
           <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
             <div className="space-y-2">
               <label className="text-xs uppercase tracking-[0.22em] text-black/40">Buscar</label>
@@ -128,7 +147,7 @@ export function CatalogBrowser() {
       </Card>
 
       {filteredProducts.length > 0 ? (
-        <ProductGrid products={filteredProducts as CatalogProduct[]} />
+        <EditorialProductGrid products={filteredProducts as CatalogProduct[]} />
       ) : (
         <Card>
           <CardContent className="py-10 text-center">

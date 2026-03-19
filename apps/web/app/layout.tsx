@@ -33,7 +33,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     <html lang="es">
       <body>
         <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-4 md:px-6">
-          <header className="sticky top-4 z-20 mb-6 rounded-[1.75rem] border border-black/10 bg-white/85 px-5 py-4 shadow-soft backdrop-blur">
+          <header className="sticky top-4 z-20 mb-6 rounded-[1.9rem] border border-black/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.82)_0%,rgba(244,247,239,0.92)_100%)] px-5 py-4 shadow-soft backdrop-blur">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-2">
                 <div className="text-xs uppercase tracking-[0.24em] text-black/45">Huelegood</div>
@@ -56,7 +56,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             </div>
           </header>
           <main className="flex-1">{children}</main>
-          <footer className="mt-10 rounded-[1.75rem] border border-black/10 bg-[#132016] px-6 py-6 text-white shadow-soft">
+          <footer className="mt-10 rounded-[2rem] border border-black/8 bg-[linear-gradient(135deg,#132016_0%,#1f3725_100%)] px-6 py-6 text-white shadow-soft">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <div className="text-sm uppercase tracking-[0.24em] text-white/45">{settings.brandName}</div>

@@ -26,9 +26,10 @@ body {
   margin: 0;
   color: hsl(var(--foreground));
   background:
-    radial-gradient(circle at top left, rgba(19, 32, 22, 0.08), transparent 28%),
-    radial-gradient(circle at top right, rgba(194, 140, 31, 0.12), transparent 24%),
-    linear-gradient(180deg, #faf9f4 0%, #f4f1e8 100%);
+    radial-gradient(circle at top left, rgba(160, 184, 145, 0.24), transparent 26%),
+    radial-gradient(circle at top right, rgba(193, 159, 105, 0.18), transparent 22%),
+    radial-gradient(circle at bottom left, rgba(127, 166, 117, 0.14), transparent 24%),
+    linear-gradient(180deg, #f7f7f1 0%, #eef2e8 52%, #f7f4ee 100%);
   font-family: "Avenir Next", "Satoshi", "Helvetica Neue", sans-serif;
 }
 
@@ -51,3 +52,12 @@ a {
   text-decoration: none;
 }
 
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 32px 32px;
+  opacity: 0.14;
+}

@@ -19,7 +19,6 @@ import {
   CardTitle,
   CheckoutSummary,
   Input,
-  SectionHeader,
   StatusBadge,
   Textarea,
   Badge,
@@ -40,6 +39,7 @@ import {
   readStoredSessionToken,
   writeStoredCart
 } from "../lib/session";
+import { brandArt, EditorialMedia } from "./public-brand";
 
 type PaymentMethod = "openpay" | "manual";
 
@@ -345,10 +345,21 @@ export function CheckoutWorkspace() {
 
   return (
     <div className="space-y-8 py-6 md:py-10">
-      <SectionHeader
-        title="Checkout"
-        description="Cobro con Openpay o pago manual con revisión operativa y resumen de pedido."
-      />
+      <section className="grid gap-6 lg:grid-cols-[1fr_0.92fr]">
+        <Card className="rounded-[2.4rem] border-black/8 bg-[linear-gradient(180deg,#ffffff_0%,#f2f6ee_100%)]">
+          <CardContent className="space-y-5">
+            <Badge className="bg-[#132016] text-white">Cierre de compra</Badge>
+            <div className="space-y-3">
+              <h1 className="text-4xl font-semibold tracking-tight text-[#132016] md:text-5xl">Checkout claro, rapido y sin ruido.</h1>
+              <p className="max-w-2xl text-base leading-7 text-black/66">
+                Elige tu formato, completa tus datos y paga con Openpay o comprobante manual. La marca acompaña la compra;
+                el flujo no compite con ella.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+        <EditorialMedia src={brandArt.checkout} alt="Visual editorial del checkout" className="min-h-[300px]" />
+      </section>
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <div className="space-y-6">
@@ -575,6 +586,8 @@ export function CheckoutWorkspace() {
                 {quoteError ? <p className="text-sm text-rose-700">{quoteError}</p> : null}
               </CardContent>
             </Card>
+
+            <EditorialMedia src={brandArt.office} alt="Apoyo visual del checkout" className="min-h-[220px]" />
 
             {result ? (
               <Card>
