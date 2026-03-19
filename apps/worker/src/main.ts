@@ -103,6 +103,10 @@ async function processCommissionPayoutCreate(
     vendorCode: job.data.vendorCode,
     period: job.data.period,
     referenceId: job.data.referenceId,
+    bonusAmount: job.data.bonusAmount,
+    bonusReason: job.data.bonusReason,
+    deductionAmount: job.data.deductionAmount,
+    deductionReason: job.data.deductionReason,
     notes: job.data.notes
   });
 

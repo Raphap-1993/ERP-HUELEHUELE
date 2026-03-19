@@ -17,6 +17,10 @@ export interface CommissionPayoutCreateJobData {
   vendorCode: string;
   period?: string;
   referenceId?: string;
+  bonusAmount?: number;
+  bonusReason?: string;
+  deductionAmount?: number;
+  deductionReason?: string;
   notes?: string;
   requestedAt: string;
 }

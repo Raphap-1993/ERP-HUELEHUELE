@@ -19,6 +19,7 @@ import type {
   CommissionPayoutInput,
   CommissionPayoutSettleInput,
   CommissionPayoutSummary,
+  CommissionRuleInput,
   CommissionRuleSummary,
   CommissionSummary,
   LoyaltyMovementSummary,
@@ -412,6 +413,20 @@ export async function fetchCommissionRules() {
   return requestJson<CommissionRulesEnvelope>("/admin/commissions/rules");
 }
 
+export async function createCommissionRule(body: CommissionRuleInput) {
+  return requestJson<CommissionRuleActionEnvelope>("/admin/commissions/rules", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function updateCommissionRule(id: string, body: CommissionRuleInput) {
+  return requestJson<CommissionRuleActionEnvelope>(`/admin/commissions/rules/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(body)
+  });
+}
+
 export async function fetchCommissionPayouts() {
   return requestJson<CommissionPayoutsEnvelope>("/admin/commissions/payouts");
 }
@@ -635,4 +650,10 @@ export type CommissionPayoutActionEnvelope = {
   message: string;
   referenceId?: string;
   payout?: CommissionPayoutSummary;
+};
+
+export type CommissionRuleActionEnvelope = {
+  status: string;
+  message: string;
+  referenceId?: string;
 };

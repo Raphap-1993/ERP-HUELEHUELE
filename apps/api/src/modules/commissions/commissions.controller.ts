@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Param, Post } from "@nestjs/common";
-import { adminAccessRoles, type CommissionPayoutInput, type CommissionPayoutSettleInput } from "@huelegood/shared";
+import { Body, Controller, Get, Param, Patch, Post } from "@nestjs/common";
+import { adminAccessRoles, type CommissionPayoutInput, type CommissionPayoutSettleInput, type CommissionRuleInput } from "@huelegood/shared";
 import { RequireRoles } from "../auth/auth-rbac";
 import { CommissionsService } from "./commissions.service";
 
@@ -16,6 +16,16 @@ export class CommissionsController {
   @Get("rules")
   listRules() {
     return this.commissionsService.listRules();
+  }
+
+  @Post("rules")
+  createRule(@Body() body: CommissionRuleInput) {
+    return this.commissionsService.createRule(body);
+  }
+
+  @Patch("rules/:id")
+  updateRule(@Param("id") id: string, @Body() body: CommissionRuleInput) {
+    return this.commissionsService.updateRule(id, body);
   }
 
   @Get("payouts")

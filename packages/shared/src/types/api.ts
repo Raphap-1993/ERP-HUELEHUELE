@@ -459,8 +459,14 @@ export interface CommissionRuleSummary {
   id: string;
   name: string;
   description: string;
-  scope: string;
+  scope: "seller_code" | "vendor" | "order_total" | "payment_method" | "wholesale";
   rate: number;
+  paymentMethod?: "openpay" | "manual" | "any";
+  appliesToVendorCode?: string;
+  minOrderTotal?: number;
+  maxOrderTotal?: number;
+  payoutDelayDays: number;
+  notes?: string;
   priority: number;
   status: "active" | "inactive";
 }
@@ -475,9 +481,12 @@ export interface CommissionSummary {
   commissionAmount: number;
   status: CommissionStatus;
   period: string;
+  ruleName: string;
   orderStatus: OrderStatus;
   paymentStatus: PaymentStatus;
   payoutId?: string;
+  eligibleAt?: string;
+  blockedReason?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -490,8 +499,12 @@ export interface CommissionPayoutSummary {
   status: CommissionPayoutStatus;
   commissionIds: string[];
   grossAmount: number;
+  bonusAmount: number;
+  deductionAmount: number;
   netAmount: number;
   referenceId?: string;
+  bonusReason?: string;
+  deductionReason?: string;
   notes?: string;
   createdAt: string;
   paidAt?: string;
@@ -507,6 +520,10 @@ export interface CommissionPayoutInput {
   vendorCode?: string;
   period?: string;
   referenceId?: string;
+  bonusAmount?: number;
+  bonusReason?: string;
+  deductionAmount?: number;
+  deductionReason?: string;
   notes?: string;
 }
 
@@ -514,6 +531,21 @@ export interface CommissionPayoutSettleInput {
   reviewer?: string;
   notes?: string;
   referenceId?: string;
+}
+
+export interface CommissionRuleInput {
+  name: string;
+  description: string;
+  scope: CommissionRuleSummary["scope"];
+  rate: number;
+  paymentMethod?: CommissionRuleSummary["paymentMethod"];
+  appliesToVendorCode?: string;
+  minOrderTotal?: number;
+  maxOrderTotal?: number;
+  payoutDelayDays?: number;
+  notes?: string;
+  priority?: number;
+  status?: CommissionRuleSummary["status"];
 }
 
 export interface CatalogCategorySummary {

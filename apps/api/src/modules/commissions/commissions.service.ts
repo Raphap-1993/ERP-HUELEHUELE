@@ -8,6 +8,7 @@ import {
   type AdminOrderSummary,
   type CommissionPayoutInput,
   type CommissionPayoutSettleInput,
+  type CommissionRuleInput,
   type CommissionPayoutSummary,
   type CommissionRuleSummary,
   type CommissionSummary
@@ -100,8 +101,35 @@ function roundCurrency(value: number) {
   return Math.round(value * 100) / 100;
 }
 
+function normalizeAmount(value?: number) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return 0;
+  }
+
+  return roundCurrency(value);
+}
+
+function normalizePaymentMethod(value?: string) {
+  const normalized = value?.trim().toLowerCase();
+  if (!normalized || normalized === "any") {
+    return "any";
+  }
+
+  if (normalized === "openpay" || normalized === "manual") {
+    return normalized;
+  }
+
+  return undefined;
+}
+
 function capitalize(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function addDays(iso: string, days: number) {
+  const date = new Date(iso);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString();
 }
 
 function periodFromDate(date: Date): PeriodDescriptor {
@@ -205,7 +233,10 @@ export class CommissionsService implements OnModuleInit {
     const snapshot = await this.moduleStateService.load<CommissionsSnapshot>("commissions");
     if (snapshot) {
       this.restoreSnapshot(snapshot);
-    } else {
+    }
+
+    const changed = this.ensureOperationalRules();
+    if (!snapshot || changed) {
       await this.persistState();
     }
   }
@@ -281,6 +312,12 @@ export class CommissionsService implements OnModuleInit {
         description: rule.description,
         scope: rule.scope,
         rate: rule.rate,
+        paymentMethod: rule.paymentMethod,
+        appliesToVendorCode: rule.appliesToVendorCode,
+        minOrderTotal: rule.minOrderTotal,
+        maxOrderTotal: rule.maxOrderTotal,
+        payoutDelayDays: rule.payoutDelayDays,
+        notes: rule.notes,
         priority: rule.priority,
         status: rule.status
       })),
@@ -290,6 +327,74 @@ export class CommissionsService implements OnModuleInit {
         inactive: rules.filter((rule) => rule.status === "inactive").length
       }
     );
+  }
+
+  createRule(body: CommissionRuleInput) {
+    const now = nowIso();
+    const rule = this.buildRuleRecord(body, now);
+
+    if (this.rules.has(rule.id)) {
+      throw new ConflictException(`Ya existe una regla con id ${rule.id}.`);
+    }
+
+    this.rules.set(rule.id, rule);
+    this.auditService.recordAdminAction({
+      actionType: "commissions.rule.created",
+      targetType: "commission_rule",
+      targetId: rule.id,
+      summary: `La regla ${rule.name} quedó creada.`,
+      actorName: "commissions_admin",
+      metadata: {
+        scope: rule.scope,
+        rate: rule.rate,
+        priority: rule.priority,
+        paymentMethod: rule.paymentMethod,
+        appliesToVendorCode: rule.appliesToVendorCode,
+        payoutDelayDays: rule.payoutDelayDays
+      }
+    });
+    void this.persistState();
+
+    return actionResponse("ok", "La regla de comisión quedó creada.", rule.id);
+  }
+
+  updateRule(id: string, body: CommissionRuleInput) {
+    const current = this.rules.get(id.trim());
+    if (!current) {
+      throw new NotFoundException(`No encontramos la regla ${id}.`);
+    }
+
+    const now = nowIso();
+    const next = this.buildRuleRecord(
+      {
+        ...current,
+        ...body
+      },
+      now,
+      current.id,
+      current.createdAt
+    );
+
+    this.rules.set(current.id, next);
+    this.auditService.recordAdminAction({
+      actionType: "commissions.rule.updated",
+      targetType: "commission_rule",
+      targetId: current.id,
+      summary: `La regla ${next.name} quedó actualizada.`,
+      actorName: "commissions_admin",
+      metadata: {
+        scope: next.scope,
+        rate: next.rate,
+        priority: next.priority,
+        paymentMethod: next.paymentMethod,
+        appliesToVendorCode: next.appliesToVendorCode,
+        payoutDelayDays: next.payoutDelayDays,
+        status: next.status
+      }
+    });
+    void this.persistState();
+
+    return actionResponse("ok", "La regla de comisión quedó actualizada.", current.id);
   }
 
   listPayouts() {
@@ -330,6 +435,10 @@ export class CommissionsService implements OnModuleInit {
       vendorCode,
       period: normalizeText(body.period),
       referenceId: normalizeText(body.referenceId),
+      bonusAmount: normalizeAmount(body.bonusAmount),
+      bonusReason: normalizeText(body.bonusReason),
+      deductionAmount: normalizeAmount(body.deductionAmount),
+      deductionReason: normalizeText(body.deductionReason),
       notes: normalizeText(body.notes),
       requestedAt: nowIso()
     });
@@ -392,6 +501,12 @@ export class CommissionsService implements OnModuleInit {
     const createdAt = nowIso();
     const payoutId = `cp-${vendorCode.toLowerCase()}-${period.key}`;
     const grossAmount = roundCurrency(eligibleCommissions.reduce((sum, commission) => sum + commission.commissionAmount, 0));
+    const bonusAmount = normalizeAmount(body.bonusAmount);
+    const deductionAmount = normalizeAmount(body.deductionAmount);
+    const netAmount = roundCurrency(grossAmount + bonusAmount - deductionAmount);
+    if (netAmount < 0) {
+      throw new BadRequestException("La liquidación no puede quedar con monto neto negativo.");
+    }
     const payout: CommissionPayoutRecord = {
       id: payoutId,
       vendorName: vendor.name,
@@ -402,8 +517,12 @@ export class CommissionsService implements OnModuleInit {
       status: CommissionPayoutStatus.Approved,
       commissionIds: eligibleCommissions.map((commission) => commission.id),
       grossAmount,
-      netAmount: grossAmount,
+      bonusAmount,
+      deductionAmount,
+      netAmount,
       referenceId: normalizeText(body.referenceId),
+      bonusReason: normalizeText(body.bonusReason),
+      deductionReason: normalizeText(body.deductionReason),
       notes: normalizeText(body.notes),
       createdAt,
       updatedAt: createdAt,
@@ -447,6 +566,9 @@ export class CommissionsService implements OnModuleInit {
         vendorCode,
         period: period.key,
         grossAmount: payout.grossAmount,
+        bonusAmount: payout.bonusAmount,
+        deductionAmount: payout.deductionAmount,
+        netAmount: payout.netAmount,
         commissionIds: payout.commissionIds.length
       }
     });
@@ -556,13 +678,14 @@ export class CommissionsService implements OnModuleInit {
     }
 
     const vendor = this.vendorsService.findVendorByCode(vendorCode);
-    const rule = this.resolveRule(vendor);
+    const rule = this.resolveRule(order, vendor);
     const existing = this.commissions.get(commissionId);
     const period = periodFromIso(order.createdAt);
     const existingPayout = existing?.payoutId ? this.payouts.get(existing.payoutId) : undefined;
     const matchingPayout = this.findPayoutByVendorAndPeriod(vendorCode, period.key);
     const payout = existingPayout && existingPayout.status !== CommissionPayoutStatus.Cancelled ? existingPayout : matchingPayout;
-    const nextStatus = this.resolveCommissionStatus(order, vendor, payout, existing?.status);
+    const eligibleAt = this.resolveEligibleAt(order, rule, existing?.eligibleAt);
+    const nextStatus = this.resolveCommissionStatus(order, vendor, payout, eligibleAt, existing?.status);
     const commissionAmount = roundCurrency(order.total * rule.rate);
     const statusChanged = !existing || existing.status !== nextStatus;
     const hasMeaningfulChanges =
@@ -573,7 +696,8 @@ export class CommissionsService implements OnModuleInit {
       existing.paymentStatus !== order.paymentStatus ||
       existing.payoutId !== payout?.id ||
       existing.ruleId !== rule.id ||
-      existing.vendorCode !== vendorCode;
+      existing.vendorCode !== vendorCode ||
+      existing.eligibleAt !== eligibleAt;
 
     const statusHistory = existing?.statusHistory ?? [
       buildHistoryEntry(
@@ -609,19 +733,20 @@ export class CommissionsService implements OnModuleInit {
       status: nextStatus,
       period: existing?.period ?? period.label,
       periodKey: period.key,
+      ruleName: rule.name,
       orderStatus: order.orderStatus,
       paymentStatus: order.paymentStatus,
       payoutId: payout?.id,
+      eligibleAt,
       createdAt: existing?.createdAt ?? order.createdAt,
       updatedAt: hasMeaningfulChanges ? occurredAt : existing?.updatedAt ?? occurredAt,
       ruleId: rule.id,
-      ruleName: rule.name,
       blockedReason,
       statusHistory
     });
   }
 
-  private resolveRule(vendor: ReturnType<VendorsService["findVendorByCode"]>) {
+  private resolveRule(order: AdminOrderSummary, vendor: ReturnType<VendorsService["findVendorByCode"]>) {
     const activeRules = Array.from(this.rules.values())
       .filter((rule) => rule.status === "active")
       .sort((left, right) => left.priority - right.priority);
@@ -630,13 +755,61 @@ export class CommissionsService implements OnModuleInit {
       throw new BadRequestException("No hay reglas de comisión activas.");
     }
 
-    return activeRules[0];
+    const matchedRule = activeRules.find((rule) => this.ruleMatches(rule, order, vendor));
+    if (!matchedRule) {
+      throw new BadRequestException("No encontramos una regla de comisión aplicable para ese pedido.");
+    }
+
+    return matchedRule;
+  }
+
+  private ruleMatches(
+    rule: CommissionRuleRecord,
+    order: AdminOrderSummary,
+    vendor: ReturnType<VendorsService["findVendorByCode"]>
+  ) {
+    if (rule.appliesToVendorCode && rule.appliesToVendorCode !== normalizeCode(vendor?.code)) {
+      return false;
+    }
+
+    if (rule.paymentMethod && rule.paymentMethod !== "any" && rule.paymentMethod !== order.paymentMethod) {
+      return false;
+    }
+
+    if (typeof rule.minOrderTotal === "number" && order.total < rule.minOrderTotal) {
+      return false;
+    }
+
+    if (typeof rule.maxOrderTotal === "number" && order.total > rule.maxOrderTotal) {
+      return false;
+    }
+
+    if (rule.scope === "wholesale" && !order.vendorCode?.startsWith("VEND-")) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private resolveEligibleAt(order: AdminOrderSummary, rule: CommissionRuleRecord, previousEligibleAt?: string) {
+    const settled =
+      order.paymentStatus === PaymentStatus.Paid ||
+      order.orderStatus === OrderStatus.Paid ||
+      order.orderStatus === OrderStatus.Confirmed;
+
+    if (!settled) {
+      return previousEligibleAt;
+    }
+
+    const baseIso = order.updatedAt || order.createdAt;
+    return addDays(baseIso, rule.payoutDelayDays);
   }
 
   private resolveCommissionStatus(
     order: AdminOrderSummary,
     vendor: ReturnType<VendorsService["findVendorByCode"]>,
     payout: CommissionPayoutRecord | null | undefined,
+    eligibleAt: string | undefined,
     previousStatus?: CommissionStatus
   ) {
     if (!vendor || vendor.status !== VendorStatus.Active) {
@@ -664,6 +837,10 @@ export class CommissionsService implements OnModuleInit {
     }
 
     if (order.paymentStatus === PaymentStatus.Paid || order.orderStatus === OrderStatus.Paid || order.orderStatus === OrderStatus.Confirmed) {
+      if (eligibleAt && new Date(eligibleAt).getTime() > Date.now()) {
+        return CommissionStatus.Approved;
+      }
+
       return CommissionStatus.Payable;
     }
 
@@ -704,7 +881,7 @@ export class CommissionsService implements OnModuleInit {
       case CommissionStatus.Attributed:
         return `${base} ya quedó atribuido al vendedor ${vendor?.code ?? order.vendorCode ?? "sin código"}.`;
       case CommissionStatus.Approved:
-        return `${base} fue aprobado para seguimiento comercial.`;
+        return `${base} quedó aprobado y espera ventana de pago antes de pasar a pagable.`;
       case CommissionStatus.Blocked:
         return `${base} quedó bloqueado por reglas comerciales.`;
       case CommissionStatus.Payable:
@@ -731,7 +908,9 @@ export class CommissionsService implements OnModuleInit {
       payout.period = commissions[0]?.period ?? payout.period;
       payout.commissionIds = commissions.map((commission) => commission.id);
       payout.grossAmount = roundCurrency(commissions.reduce((sum, commission) => sum + commission.commissionAmount, 0));
-      payout.netAmount = payout.grossAmount;
+      payout.bonusAmount = normalizeAmount(payout.bonusAmount);
+      payout.deductionAmount = normalizeAmount(payout.deductionAmount);
+      payout.netAmount = roundCurrency(payout.grossAmount + payout.bonusAmount - payout.deductionAmount);
       payout.updatedAt = nowIso();
     }
   }
@@ -836,9 +1015,12 @@ export class CommissionsService implements OnModuleInit {
       commissionAmount: commission.commissionAmount,
       status: commission.status,
       period: commission.period,
+      ruleName: commission.ruleName,
       orderStatus: commission.orderStatus,
       paymentStatus: commission.paymentStatus,
       payoutId: commission.payoutId,
+      eligibleAt: commission.eligibleAt,
+      blockedReason: commission.blockedReason,
       createdAt: commission.createdAt,
       updatedAt: commission.updatedAt
     };
@@ -853,8 +1035,12 @@ export class CommissionsService implements OnModuleInit {
       status: payout.status,
       commissionIds: payout.commissionIds,
       grossAmount: payout.grossAmount,
+      bonusAmount: payout.bonusAmount,
+      deductionAmount: payout.deductionAmount,
       netAmount: payout.netAmount,
       referenceId: payout.referenceId,
+      bonusReason: payout.bonusReason,
+      deductionReason: payout.deductionReason,
       notes: payout.notes,
       createdAt: payout.createdAt,
       paidAt: payout.paidAt,
@@ -866,16 +1052,131 @@ export class CommissionsService implements OnModuleInit {
     return `com-${orderNumber.trim().toLowerCase()}`;
   }
 
-  private seedRules() {
+  private buildRuleRecord(body: CommissionRuleInput, updatedAt: string, id?: string, createdAt?: string): CommissionRuleRecord {
+    const name = normalizeText(body.name);
+    const description = normalizeText(body.description);
+    const scope = body.scope;
+    const rate = typeof body.rate === "number" ? body.rate : Number.NaN;
+    const priority = typeof body.priority === "number" ? body.priority : Number.NaN;
+
+    if (!name || !description || !scope) {
+      throw new BadRequestException("Nombre, descripción y alcance son obligatorios.");
+    }
+
+    if (!Number.isFinite(rate) || rate <= 0 || rate > 1) {
+      throw new BadRequestException("La tasa de comisión debe estar entre 0 y 1.");
+    }
+
+    if (!Number.isFinite(priority)) {
+      throw new BadRequestException("La prioridad de la regla es obligatoria.");
+    }
+
+    const paymentMethod = normalizePaymentMethod(body.paymentMethod);
+    if (!paymentMethod) {
+      throw new BadRequestException("El método de pago de la regla no es válido.");
+    }
+
+    const minOrderTotal = typeof body.minOrderTotal === "number" ? roundCurrency(body.minOrderTotal) : undefined;
+    const maxOrderTotal = typeof body.maxOrderTotal === "number" ? roundCurrency(body.maxOrderTotal) : undefined;
+    if (typeof minOrderTotal === "number" && typeof maxOrderTotal === "number" && minOrderTotal > maxOrderTotal) {
+      throw new BadRequestException("El mínimo no puede ser mayor que el máximo de ticket.");
+    }
+
+    const payoutDelayDays =
+      typeof body.payoutDelayDays === "number" && Number.isFinite(body.payoutDelayDays) ? Math.max(0, Math.round(body.payoutDelayDays)) : 0;
+
+    const safeId =
+      id ??
+      `cr-${name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")}`;
+
+    return {
+      id: safeId,
+      name,
+      description,
+      scope,
+      rate,
+      paymentMethod,
+      appliesToVendorCode: normalizeCode(body.appliesToVendorCode),
+      minOrderTotal,
+      maxOrderTotal,
+      payoutDelayDays,
+      notes: normalizeText(body.notes),
+      priority: Math.round(priority),
+      status: body.status === "inactive" ? "inactive" : "active",
+      createdAt: createdAt ?? updatedAt,
+      updatedAt
+    };
+  }
+
+  private ensureOperationalRules() {
+    let changed = false;
+    const seeds = this.defaultRules();
+
+    for (const seed of seeds) {
+      const normalized = this.buildRuleRecord(seed, seed.updatedAt, seed.id, seed.createdAt);
+      const current = this.rules.get(seed.id);
+      if (!current || JSON.stringify(current) !== JSON.stringify(normalized)) {
+        this.rules.set(seed.id, normalized);
+        changed = true;
+      }
+    }
+
+    return changed;
+  }
+
+  private defaultRules(): CommissionRuleRecord[] {
     const createdAt = "2026-03-18T09:00:00.000Z";
-    const rules: CommissionRuleRecord[] = [
+    return [
       {
-        id: "cr-seller-code-base",
-        name: "Comisión seller-first",
-        description: "15% sobre pedidos atribuidos a un vendedor activo con código válido.",
+        id: "cr-vend014-premium-openpay",
+        name: "Boost vendedor premium Openpay",
+        description: "Aumenta la comisión del seller principal para tickets premium cobrados por Openpay.",
+        scope: "vendor",
+        rate: 0.18,
+        paymentMethod: "openpay",
+        appliesToVendorCode: "VEND-014",
+        minOrderTotal: 300,
+        maxOrderTotal: undefined,
+        payoutDelayDays: 1,
+        notes: "Regla de empuje comercial para ticket premium.",
+        priority: 0,
+        status: "active",
+        createdAt,
+        updatedAt: createdAt
+      },
+      {
+        id: "cr-seller-code-openpay-base",
+        name: "Comisión seller-first Openpay",
+        description: "15% sobre pedidos atribuidos a un vendedor activo con código válido y pagados por Openpay.",
         scope: "seller_code",
         rate: 0.15,
+        paymentMethod: "openpay",
+        appliesToVendorCode: undefined,
+        minOrderTotal: undefined,
+        maxOrderTotal: undefined,
+        payoutDelayDays: 2,
+        notes: "Base para ventas online con confirmación Openpay.",
         priority: 1,
+        status: "active",
+        createdAt,
+        updatedAt: createdAt
+      },
+      {
+        id: "cr-seller-code-manual-base",
+        name: "Comisión seller-first manual",
+        description: "12% para pedidos atribuidos que requieren conciliación manual.",
+        scope: "payment_method",
+        rate: 0.12,
+        paymentMethod: "manual",
+        appliesToVendorCode: undefined,
+        minOrderTotal: undefined,
+        maxOrderTotal: undefined,
+        payoutDelayDays: 5,
+        notes: "Menor tasa y mayor espera por riesgo operativo.",
+        priority: 2,
         status: "active",
         createdAt,
         updatedAt: createdAt
@@ -886,12 +1187,22 @@ export class CommissionsService implements OnModuleInit {
         description: "Regla reservada para acuerdos de volumen y distribuidores.",
         scope: "wholesale",
         rate: 0.1,
-        priority: 2,
+        paymentMethod: "any",
+        appliesToVendorCode: undefined,
+        minOrderTotal: 1000,
+        maxOrderTotal: undefined,
+        payoutDelayDays: 7,
+        notes: "Reservada para convenios B2B y no aplica por defecto.",
+        priority: 3,
         status: "inactive",
         createdAt,
         updatedAt: createdAt
       }
     ];
+  }
+
+  private seedRules() {
+    const rules = this.defaultRules();
 
     for (const rule of rules) {
       this.rules.set(rule.id, rule);
@@ -904,15 +1215,43 @@ export class CommissionsService implements OnModuleInit {
     this.payouts.clear();
 
     for (const rule of snapshot.rules ?? []) {
-      this.rules.set(rule.id, rule);
+      this.rules.set(
+        rule.id,
+        this.buildRuleRecord(
+          {
+            ...rule,
+            payoutDelayDays: rule.payoutDelayDays ?? 0,
+            paymentMethod: rule.paymentMethod ?? "any"
+          },
+          rule.updatedAt,
+          rule.id,
+          rule.createdAt
+        )
+      );
     }
 
     for (const commission of snapshot.commissions ?? []) {
-      this.commissions.set(commission.id, commission);
+      this.commissions.set(commission.id, {
+        ...commission,
+        ruleName: commission.ruleName,
+        eligibleAt: commission.eligibleAt,
+        blockedReason: commission.blockedReason,
+        statusHistory: commission.statusHistory.map((entry) => ({ ...entry }))
+      });
     }
 
     for (const payout of snapshot.payouts ?? []) {
-      this.payouts.set(payout.id, payout);
+      this.payouts.set(payout.id, {
+        ...payout,
+        bonusAmount: normalizeAmount(payout.bonusAmount),
+        deductionAmount: normalizeAmount(payout.deductionAmount),
+        bonusReason: normalizeText(payout.bonusReason),
+        deductionReason: normalizeText(payout.deductionReason),
+        netAmount: roundCurrency(
+          normalizeAmount(payout.grossAmount) + normalizeAmount(payout.bonusAmount) - normalizeAmount(payout.deductionAmount)
+        ),
+        statusHistory: payout.statusHistory.map((entry) => ({ ...entry }))
+      });
     }
   }
 
