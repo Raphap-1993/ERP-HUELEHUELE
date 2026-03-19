@@ -1,10 +1,14 @@
 import type {
   CampaignRecipientStatus,
+  CommissionPayoutStatus,
+  CommissionStatus,
   ManualPaymentRequestStatus,
   OrderStatus,
   NotificationStatus,
   PaymentStatus,
-  RoleCode
+  RoleCode,
+  VendorApplicationStatus,
+  VendorStatus
 } from "../domain/enums";
 import type { CatalogProduct, FaqItem, HeroCopy, PromoBanner, SiteSetting, WholesalePlan } from "../domain/models";
 
@@ -57,6 +61,117 @@ export interface AuthRegisterInput extends AuthCredentialsInput {
   name: string;
   accountType?: "customer" | "seller";
   phone?: string;
+}
+
+export interface VendorApplicationInput {
+  name: string;
+  email: string;
+  city: string;
+  source?: string;
+  message?: string;
+  phone?: string;
+}
+
+export interface VendorApplicationSummary {
+  id: string;
+  name: string;
+  email: string;
+  city: string;
+  source: string;
+  status: VendorApplicationStatus;
+  phone?: string;
+  message?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  vendorCode?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VendorSummary {
+  id: string;
+  name: string;
+  email?: string;
+  code: string;
+  city?: string;
+  status: VendorStatus;
+  sales: number;
+  commissions: number;
+  pendingCommissions: number;
+  paidCommissions: number;
+  ordersCount: number;
+  applicationsCount: number;
+  approvedAt?: string;
+  updatedAt: string;
+}
+
+export interface VendorCodeSummary {
+  code: string;
+  name: string;
+  status: VendorStatus;
+  approvedAt?: string;
+  updatedAt: string;
+}
+
+export interface CommissionRuleSummary {
+  id: string;
+  name: string;
+  description: string;
+  scope: string;
+  rate: number;
+  priority: number;
+  status: "active" | "inactive";
+}
+
+export interface CommissionSummary {
+  id: string;
+  orderNumber: string;
+  vendorName: string;
+  vendorCode: string;
+  orderTotal: number;
+  commissionRate: number;
+  commissionAmount: number;
+  status: CommissionStatus;
+  period: string;
+  orderStatus: OrderStatus;
+  paymentStatus: PaymentStatus;
+  payoutId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommissionPayoutSummary {
+  id: string;
+  vendorName: string;
+  vendorCode: string;
+  period: string;
+  status: CommissionPayoutStatus;
+  commissionIds: string[];
+  grossAmount: number;
+  netAmount: number;
+  referenceId?: string;
+  notes?: string;
+  createdAt: string;
+  paidAt?: string;
+  updatedAt: string;
+}
+
+export interface VendorApplicationActionInput {
+  reviewer?: string;
+  notes?: string;
+}
+
+export interface CommissionPayoutInput {
+  vendorCode?: string;
+  period?: string;
+  referenceId?: string;
+  notes?: string;
+}
+
+export interface CommissionPayoutSettleInput {
+  reviewer?: string;
+  notes?: string;
+  referenceId?: string;
 }
 
 export interface CatalogCategorySummary {

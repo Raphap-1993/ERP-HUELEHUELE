@@ -81,7 +81,8 @@ export const adminNavigation: AdminNavigationGroup[] = [
       { label: "Dashboard", href: "/" },
       { label: "Pedidos", href: "/pedidos" },
       { label: "Pagos", href: "/pagos" },
-      { label: "Vendedores", href: "/vendedores" }
+      { label: "Vendedores", href: "/vendedores" },
+      { label: "Comisiones", href: "/comisiones" }
     ]
   },
   {

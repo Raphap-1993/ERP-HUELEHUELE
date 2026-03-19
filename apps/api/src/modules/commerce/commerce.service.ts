@@ -12,6 +12,7 @@ import {
   PaymentStatus
 } from "@huelegood/shared";
 import { actionResponse, wrapResponse } from "../../common/response";
+import { CommissionsService } from "../commissions/commissions.service";
 import { OrdersService } from "../orders/orders.service";
 
 interface CatalogProductLookup {
@@ -45,7 +46,10 @@ function roundCurrency(value: number) {
 
 @Injectable()
 export class CommerceService {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(
+    private readonly ordersService: OrdersService,
+    private readonly commissionsService: CommissionsService
+  ) {}
 
   quote(body: CheckoutQuoteInput) {
     return wrapResponse<CheckoutQuoteSummary>(this.buildQuote(body), {
@@ -68,6 +72,8 @@ export class CommerceService {
       checkoutUrl: `https://sandbox.openpay.local/checkout/${orderNumber}`
     });
 
+    this.commissionsService.syncFromOrders("openpay");
+
     return {
       ...actionResponse("queued", "Checkout preparado para Openpay.", orderNumber),
       order: this.buildActionPayload(order, nextStep),
@@ -89,6 +95,8 @@ export class CommerceService {
       providerReference,
       manualStatus: ManualPaymentRequestStatus.UnderReview
     });
+
+    this.commissionsService.syncFromOrders("manual_checkout");
 
     return {
       ...actionResponse("pending_review", "Pago manual registrado para revisión interna.", orderNumber),

@@ -1,7 +1,6 @@
-import { Body, Controller, Get, Post } from "@nestjs/common";
-import { vendorApplications, type VendorApplicationItem } from "@huelegood/shared";
-import { wrapResponse } from "../../common/response";
-import { VendorsService, type VendorApplicationInput } from "./vendors.service";
+import { Body, Controller, Get, Param, Post } from "@nestjs/common";
+import { type VendorApplicationActionInput, type VendorApplicationInput } from "@huelegood/shared";
+import { VendorsService } from "./vendors.service";
 
 @Controller("store/vendor-applications")
 export class VendorApplicationsController {
@@ -15,8 +14,35 @@ export class VendorApplicationsController {
 
 @Controller("admin/vendor-applications")
 export class AdminVendorApplicationsController {
+  constructor(private readonly vendorsService: VendorsService) {}
+
   @Get()
   list() {
-    return wrapResponse<VendorApplicationItem[]>(vendorApplications);
+    return this.vendorsService.listApplications();
+  }
+
+  @Post(":id/approve")
+  approve(@Param("id") id: string, @Body() body: VendorApplicationActionInput) {
+    return this.vendorsService.approveApplication(id, body);
+  }
+
+  @Post(":id/reject")
+  reject(@Param("id") id: string, @Body() body: VendorApplicationActionInput) {
+    return this.vendorsService.rejectApplication(id, body);
+  }
+}
+
+@Controller("admin/vendors")
+export class AdminVendorsController {
+  constructor(private readonly vendorsService: VendorsService) {}
+
+  @Get()
+  list() {
+    return this.vendorsService.listVendors();
+  }
+
+  @Get("codes")
+  listCodes() {
+    return this.vendorsService.listVendorCodes();
   }
 }
