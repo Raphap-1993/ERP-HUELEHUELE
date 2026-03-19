@@ -11,7 +11,7 @@
     "dev:admin": "npm run dev -w @huelegood/admin",
     "dev:api": "npm run start:dev -w @huelegood/api",
     "dev:worker": "npm run dev -w @huelegood/worker",
-    "build": "npm run build -w @huelegood/web && npm run build -w @huelegood/admin && npm run build -w @huelegood/api && npm run build -w @huelegood/worker",
+    "build": "npm run build -w @huelegood/shared && npm run build -w @huelegood/web && npm run build -w @huelegood/admin && npm run build -w @huelegood/api && npm run build -w @huelegood/worker",
     "build:apps": "npm run build",
     "typecheck": "npm run typecheck -ws",
     "lint": "npm run typecheck -ws",

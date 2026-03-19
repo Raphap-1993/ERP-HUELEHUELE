@@ -5,6 +5,7 @@
     "moduleResolution": "Node",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
+    "paths": {},
     "noEmit": true
   },
   "include": [

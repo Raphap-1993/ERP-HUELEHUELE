@@ -2,7 +2,10 @@
   "name": "@huelegood/shared",
   "version": "0.1.0",
   "private": true,
+  "main": "dist/index.js",
+  "types": "src/index.ts",
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "tsc --noEmit -p tsconfig.json"
   }
