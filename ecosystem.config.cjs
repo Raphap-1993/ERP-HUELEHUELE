@@ -1,3 +1,8 @@
+const webPort = Number(process.env.WEB_PORT || 3000);
+const adminPort = Number(process.env.ADMIN_PORT || 3001);
+const apiPort = Number(process.env.API_PORT || 4000);
+const workerConcurrency = Number(process.env.WORKER_CONCURRENCY || 5);
+
 module.exports = {
   apps: [
     {
@@ -18,7 +23,7 @@ module.exports = {
       error_file: "../../logs/web.error.log",
       env: {
         NODE_ENV: "production",
-        PORT: 3000
+        PORT: webPort
       }
     },
     {
@@ -39,7 +44,7 @@ module.exports = {
       error_file: "../../logs/admin.error.log",
       env: {
         NODE_ENV: "production",
-        PORT: 3001
+        PORT: adminPort
       }
     },
     {
@@ -60,7 +65,7 @@ module.exports = {
       error_file: "../../logs/api.error.log",
       env: {
         NODE_ENV: "production",
-        PORT: 4000
+        PORT: apiPort
       }
     },
     {
@@ -81,7 +86,7 @@ module.exports = {
       error_file: "../../logs/worker.error.log",
       env: {
         NODE_ENV: "production",
-        WORKER_CONCURRENCY: 5
+        WORKER_CONCURRENCY: workerConcurrency
       }
     }
   ]

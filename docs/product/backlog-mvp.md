@@ -36,8 +36,9 @@ Ya están cubiertos en el repositorio, entre otros, los siguientes bloques:
 - `MVP-025` healthchecks y logs estructurados
 - `MVP-027` observabilidad operativa en admin con métricas, requests y colas
 - operación reproducible con `PM2`, smoke checks, backups y snippets `Nginx/Hestia`
+- jobs BullMQ activos para notificaciones, conciliación manual y liquidación de comisiones
 
-En este punto, la cobertura de `MVP-023` ya existe para notificaciones y deja lista la infraestructura BullMQ para ampliar jobs hacia conciliación y liquidación sin rehacer la base.
+En este punto, la cobertura de `MVP-023` ya existe para notificaciones, conciliación manual y liquidación de comisiones sin rehacer la base.
 
 ## Prioridad crítica
 
@@ -70,7 +71,7 @@ En este punto, la cobertura de `MVP-023` ya existe para notificaciones y deja li
 | MVP-020 | Seller panel básico | Vendedor consulta código, pedidos atribuidos y comisiones |
 | MVP-021 | Gestión de reglas de comisión | Configuración administrable por vigencia y alcance |
 | MVP-022 | Reglas de compatibilidad entre cupones y vendedor | Política clara en checkout y atribución |
-| MVP-023 | Cola de jobs y reintentos | Procesos asíncronos trazables. Implementado en el repo para notificaciones, con base reutilizable para extender otros jobs críticos. |
+| MVP-023 | Cola de jobs y reintentos | Procesos asíncronos trazables. Implementado en el repo para notificaciones, conciliación manual y liquidación de comisiones. |
 | MVP-024 | Upload seguro de evidencias y assets | Activos públicos y privados gestionados de forma segura |
 | MVP-025 | Healthchecks y logs estructurados | Operación mínima observable en producción |
 

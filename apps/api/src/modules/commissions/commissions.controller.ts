@@ -25,11 +25,11 @@ export class CommissionsController {
 
   @Post("payouts")
   createPayout(@Body() body: CommissionPayoutInput) {
-    return this.commissionsService.createPayout(body);
+    return this.commissionsService.queueCreatePayout(body);
   }
 
   @Post("payouts/:id/settle")
   settlePayout(@Param("id") id: string, @Body() body: CommissionPayoutSettleInput) {
-    return this.commissionsService.settlePayout(id, body);
+    return this.commissionsService.queueSettlePayout(id, body);
   }
 }

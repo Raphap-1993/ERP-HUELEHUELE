@@ -82,6 +82,10 @@ export class NotificationsService implements OnModuleInit {
       await this.persistState();
     }
 
+    if (process.env.HUELEGOOD_DISABLE_NOTIFICATION_REQUEUE === "1") {
+      return;
+    }
+
     await this.enqueuePendingNotifications();
   }
 

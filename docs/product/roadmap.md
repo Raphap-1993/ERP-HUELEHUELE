@@ -6,7 +6,7 @@ Ordenar la construcción de Huelegood en fases ejecutables, distinguiendo lo ya 
 
 ## Estado actual
 
-Al `19 de marzo de 2026`, la base funcional del proyecto ya existe en el repositorio. El foco deja de ser "arrancar desde cero" y pasa a ser "cerrar automatización asíncrona operativa y preparar optimización comercial".
+Al `19 de marzo de 2026`, la base funcional del proyecto ya existe en el repositorio. El foco deja de ser "arrancar desde cero" y pasa a ser "abrir optimización comercial sobre una Fase 1 ya cerrada operativamente".
 
 ### Ya entregado
 
@@ -21,13 +21,13 @@ Al `19 de marzo de 2026`, la base funcional del proyecto ya existe en el reposit
 - [x] auditoría, seguridad operativa y healthchecks
 - [x] RBAC real con guards, permisos persistidos y navegación admin filtrada por rol
 - [x] persistencia operativa en PostgreSQL para módulos stateful mediante `Prisma` + `module_snapshots`
-- [x] BullMQ operativo para notificaciones y base reutilizable para jobs asíncronos
+- [x] BullMQ operativo para notificaciones, conciliación manual y liquidación de comisiones
 - [x] observabilidad operativa con logs estructurados, métricas HTTP, colas y eventos de dominio
 - [x] despliegue reproducible sobre VPS con `PM2`, health endpoints, smoke checks, backups y snippets `Nginx/Hestia`
 
 ### Pendiente inmediato
 
-- [ ] ampliación de jobs BullMQ a conciliación y liquidación donde aporte valor operativo
+- [ ] sin pendientes de Fase 1; el siguiente frente es Fase 2
 
 ## Fase 1. Cierre del MVP operativo
 
@@ -38,7 +38,7 @@ Convertir la base funcional actual en una operación estable, persistida y segur
 ### Entregables
 
 - persistencia operativa en PostgreSQL para órdenes, CMS, vendedores, comisiones, loyalty, marketing, notificaciones y módulos relacionados mediante `Prisma` + `module_snapshots`
-- BullMQ operativo para notificaciones y base preparada para extender jobs de conciliación y liquidación
+- BullMQ operativo para notificaciones, conciliación manual y liquidación de comisiones
 - trazabilidad de procesos críticos con reintentos e idempotencia
 - reglas de negocio cerradas para checkout, Openpay y pago manual con idempotencia e integridad de estados
 - observabilidad operativa con logs JSON, métricas HTTP, eventos de dominio y estado de colas desde admin
@@ -94,6 +94,10 @@ Escalar la plataforma con más automatización, control de negocio y lectura ana
 - flujos críticos con trazabilidad y reintentos resueltos
 - métricas básicas de conversión, pagos, comisiones y notificaciones disponibles
 - admin operativo sin dependencia de estado efímero en memoria
+
+Estado actual:
+
+Los criterios ya están cubiertos en la base implementada del repositorio.
 
 ### De Fase 2 a Fase 3
 

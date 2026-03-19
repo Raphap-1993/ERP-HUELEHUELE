@@ -103,6 +103,7 @@ export function CommissionsWorkspace() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -183,16 +184,22 @@ export function CommissionsWorkspace() {
   async function handleCreatePayout() {
     setActionLoading(true);
     setError(null);
+    setFeedback(null);
 
     try {
-      await createCommissionPayout({
+      const response = await createCommissionPayout({
         vendorCode: selectedVendorCode.trim() || undefined,
         period: selectedPeriod.trim() || undefined,
         referenceId: referenceId.trim() || undefined,
         notes: notes.trim() || undefined
       });
 
+      setFeedback(response.message);
       refresh();
+
+      if (response.status === "queued") {
+        window.setTimeout(refresh, 1200);
+      }
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : "No pudimos crear la liquidación.");
     } finally {
@@ -203,14 +210,20 @@ export function CommissionsWorkspace() {
   async function handleSettlePayout(payoutId: string) {
     setActionLoading(true);
     setError(null);
+    setFeedback(null);
 
     try {
-      await settleCommissionPayout(payoutId, {
+      const response = await settleCommissionPayout(payoutId, {
         reviewer: settlementReviewer.trim() || undefined,
         notes: settlementNotes.trim() || undefined
       });
 
+      setFeedback(response.message);
       refresh();
+
+      if (response.status === "queued") {
+        window.setTimeout(refresh, 1200);
+      }
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : "No pudimos liquidar el payout.");
     } finally {
@@ -230,6 +243,9 @@ export function CommissionsWorkspace() {
           <MetricCard key={metric.label} metric={metric} />
         ))}
       </div>
+
+      {error ? <p className="text-sm text-rose-700">{error}</p> : null}
+      {feedback ? <p className="text-sm text-emerald-700">{feedback}</p> : null}
 
       <Card>
         <CardHeader>
@@ -424,8 +440,6 @@ export function CommissionsWorkspace() {
           ))}
         </CardContent>
       </Card>
-
-      {error ? <p className="text-sm text-rose-700">{error}</p> : null}
       {loading ? <p className="text-sm text-black/55">Cargando comisiones...</p> : null}
       <Separator />
     </div>

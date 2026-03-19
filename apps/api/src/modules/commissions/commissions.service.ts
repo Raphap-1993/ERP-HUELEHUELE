@@ -13,6 +13,7 @@ import {
   type CommissionSummary
 } from "@huelegood/shared";
 import { actionResponse, wrapResponse } from "../../common/response";
+import { BullMqService } from "../../persistence/bullmq.service";
 import { AuditService } from "../audit/audit.service";
 import { OrdersService } from "../orders/orders.service";
 import { VendorsService } from "../vendors/vendors.service";
@@ -194,7 +195,8 @@ export class CommissionsService implements OnModuleInit {
     private readonly auditService: AuditService,
     private readonly ordersService: OrdersService,
     private readonly vendorsService: VendorsService,
-    private readonly moduleStateService: ModuleStateService
+    private readonly moduleStateService: ModuleStateService,
+    private readonly bullMqService: BullMqService
   ) {
     this.seedRules();
   }
@@ -284,6 +286,45 @@ export class CommissionsService implements OnModuleInit {
       paid: payouts.filter((payout) => payout.status === CommissionPayoutStatus.Paid).length,
       cancelled: payouts.filter((payout) => payout.status === CommissionPayoutStatus.Cancelled).length
     });
+  }
+
+  async queueCreatePayout(body: CommissionPayoutInput) {
+    const vendorCode = normalizeCode(body.vendorCode);
+    if (!vendorCode) {
+      throw new BadRequestException("El código de vendedor es obligatorio para crear una liquidación.");
+    }
+
+    const job = await this.bullMqService.enqueueCommissionPayoutCreate({
+      vendorCode,
+      period: normalizeText(body.period),
+      referenceId: normalizeText(body.referenceId),
+      notes: normalizeText(body.notes),
+      requestedAt: nowIso()
+    });
+
+    if (job) {
+      return actionResponse("queued", "La liquidación quedó en cola para preparación.", vendorCode);
+    }
+
+    return this.createPayout(body);
+  }
+
+  async queueSettlePayout(id: string, body: CommissionPayoutSettleInput) {
+    this.requirePayout(id);
+
+    const job = await this.bullMqService.enqueueCommissionPayoutSettle({
+      payoutId: id.trim(),
+      reviewer: normalizeText(body.reviewer),
+      notes: normalizeText(body.notes),
+      referenceId: normalizeText(body.referenceId),
+      requestedAt: nowIso()
+    });
+
+    if (job) {
+      return actionResponse("queued", "La liquidación quedó en cola para conciliación final.", id);
+    }
+
+    return this.settlePayout(id, body);
   }
 
   createPayout(body: CommissionPayoutInput) {
@@ -449,6 +490,30 @@ export class CommissionsService implements OnModuleInit {
       ...actionResponse("ok", "La liquidación quedó pagada y conciliada.", id),
       payout: this.toPayoutSummary(payout)
     };
+  }
+
+  ensurePayoutForJob(body: CommissionPayoutInput) {
+    try {
+      return this.createPayout(body);
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        const vendorCode = normalizeCode(body.vendorCode);
+        if (!vendorCode) {
+          throw error;
+        }
+
+        const period = resolvePeriod(body.period);
+        const payout = this.findPayoutByVendorAndPeriod(vendorCode, period.key);
+        if (payout && payout.status !== CommissionPayoutStatus.Cancelled) {
+          return {
+            ...actionResponse("ok", "La liquidación ya estaba preparada.", payout.id),
+            payout: this.toPayoutSummary(payout)
+          };
+        }
+      }
+
+      throw error;
+    }
   }
 
   private syncOrderCommission(order: AdminOrderSummary, actor: string, occurredAt: string) {

@@ -20,11 +20,11 @@ export class PaymentsController {
 
   @Post("manual-requests/:id/approve")
   approve(@Param("id") id: string, @Body() body: ManualReviewActionInput) {
-    return this.paymentsService.approveManualRequest(id, body);
+    return this.paymentsService.queueApproveManualRequest(id, body);
   }
 
   @Post("manual-requests/:id/reject")
   reject(@Param("id") id: string, @Body() body: ManualReviewActionInput) {
-    return this.paymentsService.rejectManualRequest(id, body);
+    return this.paymentsService.queueRejectManualRequest(id, body);
   }
 }

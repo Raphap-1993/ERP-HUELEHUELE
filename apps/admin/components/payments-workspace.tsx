@@ -113,6 +113,7 @@ export function PaymentsWorkspace() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -212,6 +213,7 @@ export function PaymentsWorkspace() {
 
     setActionLoading(true);
     setError(null);
+    setFeedback(null);
 
     try {
       const payload = {
@@ -219,13 +221,18 @@ export function PaymentsWorkspace() {
         notes: reviewNotes.trim() || undefined
       };
 
-      if (decision === "approve") {
-        await approveManualPaymentRequest(selectedRequest.id, payload);
-      } else {
-        await rejectManualPaymentRequest(selectedRequest.id, payload);
-      }
+      const response =
+        decision === "approve"
+          ? await approveManualPaymentRequest(selectedRequest.id, payload)
+          : await rejectManualPaymentRequest(selectedRequest.id, payload);
 
-      await loadFreshData();
+      setFeedback(response.message);
+
+      loadFreshData();
+
+      if (response.status === "queued") {
+        window.setTimeout(loadFreshData, 1200);
+      }
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : "No pudimos actualizar la solicitud manual.");
     } finally {
@@ -251,10 +258,13 @@ export function PaymentsWorkspace() {
         ))}
       </div>
 
+      {error ? <p className="text-sm text-rose-700">{error}</p> : null}
+      {feedback ? <p className="text-sm text-emerald-700">{feedback}</p> : null}
+
       <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
         <AdminDataTable
           title="Pagos registrados"
-          description={error ?? "Estado operativo de cobros y conciliación."}
+          description="Estado operativo de cobros y conciliación."
           headers={["Pedido", "Cliente", "Proveedor", "Estado", "Importe", "Manual", "Notificación"]}
           rows={payments.map((payment) => [
             payment.orderNumber,

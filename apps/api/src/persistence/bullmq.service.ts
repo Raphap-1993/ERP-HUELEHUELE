@@ -1,6 +1,14 @@
 import { Injectable, OnModuleDestroy } from "@nestjs/common";
 import { Queue, type JobsOptions } from "bullmq";
-import { QueueName, type NotificationDispatchJobData, type ObservabilityQueueSummary, parseRedisConnection } from "@huelegood/shared";
+import {
+  QueueName,
+  type CommissionPayoutCreateJobData,
+  type CommissionPayoutSettleJobData,
+  type ManualPaymentReviewJobData,
+  type NotificationDispatchJobData,
+  type ObservabilityQueueSummary,
+  parseRedisConnection
+} from "@huelegood/shared";
 import { isConfigured } from "../common/env";
 
 @Injectable()
@@ -37,6 +45,24 @@ export class BullMqService implements OnModuleDestroy {
   enqueueNotificationDispatch(data: NotificationDispatchJobData) {
     return this.enqueue(QueueName.Notifications, "notification.dispatch", data, {
       jobId: data.notificationId
+    });
+  }
+
+  enqueueManualPaymentReview(data: ManualPaymentReviewJobData) {
+    return this.enqueue(QueueName.Payments, "payment.manual-review", data, {
+      jobId: this.buildJobId("payment.manual-review", data.manualRequestId, data.decision)
+    });
+  }
+
+  enqueueCommissionPayoutCreate(data: CommissionPayoutCreateJobData) {
+    return this.enqueue(QueueName.Commissions, "commission.payout.create", data, {
+      jobId: this.buildJobId("commission.payout.create", data.vendorCode, data.period ?? "current")
+    });
+  }
+
+  enqueueCommissionPayoutSettle(data: CommissionPayoutSettleJobData) {
+    return this.enqueue(QueueName.Commissions, "commission.payout.settle", data, {
+      jobId: this.buildJobId("commission.payout.settle", data.payoutId)
     });
   }
 
@@ -109,5 +135,17 @@ export class BullMqService implements OnModuleDestroy {
 
     this.queues.set(queueName, queue);
     return queue;
+  }
+
+  private buildJobId(name: string, ...parts: string[]) {
+    const normalizedParts = parts.map((part) =>
+      part
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+    );
+
+    return [name, ...normalizedParts].join(":");
   }
 }

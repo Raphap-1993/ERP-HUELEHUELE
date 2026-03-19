@@ -54,10 +54,12 @@ Formalizar cómo se atribuye una venta a un vendedor y cómo esa atribución evo
 2. Si el pedido entra en ventana de riesgo o revisión, la comisión puede quedar `approved` o `blocked` según política.
 3. Cuando el pedido alcanza estado elegible final, la comisión pasa a `payable`.
 4. El `seller_manager` arma una corrida de liquidación.
-5. La API crea `commission_payout` y sus `payout_items`.
-6. Las comisiones incluidas pasan a `scheduled_for_payout`.
-7. Una vez pagado al vendedor, se marca `commission_payout` como ejecutado y las comisiones pasan a `paid`.
-8. Si hay devolución, fraude o anulación posterior, se crea reversa o ajuste según aplique.
+5. La API encola la preparación del payout en BullMQ.
+6. El worker crea `commission_payout` y sus `payout_items`.
+7. Las comisiones incluidas pasan a `scheduled_for_payout`.
+8. Cuando operación confirma el pago al vendedor, la API encola la conciliación final.
+9. El worker marca `commission_payout` como pagado y las comisiones pasan a `paid`.
+10. Si hay devolución, fraude o anulación posterior, se crea reversa o ajuste según aplique.
 
 ### Estados involucrados
 
@@ -89,10 +91,11 @@ Formalizar cómo se atribuye una venta a un vendedor y cómo esa atribución evo
 
 - recálculo de comisión tras confirmación de pago
 - consolidación de saldos por vendedor
-- generación de payout items
+- generación de payout items y cierre de liquidación vía worker
 - notificaciones a vendedor por nuevos movimientos
 
 ## Observaciones de implementación
 
 - La liquidación debe trabajar sobre snapshots y no recalcular montos históricos sin razón explícita.
+- La preparación y conciliación de payout deben ejecutarse con `jobId` estable para evitar corridas duplicadas.
 - Las reversas deben registrar causa, actor y referencia al evento que las originó.

@@ -35,7 +35,7 @@ Como base funcional, el proyecto ya cubre:
 - CMS interno, auditoría, seguridad y healthchecks
 - RBAC real con guards, permisos persistidos y navegación admin filtrada por rol
 - persistencia operativa en PostgreSQL para módulos stateful
-- BullMQ operativo para notificaciones y procesos asíncronos ampliables
+- BullMQ operativo para notificaciones, conciliación manual y liquidación de comisiones
 - observabilidad operativa con logs estructurados y vista admin dedicada
 
 Como insumo funcional, se asume que la v1 de Huelegood ya comunica:

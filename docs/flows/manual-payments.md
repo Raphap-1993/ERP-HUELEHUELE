@@ -30,9 +30,10 @@ Permitir compras mediante pago manual, con carga de comprobante y revisión oper
 6. El pedido transiciona a `payment_under_review`.
 7. Un operador revisa monto, referencia, evidencia y coherencia del pedido.
 8. El operador aprueba o rechaza la solicitud.
-9. Si aprueba, la API marca `payment` como `paid` y el pedido sigue su flujo post-pago.
-10. Si rechaza, el sistema deja registro del motivo y el pedido vuelve a `pending_payment` o expira según vigencia.
-11. Se notifica al cliente el resultado.
+9. La decisión se encola en BullMQ para dejar trazabilidad y ejecución idempotente.
+10. Si aprueba, el worker aplica la conciliación, marca `payment` como `paid` y el pedido sigue su flujo post-pago.
+11. Si rechaza, el worker deja registro del motivo y el pedido pasa a `cancelled` según la política vigente.
+12. Se notifica al cliente el resultado.
 
 ## Estados involucrados
 
@@ -90,6 +91,7 @@ Permitir compras mediante pago manual, con carga de comprobante y revisión oper
 ## Procesos asíncronos involucrados
 
 - notificación al operador sobre nuevo comprobante
+- conciliación asíncrona de aprobación o rechazo vía worker
 - recordatorios al cliente si falta resolución o evidencia
 - expiración automática de pedidos pendientes
 - notificación de aprobación o rechazo
@@ -98,5 +100,6 @@ Permitir compras mediante pago manual, con carga de comprobante y revisión oper
 
 - La UI de revisión debe exponer contexto del pedido, historial y evidencias en una sola vista.
 - La API debe separar claramente el concepto de solicitud manual de la transacción de pago.
+- La resolución operativa debe encolar un job con `jobId` estable para evitar doble conciliación.
 - La decisión del operador debe ser idempotente: una solicitud ya aprobada o rechazada no se procesa dos veces.
 - Debe existir política de retención de evidencias por razones operativas y de auditoría.
