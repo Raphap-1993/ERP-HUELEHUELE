@@ -112,6 +112,10 @@ Como insumo funcional, se asume que la v1 de Huelegood ya comunica:
 - [design-system.md](./ux/design-system.md)
 - [shadcn-ui-guidelines.md](./ux/shadcn-ui-guidelines.md)
 
+### Storefront
+
+- [storefront-v2-premium-landing.md](./storefront-v2-premium-landing.md)
+
 ### Infraestructura
 
 - [deployment-strategy.md](./infra/deployment-strategy.md)

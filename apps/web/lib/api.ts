@@ -1,4 +1,5 @@
 import type {
+  ActionEnvelope,
   AuthCredentialsInput,
   AuthRegisterInput,
   AuthSessionSummary,
@@ -11,6 +12,8 @@ import type {
   CheckoutQuoteSummary,
   CheckoutRequestInput,
   LoyaltySummaryEnvelope,
+  VendorApplicationInput,
+  VendorApplicationSummary,
   WholesaleLeadInput,
   WholesalePlan,
   WholesaleLeadSummary
@@ -101,6 +104,13 @@ export async function fetchLoyaltySummary() {
   return requestJson<LoyaltySummaryEnvelope>("/store/me/loyalty");
 }
 
+export async function submitVendorApplication(body: VendorApplicationInput) {
+  return requestJson<VendorApplicationActionEnvelope>("/store/vendor-applications", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
 export async function login(body: AuthCredentialsInput) {
   return requestJson<AuthSessionEnvelope>("/auth/login", {
     method: "POST",
@@ -179,6 +189,10 @@ export type WholesaleLeadActionEnvelope = {
   referenceId?: string;
   lead?: WholesaleLeadSummary;
   nextStep?: string;
+};
+
+export type VendorApplicationActionEnvelope = ActionEnvelope & {
+  application?: VendorApplicationSummary;
 };
 
 export type WholesaleTiersEnvelope = {

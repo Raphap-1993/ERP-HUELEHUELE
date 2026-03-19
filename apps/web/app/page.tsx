@@ -15,6 +15,10 @@ import { fetchCmsSnapshot } from "../lib/api";
 import { EditorialMedia, EditorialProductGrid } from "../components/public-brand";
 import { brandArt } from "../components/public-brand-art";
 import { PublicChecklist, PublicInfoCard, PublicPageHero, PublicPanel, PublicSectionHeading } from "../components/public-shell";
+import { StorefrontV2Experience } from "../features/storefront-v2/layouts/storefront-v2-page";
+import { isStorefrontV2Enabled } from "../features/storefront-v2/lib/flags";
+import { StorefrontV2PremiumExperience } from "../features/storefront-v2-premium/layouts/storefront-v2-premium-page";
+import { isStorefrontV2PremiumEnabled } from "../features/storefront-v2-premium/lib/flags";
 
 async function loadHomeCms() {
   try {
@@ -97,6 +101,14 @@ const formatHighlights = [
 ];
 
 export default async function HomePage() {
+  if (isStorefrontV2PremiumEnabled()) {
+    return <StorefrontV2PremiumExperience />;
+  }
+
+  if (isStorefrontV2Enabled()) {
+    return <StorefrontV2Experience />;
+  }
+
   const cms = await loadHomeCms();
   const hero = cms?.heroCopy ?? heroCopy;
   const banners = cms?.banners.filter((banner) => banner.status === "active").map(mapBanner) ?? promoBanners;
