@@ -19,7 +19,7 @@ export async function generateMetadata() {
   const settings = cms?.siteSetting ?? siteSetting;
 
   return {
-    title: `${settings.brandName} | Plataforma comercial modular`,
+    title: `${settings.brandName} | Frescura herbal portátil`,
     description: settings.tagline
   };
 }
@@ -49,8 +49,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                     {item.label}
                   </Link>
                 ))}
-                <Button href="/checkout" size="sm">
-                  Ir al checkout
+                <Button href="/catalogo" size="sm">
+                  Comprar ahora
                 </Button>
               </nav>
             </div>

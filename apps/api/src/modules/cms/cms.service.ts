@@ -923,55 +923,55 @@ export class CmsService implements OnModuleInit {
     }> = [
       {
         slug: "home",
-        title: "Inicio Huelegood",
-        description: "Hero, promos, catálogo visible, mayoristas y preguntas frecuentes.",
+        title: "Inicio Huele Huele",
+        description: "Hero comercial, formatos destacados, beneficios de uso y preguntas frecuentes del producto.",
         status: "published",
         blocks: [
           {
             type: "hero",
             title: "Hero principal",
-            description: "Narrativa de conversión seller-first.",
+            description: "Narrativa comercial enfocada en el producto final.",
             content: defaultHeroCopy.title,
             position: 1,
             status: "active"
           },
           {
             type: "promo-banner",
-            title: "Promociones activas",
-            description: "Bloques de valor y promociones.",
+            title: "Promociones y diferenciales",
+            description: "Bloques comerciales del producto.",
             content: promoBanners.map((banner) => banner.title).join(" | "),
             position: 2,
             status: "active"
           },
           {
             type: "featured-products",
-            title: "Productos visibles",
+            title: "Productos destacados",
             description: "Clásico Verde, Premium Negro y Combo Dúo Perfecto.",
-            content: "Catálogo visible con bundle y oferta activa.",
+            content: "Formatos principales para rutina diaria, look premium y compra en combo.",
             position: 3,
             status: "active"
           },
           {
-            type: "wholesale-plans",
-            title: "Mayoristas",
-            description: "Tiers comerciales y captación de distribuidores.",
-            content: "Captación B2B con condiciones por volumen.",
+            type: "benefits",
+            title: "Momentos de uso",
+            description: "Tráfico, oficina, viajes y altura.",
+            content: "Frescura portable y diferenciación frente a vape o pomadas.",
             position: 4,
             status: "active"
           },
           {
             type: "faq",
-            title: "FAQ",
-            description: "Preguntas de pago y operación.",
+            title: "FAQ producto",
+            description: "Preguntas del consumidor final.",
             content: faqItems.map((item) => item.question).join(" | "),
             position: 5,
             status: "active"
           }
         ],
         seoMeta: {
-          title: "Huelegood | Plataforma comercial modular",
+          title: "Huele Huele | Frescura herbal portátil",
           description: defaultSiteSetting.tagline,
-          keywords: ["huelegood", "storefront", "seller-first"],
+          keywords: ["huele huele", "inhalador herbal aromático", "frescura portátil"],
           canonicalPath: "/",
           robots: "index,follow"
         }
@@ -979,7 +979,7 @@ export class CmsService implements OnModuleInit {
       {
         slug: "catalogo",
         title: "Catálogo",
-        description: "Productos, bundles y ofertas activas.",
+        description: "Productos, combos y ofertas activas de Huele Huele.",
         status: "published",
         blocks: [
           {
@@ -1000,9 +1000,9 @@ export class CmsService implements OnModuleInit {
           }
         ],
         seoMeta: {
-          title: "Catálogo Huelegood",
-          description: "Productos visibles, bundles y ofertas activas.",
-          keywords: ["catalogo", "productos", "bundles"],
+          title: "Catálogo Huele Huele",
+          description: "Explora Clásico Verde, Premium Negro y Combo Dúo Perfecto.",
+          keywords: ["catálogo huele huele", "inhalador herbal", "combos"],
           canonicalPath: "/catalogo",
           robots: "index,follow"
         }

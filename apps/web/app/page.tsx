@@ -4,7 +4,6 @@ import {
   featuredProducts,
   heroCopy,
   promoBanners,
-  wholesalePlans,
   type CmsBanner,
   type CmsFaq,
   type FaqItem,
@@ -20,9 +19,7 @@ import {
   HeroSection,
   ProductGrid,
   PromoBannerCard,
-  SectionHeader,
-  SellerCodeInput,
-  WholesalePlanCard
+  SectionHeader
 } from "@huelegood/ui";
 import { fetchCmsSnapshot } from "../lib/api";
 
@@ -61,6 +58,36 @@ function mapFaq(faq: CmsFaq): FaqItem {
   };
 }
 
+const usageMoments = [
+  {
+    title: "Tráfico y trayectos largos",
+    description: "Llévalo en la guantera, mochila o bolso para una sensación fresca cuando el día se siente pesado."
+  },
+  {
+    title: "Oficina y estudio",
+    description: "Un formato discreto y práctico para tener cerca durante jornadas largas, reuniones o bloques de enfoque."
+  },
+  {
+    title: "Viajes y altura",
+    description: "Ligero, portable y fácil de llevar cuando cambias de ciudad, clima o ritmo."
+  }
+];
+
+const differentiators = [
+  {
+    title: "No es vape",
+    description: "No depende de humo ni vapor. Está pensado para quien quiere algo simple, portátil y directo."
+  },
+  {
+    title: "No es pomada",
+    description: "No ensucia ni requiere aplicación tópica. Solo lo llevas contigo y lo usas cuando lo necesitas."
+  },
+  {
+    title: "Look premium y discreto",
+    description: "Diseño cuidado para acompañarte en oficina, viaje, carro o bolso sin perder presencia."
+  }
+];
+
 export default async function HomePage() {
   const cms = await loadHomeCms();
   const hero = cms?.heroCopy ?? heroCopy;
@@ -80,27 +107,48 @@ export default async function HomePage() {
 
       <section className="space-y-6">
         <SectionHeader
-          title="Catálogo visible y seller-first"
-          description="Huelegood nace con productos visibles, códigos de vendedor y narrativa comercial para convertir con trazabilidad."
-          action={{ label: "Ver todo el catálogo", href: "/catalogo" }}
+          title="Elige tu Huele Huele"
+          description="Tres formatos para distintas rutinas: el clásico de uso diario, la versión premium y un combo pensado para tener siempre una unidad a la mano."
+          action={{ label: "Ver catálogo completo", href: "/catalogo" }}
         />
         <ProductGrid products={featuredProducts} />
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <SellerCodeInput />
-        <div className="space-y-4">
-          <SectionHeader title="Mayoristas y distribuidores" description="El funnel B2B inicia aquí y luego se gestiona desde operación." />
-          <div className="grid gap-4 md:grid-cols-2">
-            {wholesalePlans.map((plan) => (
-              <WholesalePlanCard key={plan.tier} plan={plan} />
+      <section className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Hecho para acompañarte en movimiento</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            {usageMoments.map((item) => (
+              <div key={item.title} className="rounded-[1.5rem] border border-black/8 bg-black/[0.02] px-4 py-4">
+                <p className="text-base font-semibold text-[#132016]">{item.title}</p>
+                <p className="mt-2 text-sm leading-6 text-black/66">{item.description}</p>
+              </div>
             ))}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-[#132016] text-white">
+          <CardHeader>
+            <Badge className="w-fit bg-white/15 text-white">Diferencial</Badge>
+            <CardTitle className="text-white">Una alternativa práctica y limpia</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            {differentiators.map((item) => (
+              <div key={item.title} className="rounded-[1.5rem] bg-white/8 px-4 py-4">
+                <p className="text-base font-semibold">{item.title}</p>
+                <p className="mt-2 text-sm leading-6 text-white/76">{item.description}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       </section>
 
       <section className="space-y-6">
-        <SectionHeader title="Prueba social" description="Testimonios y narrativa comercial editables desde el CMS interno." />
+        <SectionHeader
+          title="Lo compran por practicidad, lo recomiendan por cómo se siente"
+          description="Historias de uso real en trayectos, oficina, viajes y rutinas donde tener frescura a la mano sí hace diferencia."
+        />
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {testimonials.map((testimonial) => (
             <Card key={testimonial.id}>
@@ -123,7 +171,10 @@ export default async function HomePage() {
       </section>
 
       <section className="space-y-6">
-        <SectionHeader title="Preguntas frecuentes" description="Pago, vendedor, mayoristas y operación comercial." />
+        <SectionHeader
+          title="Preguntas frecuentes"
+          description="Lo esencial para elegir tu producto y entender en qué momentos suele acompañarte mejor."
+        />
         <FAQAccordion items={faqs} />
       </section>
     </div>

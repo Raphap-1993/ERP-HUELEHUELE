@@ -43,18 +43,18 @@ import type {
 
 export const siteSetting: SiteSetting = {
   brandName: "Huelegood",
-  tagline: "Plataforma comercial modular para vender, administrar y escalar.",
+  tagline: "Frescura herbal portátil para acompañarte en tráfico, viajes, oficina y altura.",
   supportEmail: "hola@huelegood.com",
   whatsapp: "+52 000 000 0000"
 };
 
 export const heroCopy: HeroCopy = {
-  eyebrow: "Seller-first, premium y administrable",
-  title: "Una plataforma comercial propia para Huelegood.",
+  eyebrow: "Inhalador herbal aromático • fresco y portable",
+  title: "Huele Huele te da un reset fresco cuando el día no se detiene.",
   description:
-    "Storefront, backoffice, pagos Openpay, pagos manuales, vendedores con código, mayoristas, CRM básico y fidelización en un monolito modular.",
-  primaryCta: { label: "Ver catálogo", href: "/catalogo" },
-  secondaryCta: { label: "Explorar mayoristas", href: "/mayoristas" }
+    "Una experiencia herbal práctica para quienes buscan frescura inmediata en movimiento. Ideal para bolso, escritorio, carro y viaje.",
+  primaryCta: { label: "Comprar ahora", href: "/catalogo" },
+  secondaryCta: { label: "Ver productos", href: "/catalogo" }
 };
 
 export const webNavigation: WebNavigationGroup[] = [
@@ -109,14 +109,14 @@ export const featuredProducts: CatalogProduct[] = [
     name: "Clásico Verde",
     slug: "clasico-verde",
     categorySlug: "productos",
-    tagline: "Fresco, directo y portable.",
+    tagline: "El favorito para una sensación fresca y directa.",
     description:
-      "La referencia base para una experiencia limpia y práctica, pensada para la narrativa de reset y movimiento.",
+      "Nuestro formato más versátil para el día a día. Ligero, práctico y fácil de llevar cuando quieres una pausa fresca en cualquier momento.",
     price: 249,
     compareAtPrice: 299,
     badge: "Más vendido",
     tone: "emerald",
-    benefits: ["Portabilidad", "Frescura", "Uso diario"],
+    benefits: ["Portátil", "Frescura herbal", "Uso diario"],
     sku: "HG-CV-001"
   },
   {
@@ -124,14 +124,14 @@ export const featuredProducts: CatalogProduct[] = [
     name: "Premium Negro",
     slug: "premium-negro",
     categorySlug: "productos",
-    tagline: "Más sobrio, más premium.",
+    tagline: "Diseño sobrio para quien quiere frescura con look premium.",
     description:
-      "La línea con percepción más elegante para reforzar la narrativa de marca y conversión aspiracional.",
+      "Acabado elegante y presencia más premium para quienes buscan un formato discreto, limpio y listo para acompañar trayectos largos o jornadas intensas.",
     price: 349,
     compareAtPrice: 399,
     badge: "Nuevo",
     tone: "graphite",
-    benefits: ["Percepción premium", "Look sobrio", "Embalaje limpio"],
+    benefits: ["Acabado premium", "Diseño discreto", "Listo para llevar"],
     sku: "HG-PN-001"
   },
   {
@@ -139,34 +139,34 @@ export const featuredProducts: CatalogProduct[] = [
     name: "Combo Dúo Perfecto",
     slug: "combo-duo-perfecto",
     categorySlug: "bundles",
-    tagline: "La compra ideal para rotación y bundle.",
+    tagline: "Dos unidades para tener una contigo y otra siempre a la mano.",
     description:
-      "Bundle pensado para elevar ticket promedio y facilitar campañas, códigos de vendedor y promociones.",
+      "La mejor opción para quienes ya usan Huele Huele seguido o quieren compartirlo. Más valor por compra y una reserva lista para oficina, carro o viaje.",
     price: 449,
     compareAtPrice: 549,
     badge: "Combo",
     tone: "amber",
-    benefits: ["Mejor ticket", "Bundle", "Ahorro visible"],
+    benefits: ["Ahorro visible", "Doble formato", "Ideal para viaje"],
     sku: "HG-CDP-001"
   }
 ];
 
 export const promoBanners: PromoBanner[] = [
   {
-    title: "Oferta activa con código promocional",
-    description: "Aprovecha la combinación de promo + atribución de vendedor con reglas controladas.",
+    title: "Compra tu favorito con promo activa",
+    description: "Aprovecha descuentos y llévate Huele Huele en el formato que mejor se adapte a tu rutina.",
     ctaLabel: "Comprar ahora",
-    ctaHref: "/checkout",
-    note: "Vigencia limitada",
+    ctaHref: "/catalogo",
+    note: "Oferta por tiempo limitado",
     tone: "olive"
   },
   {
-    title: "Bloque mayorista y distribuidores",
-    description: "Condiciones por volumen para leads calificados y seguimiento comercial.",
-    ctaLabel: "Cotizar volumen",
-    ctaHref: "/mayoristas",
-    note: "Atención interna",
-    tone: "ink"
+    title: "No es vape. No es pomada. Es Huele Huele.",
+    description: "Una alternativa práctica, limpia y portable para quienes prefieren una sensación herbal fresca sin complicarse.",
+    ctaLabel: "Ver productos",
+    ctaHref: "/catalogo",
+    note: "Formato práctico",
+    tone: "amber"
   }
 ];
 
@@ -193,16 +193,19 @@ export const wholesalePlans: WholesalePlan[] = [
 
 export const faqItems: FaqItem[] = [
   {
-    question: "¿Puedo pagar con Openpay?",
-    answer: "Sí. El checkout contempla cobro online con Openpay y conciliación de estado."
+    question: "¿Qué es Huele Huele?",
+    answer:
+      "Es un inhalador herbal aromático pensado para acompañarte con una sensación fresca en tráfico, oficina, viajes o cambios de ritmo."
   },
   {
-    question: "¿Se aceptan pagos manuales?",
-    answer: "Sí. El cliente puede subir comprobante y el equipo interno revisa la solicitud."
+    question: "¿En qué momentos suele usarse?",
+    answer:
+      "Muchas personas lo llevan en la bolsa, el carro o el escritorio para tenerlo a mano durante trayectos largos, jornadas intensas o viajes."
   },
   {
-    question: "¿Hay vendedor con código y comisión?",
-    answer: "Sí. La venta puede atribuirse a un vendedor y liquidarse por comisiones."
+    question: "¿Cuál debería elegir?",
+    answer:
+      "Clásico Verde es la opción más versátil, Premium Negro prioriza un look más sobrio y Combo Dúo Perfecto te da mejor valor si quieres más de una unidad."
   }
 ];
 
@@ -210,8 +213,8 @@ export const cmsTestimonials: CmsTestimonial[] = [
   {
     id: "tst-001",
     name: "Laura Mendoza",
-    role: "Cliente frecuente",
-    quote: "Huelegood me deja comprar rápido, revisar mi saldo y entender qué está pasando con mis puntos.",
+    role: "Oficina y traslados",
+    quote: "Lo llevo siempre en la bolsa. Me gusta porque es práctico, se siente fresco y no me complica el día.",
     rating: 5,
     status: "active",
     updatedAt: "2026-03-18T10:15:00.000Z"
@@ -219,8 +222,8 @@ export const cmsTestimonials: CmsTestimonial[] = [
   {
     id: "tst-002",
     name: "Carlos Gómez",
-    role: "Comprador manual",
-    quote: "El flujo de comprobante y revisión es claro, y el backoffice mantiene control sin fricción.",
+    role: "Ruta y carretera",
+    quote: "En viajes largos me funciona perfecto porque cabe en cualquier lado y siempre lo tengo a la mano.",
     rating: 5,
     status: "active",
     updatedAt: "2026-03-18T10:20:00.000Z"
@@ -228,8 +231,8 @@ export const cmsTestimonials: CmsTestimonial[] = [
   {
     id: "tst-003",
     name: "Sofía Rivera",
-    role: "Distribuidora",
-    quote: "La atribución por vendedor y la parte mayorista hacen que el canal comercial sea mucho más medible.",
+    role: "Viajes y altura",
+    quote: "Me gusta porque se siente limpio, portable y con una imagen mucho más cuidada que otras opciones.",
     rating: 5,
     status: "active",
     updatedAt: "2026-03-18T10:30:00.000Z"

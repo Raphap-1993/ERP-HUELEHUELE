@@ -48,21 +48,63 @@ import {
 export function HeroSection({ copy = heroCopy }: { copy?: HeroCopy }) {
   return (
     <section className="relative overflow-hidden rounded-[2rem] border border-black/10 bg-[radial-gradient(circle_at_top_right,_rgba(17,24,39,0.08),_transparent_35%),linear-gradient(180deg,#ffffff_0%,#f7f6f2_100%)] px-6 py-10 shadow-soft md:px-10 md:py-14">
-      <div className="max-w-3xl space-y-6">
-        <Badge tone="info" className="bg-[#132016] text-white">
-          {copy.eyebrow}
-        </Badge>
-        <div className="space-y-4">
-          <h1 className="max-w-2xl text-4xl font-semibold leading-tight tracking-tight text-[#132016] md:text-6xl">
-            {copy.title}
-          </h1>
-          <p className="max-w-2xl text-base leading-7 text-black/70 md:text-lg">{copy.description}</p>
+      <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+        <div className="max-w-3xl space-y-6">
+          <Badge tone="info" className="bg-[#132016] text-white">
+            {copy.eyebrow}
+          </Badge>
+          <div className="space-y-4">
+            <h1 className="max-w-2xl text-4xl font-semibold leading-tight tracking-tight text-[#132016] md:text-6xl">
+              {copy.title}
+            </h1>
+            <p className="max-w-2xl text-base leading-7 text-black/70 md:text-lg">{copy.description}</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Button href={copy.primaryCta.href}>{copy.primaryCta.label}</Button>
+            <Button href={copy.secondaryCta.href} variant="secondary">
+              {copy.secondaryCta.label}
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.22em] text-black/45">
+            <span>Frescura</span>
+            <span>·</span>
+            <span>Portabilidad</span>
+            <span>·</span>
+            <span>Viajes</span>
+            <span>·</span>
+            <span>Tráfico</span>
+            <span>·</span>
+            <span>Altura</span>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <Button href={copy.primaryCta.href}>{copy.primaryCta.label}</Button>
-          <Button href={copy.secondaryCta.href} variant="secondary">
-            {copy.secondaryCta.label}
-          </Button>
+        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-1">
+          <Card className="border-[#132016]/10 bg-white/80">
+            <CardContent className="space-y-2">
+              <Badge tone="success">Uso diario</Badge>
+              <CardTitle>Siempre a la mano</CardTitle>
+              <CardDescription>Guárdalo en bolso, carro, escritorio o mochila para tener frescura donde más lo usas.</CardDescription>
+            </CardContent>
+          </Card>
+          <Card className="border-[#132016]/10 bg-white/80">
+            <CardContent className="space-y-2">
+              <Badge tone="warning">Diferencial</Badge>
+              <CardTitle>No es vape ni pomada</CardTitle>
+              <CardDescription>Una experiencia más simple, limpia y portable para quienes prefieren practicidad real.</CardDescription>
+            </CardContent>
+          </Card>
+          <Card className="border-[#132016]/10 bg-[#132016] text-white">
+            <CardContent className="space-y-3">
+              <Badge className="bg-white/15 text-white">Favoritos</Badge>
+              <div className="space-y-2 text-sm text-white/78">
+                {featuredProducts.map((product) => (
+                  <div key={product.id} className="flex items-center justify-between gap-3 rounded-2xl bg-white/8 px-3 py-2">
+                    <span>{product.name}</span>
+                    <span className="font-semibold text-white">${product.price}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </section>
@@ -452,15 +494,15 @@ export function SectionHeader({
 export function PublicBrandStrip() {
   return (
     <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.22em] text-black/45">
-      <span>Openpay</span>
+      <span>Frescura</span>
       <span>·</span>
-      <span>Seller-first</span>
+      <span>Portabilidad</span>
       <span>·</span>
-      <span>CMS interno</span>
+      <span>Viajes</span>
       <span>·</span>
-      <span>Mayoristas</span>
+      <span>Tráfico</span>
       <span>·</span>
-      <span>Loyalty</span>
+      <span>Altura</span>
     </div>
   );
 }
