@@ -4,6 +4,10 @@
 
 Traducir el alcance MVP en unidades de trabajo priorizadas y convertibles a tickets.
 
+## Nota de estado
+
+Este backlog conserva la prioridad original del MVP, pero varias piezas ya fueron implementadas en el repositorio. Úsalo como mapa de cobertura y como referencia para cerrar pendientes, no como una lista exclusivamente futura.
+
 ## Prioridad crítica
 
 | ID | Ítem | Resultado esperado |

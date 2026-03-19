@@ -21,7 +21,17 @@ No se plantea como una landing page ni como un ecommerce básico. El objetivo es
 
 ## Estado actual del proyecto
 
-El repositorio parte sin código de implementación y esta carpeta `docs/` funciona como blueprint inicial listo para versionarse y servir de base de ejecución.
+El repositorio ya contiene una base de implementación real y esta carpeta `docs/` funciona como fuente de verdad para arquitectura, producto, flujos, datos, UX e infraestructura.
+
+Como base funcional, el proyecto ya cubre:
+
+- storefront público, admin, API y worker
+- auth, catálogo y checkout
+- pedidos, pagos y revisión manual
+- vendedores, comisiones y seller-first
+- mayoristas, campañas y CRM básico
+- fidelización por puntos y notificaciones
+- CMS interno, auditoría, seguridad y healthchecks
 
 Como insumo funcional, se asume que la v1 de Huelegood ya comunica:
 

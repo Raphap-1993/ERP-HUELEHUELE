@@ -2,36 +2,54 @@
 
 ## Objetivo
 
-Ordenar la construcción de Huelegood en fases ejecutables, priorizando operación real antes de sofisticación.
+Ordenar la construcción de Huelegood en fases ejecutables, distinguiendo lo ya entregado, lo que falta para cerrar el MVP operativo y lo que se deja para optimización y escala.
 
-## MVP
+## Estado actual
+
+Al `19 de marzo de 2026`, la base funcional del proyecto ya existe en el repositorio. El foco deja de ser "arrancar desde cero" y pasa a ser "cerrar endurecimiento, persistencia integral y automatización".
+
+### Ya entregado
+
+- [x] base de aplicaciones `web`, `admin`, `api` y `worker`
+- [x] auth, catálogo y checkout
+- [x] pedidos, pagos y flujo de revisión manual
+- [x] vendedores, códigos y comisiones base
+- [x] mayoristas, campañas y CRM básico
+- [x] fidelización por puntos y notificaciones
+- [x] CMS interno y configuración de storefront
+- [x] auditoría, seguridad operativa y healthchecks
+
+### Pendiente inmediato
+
+- [ ] RBAC real con guards y permisos persistidos
+- [ ] persistencia completa en PostgreSQL para los módulos que todavía usan estado local o snapshot
+- [ ] colas BullMQ para procesos asíncronos críticos y reintentos
+- [ ] hardening de checkout, pagos y revisión manual
+- [ ] observabilidad operativa más completa
+- [ ] despliegue productivo estabilizado sobre VPS, PM2 y Nginx
+
+## Fase 1. Cierre del MVP operativo
 
 ### Meta
 
-Poner en producción una plataforma comercial operable de punta a punta.
+Convertir la base funcional actual en una operación estable, persistida y segura.
 
 ### Entregables
 
-- storefront público en Next.js
-- admin base en Next.js
-- API NestJS con módulos core
-- catálogo, CMS y promociones
-- carrito, checkout y pedidos
-- pago Openpay
-- pago manual con revisión
-- onboarding de vendedor
-- códigos de vendedor y atribución
-- comisiones base y payout manual
-- lead mayorista y cotización inicial
-- puntos base por compra
-- campañas básicas y notificaciones esenciales
-- auditoría mínima en operaciones sensibles
+- RBAC real con guards por rol y permisos funcionales
+- persistencia Prisma completa para órdenes, pagos, vendedores, comisiones, mayoristas, loyalty, marketing y auditoría
+- colas BullMQ para jobs de notificación, conciliación y liquidación
+- trazabilidad de procesos críticos con reintentos e idempotencia
+- reglas de negocio cerradas para checkout, Openpay y pago manual
+- panel admin conectado a datos persistentes y no a snapshots
+- semillas, migraciones y limpieza de datos operativos
+- healthchecks y logs estructurados para operación diaria
 
-## Fase 2
+## Fase 2. Optimización comercial
 
 ### Meta
 
-Mejorar eficiencia operativa, visibilidad comercial y capacidad de crecimiento.
+Mejorar eficiencia operativa, visibilidad comercial y capacidad de crecimiento sin cambiar el modelo de monolito modular.
 
 ### Entregables
 
@@ -45,11 +63,11 @@ Mejorar eficiencia operativa, visibilidad comercial y capacidad de crecimiento.
 - refinamiento del CMS y bloques reutilizables
 - optimizaciones de UX móvil y performance
 
-## Fase 3
+## Fase 3. Escala controlada
 
 ### Meta
 
-Escalar la plataforma con más automatización y control de negocio.
+Escalar la plataforma con más automatización, control de negocio y lectura analítica.
 
 ### Entregables
 
@@ -62,17 +80,19 @@ Escalar la plataforma con más automatización y control de negocio.
 
 ## Dependencias entre fases
 
-- Fase 2 depende de que MVP cierre correctamente el circuito transaccional.
-- Fase 3 depende de señales reales de uso y de estabilidad operativa.
+- Fase 1 depende de cerrar la persistencia real y la autorización por rol.
+- Fase 2 depende de que el circuito transaccional y los jobs asíncronos queden estables.
+- Fase 3 depende de señales reales de uso, volumen y estabilidad operativa.
 - Ninguna fase justifica adelantar microservicios sin evidencia clara.
 
 ## Criterios para mover de fase
 
-### De MVP a Fase 2
+### De Fase 1 a Fase 2
 
 - operación diaria estable
-- flujos críticos sin retrabajo manual excesivo
-- métricas básicas de conversión, pagos y comisiones disponibles
+- flujos críticos con trazabilidad y reintentos resueltos
+- métricas básicas de conversión, pagos, comisiones y notificaciones disponibles
+- admin operativo sin dependencia de datos en memoria o snapshots
 
 ### De Fase 2 a Fase 3
 
@@ -83,4 +103,5 @@ Escalar la plataforma con más automatización y control de negocio.
 
 - cerrar primero fundamentos de datos, API y backoffice
 - construir la web con foco en conversión y claridad de marca
+- tratar la documentación como fuente de verdad para tickets, QA y despliegue
 - usar el roadmap como fuente para épicas y tickets
