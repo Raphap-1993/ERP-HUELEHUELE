@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import {
+  type AdminOrderDetail,
   featuredProducts,
   type CheckoutActionSummary,
   type CheckoutQuoteInput,
@@ -11,6 +12,7 @@ import {
   PaymentStatus
 } from "@huelegood/shared";
 import { actionResponse, wrapResponse } from "../../common/response";
+import { OrdersService } from "../orders/orders.service";
 
 interface CatalogProductLookup {
   slug: string;
@@ -33,8 +35,6 @@ const productMap = new Map<string, CatalogProductLookup>(
   ])
 );
 
-let checkoutSequence = 10042;
-
 function normalizeCode(value?: string) {
   return value?.trim().toUpperCase() || undefined;
 }
@@ -45,6 +45,8 @@ function roundCurrency(value: number) {
 
 @Injectable()
 export class CommerceService {
+  constructor(private readonly ordersService: OrdersService) {}
+
   quote(body: CheckoutQuoteInput) {
     return wrapResponse<CheckoutQuoteSummary>(this.buildQuote(body), {
       calculatedAt: new Date().toISOString()
@@ -53,39 +55,44 @@ export class CommerceService {
 
   createOpenpayCheckout(body: CheckoutRequestInput) {
     const quote = this.buildQuote(body);
-    const orderNumber = this.nextOrderNumber();
+    const orderNumber = this.ordersService.reserveOrderNumber();
     const providerReference = `OP-${orderNumber}`;
+    const nextStep = "Redirige al checkout del proveedor para autorizar el cobro.";
+    const order = this.ordersService.createCheckoutOrder({
+      orderNumber,
+      quote,
+      request: body,
+      orderStatus: OrderStatus.PendingPayment,
+      paymentStatus: PaymentStatus.Initiated,
+      providerReference,
+      checkoutUrl: `https://sandbox.openpay.local/checkout/${orderNumber}`
+    });
 
     return {
       ...actionResponse("queued", "Checkout preparado para Openpay.", orderNumber),
-      order: this.buildActionPayload({
-        orderNumber,
-        orderStatus: OrderStatus.PendingPayment,
-        paymentStatus: PaymentStatus.Initiated,
-        providerReference,
-        nextStep: "Redirige al checkout del proveedor para autorizar el cobro.",
-        checkoutUrl: `https://sandbox.openpay.local/checkout/${orderNumber}`
-      }),
+      order: this.buildActionPayload(order, nextStep),
       quote
     };
   }
 
   createManualCheckout(body: CheckoutRequestInput) {
     const quote = this.buildQuote(body);
-    const orderNumber = this.nextOrderNumber();
+    const orderNumber = this.ordersService.reserveOrderNumber();
     const providerReference = `MP-${orderNumber}`;
+    const nextStep = "Solicita al cliente subir el comprobante y espera validación operativa.";
+    const order = this.ordersService.createCheckoutOrder({
+      orderNumber,
+      quote,
+      request: body,
+      orderStatus: OrderStatus.PaymentUnderReview,
+      paymentStatus: PaymentStatus.Pending,
+      providerReference,
+      manualStatus: ManualPaymentRequestStatus.UnderReview
+    });
 
     return {
       ...actionResponse("pending_review", "Pago manual registrado para revisión interna.", orderNumber),
-      order: this.buildActionPayload({
-        orderNumber,
-        orderStatus: OrderStatus.PaymentUnderReview,
-        paymentStatus: PaymentStatus.Pending,
-        manualStatus: ManualPaymentRequestStatus.Submitted,
-        providerReference,
-        nextStep: "Solicita al cliente subir el comprobante y espera validación operativa.",
-        evidenceRequired: true
-      }),
+      order: this.buildActionPayload(order, nextStep, true),
       quote
     };
   }
@@ -167,30 +174,20 @@ export class CommerceService {
     return Math.min(rate, 0.2);
   }
 
-  private buildActionPayload(input: {
-    orderNumber: string;
-    orderStatus: OrderStatus;
-    paymentStatus: PaymentStatus;
-    providerReference: string;
-    nextStep: string;
-    checkoutUrl?: string;
-    manualStatus?: ManualPaymentRequestStatus;
-    evidenceRequired?: boolean;
-  }): CheckoutActionSummary {
+  private buildActionPayload(order: AdminOrderDetail, nextStep: string, evidenceRequired = false): CheckoutActionSummary {
     return {
-      orderNumber: input.orderNumber,
-      orderStatus: input.orderStatus,
-      paymentStatus: input.paymentStatus,
-      providerReference: input.providerReference,
-      nextStep: input.nextStep,
-      checkoutUrl: input.checkoutUrl,
-      manualStatus: input.manualStatus,
-      evidenceRequired: input.evidenceRequired
+      orderNumber: order.orderNumber,
+      orderStatus: order.orderStatus,
+      paymentStatus: order.paymentStatus,
+      paymentMethod: order.paymentMethod,
+      manualStatus: order.manualStatus,
+      manualRequestId: order.manualRequestId,
+      manualEvidenceReference: order.manualEvidenceReference,
+      manualEvidenceNotes: order.manualEvidenceNotes,
+      providerReference: order.providerReference,
+      nextStep,
+      checkoutUrl: order.checkoutUrl,
+      evidenceRequired
     };
-  }
-
-  private nextOrderNumber() {
-    checkoutSequence += 1;
-    return `HG-${checkoutSequence}`;
   }
 }

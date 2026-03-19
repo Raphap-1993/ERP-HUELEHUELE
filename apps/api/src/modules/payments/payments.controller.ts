@@ -1,9 +1,15 @@
 import { Body, Controller, Get, Param, Post } from "@nestjs/common";
-import { PaymentsService, type ManualReviewActionInput } from "./payments.service";
+import { type ManualReviewActionInput } from "@huelegood/shared";
+import { PaymentsService } from "./payments.service";
 
 @Controller("admin/payments")
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
+
+  @Get()
+  listPayments() {
+    return this.paymentsService.listPayments();
+  }
 
   @Get("manual-requests")
   listManualRequests() {

@@ -87,6 +87,8 @@ export function CheckoutWorkspace() {
   const [vendorCode, setVendorCode] = useState("VEND-014");
   const [couponCode, setCouponCode] = useState("RESET10");
   const [notes, setNotes] = useState("Cliente en ruta comercial activa.");
+  const [manualEvidenceReference, setManualEvidenceReference] = useState("comprobante-hg-10041.jpg");
+  const [manualEvidenceNotes, setManualEvidenceNotes] = useState("Comprobante adjunto desde checkout.");
   const [customer, setCustomer] = useState<CustomerForm>({
     firstName: "Laura",
     lastName: "Mendoza",
@@ -115,7 +117,11 @@ export function CheckoutWorkspace() {
       orderNumber: string;
       orderStatus: string;
       paymentStatus: string;
+      paymentMethod: PaymentMethod;
       manualStatus?: string;
+      manualRequestId?: string;
+      manualEvidenceReference?: string;
+      manualEvidenceNotes?: string;
       providerReference: string;
       nextStep: string;
       checkoutUrl?: string;
@@ -273,7 +279,13 @@ export function CheckoutWorkspace() {
       couponCode: couponCode.trim() || undefined,
       notes,
       customer,
-      address
+      address,
+      ...(paymentMethod === "manual"
+        ? {
+            manualEvidenceReference: manualEvidenceReference.trim() || undefined,
+            manualEvidenceNotes: manualEvidenceNotes.trim() || undefined
+          }
+        : {})
     };
 
     try {
@@ -465,6 +477,28 @@ export function CheckoutWorkspace() {
                 <Input value={couponCode} onChange={(event) => setCouponCode(event.target.value)} placeholder="Cupón" />
               </div>
               <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Notas internas" />
+              {paymentMethod === "manual" ? (
+                <div className="space-y-4 rounded-3xl border border-black/10 bg-black/[0.02] p-4">
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-[#132016]">Comprobante manual</p>
+                    <p className="text-xs text-black/55">
+                      Registra una referencia clara para que el backoffice pueda revisar el pago sin ambigüedad.
+                    </p>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Input
+                      value={manualEvidenceReference}
+                      onChange={(event) => setManualEvidenceReference(event.target.value)}
+                      placeholder="comprobante-hg-10041.jpg"
+                    />
+                    <Input
+                      value={manualEvidenceNotes}
+                      onChange={(event) => setManualEvidenceNotes(event.target.value)}
+                      placeholder="Transferencia enviada desde banco móvil"
+                    />
+                  </div>
+                </div>
+              ) : null}
 
               <div className="flex flex-wrap gap-3">
                 <Button type="button" onClick={handleSubmit} disabled={submitting || activeItems.length === 0}>
@@ -534,6 +568,29 @@ export function CheckoutWorkspace() {
                       <p>
                         <strong>Payment status:</strong> {result.order.paymentStatus}
                       </p>
+                      <p>
+                        <strong>Método:</strong> {result.order.paymentMethod === "manual" ? "Pago manual" : "Openpay"}
+                      </p>
+                      {result.order.manualRequestId ? (
+                        <p>
+                          <strong>Solicitud manual:</strong> {result.order.manualRequestId}
+                        </p>
+                      ) : null}
+                      {result.order.manualEvidenceReference ? (
+                        <p>
+                          <strong>Comprobante:</strong> {result.order.manualEvidenceReference}
+                        </p>
+                      ) : null}
+                      {result.order.manualEvidenceNotes ? (
+                        <p>
+                          <strong>Notas del comprobante:</strong> {result.order.manualEvidenceNotes}
+                        </p>
+                      ) : null}
+                      {result.order.evidenceRequired ? (
+                        <p>
+                          <strong>Evidencia requerida:</strong> Sí
+                        </p>
+                      ) : null}
                       <p>
                         <strong>Siguiente paso:</strong> {result.order.nextStep}
                       </p>

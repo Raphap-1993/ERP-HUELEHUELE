@@ -2,6 +2,7 @@ import type {
   CampaignRecipientStatus,
   ManualPaymentRequestStatus,
   OrderStatus,
+  NotificationStatus,
   PaymentStatus,
   RoleCode
 } from "../domain/enums";
@@ -128,6 +129,8 @@ export interface CheckoutRequestInput {
   vendorCode?: string;
   couponCode?: string;
   notes?: string;
+  manualEvidenceReference?: string;
+  manualEvidenceNotes?: string;
 }
 
 export interface CheckoutQuoteInput {
@@ -141,11 +144,129 @@ export interface CheckoutActionSummary {
   orderNumber: string;
   orderStatus: OrderStatus;
   paymentStatus: PaymentStatus;
+  paymentMethod: "openpay" | "manual";
   manualStatus?: ManualPaymentRequestStatus;
+  manualRequestId?: string;
+  manualEvidenceReference?: string;
+  manualEvidenceNotes?: string;
   providerReference: string;
   nextStep: string;
   checkoutUrl?: string;
   evidenceRequired?: boolean;
+}
+
+export interface OrderItemSummary {
+  slug: string;
+  name: string;
+  sku: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
+export interface OrderCustomerSummary {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+}
+
+export interface OrderAddressSummary {
+  label?: string;
+  recipientName: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  region: string;
+  postalCode: string;
+  countryCode: string;
+}
+
+export interface OrderStatusHistorySummary {
+  status: OrderStatus;
+  label: string;
+  actor: string;
+  occurredAt: string;
+  note: string;
+}
+
+export interface AdminPaymentSummary {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  provider: "openpay" | "manual";
+  status: PaymentStatus;
+  amount: number;
+  currencyCode: string;
+  manualStatus?: ManualPaymentRequestStatus;
+  notificationStatus: NotificationStatus;
+  evidenceReference?: string;
+  updatedAt: string;
+}
+
+export interface AdminManualPaymentRequestSummary {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  amount: number;
+  currencyCode: string;
+  status: ManualPaymentRequestStatus;
+  evidenceReference?: string;
+  evidenceNotes?: string;
+  submittedAt: string;
+  reviewedAt?: string;
+  reviewer?: string;
+  notes?: string;
+}
+
+export interface AdminOrderSummary {
+  orderNumber: string;
+  customerName: string;
+  total: number;
+  currencyCode: string;
+  orderStatus: OrderStatus;
+  paymentStatus: PaymentStatus;
+  paymentMethod: "openpay" | "manual";
+  vendorCode?: string;
+  manualStatus?: ManualPaymentRequestStatus;
+  providerReference: string;
+  updatedAt: string;
+  createdAt: string;
+  itemCount: number;
+}
+
+export interface AdminOrderDetail {
+  orderNumber: string;
+  customer: OrderCustomerSummary;
+  address: OrderAddressSummary;
+  items: OrderItemSummary[];
+  subtotal: number;
+  discount: number;
+  shipping: number;
+  total: number;
+  currencyCode: string;
+  paymentMethod: "openpay" | "manual";
+  orderStatus: OrderStatus;
+  paymentStatus: PaymentStatus;
+  vendorCode?: string;
+  couponCode?: string;
+  notes?: string;
+  providerReference: string;
+  checkoutUrl?: string;
+  manualStatus?: ManualPaymentRequestStatus;
+  manualRequestId?: string;
+  manualEvidenceReference?: string;
+  manualEvidenceNotes?: string;
+  statusHistory: OrderStatusHistorySummary[];
+  payment: AdminPaymentSummary;
+  manualRequest?: AdminManualPaymentRequestSummary;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ManualReviewActionInput {
+  reviewer?: string;
+  notes?: string;
 }
 
 export interface StorefrontPagePayload {

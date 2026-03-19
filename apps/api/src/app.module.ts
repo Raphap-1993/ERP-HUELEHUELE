@@ -14,6 +14,7 @@ import {
   MarketingModule,
   NotificationsModule,
   PaymentsModule,
+  OrdersModule,
   VendorsModule,
   WholesaleModule
 } from "./modules";
@@ -35,8 +36,8 @@ import {
     AuditModule,
     AuthModule,
     CustomersModule,
-    CommerceModule
+    CommerceModule,
+    OrdersModule
   ]
 })
 export class AppModule {}
-
