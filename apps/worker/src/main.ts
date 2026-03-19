@@ -15,6 +15,18 @@ interface NotificationsSnapshot {
   logs: NotificationLogSummary[];
 }
 
+function writeWorkerLog(level: "info" | "warn" | "error", event: string, payload: Record<string, unknown>) {
+  process.stdout.write(
+    `${JSON.stringify({
+      timestamp: new Date().toISOString(),
+      service: "huelegood-worker",
+      level,
+      event,
+      ...payload
+    })}\n`
+  );
+}
+
 function createPrismaClient() {
   if (!isConfigured(process.env.DATABASE_URL)) {
     return null;
@@ -54,7 +66,9 @@ async function loadNotificationsSnapshot(prisma: PrismaClient | null): Promise<N
 
     return row.snapshot as unknown as NotificationsSnapshot;
   } catch (error) {
-    console.warn("[worker] no pudimos cargar el snapshot de notifications", error);
+    writeWorkerLog("warn", "notifications.snapshot.load_failed", {
+      error: error instanceof Error ? error.message : "unknown_error"
+    });
     return null;
   }
 }
@@ -80,7 +94,9 @@ async function saveNotificationsSnapshot(prisma: PrismaClient | null, snapshot: 
       }
     });
   } catch (error) {
-    console.warn("[worker] no pudimos guardar el snapshot de notifications", error);
+    writeWorkerLog("warn", "notifications.snapshot.save_failed", {
+      error: error instanceof Error ? error.message : "unknown_error"
+    });
   }
 }
 
@@ -90,7 +106,12 @@ async function processNotificationDispatch(
 ) {
   const snapshot = await loadNotificationsSnapshot(prisma);
   if (!snapshot) {
-    console.warn(`[worker] no existe snapshot de notifications para ${job.data.notificationId}`);
+    writeWorkerLog("warn", "notifications.dispatch.skipped", {
+      reason: "missing_snapshot",
+      notificationId: job.data.notificationId,
+      queueName: job.queueName,
+      jobId: job.id
+    });
     return {
       status: "skipped",
       reason: "missing_snapshot"
@@ -99,7 +120,12 @@ async function processNotificationDispatch(
 
   const notification = snapshot.notifications.find((item) => item.id === job.data.notificationId);
   if (!notification) {
-    console.warn(`[worker] no encontramos la notificación ${job.data.notificationId}`);
+    writeWorkerLog("warn", "notifications.dispatch.skipped", {
+      reason: "missing_notification",
+      notificationId: job.data.notificationId,
+      queueName: job.queueName,
+      jobId: job.id
+    });
     return {
       status: "skipped",
       reason: "missing_notification"
@@ -137,18 +163,14 @@ async function processNotificationDispatch(
 
   await saveNotificationsSnapshot(prisma, snapshot);
 
-  console.log(
-    `[worker] notifications.notification.dispatch ${notification.id}`,
-    JSON.stringify(
-      {
-        status: notification.status,
-        sentAt: notification.sentAt,
-        requestedAt: job.data.requestedAt
-      },
-      null,
-      2
-    )
-  );
+  writeWorkerLog("info", "notifications.dispatch.processed", {
+    notificationId: notification.id,
+    status: notification.status,
+    sentAt: notification.sentAt,
+    requestedAt: job.data.requestedAt,
+    queueName: job.queueName,
+    jobId: job.id
+  });
 
   return {
     status: "processed",
@@ -166,17 +188,12 @@ const processor: Processor = async (job) => {
     return processNotificationDispatch(prisma, job as Job<NotificationDispatchJobData>);
   }
 
-  console.log(
-    `[worker] ${job.queueName}:${job.name}`,
-    JSON.stringify(
-      {
-        id: job.id,
-        data: job.data
-      },
-      null,
-      2
-    )
-  );
+  writeWorkerLog("info", "queue.job.processed", {
+    queueName: job.queueName,
+    jobName: job.name,
+    jobId: job.id,
+    data: job.data
+  });
 
   return {
     processedAt: nowIso(),
@@ -195,7 +212,9 @@ const workers = Object.values(QueueName).map(
 );
 
 async function shutdown(signal: NodeJS.Signals) {
-  console.log(`[worker] received ${signal}, closing workers`);
+  writeWorkerLog("info", "service.stopping", {
+    signal
+  });
   await Promise.all(workers.map((worker) => worker.close()));
   if (prisma) {
     await prisma.$disconnect();
@@ -206,7 +225,7 @@ async function shutdown(signal: NodeJS.Signals) {
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
-console.log("[worker] Huelegood worker online", {
+writeWorkerLog("info", "service.started", {
   queues: Object.values(QueueName),
   connection,
   concurrency,

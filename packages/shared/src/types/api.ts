@@ -34,6 +34,11 @@ import type {
   AuditLogSummary,
   AuditOverviewSummary,
   HealthDependencySummary,
+  ObservabilityEventSummary,
+  ObservabilityOverviewSummary,
+  ObservabilityQueueSummary,
+  ObservabilityRequestSummary,
+  ObservabilityRouteMetricSummary,
   OperationalHealthSummary,
   SecurityPostureSummary,
   WebNavigationGroup,
@@ -768,6 +773,11 @@ export interface SecurityPostureEnvelope {
 
 export interface OperationalHealthEnvelope {
   data: OperationalHealthSummary;
+  meta?: Record<string, unknown>;
+}
+
+export interface ObservabilityOverviewEnvelope {
+  data: ObservabilityOverviewSummary;
   meta?: Record<string, unknown>;
 }
 

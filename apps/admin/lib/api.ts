@@ -35,6 +35,8 @@ import type {
   NotificationLogSummary,
   NotificationSummary,
   AdminManualPaymentRequestSummary,
+  ObservabilityOverviewEnvelope,
+  ObservabilityOverviewSummary,
   AdminOrderDetail,
   AdminOrderSummary,
   AdminPaymentSummary,
@@ -329,6 +331,12 @@ export async function fetchAuditActions() {
 
 export async function fetchSecurityPosture() {
   return requestJson<SecurityPostureEnvelope>("/admin/security", {
+    cache: "no-store"
+  });
+}
+
+export async function fetchObservabilityOverview() {
+  return requestJson<ObservabilityOverviewEnvelope>("/admin/observability", {
     cache: "no-store"
   });
 }

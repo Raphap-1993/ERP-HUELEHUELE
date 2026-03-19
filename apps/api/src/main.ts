@@ -4,6 +4,17 @@ import { AppModule } from "./app.module";
 import { getPort } from "./common/env";
 import { createRateLimitMiddleware, createSecurityHeadersMiddleware } from "./common/security";
 
+function writeStructuredLog(event: string, payload: Record<string, unknown>) {
+  process.stdout.write(
+    `${JSON.stringify({
+      timestamp: new Date().toISOString(),
+      service: "huelegood-api",
+      event,
+      ...payload
+    })}\n`
+  );
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: ["error", "warn", "log"]
@@ -27,7 +38,10 @@ async function bootstrap() {
   const port = getPort(4000);
   await app.listen(port);
 
-  console.log(`Huelegood API listening on port ${port}`);
+  writeStructuredLog("service.started", {
+    port,
+    environment: process.env.NODE_ENV || "development"
+  });
 }
 
 bootstrap();

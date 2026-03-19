@@ -22,11 +22,11 @@ Al `19 de marzo de 2026`, la base funcional del proyecto ya existe en el reposit
 - [x] RBAC real con guards, permisos persistidos y navegación admin filtrada por rol
 - [x] persistencia operativa en PostgreSQL para módulos stateful mediante `Prisma` + `module_snapshots`
 - [x] BullMQ operativo para notificaciones y base reutilizable para jobs asíncronos
+- [x] observabilidad operativa con logs estructurados, métricas HTTP, colas y eventos de dominio
 
 ### Pendiente inmediato
 
 - [ ] ampliación de jobs BullMQ a conciliación y liquidación donde aporte valor operativo
-- [ ] observabilidad operativa más completa
 - [ ] despliegue productivo estabilizado sobre VPS, PM2 y Nginx
 
 ## Fase 1. Cierre del MVP operativo
@@ -41,6 +41,7 @@ Convertir la base funcional actual en una operación estable, persistida y segur
 - BullMQ operativo para notificaciones y base preparada para extender jobs de conciliación y liquidación
 - trazabilidad de procesos críticos con reintentos e idempotencia
 - reglas de negocio cerradas para checkout, Openpay y pago manual con idempotencia e integridad de estados
+- observabilidad operativa con logs JSON, métricas HTTP, eventos de dominio y estado de colas desde admin
 - panel admin conectado a datos persistidos y no a estado efímero en memoria
 - semillas, migraciones y limpieza de datos operativos
 - healthchecks y logs estructurados para operación diaria

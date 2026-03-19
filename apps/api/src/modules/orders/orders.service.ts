@@ -22,6 +22,7 @@ import { wrapResponse } from "../../common/response";
 import { AuditService } from "../audit/audit.service";
 import { LoyaltyService } from "../loyalty/loyalty.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { ObservabilityService } from "../observability/observability.service";
 import { ModuleStateService } from "../../persistence/module-state.service";
 
 interface CreateCheckoutOrderInput {
@@ -219,6 +220,7 @@ export class OrdersService implements OnModuleInit {
     private readonly auditService: AuditService,
     private readonly loyaltyService: LoyaltyService,
     private readonly notificationsService: NotificationsService,
+    private readonly observabilityService: ObservabilityService,
     private readonly moduleStateService: ModuleStateService
   ) {
     this.seedInitialOrders();
@@ -406,6 +408,13 @@ export class OrdersService implements OnModuleInit {
         total: order.total
       }
     });
+    this.observabilityService.recordDomainEvent({
+      category: "checkout",
+      action: `checkout.${order.paymentMethod}.created`,
+      detail: `Se creó el pedido ${orderNumber} con total ${order.total} ${order.currencyCode}.`,
+      relatedType: "order",
+      relatedId: orderNumber
+    });
 
     void this.persistState();
 
@@ -591,6 +600,13 @@ export class OrdersService implements OnModuleInit {
           reviewer: input.reviewer
         }
       });
+      this.observabilityService.recordDomainEvent({
+        category: "payment",
+        action: "payment.manual.approved",
+        detail: `La solicitud ${manualRequest.id} aprobó el pedido ${order.orderNumber}.`,
+        relatedType: "manual_payment_request",
+        relatedId: manualRequest.id
+      });
       void this.notificationsService.queueNotification({
         channel: NotificationChannel.Email,
         audience: manualRequest.customerName,
@@ -621,6 +637,14 @@ export class OrdersService implements OnModuleInit {
           orderNumber: order.orderNumber,
           reviewer: input.reviewer
         }
+      });
+      this.observabilityService.recordDomainEvent({
+        category: "payment",
+        action: "payment.manual.rejected",
+        severity: "warning",
+        detail: `La solicitud ${manualRequest.id} rechazó el pedido ${order.orderNumber}.`,
+        relatedType: "manual_payment_request",
+        relatedId: manualRequest.id
       });
       void this.notificationsService.queueNotification({
         channel: NotificationChannel.Email,

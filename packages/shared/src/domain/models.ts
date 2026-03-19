@@ -264,6 +264,74 @@ export interface OperationalHealthSummary {
   dependencies: HealthDependencySummary[];
 }
 
+export interface ObservabilityRequestSummary {
+  id: string;
+  requestId: string;
+  method: string;
+  path: string;
+  statusCode: number;
+  durationMs: number;
+  occurredAt: string;
+  actorUserId?: string;
+  actorName?: string;
+}
+
+export interface ObservabilityRouteMetricSummary {
+  key: string;
+  method: string;
+  path: string;
+  totalRequests: number;
+  clientErrorRequests: number;
+  serverErrorRequests: number;
+  averageDurationMs: number;
+  p95DurationMs: number;
+  maxDurationMs: number;
+  lastRequestAt?: string;
+}
+
+export interface ObservabilityEventSummary {
+  id: string;
+  category: "http" | "checkout" | "payment" | "notification" | "queue" | "system";
+  action: string;
+  severity: AuditSeverity;
+  detail: string;
+  relatedType?: string;
+  relatedId?: string;
+  occurredAt: string;
+}
+
+export interface ObservabilityQueueSummary {
+  queueName: string;
+  status: "healthy" | "degraded" | "missing";
+  waiting: number;
+  active: number;
+  delayed: number;
+  completed: number;
+  failed: number;
+  checkedAt: string;
+  detail?: string;
+}
+
+export interface ObservabilityOverviewSummary {
+  service: string;
+  generatedAt: string;
+  requestIdHeader: string;
+  requests: {
+    totalRequests: number;
+    successRequests: number;
+    clientErrorRequests: number;
+    serverErrorRequests: number;
+    blockedRequests: number;
+    averageDurationMs: number;
+    p95DurationMs: number;
+    lastRequestAt?: string;
+  };
+  recentRequests: ObservabilityRequestSummary[];
+  topRoutes: ObservabilityRouteMetricSummary[];
+  events: ObservabilityEventSummary[];
+  queues: ObservabilityQueueSummary[];
+}
+
 export interface CmsSeoMeta {
   pageSlug: string;
   title: string;

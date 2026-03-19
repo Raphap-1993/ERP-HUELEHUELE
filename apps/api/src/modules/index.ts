@@ -1,4 +1,5 @@
 export * from "./health/health.module";
+export * from "./observability/observability.module";
 export * from "./catalog/catalog.module";
 export * from "./cms/cms.module";
 export * from "./core/core.module";

@@ -11,6 +11,7 @@ import { actionResponse, wrapResponse } from "../../common/response";
 import { AuditService } from "../audit/audit.service";
 import { BullMqService } from "../../persistence/bullmq.service";
 import { ModuleStateService } from "../../persistence/module-state.service";
+import { ObservabilityService } from "../observability/observability.service";
 
 interface NotificationRecord extends NotificationSummary {}
 
@@ -67,7 +68,8 @@ export class NotificationsService implements OnModuleInit {
   constructor(
     private readonly auditService: AuditService,
     private readonly moduleStateService: ModuleStateService,
-    private readonly bullMqService: BullMqService
+    private readonly bullMqService: BullMqService,
+    private readonly observabilityService: ObservabilityService
   ) {
     this.seedData();
   }
@@ -176,6 +178,13 @@ export class NotificationsService implements OnModuleInit {
         relatedId: notification.relatedId
       }
     });
+    this.observabilityService.recordDomainEvent({
+      category: "notification",
+      action: status === NotificationStatus.Pending ? "notification.queued" : "notification.created",
+      detail: `La notificación ${notification.id} quedó ${status === NotificationStatus.Pending ? "en cola" : "registrada como enviada"}.`,
+      relatedType: "notification",
+      relatedId: notification.id
+    });
     await this.recordEvent(
       status === NotificationStatus.Sent || status === NotificationStatus.Delivered ? "notification.sent" : "notification.queued",
       source,
@@ -242,6 +251,13 @@ export class NotificationsService implements OnModuleInit {
         subject: notification.subject,
         detail: normalizeText(detail)
       }
+    });
+    this.observabilityService.recordDomainEvent({
+      category: "notification",
+      action: "notification.sent",
+      detail: `La notificación ${notification.id} quedó enviada.`,
+      relatedType: "notification",
+      relatedId: notification.id
     });
     await this.recordEvent(
       "notification.sent",
