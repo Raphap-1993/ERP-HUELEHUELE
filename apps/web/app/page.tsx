@@ -1,5 +1,4 @@
 import {
-  cmsTestimonials,
   faqItems,
   featuredProducts,
   heroCopy,
@@ -20,13 +19,6 @@ async function loadHomeCms() {
   } catch {
     return null;
   }
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("es-MX", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  }).format(new Date(value));
 }
 
 function mapBanner(banner: CmsBanner): PromoBanner {
@@ -81,6 +73,24 @@ const differentiators = [
   }
 ];
 
+const routineStories = [
+  {
+    title: "Oficina y traslados",
+    tag: "Uso diario",
+    description: "Para jornadas largas, reuniones y movimiento entre puntos donde conviene tener frescura a la mano."
+  },
+  {
+    title: "Ruta y carretera",
+    tag: "Trayectos largos",
+    description: "Fácil de llevar en carro o mochila cuando el día pasa entre tráfico, carretera y cambios de ritmo."
+  },
+  {
+    title: "Viajes y altura",
+    tag: "Movimiento constante",
+    description: "Ligero, práctico y listo para acompañarte cuando sales de ciudad, cambias de clima o viajas seguido."
+  }
+];
+
 const trustPoints = [
   { value: "Fresco", label: "sensacion herbal lista para acompanarte" },
   { value: "Portable", label: "cabe en bolso, carro o escritorio" },
@@ -93,7 +103,6 @@ export default async function HomePage() {
   const hero = cms?.heroCopy ?? heroCopy;
   const banners = cms?.banners.filter((banner) => banner.status === "active").map(mapBanner) ?? promoBanners;
   const faqs = cms?.faqs.filter((faq) => faq.status === "active").map(mapFaq) ?? faqItems;
-  const testimonials = cms?.testimonials.filter((testimonial) => testimonial.status === "active") ?? cmsTestimonials;
 
   return (
     <div className="space-y-14 py-6 md:py-10">
@@ -201,24 +210,23 @@ export default async function HomePage() {
 
       <section className="space-y-6">
         <SectionHeader
-          title="Lo compran por practicidad, lo recomiendan por como se siente"
-          description="Historias de uso real en trayectos, oficina, viajes y rutinas donde tener frescura a la mano si hace diferencia."
+          title="Dónde mejor acompaña Huele Huele"
+          description="Tres contextos donde su formato portátil y su sensación fresca suelen hacer más sentido."
         />
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {testimonials.map((testimonial) => (
-            <Card key={testimonial.id} className="rounded-[2rem] border-black/8 bg-white/92">
+          {routineStories.map((story) => (
+            <Card key={story.title} className="rounded-[2rem] border-black/8 bg-white/92">
               <CardHeader>
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <CardTitle>{testimonial.name}</CardTitle>
-                    <p className="mt-1 text-sm text-black/55">{testimonial.role}</p>
+                    <CardTitle>{story.title}</CardTitle>
+                    <p className="mt-1 text-sm text-black/55">{story.tag}</p>
                   </div>
-                  <Badge tone="info">{`${testimonial.rating}/5`}</Badge>
+                  <Badge tone="success">Huele Huele</Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                <p className="text-sm leading-6 text-black/70">{testimonial.quote}</p>
-                <div className="text-xs uppercase tracking-[0.18em] text-black/45">Actualizado {formatDate(testimonial.updatedAt)}</div>
+                <p className="text-sm leading-6 text-black/70">{story.description}</p>
               </CardContent>
             </Card>
           ))}
@@ -243,8 +251,7 @@ export default async function HomePage() {
             <div className="space-y-3">
               <CardTitle className="text-3xl md:text-4xl">Tu formato favorito para moverte ligero.</CardTitle>
               <p className="max-w-2xl text-base leading-7 text-black/66">
-                Producto primero, sensacion clara y compra visible. La home ya queda lista para seguir montando foto real
-                del producto sin rehacer la estructura visual.
+                Un formato pensado para acompañarte en trayectos, oficina y viaje con una sensación clara, práctica y fácil de llevar.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">

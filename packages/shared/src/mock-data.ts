@@ -185,7 +185,7 @@ export const wholesalePlans: WholesalePlan[] = [
     minimumUnits: 50,
     savingsLabel: "hasta 25%",
     description: "Pensado para volumen estable y acuerdos de continuidad.",
-    perks: ["Precio preferente", "Soporte interno", "Historial de compras"],
+    perks: ["Precio preferente", "Acompañamiento comercial", "Historial de pedidos"],
     ctaLabel: "Hablar con ventas",
     ctaHref: "/trabaja-con-nosotros"
   }
@@ -212,27 +212,27 @@ export const faqItems: FaqItem[] = [
 export const cmsTestimonials: CmsTestimonial[] = [
   {
     id: "tst-001",
-    name: "Laura Mendoza",
-    role: "Oficina y traslados",
-    quote: "Lo llevo siempre en la bolsa. Me gusta porque es práctico, se siente fresco y no me complica el día.",
+    name: "Rutina de oficina",
+    role: "Uso diario",
+    quote: "Ideal para tener frescura a la mano durante jornadas largas, reuniones y traslados diarios.",
     rating: 5,
     status: "active",
     updatedAt: "2026-03-18T10:15:00.000Z"
   },
   {
     id: "tst-002",
-    name: "Carlos Gómez",
+    name: "Ruta y carretera",
     role: "Ruta y carretera",
-    quote: "En viajes largos me funciona perfecto porque cabe en cualquier lado y siempre lo tengo a la mano.",
+    quote: "Práctico para trayectos largos porque cabe fácil en carro, mochila o bolsa y siempre queda a mano.",
     rating: 5,
     status: "active",
     updatedAt: "2026-03-18T10:20:00.000Z"
   },
   {
     id: "tst-003",
-    name: "Sofía Rivera",
+    name: "Viajes y altura",
     role: "Viajes y altura",
-    quote: "Me gusta porque se siente limpio, portable y con una imagen mucho más cuidada que otras opciones.",
+    quote: "Su formato ligero y su sensación fresca lo hacen cómodo para viajar y moverse entre ciudades.",
     rating: 5,
     status: "active",
     updatedAt: "2026-03-18T10:30:00.000Z"
