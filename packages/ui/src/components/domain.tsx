@@ -468,11 +468,13 @@ export function PublicBrandStrip() {
 export function AdminSidebarLinkGroup({
   roles,
   currentPath,
-  variant = "light"
+  variant = "light",
+  onNavigate
 }: {
   roles?: readonly RoleCode[];
   currentPath?: string;
   variant?: "light" | "dark";
+  onNavigate?: () => void;
 }) {
   const groups = filterNavigationGroupsByRoles(adminNavigation, roles);
 
@@ -501,6 +503,8 @@ export function AdminSidebarLinkGroup({
                   href={item.href}
                   target={item.external ? "_blank" : undefined}
                   rel={item.external ? "noreferrer" : undefined}
+                  onClick={onNavigate}
+                  aria-current={isActive ? "page" : undefined}
                   className={cn("block rounded-2xl px-4 py-2 text-sm transition", linkBaseClass, isActive && activeClass)}
                 >
                   {item.label}
