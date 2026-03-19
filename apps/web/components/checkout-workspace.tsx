@@ -85,26 +85,26 @@ export function CheckoutWorkspace() {
   ]);
   const [session, setSession] = useState<AuthSessionSummary | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("openpay");
-  const [vendorCode, setVendorCode] = useState("VEND-014");
-  const [couponCode, setCouponCode] = useState("RESET10");
-  const [notes, setNotes] = useState("Cliente en ruta comercial activa.");
-  const [manualEvidenceReference, setManualEvidenceReference] = useState("comprobante-hg-10041.jpg");
-  const [manualEvidenceNotes, setManualEvidenceNotes] = useState("Comprobante adjunto desde checkout.");
+  const [vendorCode, setVendorCode] = useState("");
+  const [couponCode, setCouponCode] = useState("");
+  const [notes, setNotes] = useState("");
+  const [manualEvidenceReference, setManualEvidenceReference] = useState("");
+  const [manualEvidenceNotes, setManualEvidenceNotes] = useState("");
   const [customer, setCustomer] = useState<CustomerForm>({
-    firstName: "Laura",
-    lastName: "Mendoza",
-    email: "cliente@huelegood.com",
-    phone: "+51 999 000 000"
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: ""
   });
   const [address, setAddress] = useState<AddressForm>({
-    label: "Casa",
-    recipientName: "Laura Mendoza",
-    line1: "Av. Principal 123",
-    line2: "Piso 4",
-    city: "Lima",
-    region: "Lima",
-    postalCode: "15001",
-    countryCode: "PE"
+    label: "",
+    recipientName: "",
+    line1: "",
+    line2: "",
+    city: "",
+    region: "",
+    postalCode: "",
+    countryCode: ""
   });
   const [quote, setQuote] = useState<CheckoutQuoteSummary | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
@@ -366,7 +366,7 @@ export function CheckoutWorkspace() {
           <Card>
             <CardHeader>
               <CardTitle>Productos seleccionados</CardTitle>
-              <CardDescription>Agrega referencias desde el catálogo o ajusta cantidad aquí mismo.</CardDescription>
+              <CardDescription>Agrega productos desde el catálogo o ajusta la cantidad aquí mismo.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-3 md:grid-cols-[1fr_auto]">
@@ -401,7 +401,7 @@ export function CheckoutWorkspace() {
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <p className="font-semibold text-[#132016]">{product?.name ?? item.slug}</p>
-                          <p className="text-sm text-black/55">{product?.sku ?? "SKU pendiente"}</p>
+                          <p className="text-sm text-black/55">{product?.sku ?? "Referencia del producto"}</p>
                         </div>
                         <Badge tone="neutral">{product?.categorySlug ?? "productos"}</Badge>
                       </div>
@@ -429,7 +429,7 @@ export function CheckoutWorkspace() {
           <Card>
             <CardHeader>
               <CardTitle>Datos del cliente y envío</CardTitle>
-              <CardDescription>Información mínima para crear el pedido y su traza operativa.</CardDescription>
+              <CardDescription>Completa los datos necesarios para entregar tu pedido correctamente.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               <Input
@@ -501,7 +501,7 @@ export function CheckoutWorkspace() {
           <Card>
             <CardHeader>
               <CardTitle>Pago y reglas comerciales</CardTitle>
-              <CardDescription>Define método, vendedor y cupón antes de enviar el checkout.</CardDescription>
+              <CardDescription>Elige tu método de pago y agrega un código si cuentas con uno.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-wrap gap-2">
@@ -514,28 +514,28 @@ export function CheckoutWorkspace() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <Input value={vendorCode} onChange={(event) => setVendorCode(event.target.value)} placeholder="Código de vendedor" />
-                <Input value={couponCode} onChange={(event) => setCouponCode(event.target.value)} placeholder="Cupón" />
+                <Input value={vendorCode} onChange={(event) => setVendorCode(event.target.value)} placeholder="Código de vendedor o recomendación (opcional)" />
+                <Input value={couponCode} onChange={(event) => setCouponCode(event.target.value)} placeholder="Cupón de descuento (opcional)" />
               </div>
-              <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Notas internas" />
+              <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Indicaciones para tu pedido (opcional)" />
               {paymentMethod === "manual" ? (
                 <div className="space-y-4 rounded-3xl border border-black/10 bg-black/[0.02] p-4">
                   <div className="space-y-1">
                     <p className="text-sm font-semibold text-[#132016]">Comprobante manual</p>
                     <p className="text-xs text-black/55">
-                      Registra una referencia clara para que el backoffice pueda revisar el pago sin ambigüedad.
+                      Comparte una referencia clara para identificar tu pago y agilizar la validación.
                     </p>
                   </div>
                   <div className="grid gap-4 md:grid-cols-2">
                     <Input
                       value={manualEvidenceReference}
                       onChange={(event) => setManualEvidenceReference(event.target.value)}
-                      placeholder="comprobante-hg-10041.jpg"
+                      placeholder="Referencia o nombre del comprobante"
                     />
                     <Input
                       value={manualEvidenceNotes}
                       onChange={(event) => setManualEvidenceNotes(event.target.value)}
-                      placeholder="Transferencia enviada desde banco móvil"
+                      placeholder="Ejemplo: transferencia enviada desde banca móvil"
                     />
                   </div>
                 </div>
@@ -543,7 +543,7 @@ export function CheckoutWorkspace() {
 
               <div className="flex flex-wrap gap-3">
                 <Button type="button" onClick={handleSubmit} disabled={submitting || activeItems.length === 0}>
-                  {submitting ? "Procesando..." : paymentMethod === "openpay" ? "Crear checkout Openpay" : "Crear pago manual"}
+                  {submitting ? "Procesando..." : paymentMethod === "openpay" ? "Pagar con Openpay" : "Enviar pago manual"}
                 </Button>
                 <Button
                   type="button"
@@ -566,7 +566,7 @@ export function CheckoutWorkspace() {
             <Card>
               <CardHeader>
                 <CardTitle>Resumen</CardTitle>
-                <CardDescription>{quoteLoading ? "Calculando totales..." : "Totales calculados por el API de checkout."}</CardDescription>
+                <CardDescription>{quoteLoading ? "Calculando totales..." : "Totales actualizados al momento de tu compra."}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <CheckoutSummary
@@ -592,8 +592,8 @@ export function CheckoutWorkspace() {
             {result ? (
               <Card>
                 <CardHeader>
-                  <CardTitle>Resultado</CardTitle>
-                  <CardDescription>Respuesta consolidada del flujo de checkout.</CardDescription>
+                  <CardTitle>Confirmación</CardTitle>
+                  <CardDescription>Resumen de tu compra y siguientes pasos.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="rounded-3xl bg-[#132016] px-5 py-4 text-white">
@@ -607,10 +607,10 @@ export function CheckoutWorkspace() {
                         <strong>Pedido:</strong> {result.order.orderNumber}
                       </p>
                       <p>
-                        <strong>Order status:</strong> {result.order.orderStatus}
+                        <strong>Estado del pedido:</strong> {result.order.orderStatus}
                       </p>
                       <p>
-                        <strong>Payment status:</strong> {result.order.paymentStatus}
+                        <strong>Estado del pago:</strong> {result.order.paymentStatus}
                       </p>
                       <p>
                         <strong>Método:</strong> {result.order.paymentMethod === "manual" ? "Pago manual" : "Openpay"}
@@ -651,23 +651,22 @@ export function CheckoutWorkspace() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Session y trazabilidad</CardTitle>
-                <CardDescription>El checkout puede usar la sesión auth para autocompletar cliente.</CardDescription>
+                <CardTitle>Datos aplicados</CardTitle>
+                <CardDescription>Si tienes sesión activa, tus datos pueden autocompletarse para una compra más rápida.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-black/65">
                 <p>
-                  <strong>Sesión:</strong> {session ? `${session.user.name} · ${session.user.email}` : "Sin sesión"}
+                  <strong>Sesión:</strong> {session ? `${session.user.name} · ${session.user.email}` : "Compra como invitado"}
                 </p>
                 <p>
-                  <strong>Vendedor:</strong> {vendorCode || "Sin código"}
+                  <strong>Código aplicado:</strong> {vendorCode || "Ninguno"}
                 </p>
                 <p>
                   <strong>Cupón:</strong> {couponCode || "Sin cupón"}
                 </p>
                 <Separator />
                 <p>
-                  El bloque ya conversa con el API para cotización y creación de checkout. Openpay y pago manual quedan
-                  separados en el backend.
+                  Revisa bien tus datos antes de confirmar. Si eliges pago manual, usa una referencia clara para facilitar la validación.
                 </p>
               </CardContent>
             </Card>

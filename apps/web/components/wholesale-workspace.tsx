@@ -108,7 +108,7 @@ export function WholesaleWorkspace() {
         <Card>
           <CardHeader>
             <CardTitle>Formulario comercial</CardTitle>
-            <CardDescription>Tu solicitud entra al flujo mayorista y se revisa desde el backoffice.</CardDescription>
+            <CardDescription>Tu solicitud será revisada por nuestro equipo comercial.</CardDescription>
           </CardHeader>
           <CardContent>
             <form className="space-y-4" onSubmit={handleSubmit}>

@@ -53,7 +53,7 @@ export default function VendorApplicationPage() {
             <CardContent className="space-y-3 text-sm text-white/78">
               <p>• Codigo para atribucion de ventas.</p>
               <p>• Seguimiento de comisiones.</p>
-              <p>• Base lista para crecimiento del seller panel.</p>
+              <p>• Acompañamiento comercial para crecer junto a la marca.</p>
             </CardContent>
           </Card>
         </div>

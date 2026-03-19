@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { loyaltyOverview, type AuthSessionSummary, type LoyaltyAccountSummary } from "@huelegood/shared";
+import { type AuthSessionSummary, type LoyaltyAccountSummary } from "@huelegood/shared";
 import {
   Button,
-  Badge,
   Card,
   CardContent,
   CardDescription,
@@ -17,12 +16,6 @@ import {
 } from "@huelegood/ui";
 import { clearStoredSessionToken, readStoredSessionToken, writeStoredSessionToken } from "../lib/session";
 import { fetchLoyaltySummary, fetchSession, login, logout, register } from "../lib/api";
-
-const demoAccounts = [
-  { email: "cliente@huelegood.com", password: "huelegood123", label: "Cliente demo" },
-  { email: "seller@huelegood.com", password: "huelegood123", label: "Seller demo" },
-  { email: "admin@huelegood.com", password: "huelegood123", label: "Admin demo" }
-];
 
 function splitName(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -58,13 +51,13 @@ export function AccountWorkspace() {
   const [session, setSession] = useState<AuthSessionSummary | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
   const [loadingLoyalty, setLoadingLoyalty] = useState(true);
-  const [loyaltySummary, setLoyaltySummary] = useState<LoyaltyAccountSummary | null>(loyaltyOverview[0] ?? null);
+  const [loyaltySummary, setLoyaltySummary] = useState<LoyaltyAccountSummary | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [loginForm, setLoginForm] = useState({ email: "cliente@huelegood.com", password: "huelegood123" });
+  const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [registerForm, setRegisterForm] = useState({
-    name: "Nuevo Cliente",
+    name: "",
     email: "",
     password: "",
     accountType: "customer" as "customer" | "seller",
@@ -114,6 +107,14 @@ export function AccountWorkspace() {
     let active = true;
 
     async function loadLoyalty() {
+      if (!session) {
+        if (active) {
+          setLoyaltySummary(null);
+          setLoadingLoyalty(false);
+        }
+        return;
+      }
+
       setLoadingLoyalty(true);
 
       try {
@@ -122,10 +123,10 @@ export function AccountWorkspace() {
           return;
         }
 
-        setLoyaltySummary(response.data ?? loyaltyOverview[0] ?? null);
+        setLoyaltySummary(response.data ?? null);
       } catch {
         if (active) {
-          setLoyaltySummary(loyaltyOverview[0] ?? null);
+          setLoyaltySummary(null);
         }
       } finally {
         if (active) {
@@ -139,7 +140,7 @@ export function AccountWorkspace() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [session]);
 
   const accountState = useMemo(() => {
     if (!session) {
@@ -197,16 +198,13 @@ export function AccountWorkspace() {
 
   return (
     <div className="space-y-8 py-6 md:py-10">
-      <SectionHeader
-        title="Mi cuenta"
-        description="Acceso de cliente, seller o admin demo para validar el flujo de autenticación."
-      />
+      <SectionHeader title="Mi cuenta" description="Accede a tus datos, revisa tu compra y consulta tus puntos cuando tengas sesión activa." />
 
       <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
         <Card>
           <CardHeader>
             <CardTitle>Acceso</CardTitle>
-            <CardDescription>Login y registro inicial para el bloque de auth.</CardDescription>
+            <CardDescription>Inicia sesión o crea tu cuenta para gestionar tu experiencia de compra.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex gap-2">
@@ -257,19 +255,6 @@ export function AccountWorkspace() {
                   onChange={(event) => setRegisterForm((current) => ({ ...current, password: event.target.value }))}
                   placeholder="Contraseña"
                 />
-                <select
-                  className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none"
-                  value={registerForm.accountType}
-                  onChange={(event) =>
-                    setRegisterForm((current) => ({
-                      ...current,
-                      accountType: event.target.value as "customer" | "seller"
-                    }))
-                  }
-                >
-                  <option value="customer">Cliente</option>
-                  <option value="seller">Vendedor</option>
-                </select>
                 <Input
                   value={registerForm.phone}
                   onChange={(event) => setRegisterForm((current) => ({ ...current, phone: event.target.value }))}
@@ -286,7 +271,7 @@ export function AccountWorkspace() {
         <Card>
           <CardHeader>
             <CardTitle>Sesión activa</CardTitle>
-            <CardDescription>El API devuelve un token demo y roles listos para la UI.</CardDescription>
+            <CardDescription>Consulta los datos principales de tu cuenta cuando hayas iniciado sesión.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {loadingSession ? (
@@ -299,22 +284,14 @@ export function AccountWorkspace() {
                   <p className="text-sm text-white/70">{session.user.email}</p>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  {session.user.roles.map((role) => (
-                    <Badge key={role.code} tone="info">
-                      {role.label}
-                    </Badge>
-                  ))}
-                </div>
-
                 <div className="grid gap-3 md:grid-cols-2">
                   <div className="rounded-2xl bg-black/[0.03] p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-black/40">Tipo</p>
-                    <p className="mt-2 text-sm font-semibold text-[#132016]">{session.user.accountType}</p>
+                    <p className="text-xs uppercase tracking-[0.18em] text-black/40">Cuenta</p>
+                    <p className="mt-2 text-sm font-semibold text-[#132016]">{session.user.accountType === "customer" ? "Cliente" : "Cuenta registrada"}</p>
                   </div>
                   <div className="rounded-2xl bg-black/[0.03] p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-black/40">Expira</p>
-                    <p className="mt-2 text-sm font-semibold text-[#132016]">{session.expiresAt}</p>
+                    <p className="text-xs uppercase tracking-[0.18em] text-black/40">Estado</p>
+                    <p className="mt-2 text-sm font-semibold text-[#132016]">Sesión activa</p>
                   </div>
                 </div>
 
@@ -322,10 +299,10 @@ export function AccountWorkspace() {
 
                 <div className="space-y-2 text-sm text-black/65">
                   <p>
-                    <strong>Nombre dividido:</strong> {accountState?.firstName ?? "-"} {accountState?.lastName ?? ""}
+                    <strong>Nombre:</strong> {accountState?.firstName ?? "-"} {accountState?.lastName ?? ""}
                   </p>
                   <p>
-                    <strong>Token:</strong> {session.token.slice(0, 12)}...
+                    <strong>Correo:</strong> {session.user.email}
                   </p>
                 </div>
 
@@ -335,19 +312,9 @@ export function AccountWorkspace() {
               </div>
             ) : (
               <div className="space-y-4">
-                <p className="text-sm text-black/60">No hay sesión activa. Puedes entrar con uno de estos accesos demo.</p>
-                <div className="space-y-3">
-                  {demoAccounts.map((account) => (
-                    <div key={account.email} className="rounded-2xl border border-black/10 p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div>
-                          <p className="font-semibold text-[#132016]">{account.label}</p>
-                          <p className="text-sm text-black/55">{account.email}</p>
-                        </div>
-                        <StatusBadge tone="info" label="Demo" />
-                      </div>
-                    </div>
-                  ))}
+                <p className="text-sm text-black/60">Aún no has iniciado sesión. Entra con tu cuenta o crea una para ver tus pedidos y beneficios.</p>
+                <div className="rounded-2xl border border-black/10 bg-black/[0.02] p-4 text-sm text-black/65">
+                  Tu cuenta te permitirá guardar tus datos, revisar tu compra y consultar tus puntos cuando estén disponibles.
                 </div>
               </div>
             )}
@@ -358,11 +325,13 @@ export function AccountWorkspace() {
       <Card>
         <CardHeader>
           <CardTitle>Fidelización</CardTitle>
-          <CardDescription>Puntos disponibles, puntos pendientes y canjes del perfil demo.</CardDescription>
+          <CardDescription>Consulta tus puntos disponibles, pendientes y canjes desde tu cuenta.</CardDescription>
         </CardHeader>
         <CardContent>
-          {loadingLoyalty ? (
-            <p className="text-sm text-black/55">Cargando loyalty...</p>
+          {!session ? (
+            <p className="text-sm text-black/55">Inicia sesión para consultar tu saldo de puntos y tus movimientos.</p>
+          ) : loadingLoyalty ? (
+            <p className="text-sm text-black/55">Cargando puntos...</p>
           ) : loyaltySummary ? (
             <div className="grid gap-4 md:grid-cols-4">
               <div className="rounded-2xl bg-black/[0.03] p-4">
@@ -384,7 +353,7 @@ export function AccountWorkspace() {
                   <StatusBadge tone="warning" label={redemptionLabel(loyaltySummary.redemptionStatus)} />
                 </div>
                 <p className="mt-3 text-sm leading-6 text-white/75">
-                  Los puntos se conectan al checkout y a la revisión operativa de pedidos.
+                  Tus puntos se irán reflejando conforme se confirmen tus compras y redenciones.
                 </p>
               </div>
             </div>

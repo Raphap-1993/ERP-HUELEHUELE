@@ -1086,8 +1086,8 @@ export class CmsService implements OnModuleInit {
           {
             type: "auth",
             title: "Acceso",
-            description: "Login y registro.",
-            content: "Sesión de cliente, seller o admin demo.",
+            description: "Ingreso y creación de cuenta.",
+            content: "Accede a tu cuenta para revisar pedidos, datos y beneficios.",
             position: 1,
             status: "active"
           },
@@ -1111,7 +1111,7 @@ export class CmsService implements OnModuleInit {
       {
         slug: "checkout",
         title: "Checkout",
-        description: "Openpay, pago manual y revisión.",
+        description: "Paga online o comparte tu comprobante.",
         status: "published",
         blocks: [
           {
@@ -1125,15 +1125,15 @@ export class CmsService implements OnModuleInit {
           {
             type: "payment-methods",
             title: "Pagos",
-            description: "Openpay y comprobante manual.",
-            content: "Pago online y pago manual con revisión.",
+            description: "Pago online o comprobante manual.",
+            content: "Elige tu método de pago y finaliza tu compra con claridad.",
             position: 2,
             status: "active"
           }
         ],
         seoMeta: {
           title: "Checkout Huelegood",
-          description: "Openpay y comprobante manual.",
+          description: "Paga online o comparte tu comprobante.",
           keywords: ["checkout", "openpay", "pagos"],
           canonicalPath: "/checkout",
           robots: "noindex,nofollow"
