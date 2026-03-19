@@ -1,9 +1,11 @@
 import { Body, Controller, Get, Param, Post } from "@nestjs/common";
 import {
+  adminAccessRoles,
   type LoyaltyPointsInput,
   type LoyaltyRedemptionInput,
   type LoyaltyRedemptionStatusInput
 } from "@huelegood/shared";
+import { RequireRoles } from "../auth/auth-rbac";
 import { LoyaltyService } from "./loyalty.service";
 
 @Controller("store/me/loyalty")
@@ -16,6 +18,7 @@ export class LoyaltyController {
   }
 }
 
+@RequireRoles(...adminAccessRoles.loyalty)
 @Controller("admin/loyalty")
 export class AdminLoyaltyController {
   constructor(private readonly loyaltyService: LoyaltyService) {}
@@ -26,6 +29,7 @@ export class AdminLoyaltyController {
   }
 }
 
+@RequireRoles(...adminAccessRoles.loyalty)
 @Controller("admin/loyalty/movements")
 export class LoyaltyMovementsController {
   constructor(private readonly loyaltyService: LoyaltyService) {}
@@ -41,6 +45,7 @@ export class LoyaltyMovementsController {
   }
 }
 
+@RequireRoles(...adminAccessRoles.loyalty)
 @Controller("admin/loyalty/redemptions")
 export class LoyaltyRedemptionsController {
   constructor(private readonly loyaltyService: LoyaltyService) {}
@@ -61,6 +66,7 @@ export class LoyaltyRedemptionsController {
   }
 }
 
+@RequireRoles(...adminAccessRoles.loyalty)
 @Controller("admin/loyalty/rules")
 export class LoyaltyRulesController {
   constructor(private readonly loyaltyService: LoyaltyService) {}

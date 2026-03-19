@@ -1,7 +1,9 @@
 import { Body, Controller, Get, Post } from "@nestjs/common";
-import { type NotificationInput } from "@huelegood/shared";
+import { adminAccessRoles, type NotificationInput } from "@huelegood/shared";
+import { RequireRoles } from "../auth/auth-rbac";
 import { NotificationsService } from "./notifications.service";
 
+@RequireRoles(...adminAccessRoles.notifications)
 @Controller("admin/notifications")
 export class AdminNotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
@@ -17,6 +19,7 @@ export class AdminNotificationsController {
   }
 }
 
+@RequireRoles(...adminAccessRoles.notifications)
 @Controller("admin/notifications/logs")
 export class NotificationLogsController {
   constructor(private readonly notificationsService: NotificationsService) {}

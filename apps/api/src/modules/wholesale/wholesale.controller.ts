@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Post } from "@nestjs/common";
-import { type WholesaleLeadInput, type WholesaleLeadStatusInput, type WholesaleQuoteInput } from "@huelegood/shared";
+import { adminAccessRoles, type WholesaleLeadInput, type WholesaleLeadStatusInput, type WholesaleQuoteInput } from "@huelegood/shared";
+import { RequireRoles } from "../auth/auth-rbac";
 import { WholesaleService } from "./wholesale.service";
 
 @Controller("store/wholesale-leads")
@@ -22,6 +23,7 @@ export class WholesaleTiersController {
   }
 }
 
+@RequireRoles(...adminAccessRoles.wholesale)
 @Controller("admin/wholesale-leads")
 export class AdminWholesaleLeadsController {
   constructor(private readonly wholesaleService: WholesaleService) {}
@@ -37,6 +39,7 @@ export class AdminWholesaleLeadsController {
   }
 }
 
+@RequireRoles(...adminAccessRoles.wholesale)
 @Controller("admin/wholesale-quotes")
 export class AdminWholesaleQuotesController {
   constructor(private readonly wholesaleService: WholesaleService) {}
@@ -52,6 +55,7 @@ export class AdminWholesaleQuotesController {
   }
 }
 
+@RequireRoles(...adminAccessRoles.wholesale)
 @Controller("admin/wholesale-tiers")
 export class AdminWholesaleTiersController {
   constructor(private readonly wholesaleService: WholesaleService) {}

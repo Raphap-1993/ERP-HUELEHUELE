@@ -9,7 +9,7 @@ import { clearStoredAdminSessionToken, readStoredAdminSessionToken, writeStoredA
 type AdminAuthGateProps = {
   title?: string;
   description?: string;
-  allowedRoles?: RoleCode[];
+  allowedRoles?: readonly RoleCode[];
   children: ReactNode;
 };
 

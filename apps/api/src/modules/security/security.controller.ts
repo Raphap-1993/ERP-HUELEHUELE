@@ -1,9 +1,9 @@
 import { Controller, Get } from "@nestjs/common";
-import { RoleCode } from "@huelegood/shared";
+import { adminAccessRoles } from "@huelegood/shared";
 import { RequireRoles } from "../auth/auth-rbac";
 import { SecurityService } from "./security.service";
 
-@RequireRoles(RoleCode.SuperAdmin, RoleCode.Admin)
+@RequireRoles(...adminAccessRoles.security)
 @Controller("admin/security")
 export class SecurityController {
   constructor(private readonly securityService: SecurityService) {}

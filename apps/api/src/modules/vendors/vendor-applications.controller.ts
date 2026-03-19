@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Post } from "@nestjs/common";
-import { type VendorApplicationActionInput, type VendorApplicationInput } from "@huelegood/shared";
+import { adminAccessRoles, type VendorApplicationActionInput, type VendorApplicationInput } from "@huelegood/shared";
+import { RequireRoles } from "../auth/auth-rbac";
 import { VendorsService } from "./vendors.service";
 
 @Controller("store/vendor-applications")
@@ -12,6 +13,7 @@ export class VendorApplicationsController {
   }
 }
 
+@RequireRoles(...adminAccessRoles.vendors)
 @Controller("admin/vendor-applications")
 export class AdminVendorApplicationsController {
   constructor(private readonly vendorsService: VendorsService) {}
@@ -32,6 +34,7 @@ export class AdminVendorApplicationsController {
   }
 }
 
+@RequireRoles(...adminAccessRoles.vendors)
 @Controller("admin/vendors")
 export class AdminVendorsController {
   constructor(private readonly vendorsService: VendorsService) {}

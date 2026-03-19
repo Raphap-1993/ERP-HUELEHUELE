@@ -1,7 +1,9 @@
 import { Body, Controller, Get, Param, Post } from "@nestjs/common";
-import { type CommissionPayoutInput, type CommissionPayoutSettleInput } from "@huelegood/shared";
+import { adminAccessRoles, type CommissionPayoutInput, type CommissionPayoutSettleInput } from "@huelegood/shared";
+import { RequireRoles } from "../auth/auth-rbac";
 import { CommissionsService } from "./commissions.service";
 
+@RequireRoles(...adminAccessRoles.commissions)
 @Controller("admin/commissions")
 export class CommissionsController {
   constructor(private readonly commissionsService: CommissionsService) {}

@@ -1,5 +1,6 @@
 import { Body, Controller, Get, NotFoundException, Param, Patch, Post } from "@nestjs/common";
 import {
+  adminAccessRoles,
   type CmsBannerInput,
   type CmsFaqInput,
   type CmsHeroCopyInput,
@@ -10,7 +11,9 @@ import {
   type CmsTestimonialInput
 } from "@huelegood/shared";
 import { CmsService } from "./cms.service";
+import { RequireRoles } from "../auth/auth-rbac";
 
+@RequireRoles(...adminAccessRoles.cms)
 @Controller("admin/cms")
 export class AdminCmsController {
   constructor(private readonly cmsService: CmsService) {}

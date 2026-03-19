@@ -1,7 +1,9 @@
 import { Body, Controller, Get, Post } from "@nestjs/common";
-import { type MarketingCampaignInput } from "@huelegood/shared";
+import { adminAccessRoles, type MarketingCampaignInput } from "@huelegood/shared";
+import { RequireRoles } from "../auth/auth-rbac";
 import { MarketingService } from "./marketing.service";
 
+@RequireRoles(...adminAccessRoles.marketing)
 @Controller("admin/campaigns")
 export class MarketingController {
   constructor(private readonly marketingService: MarketingService) {}
@@ -17,6 +19,7 @@ export class MarketingController {
   }
 }
 
+@RequireRoles(...adminAccessRoles.marketing)
 @Controller("admin/campaigns/segments")
 export class CampaignSegmentsController {
   constructor(private readonly marketingService: MarketingService) {}
@@ -27,6 +30,7 @@ export class CampaignSegmentsController {
   }
 }
 
+@RequireRoles(...adminAccessRoles.marketing)
 @Controller("admin/campaigns/templates")
 export class CampaignTemplatesController {
   constructor(private readonly marketingService: MarketingService) {}
@@ -37,6 +41,7 @@ export class CampaignTemplatesController {
   }
 }
 
+@RequireRoles(...adminAccessRoles.marketing)
 @Controller("admin/campaigns/events")
 export class CampaignEventsController {
   constructor(private readonly marketingService: MarketingService) {}
