@@ -25,7 +25,7 @@ require_cmd node
 mkdir -p logs
 
 echo "[release] installing dependencies"
-npm ci
+npm ci --include=dev
 
 echo "[release] generating prisma client"
 npm run prisma:generate
