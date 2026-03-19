@@ -32,6 +32,7 @@ Como base funcional, el proyecto ya cubre:
 - mayoristas, campañas y CRM básico
 - fidelización por puntos y notificaciones
 - CMS interno, auditoría, seguridad y healthchecks
+- RBAC real con guards, permisos persistidos y navegación admin filtrada por rol
 
 Como insumo funcional, se asume que la v1 de Huelegood ya comunica:
 

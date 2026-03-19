@@ -8,12 +8,38 @@ Traducir el alcance MVP en unidades de trabajo priorizadas y convertibles a tick
 
 Este backlog conserva la prioridad original del MVP, pero varias piezas ya fueron implementadas en el repositorio. Úsalo como mapa de cobertura y como referencia para cerrar pendientes, no como una lista exclusivamente futura.
 
+## Cobertura actual
+
+Ya están cubiertos en el repositorio, entre otros, los siguientes bloques:
+
+- `MVP-001` estructura base de aplicaciones
+- `MVP-002` auth y RBAC
+- `MVP-004` CMS interno básico
+- `MVP-005` catálogo y variantes
+- `MVP-008` checkout con Openpay
+- `MVP-009` flujo de pago manual
+- `MVP-010` gestión de pedidos
+- `MVP-011` captura y aplicación de código de vendedor
+- `MVP-012` onboarding de vendedores
+- `MVP-013` motor base de comisiones
+- `MVP-014` notificaciones transaccionales mínimas
+- `MVP-015` auditoría básica
+- `MVP-016` módulo mayorista
+- `MVP-017` loyalty base
+- `MVP-018` campañas y segmentos iniciales
+- `MVP-019` dashboard operacional inicial
+- `MVP-020` seller panel básico
+- `MVP-021` gestión de reglas de comisión
+- `MVP-023` cola de jobs y reintentos
+- `MVP-024` upload seguro de evidencias y assets
+- `MVP-025` healthchecks y logs estructurados
+
 ## Prioridad crítica
 
 | ID | Ítem | Resultado esperado |
 | --- | --- | --- |
 | MVP-001 | Estructura base de aplicaciones `web`, `admin`, `api`, `worker` | Repositorio listo para arrancar implementación y despliegue |
-| MVP-002 | Modelo de auth y RBAC | Roles y permisos funcionales en admin, vendedor y cliente |
+| MVP-002 | Modelo de auth y RBAC | Roles y permisos funcionales en admin, vendedor y cliente. Implementado en el repo y conectado a guards y navegación filtrada. |
 | MVP-003 | Modelo de datos inicial con Prisma | Entidades núcleo y migraciones iniciales definidas |
 | MVP-004 | CMS interno básico | Home, páginas, banners, FAQs, navegación y SEO editables |
 | MVP-005 | Catálogo y variantes | Productos publicados y administrables con stock lógico |

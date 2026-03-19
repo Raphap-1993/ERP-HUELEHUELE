@@ -18,10 +18,10 @@ Al `19 de marzo de 2026`, la base funcional del proyecto ya existe en el reposit
 - [x] fidelización por puntos y notificaciones
 - [x] CMS interno y configuración de storefront
 - [x] auditoría, seguridad operativa y healthchecks
+- [x] RBAC real con guards, permisos persistidos y navegación admin filtrada por rol
 
 ### Pendiente inmediato
 
-- [ ] RBAC real con guards y permisos persistidos
 - [ ] persistencia completa en PostgreSQL para los módulos que todavía usan estado local o snapshot
 - [ ] colas BullMQ para procesos asíncronos críticos y reintentos
 - [ ] hardening de checkout, pagos y revisión manual
@@ -36,7 +36,6 @@ Convertir la base funcional actual en una operación estable, persistida y segur
 
 ### Entregables
 
-- RBAC real con guards por rol y permisos funcionales
 - persistencia Prisma completa para órdenes, pagos, vendedores, comisiones, mayoristas, loyalty, marketing y auditoría
 - colas BullMQ para jobs de notificación, conciliación y liquidación
 - trazabilidad de procesos críticos con reintentos e idempotencia
