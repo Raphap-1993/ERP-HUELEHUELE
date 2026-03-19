@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   featuredProducts,
@@ -75,6 +75,7 @@ function buildFallbackProducts(products: CatalogProduct[]) {
 
 export function CheckoutWorkspace() {
   const searchParams = useSearchParams();
+  const checkoutRequestIdRef = useRef<string | null>(null);
   const [products, setProducts] = useState<CatalogProduct[]>(featuredProducts);
   const [items, setItems] = useState<CheckoutItemInput[]>([
     {
@@ -192,6 +193,30 @@ export function CheckoutWorkspace() {
   }, []);
 
   useEffect(() => {
+    checkoutRequestIdRef.current = null;
+  }, [
+    activeItems,
+    address.city,
+    address.countryCode,
+    address.label,
+    address.line1,
+    address.line2,
+    address.postalCode,
+    address.region,
+    address.recipientName,
+    customer.email,
+    customer.firstName,
+    customer.lastName,
+    customer.phone,
+    couponCode,
+    manualEvidenceNotes,
+    manualEvidenceReference,
+    notes,
+    paymentMethod,
+    vendorCode
+  ]);
+
+  useEffect(() => {
     if (activeItems.length === 0) {
       setQuote(null);
       setQuoteError(null);
@@ -272,6 +297,9 @@ export function CheckoutWorkspace() {
     setSubmitting(true);
     setQuoteError(null);
 
+    const clientRequestId = checkoutRequestIdRef.current ?? globalThis.crypto.randomUUID();
+    checkoutRequestIdRef.current = clientRequestId;
+
     const request: CheckoutRequestInput = {
       items: activeItems,
       paymentMethod,
@@ -280,6 +308,7 @@ export function CheckoutWorkspace() {
       notes,
       customer,
       address,
+      clientRequestId,
       ...(paymentMethod === "manual"
         ? {
             manualEvidenceReference: manualEvidenceReference.trim() || undefined,
@@ -295,6 +324,7 @@ export function CheckoutWorkspace() {
       setResult(response);
       clearStoredCart();
       setItems([]);
+      checkoutRequestIdRef.current = null;
     } catch (submitError) {
       setQuoteError(submitError instanceof Error ? submitError.message : "No pudimos crear el checkout.");
     } finally {
@@ -510,6 +540,7 @@ export function CheckoutWorkspace() {
                   onClick={() => {
                     setItems([{ slug: resolvedProducts[0].slug, quantity: 1 }]);
                     writeStoredCart([{ slug: resolvedProducts[0].slug, quantity: 1 }]);
+                    checkoutRequestIdRef.current = null;
                   }}
                 >
                   Reiniciar

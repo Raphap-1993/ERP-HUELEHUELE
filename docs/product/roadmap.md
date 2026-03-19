@@ -13,6 +13,7 @@ Al `19 de marzo de 2026`, la base funcional del proyecto ya existe en el reposit
 - [x] base de aplicaciones `web`, `admin`, `api` y `worker`
 - [x] auth, catálogo y checkout
 - [x] pedidos, pagos y flujo de revisión manual
+- [x] hardening de checkout, pagos y revisión manual con idempotencia y guards de estado
 - [x] vendedores, códigos y comisiones base
 - [x] mayoristas, campañas y CRM básico
 - [x] fidelización por puntos y notificaciones
@@ -24,7 +25,6 @@ Al `19 de marzo de 2026`, la base funcional del proyecto ya existe en el reposit
 
 ### Pendiente inmediato
 
-- [ ] hardening de checkout, pagos y revisión manual
 - [ ] ampliación de jobs BullMQ a conciliación y liquidación donde aporte valor operativo
 - [ ] observabilidad operativa más completa
 - [ ] despliegue productivo estabilizado sobre VPS, PM2 y Nginx
@@ -40,7 +40,7 @@ Convertir la base funcional actual en una operación estable, persistida y segur
 - persistencia operativa en PostgreSQL para órdenes, CMS, vendedores, comisiones, loyalty, marketing, notificaciones y módulos relacionados mediante `Prisma` + `module_snapshots`
 - BullMQ operativo para notificaciones y base preparada para extender jobs de conciliación y liquidación
 - trazabilidad de procesos críticos con reintentos e idempotencia
-- reglas de negocio cerradas para checkout, Openpay y pago manual
+- reglas de negocio cerradas para checkout, Openpay y pago manual con idempotencia e integridad de estados
 - panel admin conectado a datos persistidos y no a estado efímero en memoria
 - semillas, migraciones y limpieza de datos operativos
 - healthchecks y logs estructurados para operación diaria

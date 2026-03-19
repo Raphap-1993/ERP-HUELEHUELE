@@ -100,6 +100,6 @@ Si Openpay utiliza un estado intermedio distinto al modelo local, se persiste en
 
 ## Observaciones de implementación
 
-- El endpoint de creación de pedido debe usar idempotencia para evitar duplicados por reintento del frontend.
+- El endpoint de creación de pedido usa una clave de idempotencia para devolver el mismo pedido ante reintentos del frontend.
 - El webhook debe validar firma y registrar payload bruto para trazabilidad.
 - Si el pago no se confirma dentro de la ventana operativa, el pedido debe transicionar a `expired`.

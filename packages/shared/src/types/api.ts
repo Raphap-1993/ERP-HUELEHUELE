@@ -553,6 +553,7 @@ export interface CheckoutRequestInput {
   notes?: string;
   manualEvidenceReference?: string;
   manualEvidenceNotes?: string;
+  clientRequestId?: string;
 }
 
 export interface CheckoutQuoteInput {

@@ -28,6 +28,7 @@ Como base funcional, el proyecto ya cubre:
 - storefront público, admin, API y worker
 - auth, catálogo y checkout
 - pedidos, pagos y revisión manual
+- checkout, pagos y revisión manual endurecidos con idempotencia y guards de estado
 - vendedores, comisiones y seller-first
 - mayoristas, campañas y CRM básico
 - fidelización por puntos y notificaciones

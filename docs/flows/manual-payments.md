@@ -98,4 +98,5 @@ Permitir compras mediante pago manual, con carga de comprobante y revisión oper
 
 - La UI de revisión debe exponer contexto del pedido, historial y evidencias en una sola vista.
 - La API debe separar claramente el concepto de solicitud manual de la transacción de pago.
+- La decisión del operador debe ser idempotente: una solicitud ya aprobada o rechazada no se procesa dos veces.
 - Debe existir política de retención de evidencias por razones operativas y de auditoría.

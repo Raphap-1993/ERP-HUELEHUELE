@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, NotFoundException, OnModuleInit } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException, OnModuleInit } from "@nestjs/common";
+import { createHash } from "node:crypto";
 import {
   ManualPaymentRequestStatus,
   LoyaltyMovementStatus,
@@ -34,8 +35,15 @@ interface CreateCheckoutOrderInput {
   manualStatus?: ManualPaymentRequestStatus;
 }
 
+interface CheckoutIdempotencyRecord {
+  orderNumber: string;
+  requestHash: string;
+  createdAt: string;
+}
+
 interface OrdersSnapshot {
   orders: AdminOrderDetail[];
+  idempotencyIndex: Record<string, CheckoutIdempotencyRecord>;
 }
 
 const statusLabels: Record<OrderStatus, string> = {
@@ -121,9 +129,89 @@ function buildOrderItems(items: CheckoutQuoteSummary["items"]): OrderItemSummary
   }));
 }
 
+function normalizeQuoteItems(items: CheckoutQuoteSummary["items"]) {
+  return [...items]
+    .map((item) => ({
+      slug: item.slug.trim(),
+      name: item.name.trim(),
+      sku: item.sku.trim(),
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      lineTotal: item.lineTotal
+    }))
+    .sort((left, right) => left.slug.localeCompare(right.slug) || left.quantity - right.quantity);
+}
+
+function normalizeCheckoutRequest(input: CreateCheckoutOrderInput) {
+  const request = input.request;
+
+  return {
+    orderStatus: input.orderStatus,
+    paymentStatus: input.paymentStatus,
+    checkoutUrl: input.checkoutUrl ?? null,
+    manualStatus: input.manualStatus ?? null,
+    quote: {
+      items: normalizeQuoteItems(input.quote.items),
+      subtotal: input.quote.subtotal,
+      discount: input.quote.discount,
+      shipping: input.quote.shipping,
+      grandTotal: input.quote.grandTotal,
+      currencyCode: input.quote.currencyCode,
+      vendorCode: normalizeCode(input.quote.vendorCode) ?? null,
+      couponCode: normalizeCode(input.quote.couponCode) ?? null,
+      paymentMethod: input.quote.paymentMethod,
+      estimatedPoints: input.quote.estimatedPoints
+    },
+    request: {
+      clientRequestId: normalizeText(request.clientRequestId) ?? null,
+      paymentMethod: request.paymentMethod,
+      vendorCode: normalizeCode(request.vendorCode) ?? null,
+      couponCode: normalizeCode(request.couponCode) ?? null,
+      notes: normalizeText(request.notes) ?? null,
+      manualEvidenceReference: normalizeText(request.manualEvidenceReference) ?? null,
+      manualEvidenceNotes: normalizeText(request.manualEvidenceNotes) ?? null,
+      customer: {
+        firstName: request.customer.firstName.trim(),
+        lastName: request.customer.lastName.trim(),
+        email: request.customer.email.trim().toLowerCase(),
+        phone: request.customer.phone.trim()
+      },
+      address: normalizeAddress(request.address),
+      items: request.items
+        .map((item) => ({
+          slug: item.slug.trim(),
+          quantity: item.quantity
+        }))
+        .sort((left, right) => left.slug.localeCompare(right.slug) || left.quantity - right.quantity)
+    }
+  };
+}
+
+function hashCheckoutRequest(input: CreateCheckoutOrderInput) {
+  return createHash("sha256").update(JSON.stringify(normalizeCheckoutRequest(input))).digest("hex");
+}
+
+function isManualRequestResolvable(status: ManualPaymentRequestStatus) {
+  return status === ManualPaymentRequestStatus.Submitted || status === ManualPaymentRequestStatus.UnderReview;
+}
+
+function manualRequestResolutionLabel(status: ManualPaymentRequestStatus) {
+  if (status === ManualPaymentRequestStatus.Approved) {
+    return "aprobada";
+  }
+
+  if (status === ManualPaymentRequestStatus.Rejected) {
+    return "rechazada";
+  }
+
+  return status;
+}
+
 @Injectable()
 export class OrdersService implements OnModuleInit {
   private readonly orders = new Map<string, AdminOrderDetail>();
+
+  private readonly idempotencyIndex = new Map<string, CheckoutIdempotencyRecord>();
 
   private orderSequence = 10042;
 
@@ -154,6 +242,26 @@ export class OrdersService implements OnModuleInit {
     const orderNumber = input.orderNumber.trim().toUpperCase();
     if (this.orders.has(orderNumber)) {
       throw new BadRequestException(`Ya existe un pedido con el número ${orderNumber}.`);
+    }
+
+    this.validateCheckoutInput(input);
+
+    const clientRequestId = normalizeText(input.request.clientRequestId);
+    const requestHash = clientRequestId ? hashCheckoutRequest(input) : undefined;
+    if (clientRequestId) {
+      const existingRequest = this.idempotencyIndex.get(clientRequestId);
+      if (existingRequest) {
+        if (existingRequest.requestHash !== requestHash) {
+          throw new ConflictException("La solicitud de checkout ya fue procesada con contenido diferente.");
+        }
+
+        const existingOrder = this.orders.get(existingRequest.orderNumber);
+        if (existingOrder) {
+          return existingOrder;
+        }
+
+        this.idempotencyIndex.delete(clientRequestId);
+      }
     }
 
     this.syncSequence(orderNumber);
@@ -235,6 +343,13 @@ export class OrdersService implements OnModuleInit {
     };
 
     this.orders.set(orderNumber, order);
+    if (clientRequestId) {
+      this.idempotencyIndex.set(clientRequestId, {
+        orderNumber,
+        requestHash: requestHash ?? hashCheckoutRequest(input),
+        createdAt
+      });
+    }
 
     const loyaltyStatus =
       input.paymentStatus === PaymentStatus.Paid || input.orderStatus === OrderStatus.Paid || input.orderStatus === OrderStatus.Confirmed
@@ -341,6 +456,23 @@ export class OrdersService implements OnModuleInit {
     const now = new Date().toISOString();
     const reviewerName = normalizeText(reviewer) ?? "operador";
     const note = normalizeText(notes) ?? "Aprobado operativamente.";
+    const manualRequest = this.requireManualRequest(order);
+
+    if (manualRequest.status === ManualPaymentRequestStatus.Approved) {
+      return {
+        status: "ok" as const,
+        message: "La solicitud manual ya estaba aprobada.",
+        referenceId: id,
+        request: this.requireManualRequest(order),
+        order: this.toOrderSummary(order)
+      };
+    }
+
+    if (manualRequest.status === ManualPaymentRequestStatus.Rejected) {
+      throw new ConflictException("La solicitud manual ya fue rechazada y no puede aprobarse.");
+    }
+
+    this.ensureManualRequestReviewable(order, manualRequest);
 
     this.applyManualDecision(order, {
       status: ManualPaymentRequestStatus.Approved,
@@ -365,6 +497,23 @@ export class OrdersService implements OnModuleInit {
     const now = new Date().toISOString();
     const reviewerName = normalizeText(reviewer) ?? "operador";
     const note = normalizeText(notes) ?? "Rechazado operativamente.";
+    const manualRequest = this.requireManualRequest(order);
+
+    if (manualRequest.status === ManualPaymentRequestStatus.Rejected) {
+      return {
+        status: "rejected" as const,
+        message: "La solicitud manual ya estaba rechazada.",
+        referenceId: id,
+        request: this.requireManualRequest(order),
+        order: this.toOrderSummary(order)
+      };
+    }
+
+    if (manualRequest.status === ManualPaymentRequestStatus.Approved) {
+      throw new ConflictException("La solicitud manual ya fue aprobada y no puede rechazarse.");
+    }
+
+    this.ensureManualRequestReviewable(order, manualRequest);
 
     this.applyManualDecision(order, {
       status: ManualPaymentRequestStatus.Rejected,
@@ -549,6 +698,79 @@ export class OrdersService implements OnModuleInit {
       evidenceReference: input.manualEvidenceReference,
       updatedAt: input.updatedAt
     };
+  }
+
+  private ensureManualRequestReviewable(order: AdminOrderDetail, manualRequest: AdminManualPaymentRequestSummary) {
+    if (order.paymentMethod !== "manual") {
+      throw new BadRequestException(`El pedido ${order.orderNumber} no usa pago manual.`);
+    }
+
+    if (order.orderStatus !== OrderStatus.PaymentUnderReview) {
+      throw new ConflictException(`El pedido ${order.orderNumber} ya no está en revisión manual.`);
+    }
+
+    if (order.paymentStatus !== PaymentStatus.Pending) {
+      throw new ConflictException(`El pedido ${order.orderNumber} ya no está pendiente de pago manual.`);
+    }
+
+    if (!isManualRequestResolvable(manualRequest.status)) {
+      throw new ConflictException(`La solicitud manual ${manualRequest.id} ya fue ${manualRequestResolutionLabel(manualRequest.status)}.`);
+    }
+  }
+
+  private validateCheckoutInput(input: CreateCheckoutOrderInput) {
+    const paymentMethod = input.request.paymentMethod;
+    const manualEvidenceReference = normalizeText(input.request.manualEvidenceReference);
+    const manualEvidenceNotes = normalizeText(input.request.manualEvidenceNotes);
+    const clientRequestId = normalizeText(input.request.clientRequestId);
+
+    if (!clientRequestId) {
+      throw new BadRequestException("El checkout requiere una clave de idempotencia.");
+    }
+
+    if (paymentMethod === "manual") {
+      if (input.orderStatus !== OrderStatus.PaymentUnderReview) {
+        throw new BadRequestException("El pago manual debe crear el pedido en revisión.");
+      }
+
+      if (input.paymentStatus !== PaymentStatus.Pending) {
+        throw new BadRequestException("El pago manual debe iniciar pendiente.");
+      }
+
+      if (!manualEvidenceReference) {
+        throw new BadRequestException("El pago manual requiere una referencia de comprobante.");
+      }
+
+      if (!input.manualStatus || !isManualRequestResolvable(input.manualStatus)) {
+        throw new BadRequestException("El pago manual debe iniciar como enviado o en revisión.");
+      }
+
+      if (input.checkoutUrl) {
+        throw new BadRequestException("El pago manual no debe incluir URL de checkout.");
+      }
+
+      return;
+    }
+
+    if (input.orderStatus !== OrderStatus.PendingPayment) {
+      throw new BadRequestException("El checkout Openpay debe crear el pedido en espera de pago.");
+    }
+
+    if (input.paymentStatus !== PaymentStatus.Initiated) {
+      throw new BadRequestException("El checkout Openpay debe iniciar como payment initiated.");
+    }
+
+    if (input.manualStatus) {
+      throw new BadRequestException("El checkout Openpay no acepta estado manual.");
+    }
+
+    if (manualEvidenceReference || manualEvidenceNotes) {
+      throw new BadRequestException("El checkout Openpay no debe incluir evidencia manual.");
+    }
+
+    if (!input.checkoutUrl) {
+      throw new BadRequestException("El checkout Openpay requiere una URL de checkout.");
+    }
   }
 
   private buildManualRequestSummary(input: {
@@ -878,9 +1100,14 @@ export class OrdersService implements OnModuleInit {
 
   private restoreSnapshot(snapshot: OrdersSnapshot) {
     this.orders.clear();
+    this.idempotencyIndex.clear();
     for (const order of snapshot.orders ?? []) {
       this.orders.set(order.orderNumber, order);
       this.syncSequence(order.orderNumber);
+    }
+
+    for (const [clientRequestId, record] of Object.entries(snapshot.idempotencyIndex ?? {})) {
+      this.idempotencyIndex.set(clientRequestId, record);
     }
   }
 
@@ -898,7 +1125,8 @@ export class OrdersService implements OnModuleInit {
         statusHistory: order.statusHistory.map((entry) => ({ ...entry })),
         payment: { ...order.payment },
         manualRequest: order.manualRequest ? { ...order.manualRequest } : undefined
-      }))
+      })),
+      idempotencyIndex: Object.fromEntries(this.idempotencyIndex.entries())
     };
   }
 }
