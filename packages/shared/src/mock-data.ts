@@ -90,9 +90,10 @@ export const adminNavigation: AdminNavigationGroup[] = [
     items: [
       { label: "CMS", href: "/cms" },
       { label: "Mayoristas", href: "/mayoristas" },
-      { label: "Loyalty", href: "/loyalty" },
+      { label: "Fidelización", href: "/loyalty" },
       { label: "Marketing", href: "/marketing" },
       { label: "CRM", href: "/crm" },
+      { label: "Notificaciones", href: "/notificaciones" },
       { label: "Configuración", href: "/configuracion" }
     ]
   }

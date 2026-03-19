@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { type AuthSessionSummary } from "@huelegood/shared";
+import { loyaltyOverview, type AuthSessionSummary, type LoyaltyAccountSummary } from "@huelegood/shared";
 import {
   Button,
   Badge,
@@ -16,7 +16,7 @@ import {
   Separator
 } from "@huelegood/ui";
 import { clearStoredSessionToken, readStoredSessionToken, writeStoredSessionToken } from "../lib/session";
-import { fetchSession, login, logout, register } from "../lib/api";
+import { fetchLoyaltySummary, fetchSession, login, logout, register } from "../lib/api";
 
 const demoAccounts = [
   { email: "cliente@huelegood.com", password: "huelegood123", label: "Cliente demo" },
@@ -32,10 +32,33 @@ function splitName(name: string) {
   };
 }
 
+function loyaltyMovementLabel(status: LoyaltyAccountSummary["recentMovement"]) {
+  const labels: Record<LoyaltyAccountSummary["recentMovement"], string> = {
+    pending: "Pendiente",
+    available: "Disponible",
+    reversed: "Revertido",
+    expired: "Expirado"
+  };
+
+  return labels[status];
+}
+
+function redemptionLabel(status: LoyaltyAccountSummary["redemptionStatus"]) {
+  const labels: Record<LoyaltyAccountSummary["redemptionStatus"], string> = {
+    pending: "Pendiente",
+    applied: "Aplicado",
+    cancelled: "Cancelado"
+  };
+
+  return labels[status];
+}
+
 export function AccountWorkspace() {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [session, setSession] = useState<AuthSessionSummary | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
+  const [loadingLoyalty, setLoadingLoyalty] = useState(true);
+  const [loyaltySummary, setLoyaltySummary] = useState<LoyaltyAccountSummary | null>(loyaltyOverview[0] ?? null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,6 +104,37 @@ export function AccountWorkspace() {
     }
 
     void loadSession();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadLoyalty() {
+      setLoadingLoyalty(true);
+
+      try {
+        const response = await fetchLoyaltySummary();
+        if (!active) {
+          return;
+        }
+
+        setLoyaltySummary(response.data ?? loyaltyOverview[0] ?? null);
+      } catch {
+        if (active) {
+          setLoyaltySummary(loyaltyOverview[0] ?? null);
+        }
+      } finally {
+        if (active) {
+          setLoadingLoyalty(false);
+        }
+      }
+    }
+
+    void loadLoyalty();
 
     return () => {
       active = false;
@@ -300,6 +354,45 @@ export function AccountWorkspace() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Fidelización</CardTitle>
+          <CardDescription>Puntos disponibles, puntos pendientes y canjes del perfil demo.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loadingLoyalty ? (
+            <p className="text-sm text-black/55">Cargando loyalty...</p>
+          ) : loyaltySummary ? (
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="rounded-2xl bg-black/[0.03] p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-black/40">Disponibles</p>
+                <p className="mt-2 text-3xl font-semibold text-[#132016]">{loyaltySummary.availablePoints}</p>
+              </div>
+              <div className="rounded-2xl bg-black/[0.03] p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-black/40">Pendientes</p>
+                <p className="mt-2 text-3xl font-semibold text-[#132016]">{loyaltySummary.pendingPoints}</p>
+              </div>
+              <div className="rounded-2xl bg-black/[0.03] p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-black/40">Canjeados</p>
+                <p className="mt-2 text-3xl font-semibold text-[#132016]">{loyaltySummary.redeemedPoints}</p>
+              </div>
+              <div className="rounded-2xl bg-[#132016] p-4 text-white">
+                <p className="text-xs uppercase tracking-[0.18em] text-white/45">Estado</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <StatusBadge tone="info" label={loyaltyMovementLabel(loyaltySummary.recentMovement)} />
+                  <StatusBadge tone="warning" label={redemptionLabel(loyaltySummary.redemptionStatus)} />
+                </div>
+                <p className="mt-3 text-sm leading-6 text-white/75">
+                  Los puntos se conectan al checkout y a la revisión operativa de pedidos.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-black/55">No encontramos una cuenta de loyalty para mostrar.</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

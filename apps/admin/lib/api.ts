@@ -4,11 +4,20 @@ import type {
   CommissionPayoutSummary,
   CommissionRuleSummary,
   CommissionSummary,
+  LoyaltyMovementSummary,
+  LoyaltyPointsInput,
+  LoyaltyRedemptionInput,
+  LoyaltyRedemptionStatusInput,
+  LoyaltyRedemptionSummary,
+  LoyaltyRuleSummary,
   MarketingCampaignInput,
   MarketingCampaignSummary,
   MarketingEventSummary,
   MarketingSegmentSummary,
   MarketingTemplateSummary,
+  NotificationInput,
+  NotificationLogSummary,
+  NotificationSummary,
   AdminManualPaymentRequestSummary,
   AdminOrderDetail,
   AdminOrderSummary,
@@ -158,6 +167,58 @@ export async function fetchCampaignEvents() {
   return requestJson<MarketingEventsEnvelope>("/admin/campaigns/events");
 }
 
+export async function fetchLoyaltyAccounts() {
+  return requestJson<LoyaltyAccountsEnvelope>("/admin/loyalty/accounts");
+}
+
+export async function fetchLoyaltyMovements() {
+  return requestJson<LoyaltyMovementsEnvelope>("/admin/loyalty/movements");
+}
+
+export async function assignLoyaltyPoints(body: LoyaltyPointsInput) {
+  return requestJson<LoyaltyActionEnvelope>("/admin/loyalty/movements", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function fetchLoyaltyRedemptions() {
+  return requestJson<LoyaltyRedemptionsEnvelope>("/admin/loyalty/redemptions");
+}
+
+export async function createLoyaltyRedemption(body: LoyaltyRedemptionInput) {
+  return requestJson<LoyaltyActionEnvelope>("/admin/loyalty/redemptions", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function updateLoyaltyRedemptionStatus(id: string, body: LoyaltyRedemptionStatusInput) {
+  return requestJson<LoyaltyActionEnvelope>(`/admin/loyalty/redemptions/${encodeURIComponent(id)}/status`, {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function fetchLoyaltyRules() {
+  return requestJson<LoyaltyRulesEnvelope>("/admin/loyalty/rules");
+}
+
+export async function fetchNotifications() {
+  return requestJson<NotificationsEnvelope>("/admin/notifications");
+}
+
+export async function createNotification(body: NotificationInput) {
+  return requestJson<NotificationActionEnvelope>("/admin/notifications", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function fetchNotificationLogs() {
+  return requestJson<NotificationLogsEnvelope>("/admin/notifications/logs");
+}
+
 export async function fetchCommissions() {
   return requestJson<CommissionsEnvelope>("/admin/commissions");
 }
@@ -291,6 +352,52 @@ export type MarketingTemplatesEnvelope = {
 export type MarketingEventsEnvelope = {
   data: MarketingEventSummary[];
   meta?: Record<string, unknown>;
+};
+
+export type LoyaltyAccountsEnvelope = {
+  data: import("@huelegood/shared").LoyaltyAccountSummary[];
+  meta?: Record<string, unknown>;
+};
+
+export type LoyaltyMovementsEnvelope = {
+  data: LoyaltyMovementSummary[];
+  meta?: Record<string, unknown>;
+};
+
+export type LoyaltyRedemptionsEnvelope = {
+  data: LoyaltyRedemptionSummary[];
+  meta?: Record<string, unknown>;
+};
+
+export type LoyaltyRulesEnvelope = {
+  data: LoyaltyRuleSummary[];
+  meta?: Record<string, unknown>;
+};
+
+export type LoyaltyActionEnvelope = {
+  status: string;
+  message: string;
+  referenceId?: string;
+  account?: import("@huelegood/shared").LoyaltyAccountSummary;
+  movement?: LoyaltyMovementSummary;
+  redemption?: LoyaltyRedemptionSummary;
+};
+
+export type NotificationsEnvelope = {
+  data: NotificationSummary[];
+  meta?: Record<string, unknown>;
+};
+
+export type NotificationLogsEnvelope = {
+  data: NotificationLogSummary[];
+  meta?: Record<string, unknown>;
+};
+
+export type NotificationActionEnvelope = {
+  status: string;
+  message: string;
+  referenceId?: string;
+  notification?: NotificationSummary;
 };
 
 export type CommissionsEnvelope = {

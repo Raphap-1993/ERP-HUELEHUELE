@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import {
   ManualPaymentRequestStatus,
+  LoyaltyMovementStatus,
+  NotificationChannel,
   NotificationStatus,
   OrderStatus,
   PaymentStatus,
@@ -16,6 +18,8 @@ import {
   type OrderStatusHistorySummary
 } from "@huelegood/shared";
 import { wrapResponse } from "../../common/response";
+import { LoyaltyService } from "../loyalty/loyalty.service";
+import { NotificationsService } from "../notifications/notifications.service";
 
 interface CreateCheckoutOrderInput {
   orderNumber: string;
@@ -117,7 +121,10 @@ export class OrdersService {
 
   private orderSequence = 10042;
 
-  constructor() {
+  constructor(
+    private readonly loyaltyService: LoyaltyService,
+    private readonly notificationsService: NotificationsService
+  ) {
     this.seedInitialOrders();
   }
 
@@ -136,6 +143,7 @@ export class OrdersService {
 
     const createdAt = new Date().toISOString();
     const customer = normalizeCustomer(input.request.customer);
+    const customerName = fullName(customer) || customer.email;
     const address = normalizeAddress(input.request.address);
     const manualEvidenceReference = normalizeText(input.request.manualEvidenceReference);
     const manualEvidenceNotes = normalizeText(input.request.manualEvidenceNotes);
@@ -210,6 +218,47 @@ export class OrdersService {
     };
 
     this.orders.set(orderNumber, order);
+
+    const loyaltyStatus =
+      input.paymentStatus === PaymentStatus.Paid || input.orderStatus === OrderStatus.Paid || input.orderStatus === OrderStatus.Confirmed
+        ? LoyaltyMovementStatus.Available
+        : LoyaltyMovementStatus.Pending;
+
+    this.loyaltyService.recordOrderPoints({
+      customer: customerName,
+      points: input.quote.estimatedPoints,
+      orderNumber,
+      reviewer: "sistema",
+      available: loyaltyStatus === LoyaltyMovementStatus.Available,
+      reason:
+        loyaltyStatus === LoyaltyMovementStatus.Available
+          ? "Puntos liberados por pedido confirmado."
+          : "Puntos retenidos hasta confirmar el pago."
+    });
+
+    this.notificationsService.recordEvent(
+      "order.created",
+      "orders",
+      customerName,
+      `Pedido ${orderNumber} generado con ${order.paymentMethod === "manual" ? "pago manual" : "Openpay"} y ${input.quote.estimatedPoints} puntos estimados.`,
+      "order",
+      orderNumber
+    );
+
+    this.notificationsService.queueNotification({
+      channel: NotificationChannel.Email,
+      audience: customerName,
+      subject: `Pedido ${orderNumber} recibido`,
+      body:
+        order.paymentMethod === "manual"
+          ? "Recibimos tu comprobante y el pedido quedó en revisión."
+          : "Tu pedido fue preparado y espera la confirmación del pago.",
+      source: "orders",
+      relatedType: "order",
+      relatedId: orderNumber,
+      status: NotificationStatus.Pending
+    });
+
     return order;
   }
 
@@ -344,6 +393,48 @@ export class OrdersService {
         input.occurredAt
       )
     ];
+
+    if (input.status === ManualPaymentRequestStatus.Approved) {
+      this.loyaltyService.settleOrderPoints(order.orderNumber, input.reviewer);
+      this.notificationsService.queueNotification({
+        channel: NotificationChannel.Email,
+        audience: manualRequest.customerName,
+        subject: `Pago aprobado para ${order.orderNumber}`,
+        body: "Tu comprobante fue aprobado y el pedido pasó a pagado.",
+        source: "payments",
+        relatedType: "order",
+        relatedId: order.orderNumber,
+        status: NotificationStatus.Sent
+      });
+      this.notificationsService.recordEvent(
+        "order.manual.approved",
+        "payments",
+        manualRequest.customerName,
+        `El pedido ${order.orderNumber} quedó pagado después de la revisión manual.`,
+        "order",
+        order.orderNumber
+      );
+    } else {
+      this.loyaltyService.reverseOrderPoints(order.orderNumber, input.reviewer);
+      this.notificationsService.queueNotification({
+        channel: NotificationChannel.Email,
+        audience: manualRequest.customerName,
+        subject: `Pago rechazado para ${order.orderNumber}`,
+        body: "Tu comprobante fue rechazado y el pedido fue cancelado.",
+        source: "payments",
+        relatedType: "order",
+        relatedId: order.orderNumber,
+        status: NotificationStatus.Sent
+      });
+      this.notificationsService.recordEvent(
+        "order.manual.rejected",
+        "payments",
+        manualRequest.customerName,
+        `El pedido ${order.orderNumber} fue cancelado después de la revisión manual.`,
+        "order",
+        order.orderNumber
+      );
+    }
   }
 
   private buildInitialHistory(input: {

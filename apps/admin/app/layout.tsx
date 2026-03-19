@@ -18,7 +18,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <div className="space-y-3">
               <div className="text-xs uppercase tracking-[0.24em] text-white/45">{siteSetting.brandName} Admin</div>
               <p className="text-sm leading-6 text-white/72">
-                Operación de pedidos, pagos, CMS, vendedores, mayoristas, CRM, comisiones y marketing.
+                Operación de pedidos, pagos, CMS, vendedores, mayoristas, CRM, fidelización, notificaciones, comisiones y marketing.
               </p>
             </div>
             <div className="my-6">

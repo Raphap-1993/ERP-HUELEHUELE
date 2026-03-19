@@ -4,17 +4,28 @@ import type {
   CampaignRecipientStatus,
   CommissionPayoutStatus,
   CommissionStatus,
+  LoyaltyMovementStatus,
   ManualPaymentRequestStatus,
   OrderStatus,
+  NotificationChannel,
   NotificationStatus,
   PaymentStatus,
   RoleCode,
+  RedemptionStatus,
   VendorApplicationStatus,
   VendorStatus,
   WholesaleLeadStatus,
   WholesaleQuoteStatus
 } from "../domain/enums";
-import type { CatalogProduct, FaqItem, HeroCopy, PromoBanner, SiteSetting, WholesalePlan } from "../domain/models";
+import type {
+  CatalogProduct,
+  FaqItem,
+  HeroCopy,
+  LoyaltyAccountSummary,
+  PromoBanner,
+  SiteSetting,
+  WholesalePlan
+} from "../domain/models";
 
 export interface ApiEnvelope<T> {
   data: T;
@@ -235,6 +246,107 @@ export interface MarketingCampaignInput {
   channel: "email" | "sms" | "whatsapp";
   goal: string;
   scheduledAt?: string;
+}
+
+export interface LoyaltyRuleSummary {
+  id: string;
+  name: string;
+  description: string;
+  trigger: string;
+  pointsPerUnit: number;
+  status: "active" | "inactive";
+  updatedAt: string;
+}
+
+export interface LoyaltyMovementSummary {
+  id: string;
+  customer: string;
+  orderNumber?: string;
+  kind: "earn" | "redeem" | "adjustment" | "bonus";
+  points: number;
+  balanceAfter: number;
+  status: LoyaltyMovementStatus;
+  reason: string;
+  reviewer?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LoyaltyRedemptionSummary {
+  id: string;
+  customer: string;
+  reward: string;
+  points: number;
+  status: RedemptionStatus;
+  notes?: string;
+  reviewer?: string;
+  reviewedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LoyaltyPointsInput {
+  customer: string;
+  points: number;
+  reason: string;
+  orderNumber?: string;
+  kind?: "earn" | "adjustment" | "bonus";
+  status?: LoyaltyMovementStatus;
+  reviewer?: string;
+}
+
+export interface LoyaltyRedemptionInput {
+  customer: string;
+  reward: string;
+  points: number;
+  notes?: string;
+  reviewer?: string;
+}
+
+export interface LoyaltyRedemptionStatusInput {
+  status: RedemptionStatus.Applied | RedemptionStatus.Cancelled;
+  reviewer?: string;
+  notes?: string;
+}
+
+export interface NotificationSummary {
+  id: string;
+  channel: NotificationChannel;
+  audience: string;
+  subject: string;
+  body: string;
+  status: NotificationStatus;
+  source: string;
+  relatedType?: string;
+  relatedId?: string;
+  scheduledAt?: string;
+  sentAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotificationLogSummary {
+  id: string;
+  eventName: string;
+  source: string;
+  subject: string;
+  detail: string;
+  notificationId?: string;
+  relatedType?: string;
+  relatedId?: string;
+  occurredAt: string;
+}
+
+export interface NotificationInput {
+  channel: NotificationChannel;
+  audience: string;
+  subject: string;
+  body: string;
+  source?: string;
+  relatedType?: string;
+  relatedId?: string;
+  scheduledAt?: string;
+  status?: NotificationStatus;
 }
 
 export interface CommissionRuleSummary {
@@ -506,6 +618,11 @@ export interface AdminOrderDetail {
 export interface ManualReviewActionInput {
   reviewer?: string;
   notes?: string;
+}
+
+export interface LoyaltySummaryEnvelope {
+  data: LoyaltyAccountSummary | null;
+  meta?: Record<string, unknown>;
 }
 
 export interface StorefrontPagePayload {

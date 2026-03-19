@@ -8,6 +8,7 @@ import type {
   CheckoutQuoteInput,
   CheckoutQuoteSummary,
   CheckoutRequestInput,
+  LoyaltySummaryEnvelope,
   WholesaleLeadInput,
   WholesalePlan,
   WholesaleLeadSummary
@@ -86,6 +87,10 @@ export async function submitWholesaleLead(body: WholesaleLeadInput) {
 
 export async function fetchWholesaleTiers() {
   return requestJson<WholesaleTiersEnvelope>("/store/wholesale-tiers");
+}
+
+export async function fetchLoyaltySummary() {
+  return requestJson<LoyaltySummaryEnvelope>("/store/me/loyalty");
 }
 
 export async function login(body: AuthCredentialsInput) {

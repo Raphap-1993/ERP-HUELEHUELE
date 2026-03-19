@@ -134,6 +134,13 @@ export enum NotificationStatus {
   Failed = "failed"
 }
 
+export enum NotificationChannel {
+  Email = "email",
+  Sms = "sms",
+  Whatsapp = "whatsapp",
+  Internal = "internal"
+}
+
 export enum InventoryMovementType {
   Inbound = "inbound",
   Outbound = "outbound",
