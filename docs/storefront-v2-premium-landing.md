@@ -6,11 +6,11 @@ Este documento consolida el plan generado por agentes y la implementación de un
 
 La solución es aditiva:
 
-- no elimina la home actual
+- reemplaza la home actual como experiencia pública oficial
 - no cambia contratos API
 - no toca checkout, admin ni worker
 - deja una ruta segura en `/storefront-v2-premium`
-- permite activación posterior por feature flag
+- fija una sola fuente de verdad para el storefront
 
 ## Plan generado por agentes
 
@@ -25,9 +25,10 @@ La solución es aditiva:
 
 1. La experiencia premium vive aislada en `apps/web/features/storefront-v2-premium/`.
 2. El contenido editorial es curado en código, no en un CMS total.
-3. La ruta segura `/storefront-v2-premium` sirve como preview aditivo.
-4. La home actual permanece intacta, pero puede activar la experiencia premium luego con `NEXT_PUBLIC_STOREFRONT_V2_PREMIUM`.
-5. `trabaja-con-nosotros` se mantiene y se conecta al endpoint existente `POST /store/vendor-applications`.
+3. La ruta segura `/storefront-v2-premium` sirve como preview y QA de la experiencia oficial.
+4. La home `/` usa `storefront-v2-premium` por defecto y deja de arbitrar entre variantes.
+5. `storefront-v2` queda deprecado como preview histórica, no como camino activo.
+6. `trabaja-con-nosotros` se mantiene y se conecta al endpoint existente `POST /store/vendor-applications`.
 
 ## Arquitectura implementada
 
@@ -74,22 +75,19 @@ No se creó pipeline backend de media.
 
 - `GET /storefront-v2-premium`
 
-Expone la experiencia premium en modo preview sin reemplazar el home actual.
+Expone la misma experiencia que vive en `/`, pero en una ruta dedicada para QA, comparación visual y revisión controlada.
 
-### Feature flag futura
+### Home oficial
 
-Flag implementado:
+- `GET /`
 
-- `NEXT_PUBLIC_STOREFRONT_V2_PREMIUM`
+La home productiva ahora renderiza `storefront-v2-premium` de forma directa.
 
-Comportamiento:
+### Deprecación de `storefront-v2`
 
-- apagado: la home sigue usando el comportamiento actual
-- encendido: la home puede renderizar la experiencia premium
+- `GET /storefront-v2`
 
-### Precedencia
-
-Si `NEXT_PUBLIC_STOREFRONT_V2_PREMIUM` está activo, debe tener prioridad sobre `NEXT_PUBLIC_STOREFRONT_V2`.
+Se conserva solo como preview histórica y deja de ser candidata a reemplazar la home.
 
 ## Contenido curado local
 
@@ -141,7 +139,7 @@ Campos enviados:
 ### Riesgos vigilados
 
 - duplicación editorial parcial con `storefront-v2`
-- activación accidental de la home premium por env var
+- mantener viva la variante vieja por inercia de equipo
 - fallo de media remota sin fallback local
 - confusión entre wholesale y vendor si el copy cambia sin criterio
 
@@ -157,16 +155,6 @@ Luego abrir:
 
 - `/storefront-v2-premium`
 
-### Activación por flag
-
-Definir:
-
-```bash
-NEXT_PUBLIC_STOREFRONT_V2_PREMIUM=true
-```
-
-Y volver a levantar `apps/web`.
-
 ### Formulario de vendedores
 
 Abrir:
@@ -177,6 +165,6 @@ Enviar una postulación válida y verificar que la API responda con estado `queu
 
 ## Siguientes pasos
 
-- decidir si la premium reemplazará a `storefront-v2` o convivirá como una tercera capa temporal
-- medir scroll depth y clics en CTAs antes de mover el flag a home
+- marcar `storefront-v2` como referencia histórica en docs y seguimiento interno
+- medir scroll depth y clics en CTAs ahora que la home premium ya es la experiencia oficial
 - preparar una fase posterior para media remota productiva y campañas editoriales

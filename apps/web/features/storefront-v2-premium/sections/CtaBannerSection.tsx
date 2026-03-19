@@ -34,9 +34,9 @@ export function CtaBannerSection({ banner }: { banner: PremiumCtaBanner }) {
           </div>
           <div className="rounded-[1.75rem] border border-white/12 bg-white/8 p-5 backdrop-blur">
             <p className="text-[11px] uppercase tracking-[0.24em] text-white/42">Rollout seguro</p>
-            <p className="mt-3 text-xl font-semibold tracking-tight text-white">Preview dedicada y activación futura por feature flag.</p>
+            <p className="mt-3 text-xl font-semibold tracking-tight text-white">La experiencia premium ya es la home oficial y mantiene una ruta dedicada para QA.</p>
             <p className="mt-2 text-sm leading-7 text-white/72">
-              La experiencia premium ya vive en una ruta aislada y también puede activarse luego en home con `NEXT_PUBLIC_STOREFRONT_V2_PREMIUM`.
+              El storefront anterior queda solo como referencia histórica. La evolución del canal público continúa sobre esta capa premium.
             </p>
           </div>
         </div>

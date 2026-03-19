@@ -115,6 +115,7 @@ Como insumo funcional, se asume que la v1 de Huelegood ya comunica:
 ### Storefront
 
 - [storefront-v2-premium-landing.md](./storefront-v2-premium-landing.md)
+- [storefront-redesign-phase7.md](./storefront-redesign-phase7.md) `histórico`
 
 ### Infraestructura
 
