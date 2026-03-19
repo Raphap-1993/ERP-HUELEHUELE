@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@huelegood/shared": [
+        "packages/shared/src/index.ts"
+      ],
+      "@huelegood/shared/*": [
+        "packages/shared/src/*"
+      ],
+      "@huelegood/ui": [
+        "packages/ui/src/index.ts"
+      ],
+      "@huelegood/ui/*": [
+        "packages/ui/src/*"
+      ]
+    }
+  }
+}
+

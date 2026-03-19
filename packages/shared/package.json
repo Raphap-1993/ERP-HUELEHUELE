@@ -1,0 +1,9 @@
+{
+  "name": "@huelegood/shared",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "tsc --noEmit -p tsconfig.json"
+  }
+}

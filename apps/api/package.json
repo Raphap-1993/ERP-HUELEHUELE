@@ -1,0 +1,15 @@
+{
+  "name": "@huelegood/api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "start": "node dist/apps/api/src/main.js",
+    "start:dev": "nest start --watch",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "prisma:generate": "prisma generate --schema ../../prisma/schema.prisma",
+    "db:push": "prisma db push --schema ../../prisma/schema.prisma",
+    "seed": "tsx ../../prisma/seed.ts"
+  }
+}

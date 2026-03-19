@@ -1,0 +1,47 @@
+{
+  "name": "huelegood",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w @huelegood/web",
+    "dev:admin": "npm run dev -w @huelegood/admin",
+    "dev:api": "npm run start:dev -w @huelegood/api",
+    "dev:worker": "npm run dev -w @huelegood/worker",
+    "build": "npm run build -w @huelegood/web && npm run build -w @huelegood/admin && npm run build -w @huelegood/api && npm run build -w @huelegood/worker",
+    "typecheck": "npm run typecheck -ws",
+    "lint": "npm run typecheck -ws",
+    "prisma:generate": "npm run prisma:generate -w @huelegood/api",
+    "prisma:push": "npm run db:push -w @huelegood/api",
+    "prisma:seed": "npm run seed -w @huelegood/api"
+  },
+  "dependencies": {
+    "@nestjs/common": "^10.4.10",
+    "@nestjs/core": "^10.4.10",
+    "@nestjs/platform-express": "^10.4.10",
+    "@prisma/client": "^6.0.0",
+    "bullmq": "^5.27.0",
+    "ioredis": "^5.4.1",
+    "next": "^15.1.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10.4.7",
+    "@types/node": "^22.10.1",
+    "@types/react": "^19.0.7",
+    "@types/react-dom": "^19.0.3",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "prisma": "^6.0.0",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}
+
