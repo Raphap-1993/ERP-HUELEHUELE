@@ -1,5 +1,6 @@
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Textarea } from "@huelegood/ui";
-import { brandArt, EditorialMedia } from "../../components/public-brand";
+import { EditorialMedia } from "../../components/public-brand";
+import { brandArt } from "../../components/public-brand-art";
 import { PublicChecklist, PublicField, PublicPageHero, PublicSectionHeading } from "../../components/public-shell";
 
 export default function VendorApplicationPage() {

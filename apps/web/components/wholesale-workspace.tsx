@@ -4,7 +4,8 @@ import { type FormEvent, useEffect, useState } from "react";
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Textarea, WholesalePlanCard } from "@huelegood/ui";
 import { wholesalePlans } from "@huelegood/shared";
 import { fetchWholesaleTiers, submitWholesaleLead } from "../lib/api";
-import { brandArt, EditorialMedia } from "./public-brand";
+import { EditorialMedia } from "./public-brand";
+import { brandArt } from "./public-brand-art";
 import { PublicChecklist, PublicField, PublicPageHero, PublicPanel, PublicSectionHeading } from "./public-shell";
 
 export function WholesaleWorkspace() {

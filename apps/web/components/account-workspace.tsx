@@ -16,7 +16,8 @@ import {
 } from "@huelegood/ui";
 import { clearStoredSessionToken, readStoredSessionToken, writeStoredSessionToken } from "../lib/session";
 import { fetchLoyaltySummary, fetchSession, login, logout, register } from "../lib/api";
-import { brandArt, EditorialMedia } from "./public-brand";
+import { EditorialMedia } from "./public-brand";
+import { brandArt } from "./public-brand-art";
 import { PublicField, PublicPageHero, PublicPanel, PublicSectionHeading } from "./public-shell";
 
 function splitName(name: string) {

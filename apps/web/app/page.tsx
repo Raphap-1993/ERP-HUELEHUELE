@@ -12,7 +12,8 @@ import {
 } from "@huelegood/shared";
 import { Badge, Button, Card, CardContent, FAQAccordion } from "@huelegood/ui";
 import { fetchCmsSnapshot } from "../lib/api";
-import { brandArt, EditorialMedia, EditorialProductGrid } from "../components/public-brand";
+import { EditorialMedia, EditorialProductGrid } from "../components/public-brand";
+import { brandArt } from "../components/public-brand-art";
 import { PublicChecklist, PublicInfoCard, PublicPageHero, PublicPanel, PublicSectionHeading } from "../components/public-shell";
 
 async function loadHomeCms() {

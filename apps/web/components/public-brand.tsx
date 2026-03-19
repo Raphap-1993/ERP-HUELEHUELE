@@ -4,22 +4,9 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 import { cn, Badge, Button, Card, CardContent, CardDescription, CardTitle } from "@huelegood/ui";
 import type { CatalogProduct } from "@huelegood/shared";
+import { brandArt, productArtBySlug } from "./public-brand-art";
 
-export const brandArt = {
-  hero: "/brand/hero-huele-huele.svg",
-  office: "/brand/moment-office.svg",
-  travel: "/brand/moment-travel.svg",
-  traffic: "/brand/moment-traffic.svg",
-  wholesale: "/brand/wholesale-hero.svg",
-  seller: "/brand/seller-story.svg",
-  checkout: "/brand/checkout-hero.svg"
-} as const;
-
-export const productArtBySlug: Record<string, string> = {
-  "clasico-verde": "/brand/product-classic-green.svg",
-  "premium-negro": "/brand/product-premium-black.svg",
-  "combo-duo-perfecto": "/brand/product-duo-perfecto.svg"
-};
+export { brandArt, productArtBySlug } from "./public-brand-art";
 
 function toneFrame(tone?: CatalogProduct["tone"]) {
   if (tone === "amber") {

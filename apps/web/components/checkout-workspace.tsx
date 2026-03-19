@@ -39,7 +39,8 @@ import {
   readStoredSessionToken,
   writeStoredCart
 } from "../lib/session";
-import { brandArt, EditorialMedia } from "./public-brand";
+import { EditorialMedia } from "./public-brand";
+import { brandArt } from "./public-brand-art";
 import { PublicField, PublicPageHero, PublicSectionHeading } from "./public-shell";
 
 type PaymentMethod = "openpay" | "manual";

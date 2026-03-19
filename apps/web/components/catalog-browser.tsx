@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { featuredProducts, type CatalogProduct, type CatalogSummaryResponse } from "@huelegood/shared";
 import { Button, Card, CardContent, Input, Badge } from "@huelegood/ui";
 import { fetchCatalogSummary } from "../lib/api";
-import { brandArt, EditorialMedia, EditorialProductGrid } from "./public-brand";
+import { EditorialMedia, EditorialProductGrid } from "./public-brand";
+import { brandArt } from "./public-brand-art";
 import { PublicChecklist, PublicPageHero, PublicPanel, PublicSectionHeading } from "./public-shell";
 
 function fallbackCategories() {
