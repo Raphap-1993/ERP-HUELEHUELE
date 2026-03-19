@@ -147,6 +147,71 @@ export interface SiteSetting {
   whatsapp: string;
 }
 
+export interface CmsSeoMeta {
+  pageSlug: string;
+  title: string;
+  description: string;
+  keywords: string[];
+  canonicalPath?: string;
+  robots: "index,follow" | "noindex,nofollow";
+  updatedAt: string;
+}
+
+export interface CmsPageBlock {
+  id: string;
+  pageSlug: string;
+  type: string;
+  title: string;
+  description: string;
+  content: string;
+  position: number;
+  status: "active" | "inactive";
+  updatedAt: string;
+}
+
+export interface CmsPage {
+  slug: string;
+  title: string;
+  description: string;
+  status: "draft" | "published" | "archived";
+  blocks: CmsPageBlock[];
+  seoMeta: CmsSeoMeta;
+  updatedAt: string;
+}
+
+export interface CmsBanner {
+  id: string;
+  title: string;
+  description: string;
+  ctaLabel: string;
+  ctaHref: string;
+  note: string;
+  tone: PromoBanner["tone"];
+  status: "active" | "inactive";
+  position: number;
+  updatedAt: string;
+}
+
+export interface CmsFaq {
+  id: string;
+  question: string;
+  answer: string;
+  category?: string;
+  status: "active" | "inactive";
+  position: number;
+  updatedAt: string;
+}
+
+export interface CmsTestimonial {
+  id: string;
+  name: string;
+  role: string;
+  quote: string;
+  rating: number;
+  status: "active" | "inactive";
+  updatedAt: string;
+}
+
 export interface DashboardSummary {
   metrics: AdminMetric[];
   recentOrders: OrderSummaryRow[];

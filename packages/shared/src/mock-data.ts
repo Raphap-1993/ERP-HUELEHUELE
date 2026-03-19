@@ -31,6 +31,7 @@ import type {
   ReviewItem,
   SiteSetting,
   TimelineEntry,
+  CmsTestimonial,
   VendorApplicationItem,
   VendorOverview,
   WebNavigationGroup,
@@ -199,6 +200,36 @@ export const faqItems: FaqItem[] = [
   {
     question: "¿Hay vendedor con código y comisión?",
     answer: "Sí. La venta puede atribuirse a un vendedor y liquidarse por comisiones."
+  }
+];
+
+export const cmsTestimonials: CmsTestimonial[] = [
+  {
+    id: "tst-001",
+    name: "Laura Mendoza",
+    role: "Cliente frecuente",
+    quote: "Huelegood me deja comprar rápido, revisar mi saldo y entender qué está pasando con mis puntos.",
+    rating: 5,
+    status: "active",
+    updatedAt: "2026-03-18T10:15:00.000Z"
+  },
+  {
+    id: "tst-002",
+    name: "Carlos Gómez",
+    role: "Comprador manual",
+    quote: "El flujo de comprobante y revisión es claro, y el backoffice mantiene control sin fricción.",
+    rating: 5,
+    status: "active",
+    updatedAt: "2026-03-18T10:20:00.000Z"
+  },
+  {
+    id: "tst-003",
+    name: "Sofía Rivera",
+    role: "Distribuidora",
+    quote: "La atribución por vendedor y la parte mayorista hacen que el canal comercial sea mucho más medible.",
+    rating: 5,
+    status: "active",
+    updatedAt: "2026-03-18T10:30:00.000Z"
   }
 ];
 

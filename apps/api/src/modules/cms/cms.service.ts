@@ -1,50 +1,1046 @@
-import { Injectable } from "@nestjs/common";
-import { faqItems, heroCopy, promoBanners, siteSetting, webNavigation } from "@huelegood/shared";
-import { wrapResponse } from "../../common/response";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  cmsTestimonials,
+  faqItems,
+  heroCopy as defaultHeroCopy,
+  promoBanners,
+  siteSetting as defaultSiteSetting,
+  webNavigation as defaultWebNavigation,
+  type CmsBanner,
+  type CmsBannerInput,
+  type CmsFaq,
+  type CmsFaqInput,
+  type CmsHeroCopyInput,
+  type CmsNavigationInput,
+  type CmsPage,
+  type CmsPageBlock,
+  type CmsPageBlockInput,
+  type CmsPageInput,
+  type CmsSeoMeta,
+  type CmsSiteSettingsInput,
+  type CmsSnapshotResponse,
+  type CmsTestimonial,
+  type CmsTestimonialInput,
+  type HeroCopy,
+  type PromoBanner,
+  type SiteSetting,
+  type WebNavigationGroup
+} from "@huelegood/shared";
+import { actionResponse, wrapResponse } from "../../common/response";
+
+interface PageBlockDraft {
+  type: string;
+  title: string;
+  description: string;
+  content: string;
+  position: number;
+  status?: CmsPageBlock["status"];
+}
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function normalizeText(value?: string) {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
+}
+
+function normalizeSlug(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function cloneNavigation(groups: WebNavigationGroup[]) {
+  return groups.map((group) => ({
+    title: group.title,
+    items: group.items.map((item) => ({
+      label: item.label,
+      href: item.href,
+      external: item.external
+    }))
+  }));
+}
+
+function cloneHeroCopy(copy: HeroCopy) {
+  return {
+    ...copy,
+    primaryCta: { ...copy.primaryCta },
+    secondaryCta: { ...copy.secondaryCta }
+  };
+}
+
+function normalizePageStatus(value?: string): CmsPage["status"] {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === "draft" || normalized === "published" || normalized === "archived") {
+    return normalized;
+  }
+
+  return "draft";
+}
+
+function normalizeAssetStatus(value?: string): CmsBanner["status"] {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === "inactive") {
+    return "inactive";
+  }
+
+  return "active";
+}
+
+function normalizeTone(value?: string): PromoBanner["tone"] {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === "ink" || normalized === "amber") {
+    return normalized;
+  }
+
+  return "olive";
+}
+
+function normalizeRating(value: number) {
+  const parsed = Number.isFinite(value) ? Math.round(value) : 5;
+  return Math.min(5, Math.max(1, parsed));
+}
+
+function buildBlockId(pageSlug: string, position: number) {
+  return `blk-${normalizeSlug(pageSlug)}-${String(position).padStart(2, "0")}`;
+}
+
+function clonePage(page: CmsPage): CmsPage {
+  return {
+    slug: page.slug,
+    title: page.title,
+    description: page.description,
+    status: page.status,
+    blocks: page.blocks.map((block) => ({
+      id: block.id,
+      pageSlug: block.pageSlug,
+      type: block.type,
+      title: block.title,
+      description: block.description,
+      content: block.content,
+      position: block.position,
+      status: block.status,
+      updatedAt: block.updatedAt
+    })),
+    seoMeta: {
+      pageSlug: page.seoMeta.pageSlug,
+      title: page.seoMeta.title,
+      description: page.seoMeta.description,
+      keywords: [...page.seoMeta.keywords],
+      canonicalPath: page.seoMeta.canonicalPath,
+      robots: page.seoMeta.robots,
+      updatedAt: page.seoMeta.updatedAt
+    },
+    updatedAt: page.updatedAt
+  };
+}
+
+function cloneBanner(banner: CmsBanner): CmsBanner {
+  return { ...banner };
+}
+
+function cloneFaq(faq: CmsFaq): CmsFaq {
+  return { ...faq };
+}
+
+function cloneTestimonial(testimonial: CmsTestimonial): CmsTestimonial {
+  return { ...testimonial };
+}
 
 @Injectable()
 export class CmsService {
-  private readonly pages = {
-    home: {
-      slug: "home",
-      title: heroCopy.title,
-      blocks: ["hero", "promo-banner", "featured-products", "wholesale-plans", "faq"]
-    },
-    catalogo: {
-      slug: "catalogo",
-      title: "Catálogo Huelegood",
-      blocks: ["hero", "product-grid"]
-    },
-    mayoristas: {
-      slug: "mayoristas",
-      title: "Mayoristas y distribuidores",
-      blocks: ["wholesale-plans", "lead-form"]
-    },
-    "trabaja-con-nosotros": {
-      slug: "trabaja-con-nosotros",
-      title: "Trabaja con nosotros",
-      blocks: ["vendor-application-form"]
-    }
-  } as const;
+  private siteSettingData: SiteSetting = { ...defaultSiteSetting };
+
+  private heroCopyData: HeroCopy = cloneHeroCopy(defaultHeroCopy);
+
+  private webNavigationData: WebNavigationGroup[] = cloneNavigation(defaultWebNavigation);
+
+  private readonly banners = new Map<string, CmsBanner>();
+
+  private readonly faqs = new Map<string, CmsFaq>();
+
+  private readonly pages = new Map<string, CmsPage>();
+
+  private readonly testimonials = new Map<string, CmsTestimonial>();
+
+  private bannerSequence = 1;
+
+  private faqSequence = 1;
+
+  private testimonialSequence = 1;
+
+  constructor() {
+    this.seedData();
+  }
+
+  getSnapshot() {
+    return wrapResponse<CmsSnapshotResponse>(this.buildSnapshot(true), this.buildMeta(true));
+  }
+
+  getAdminSnapshot() {
+    return wrapResponse<CmsSnapshotResponse>(this.buildSnapshot(false), this.buildMeta(false));
+  }
 
   getSiteSettings() {
-    return wrapResponse(siteSetting);
+    return wrapResponse({ ...this.siteSettingData });
+  }
+
+  getHeroCopy() {
+    return wrapResponse(cloneHeroCopy(this.heroCopyData));
   }
 
   getNavigation() {
-    return wrapResponse(webNavigation);
+    return wrapResponse(cloneNavigation(this.webNavigationData));
   }
 
-  getPage(slug: string) {
-    return this.pages[slug as keyof typeof this.pages] ?? null;
+  getPages(publicView = false) {
+    const pages = this.listPages(publicView);
+    return wrapResponse(pages, {
+      total: pages.length,
+      published: pages.filter((page) => page.status === "published").length,
+      draft: pages.filter((page) => page.status === "draft").length,
+      archived: pages.filter((page) => page.status === "archived").length
+    });
   }
 
-  getFaqs() {
-    return wrapResponse(faqItems);
+  getPage(slug: string, publicView = true) {
+    const page = this.pages.get(normalizeSlug(slug));
+    if (!page || (publicView && page.status === "archived")) {
+      return null;
+    }
+
+    return clonePage(page);
   }
 
-  getBanners() {
-    return wrapResponse(promoBanners);
+  getBanners(publicView = false) {
+    const banners = this.listBanners(publicView);
+    return wrapResponse(banners, {
+      total: banners.length,
+      active: banners.filter((banner) => banner.status === "active").length,
+      inactive: banners.filter((banner) => banner.status === "inactive").length
+    });
+  }
+
+  getFaqs(publicView = false) {
+    const faqs = this.listFaqs(publicView);
+    return wrapResponse(faqs, {
+      total: faqs.length,
+      active: faqs.filter((faq) => faq.status === "active").length,
+      inactive: faqs.filter((faq) => faq.status === "inactive").length
+    });
+  }
+
+  getTestimonials(publicView = false) {
+    const testimonials = this.listTestimonials(publicView);
+    return wrapResponse(testimonials, {
+      total: testimonials.length,
+      active: testimonials.filter((testimonial) => testimonial.status === "active").length,
+      inactive: testimonials.filter((testimonial) => testimonial.status === "inactive").length
+    });
+  }
+
+  updateSiteSettings(body: CmsSiteSettingsInput) {
+    const brandName = normalizeText(body.brandName);
+    const tagline = normalizeText(body.tagline);
+    const supportEmail = normalizeText(body.supportEmail);
+    const whatsapp = normalizeText(body.whatsapp);
+
+    if (!brandName || !tagline || !supportEmail || !whatsapp) {
+      throw new BadRequestException("Marca, tagline, soporte y WhatsApp son obligatorios.");
+    }
+
+    this.siteSettingData = {
+      brandName,
+      tagline,
+      supportEmail,
+      whatsapp
+    };
+
+    return {
+      ...actionResponse("ok", "Los parámetros base quedaron actualizados."),
+      siteSetting: { ...this.siteSettingData }
+    };
+  }
+
+  updateHeroCopy(body: CmsHeroCopyInput) {
+    const eyebrow = normalizeText(body.eyebrow);
+    const title = normalizeText(body.title);
+    const description = normalizeText(body.description);
+    const primaryCtaLabel = normalizeText(body.primaryCta.label);
+    const primaryCtaHref = normalizeText(body.primaryCta.href);
+    const secondaryCtaLabel = normalizeText(body.secondaryCta.label);
+    const secondaryCtaHref = normalizeText(body.secondaryCta.href);
+
+    if (!eyebrow || !title || !description || !primaryCtaLabel || !primaryCtaHref || !secondaryCtaLabel || !secondaryCtaHref) {
+      throw new BadRequestException("El hero copy requiere textos y CTAs completos.");
+    }
+
+    this.heroCopyData = {
+      eyebrow,
+      title,
+      description,
+      primaryCta: {
+        label: primaryCtaLabel,
+        href: primaryCtaHref
+      },
+      secondaryCta: {
+        label: secondaryCtaLabel,
+        href: secondaryCtaHref
+      }
+    };
+
+    return {
+      ...actionResponse("ok", "El hero del storefront quedó actualizado."),
+      heroCopy: cloneHeroCopy(this.heroCopyData)
+    };
+  }
+
+  updateNavigation(body: CmsNavigationInput) {
+    if (!Array.isArray(body) || body.length === 0) {
+      throw new BadRequestException("La navegación debe incluir al menos un grupo.");
+    }
+
+    const navigation = body.map((group) => {
+      const title = normalizeText(group.title);
+      if (!title || !Array.isArray(group.items) || group.items.length === 0) {
+        throw new BadRequestException("Cada grupo de navegación necesita un título y elementos.");
+      }
+
+      return {
+        title,
+        items: group.items.map((item) => {
+          const label = normalizeText(item.label);
+          const href = normalizeText(item.href);
+          if (!label || !href) {
+            throw new BadRequestException("Cada elemento de navegación necesita etiqueta y ruta.");
+          }
+
+          return {
+            label,
+            href,
+            external: item.external
+          };
+        })
+      };
+    });
+
+    this.webNavigationData = navigation;
+
+    return {
+      ...actionResponse("ok", "La navegación quedó actualizada."),
+      navigation: cloneNavigation(this.webNavigationData)
+    };
+  }
+
+  listPages(publicView = false) {
+    const pages = Array.from(this.pages.values())
+      .filter((page) => (publicView ? page.status !== "archived" : true))
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+      .map((page) => clonePage(page));
+
+    return pages;
+  }
+
+  upsertPage(slug: string, body: CmsPageInput) {
+    const pageSlug = normalizeSlug(slug);
+    const title = normalizeText(body.title);
+    const description = normalizeText(body.description);
+    const now = nowIso();
+
+    if (!pageSlug || !title || !description) {
+      throw new BadRequestException("Slug, título y descripción son obligatorios.");
+    }
+
+    const blocks = this.normalizeBlocks(pageSlug, body.blocks, now);
+    const seoMeta = this.normalizeSeoMeta(pageSlug, body.seoMeta, now);
+    const page: CmsPage = {
+      slug: pageSlug,
+      title,
+      description,
+      status: normalizePageStatus(body.status),
+      blocks,
+      seoMeta,
+      updatedAt: now
+    };
+
+    this.pages.set(pageSlug, page);
+
+    return {
+      ...actionResponse("ok", `La página ${pageSlug} quedó actualizada.`, pageSlug),
+      page: clonePage(page)
+    };
+  }
+
+  updatePageBlocks(slug: string, blocks: CmsPageBlockInput[]) {
+    const pageSlug = normalizeSlug(slug);
+    if (!pageSlug) {
+      throw new BadRequestException("El slug de la página es obligatorio.");
+    }
+
+    const page = this.pages.get(pageSlug);
+    if (!page) {
+      throw new NotFoundException(`No encontramos una página con slug ${slug}.`);
+    }
+
+    const updatedAt = nowIso();
+    page.blocks = this.normalizeBlocks(pageSlug, blocks, updatedAt);
+    page.updatedAt = updatedAt;
+    page.seoMeta.updatedAt = updatedAt;
+    this.pages.set(pageSlug, page);
+
+    return {
+      ...actionResponse("ok", "Los bloques de la página quedaron actualizados.", pageSlug),
+      page: clonePage(page)
+    };
+  }
+
+  listBanners(publicView = false) {
+    const banners = Array.from(this.banners.values())
+      .filter((banner) => (publicView ? banner.status === "active" : true))
+      .sort((left, right) => {
+        if (right.position !== left.position) {
+          return left.position - right.position;
+        }
+
+        return right.updatedAt.localeCompare(left.updatedAt);
+      })
+      .map((banner) => cloneBanner(banner));
+
+    return banners;
+  }
+
+  createBanner(body: CmsBannerInput) {
+    const now = nowIso();
+    const title = normalizeText(body.title);
+    const description = normalizeText(body.description);
+    const ctaLabel = normalizeText(body.ctaLabel);
+    const ctaHref = normalizeText(body.ctaHref);
+    const note = normalizeText(body.note);
+
+    if (!title || !description || !ctaLabel || !ctaHref || !note) {
+      throw new BadRequestException("Título, descripción, CTA y nota son obligatorios.");
+    }
+
+    const id = `banner-${String(this.bannerSequence).padStart(3, "0")}`;
+    this.bannerSequence += 1;
+    const banner: CmsBanner = {
+      id,
+      title,
+      description,
+      ctaLabel,
+      ctaHref,
+      note,
+      tone: normalizeTone(body.tone),
+      status: normalizeAssetStatus(body.status),
+      position: body.position ?? this.banners.size + 1,
+      updatedAt: now
+    };
+
+    this.banners.set(id, banner);
+
+    return {
+      ...actionResponse("ok", "El banner quedó registrado.", id),
+      banner: cloneBanner(banner)
+    };
+  }
+
+  updateBanner(id: string, body: CmsBannerInput) {
+    const banner = this.requireBanner(id);
+    const now = nowIso();
+    const title = normalizeText(body.title);
+    const description = normalizeText(body.description);
+    const ctaLabel = normalizeText(body.ctaLabel);
+    const ctaHref = normalizeText(body.ctaHref);
+    const note = normalizeText(body.note);
+
+    if (!title || !description || !ctaLabel || !ctaHref || !note) {
+      throw new BadRequestException("Título, descripción, CTA y nota son obligatorios.");
+    }
+
+    banner.title = title;
+    banner.description = description;
+    banner.ctaLabel = ctaLabel;
+    banner.ctaHref = ctaHref;
+    banner.note = note;
+    banner.tone = normalizeTone(body.tone);
+    banner.status = normalizeAssetStatus(body.status);
+    banner.position = body.position ?? banner.position;
+    banner.updatedAt = now;
+    this.banners.set(banner.id, banner);
+
+    return {
+      ...actionResponse("ok", "El banner quedó actualizado.", banner.id),
+      banner: cloneBanner(banner)
+    };
+  }
+
+  listFaqs(publicView = false) {
+    const faqs = Array.from(this.faqs.values())
+      .filter((faq) => (publicView ? faq.status === "active" : true))
+      .sort((left, right) => {
+        if (left.position !== right.position) {
+          return left.position - right.position;
+        }
+
+        return right.updatedAt.localeCompare(left.updatedAt);
+      })
+      .map((faq) => cloneFaq(faq));
+
+    return faqs;
+  }
+
+  createFaq(body: CmsFaqInput) {
+    const question = normalizeText(body.question);
+    const answer = normalizeText(body.answer);
+    if (!question || !answer) {
+      throw new BadRequestException("La pregunta y la respuesta son obligatorias.");
+    }
+
+    const now = nowIso();
+    const id = `faq-${String(this.faqSequence).padStart(3, "0")}`;
+    this.faqSequence += 1;
+    const faq: CmsFaq = {
+      id,
+      question,
+      answer,
+      category: normalizeText(body.category),
+      status: normalizeAssetStatus(body.status),
+      position: body.position ?? this.faqs.size + 1,
+      updatedAt: now
+    };
+
+    this.faqs.set(id, faq);
+
+    return {
+      ...actionResponse("ok", "La FAQ quedó registrada.", id),
+      faq: cloneFaq(faq)
+    };
+  }
+
+  updateFaq(id: string, body: CmsFaqInput) {
+    const faq = this.requireFaq(id);
+    const question = normalizeText(body.question);
+    const answer = normalizeText(body.answer);
+
+    if (!question || !answer) {
+      throw new BadRequestException("La pregunta y la respuesta son obligatorias.");
+    }
+
+    faq.question = question;
+    faq.answer = answer;
+    faq.category = normalizeText(body.category);
+    faq.status = normalizeAssetStatus(body.status);
+    faq.position = body.position ?? faq.position;
+    faq.updatedAt = nowIso();
+    this.faqs.set(faq.id, faq);
+
+    return {
+      ...actionResponse("ok", "La FAQ quedó actualizada.", faq.id),
+      faq: cloneFaq(faq)
+    };
+  }
+
+  listTestimonials(publicView = false) {
+    const testimonials = Array.from(this.testimonials.values())
+      .filter((testimonial) => (publicView ? testimonial.status === "active" : true))
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+      .map((testimonial) => cloneTestimonial(testimonial));
+
+    return testimonials;
+  }
+
+  createTestimonial(body: CmsTestimonialInput) {
+    const name = normalizeText(body.name);
+    const role = normalizeText(body.role);
+    const quote = normalizeText(body.quote);
+    if (!name || !role || !quote) {
+      throw new BadRequestException("Nombre, rol y cita son obligatorios.");
+    }
+
+    const now = nowIso();
+    const id = `tst-${String(this.testimonialSequence).padStart(3, "0")}`;
+    this.testimonialSequence += 1;
+    const testimonial: CmsTestimonial = {
+      id,
+      name,
+      role,
+      quote,
+      rating: normalizeRating(body.rating),
+      status: body.status === "inactive" ? "inactive" : "active",
+      updatedAt: now
+    };
+
+    this.testimonials.set(id, testimonial);
+
+    return {
+      ...actionResponse("ok", "El testimonio quedó registrado.", id),
+      testimonial: cloneTestimonial(testimonial)
+    };
+  }
+
+  updateTestimonial(id: string, body: CmsTestimonialInput) {
+    const testimonial = this.requireTestimonial(id);
+    const name = normalizeText(body.name);
+    const role = normalizeText(body.role);
+    const quote = normalizeText(body.quote);
+
+    if (!name || !role || !quote) {
+      throw new BadRequestException("Nombre, rol y cita son obligatorios.");
+    }
+
+    testimonial.name = name;
+    testimonial.role = role;
+    testimonial.quote = quote;
+    testimonial.rating = normalizeRating(body.rating);
+    testimonial.status = body.status === "inactive" ? "inactive" : "active";
+    testimonial.updatedAt = nowIso();
+    this.testimonials.set(testimonial.id, testimonial);
+
+    return {
+      ...actionResponse("ok", "El testimonio quedó actualizado.", testimonial.id),
+      testimonial: cloneTestimonial(testimonial)
+    };
+  }
+
+  private buildSnapshot(publicView: boolean): CmsSnapshotResponse {
+    const banners = this.listBanners(publicView);
+    const faqs = this.listFaqs(publicView);
+    const pages = this.listPages(publicView);
+    const testimonials = this.listTestimonials(publicView);
+
+    return {
+      siteSetting: { ...this.siteSettingData },
+      heroCopy: cloneHeroCopy(this.heroCopyData),
+      webNavigation: cloneNavigation(this.webNavigationData),
+      banners,
+      faqs,
+      pages,
+      testimonials,
+      seoMeta: pages.map((page) => ({
+        pageSlug: page.slug,
+        title: page.seoMeta.title,
+        description: page.seoMeta.description,
+        keywords: [...page.seoMeta.keywords],
+        canonicalPath: page.seoMeta.canonicalPath,
+        robots: page.seoMeta.robots,
+        updatedAt: page.seoMeta.updatedAt
+      }))
+    };
+  }
+
+  private buildMeta(publicView: boolean) {
+    const pages = this.listPages(publicView);
+    const banners = this.listBanners(publicView);
+    const faqs = this.listFaqs(publicView);
+    const testimonials = this.listTestimonials(publicView);
+
+    return {
+      totalPages: pages.length,
+      totalBanners: banners.length,
+      totalFaqs: faqs.length,
+      totalTestimonials: testimonials.length
+    };
+  }
+
+  private normalizeBlocks(pageSlug: string, blocks: CmsPageBlockInput[], updatedAt: string) {
+    return blocks.map((block) => {
+      const type = normalizeText(block.type);
+      const title = normalizeText(block.title);
+      const description = normalizeText(block.description);
+      const content = normalizeText(block.content);
+      const position = Number(block.position);
+
+      if (!type || !title || !description || !content || !Number.isFinite(position)) {
+        throw new BadRequestException(`Los bloques de ${pageSlug} requieren tipo, título, descripción, contenido y posición.`);
+      }
+
+      return {
+        id: buildBlockId(pageSlug, position),
+        pageSlug,
+        type,
+        title,
+        description,
+        content,
+        position,
+        status: block.status ?? "active",
+        updatedAt
+      };
+    });
+  }
+
+  private normalizeSeoMeta(pageSlug: string, meta: CmsPageInput["seoMeta"], updatedAt: string): CmsSeoMeta {
+    const title = normalizeText(meta.title);
+    const description = normalizeText(meta.description);
+
+    if (!title || !description) {
+      throw new BadRequestException(`La SEO meta de ${pageSlug} requiere título y descripción.`);
+    }
+
+    return {
+      pageSlug,
+      title,
+      description,
+      keywords: (meta.keywords ?? []).map((keyword) => keyword.trim()).filter(Boolean),
+      canonicalPath: normalizeText(meta.canonicalPath),
+      robots: meta.robots ?? "index,follow",
+      updatedAt
+    };
+  }
+
+  private requireBanner(id: string) {
+    const banner = this.banners.get(id.trim());
+    if (!banner) {
+      throw new NotFoundException(`No encontramos un banner con id ${id}.`);
+    }
+
+    return banner;
+  }
+
+  private requireFaq(id: string) {
+    const faq = this.faqs.get(id.trim());
+    if (!faq) {
+      throw new NotFoundException(`No encontramos una FAQ con id ${id}.`);
+    }
+
+    return faq;
+  }
+
+  private requireTestimonial(id: string) {
+    const testimonial = this.testimonials.get(id.trim());
+    if (!testimonial) {
+      throw new NotFoundException(`No encontramos un testimonio con id ${id}.`);
+    }
+
+    return testimonial;
+  }
+
+  private seedData() {
+    this.seedBanners();
+    this.seedFaqs();
+    this.seedTestimonials();
+    this.seedPages();
+  }
+
+  private seedBanners() {
+    const seedBanners: CmsBanner[] = promoBanners.map((banner, index) => ({
+      id: `banner-${String(index + 1).padStart(3, "0")}`,
+      title: banner.title,
+      description: banner.description,
+      ctaLabel: banner.ctaLabel,
+      ctaHref: banner.ctaHref,
+      note: banner.note,
+      tone: banner.tone,
+      status: "active",
+      position: index + 1,
+      updatedAt: `2026-03-18T09:${String(index).padStart(2, "0")}:00.000Z`
+    }));
+
+    for (const banner of seedBanners) {
+      this.banners.set(banner.id, banner);
+    }
+
+    this.bannerSequence = seedBanners.length + 1;
+  }
+
+  private seedFaqs() {
+    const seedFaqs: CmsFaq[] = faqItems.map((faq, index) => ({
+      id: `faq-${String(index + 1).padStart(3, "0")}`,
+      question: faq.question,
+      answer: faq.answer,
+      category: faq.category,
+      status: "active",
+      position: index + 1,
+      updatedAt: `2026-03-18T09:${String(10 + index).padStart(2, "0")}:00.000Z`
+    }));
+
+    for (const faq of seedFaqs) {
+      this.faqs.set(faq.id, faq);
+    }
+
+    this.faqSequence = seedFaqs.length + 1;
+  }
+
+  private seedTestimonials() {
+    for (const testimonial of cmsTestimonials) {
+      this.testimonials.set(testimonial.id, { ...testimonial });
+    }
+
+    const highest = Array.from(this.testimonials.keys()).reduce((max, id) => {
+      const numeric = Number(id.replace(/[^\d]/g, ""));
+      return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
+    }, 0);
+    this.testimonialSequence = highest + 1;
+  }
+
+  private seedPages() {
+    const createdAt = "2026-03-18T09:00:00.000Z";
+
+    const seeds: Array<{
+      slug: string;
+      title: string;
+      description: string;
+      status: CmsPage["status"];
+      blocks: PageBlockDraft[];
+      seoMeta: Omit<CmsSeoMeta, "pageSlug" | "updatedAt">;
+      updatedAt?: string;
+    }> = [
+      {
+        slug: "home",
+        title: "Inicio Huelegood",
+        description: "Hero, promos, catálogo visible, mayoristas y preguntas frecuentes.",
+        status: "published",
+        blocks: [
+          {
+            type: "hero",
+            title: "Hero principal",
+            description: "Narrativa de conversión seller-first.",
+            content: defaultHeroCopy.title,
+            position: 1,
+            status: "active"
+          },
+          {
+            type: "promo-banner",
+            title: "Promociones activas",
+            description: "Bloques de valor y promociones.",
+            content: promoBanners.map((banner) => banner.title).join(" | "),
+            position: 2,
+            status: "active"
+          },
+          {
+            type: "featured-products",
+            title: "Productos visibles",
+            description: "Clásico Verde, Premium Negro y Combo Dúo Perfecto.",
+            content: "Catálogo visible con bundle y oferta activa.",
+            position: 3,
+            status: "active"
+          },
+          {
+            type: "wholesale-plans",
+            title: "Mayoristas",
+            description: "Tiers comerciales y captación de distribuidores.",
+            content: "Captación B2B con condiciones por volumen.",
+            position: 4,
+            status: "active"
+          },
+          {
+            type: "faq",
+            title: "FAQ",
+            description: "Preguntas de pago y operación.",
+            content: faqItems.map((item) => item.question).join(" | "),
+            position: 5,
+            status: "active"
+          }
+        ],
+        seoMeta: {
+          title: "Huelegood | Plataforma comercial modular",
+          description: defaultSiteSetting.tagline,
+          keywords: ["huelegood", "storefront", "seller-first"],
+          canonicalPath: "/",
+          robots: "index,follow"
+        }
+      },
+      {
+        slug: "catalogo",
+        title: "Catálogo",
+        description: "Productos, bundles y ofertas activas.",
+        status: "published",
+        blocks: [
+          {
+            type: "hero",
+            title: "Hero catálogo",
+            description: "Presentación visible de productos.",
+            content: "Visibilidad de productos y filtros.",
+            position: 1,
+            status: "active"
+          },
+          {
+            type: "product-grid",
+            title: "Grid de productos",
+            description: "Producto visible y bundle.",
+            content: "Clásico Verde, Premium Negro, Combo Dúo Perfecto.",
+            position: 2,
+            status: "active"
+          }
+        ],
+        seoMeta: {
+          title: "Catálogo Huelegood",
+          description: "Productos visibles, bundles y ofertas activas.",
+          keywords: ["catalogo", "productos", "bundles"],
+          canonicalPath: "/catalogo",
+          robots: "index,follow"
+        }
+      },
+      {
+        slug: "mayoristas",
+        title: "Mayoristas y distribuidores",
+        description: "Cotización por volumen y seguimiento comercial.",
+        status: "published",
+        blocks: [
+          {
+            type: "hero",
+            title: "Mayoristas hero",
+            description: "Captación de leads B2B.",
+            content: "Condiciones por volumen y seguimiento comercial.",
+            position: 1,
+            status: "active"
+          },
+          {
+            type: "wholesale-plans",
+            title: "Planes mayoristas",
+            description: "Tiers de volumen y ahorro.",
+            content: "Mayorista Inicial y Distribuidor.",
+            position: 2,
+            status: "active"
+          },
+          {
+            type: "lead-form",
+            title: "Formulario mayorista",
+            description: "Lead calificado para operación comercial.",
+            content: "Nombre de empresa, contacto, ciudad y notas.",
+            position: 3,
+            status: "active"
+          }
+        ],
+        seoMeta: {
+          title: "Mayoristas Huelegood",
+          description: "Leads y cotización por volumen.",
+          keywords: ["mayoristas", "distribuidores", "b2b"],
+          canonicalPath: "/mayoristas",
+          robots: "index,follow"
+        }
+      },
+      {
+        slug: "trabaja-con-nosotros",
+        title: "Trabaja con nosotros",
+        description: "Postulación de vendedores y aliados comerciales.",
+        status: "published",
+        blocks: [
+          {
+            type: "hero",
+            title: "Recruitment hero",
+            description: "Atracción de vendedores y aliados.",
+            content: "Perfil seller-first y oportunidades comerciales.",
+            position: 1,
+            status: "active"
+          },
+          {
+            type: "vendor-application-form",
+            title: "Formulario vendedor",
+            description: "Postulación con código y seguimiento.",
+            content: "Nombre, correo, ciudad y fuente.",
+            position: 2,
+            status: "active"
+          }
+        ],
+        seoMeta: {
+          title: "Trabaja con Huelegood",
+          description: "Postulación de vendedores y aliados.",
+          keywords: ["vendedores", "seller", "postulacion"],
+          canonicalPath: "/trabaja-con-nosotros",
+          robots: "index,follow"
+        }
+      },
+      {
+        slug: "cuenta",
+        title: "Mi cuenta",
+        description: "Acceso, sesión y fidelización.",
+        status: "published",
+        blocks: [
+          {
+            type: "auth",
+            title: "Acceso",
+            description: "Login y registro.",
+            content: "Sesión de cliente, seller o admin demo.",
+            position: 1,
+            status: "active"
+          },
+          {
+            type: "loyalty",
+            title: "Fidelización",
+            description: "Saldo y movimientos de puntos.",
+            content: "Puntos disponibles, pendientes y canjes.",
+            position: 2,
+            status: "active"
+          }
+        ],
+        seoMeta: {
+          title: "Mi cuenta Huelegood",
+          description: "Acceso de usuario y fidelización.",
+          keywords: ["cuenta", "loyalty", "sesion"],
+          canonicalPath: "/cuenta",
+          robots: "noindex,nofollow"
+        }
+      },
+      {
+        slug: "checkout",
+        title: "Checkout",
+        description: "Openpay, pago manual y revisión.",
+        status: "published",
+        blocks: [
+          {
+            type: "checkout-summary",
+            title: "Resumen",
+            description: "Totales y vendedor aplicado.",
+            content: "Subtotal, descuento, envío y total.",
+            position: 1,
+            status: "active"
+          },
+          {
+            type: "payment-methods",
+            title: "Pagos",
+            description: "Openpay y comprobante manual.",
+            content: "Pago online y pago manual con revisión.",
+            position: 2,
+            status: "active"
+          }
+        ],
+        seoMeta: {
+          title: "Checkout Huelegood",
+          description: "Openpay y comprobante manual.",
+          keywords: ["checkout", "openpay", "pagos"],
+          canonicalPath: "/checkout",
+          robots: "noindex,nofollow"
+        }
+      }
+    ];
+
+    for (const seed of seeds) {
+      const updatedAt = seed.updatedAt ?? createdAt;
+      const pageBlocks = seed.blocks.map((block) => ({
+        id: buildBlockId(seed.slug, block.position),
+        pageSlug: seed.slug,
+        type: block.type,
+        title: block.title,
+        description: block.description,
+        content: block.content,
+        position: block.position,
+        status: block.status ?? "active",
+        updatedAt
+      }));
+
+      const page: CmsPage = {
+        slug: seed.slug,
+        title: seed.title,
+        description: seed.description,
+        status: seed.status,
+        blocks: pageBlocks,
+        seoMeta: {
+          pageSlug: seed.slug,
+          title: seed.seoMeta.title,
+          description: seed.seoMeta.description,
+          keywords: [...seed.seoMeta.keywords],
+          canonicalPath: seed.seoMeta.canonicalPath,
+          robots: seed.seoMeta.robots,
+          updatedAt
+        },
+        updatedAt
+      };
+
+      this.pages.set(page.slug, page);
+    }
   }
 }
-

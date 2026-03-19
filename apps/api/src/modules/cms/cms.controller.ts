@@ -5,6 +5,11 @@ import { CmsService } from "./cms.service";
 export class CmsController {
   constructor(private readonly cmsService: CmsService) {}
 
+  @Get("cms")
+  getSnapshot() {
+    return this.cmsService.getSnapshot();
+  }
+
   @Get("site-settings")
   getSiteSettings() {
     return this.cmsService.getSiteSettings();
@@ -33,6 +38,11 @@ export class CmsController {
 
   @Get("banners")
   getBanners() {
-    return this.cmsService.getBanners();
+    return this.cmsService.getBanners(true);
+  }
+
+  @Get("testimonials")
+  getTestimonials() {
+    return this.cmsService.getTestimonials(true);
   }
 }

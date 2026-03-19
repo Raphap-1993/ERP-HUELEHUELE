@@ -19,11 +19,18 @@ import type {
 } from "../domain/enums";
 import type {
   CatalogProduct,
+  CmsBanner,
+  CmsFaq,
+  CmsPage,
+  CmsPageBlock,
+  CmsSeoMeta,
+  CmsTestimonial,
   FaqItem,
   HeroCopy,
   LoyaltyAccountSummary,
   PromoBanner,
   SiteSetting,
+  WebNavigationGroup,
   WholesalePlan
 } from "../domain/models";
 
@@ -246,6 +253,64 @@ export interface MarketingCampaignInput {
   channel: "email" | "sms" | "whatsapp";
   goal: string;
   scheduledAt?: string;
+}
+
+export interface CmsSiteSettingsInput extends SiteSetting {}
+
+export interface CmsHeroCopyInput extends HeroCopy {}
+
+export type CmsNavigationInput = WebNavigationGroup[];
+
+export interface CmsPageBlockInput {
+  type: string;
+  title: string;
+  description: string;
+  content: string;
+  position: number;
+  status?: CmsPageBlock["status"];
+}
+
+export interface CmsSeoMetaInput {
+  title: string;
+  description: string;
+  keywords: string[];
+  canonicalPath?: string;
+  robots?: CmsSeoMeta["robots"];
+}
+
+export interface CmsPageInput {
+  title: string;
+  description: string;
+  status?: CmsPage["status"];
+  blocks: CmsPageBlockInput[];
+  seoMeta: CmsSeoMetaInput;
+}
+
+export interface CmsBannerInput {
+  title: string;
+  description: string;
+  ctaLabel: string;
+  ctaHref: string;
+  note: string;
+  tone: CmsBanner["tone"];
+  status?: CmsBanner["status"];
+  position?: number;
+}
+
+export interface CmsFaqInput {
+  question: string;
+  answer: string;
+  category?: string;
+  status?: CmsFaq["status"];
+  position?: number;
+}
+
+export interface CmsTestimonialInput {
+  name: string;
+  role: string;
+  quote: string;
+  rating: number;
+  status?: CmsTestimonial["status"];
 }
 
 export interface LoyaltyRuleSummary {
@@ -623,6 +688,55 @@ export interface ManualReviewActionInput {
 export interface LoyaltySummaryEnvelope {
   data: LoyaltyAccountSummary | null;
   meta?: Record<string, unknown>;
+}
+
+export interface CmsSnapshotResponse {
+  siteSetting: SiteSetting;
+  heroCopy: HeroCopy;
+  webNavigation: WebNavigationGroup[];
+  banners: CmsBanner[];
+  faqs: CmsFaq[];
+  pages: CmsPage[];
+  testimonials: CmsTestimonial[];
+  seoMeta: CmsSeoMeta[];
+}
+
+export interface CmsSnapshotEnvelope {
+  data: CmsSnapshotResponse;
+  meta?: Record<string, unknown>;
+}
+
+export interface CmsPagesEnvelope {
+  data: CmsPage[];
+  meta?: Record<string, unknown>;
+}
+
+export interface CmsBannersEnvelope {
+  data: CmsBanner[];
+  meta?: Record<string, unknown>;
+}
+
+export interface CmsFaqsEnvelope {
+  data: CmsFaq[];
+  meta?: Record<string, unknown>;
+}
+
+export interface CmsTestimonialsEnvelope {
+  data: CmsTestimonial[];
+  meta?: Record<string, unknown>;
+}
+
+export interface CmsActionEnvelope {
+  status: "ok" | "queued" | "pending_review" | "rejected";
+  message: string;
+  referenceId?: string;
+  siteSetting?: SiteSetting;
+  heroCopy?: HeroCopy;
+  navigation?: WebNavigationGroup[];
+  page?: CmsPage;
+  banner?: CmsBanner;
+  faq?: CmsFaq;
+  testimonial?: CmsTestimonial;
 }
 
 export interface StorefrontPagePayload {

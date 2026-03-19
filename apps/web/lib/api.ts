@@ -2,6 +2,7 @@ import type {
   AuthCredentialsInput,
   AuthRegisterInput,
   AuthSessionSummary,
+  CmsSnapshotEnvelope,
   CatalogProduct,
   CatalogSummaryResponse,
   CheckoutActionSummary,
@@ -87,6 +88,12 @@ export async function submitWholesaleLead(body: WholesaleLeadInput) {
 
 export async function fetchWholesaleTiers() {
   return requestJson<WholesaleTiersEnvelope>("/store/wholesale-tiers");
+}
+
+export async function fetchCmsSnapshot() {
+  return requestJson<CmsSnapshotEnvelope>("/store/cms", {
+    cache: "no-store"
+  });
 }
 
 export async function fetchLoyaltySummary() {

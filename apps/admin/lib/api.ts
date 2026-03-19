@@ -1,4 +1,18 @@
 import type {
+  CmsActionEnvelope,
+  CmsBannerInput,
+  CmsBannersEnvelope,
+  CmsFaqInput,
+  CmsFaqsEnvelope,
+  CmsHeroCopyInput,
+  CmsNavigationInput,
+  CmsPageBlockInput,
+  CmsPageInput,
+  CmsPagesEnvelope,
+  CmsSiteSettingsInput,
+  CmsSnapshotEnvelope,
+  CmsTestimonialInput,
+  CmsTestimonialsEnvelope,
   CommissionPayoutInput,
   CommissionPayoutSettleInput,
   CommissionPayoutSummary,
@@ -165,6 +179,103 @@ export async function fetchCampaignTemplates() {
 
 export async function fetchCampaignEvents() {
   return requestJson<MarketingEventsEnvelope>("/admin/campaigns/events");
+}
+
+export async function fetchCmsOverview() {
+  return requestJson<CmsSnapshotEnvelope>("/admin/cms");
+}
+
+export async function updateCmsSiteSettings(body: CmsSiteSettingsInput) {
+  return requestJson<CmsActionEnvelope>("/admin/cms/site-settings", {
+    method: "PATCH",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function updateCmsHeroCopy(body: CmsHeroCopyInput) {
+  return requestJson<CmsActionEnvelope>("/admin/cms/hero-copy", {
+    method: "PATCH",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function updateCmsNavigation(body: CmsNavigationInput) {
+  return requestJson<CmsActionEnvelope>("/admin/cms/navigation", {
+    method: "PATCH",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function fetchCmsPages() {
+  return requestJson<CmsPagesEnvelope>("/admin/cms/pages");
+}
+
+export async function upsertCmsPage(slug: string, body: CmsPageInput) {
+  return requestJson<CmsActionEnvelope>(`/admin/cms/pages/${encodeURIComponent(slug)}`, {
+    method: "PATCH",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function updateCmsPageBlocks(slug: string, blocks: CmsPageBlockInput[]) {
+  return requestJson<CmsActionEnvelope>(`/admin/cms/pages/${encodeURIComponent(slug)}/blocks`, {
+    method: "PATCH",
+    body: JSON.stringify({ blocks })
+  });
+}
+
+export async function fetchCmsBanners() {
+  return requestJson<CmsBannersEnvelope>("/admin/cms/banners");
+}
+
+export async function createCmsBanner(body: CmsBannerInput) {
+  return requestJson<CmsActionEnvelope>("/admin/cms/banners", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function updateCmsBanner(id: string, body: CmsBannerInput) {
+  return requestJson<CmsActionEnvelope>(`/admin/cms/banners/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function fetchCmsFaqs() {
+  return requestJson<CmsFaqsEnvelope>("/admin/cms/faqs");
+}
+
+export async function createCmsFaq(body: CmsFaqInput) {
+  return requestJson<CmsActionEnvelope>("/admin/cms/faqs", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function updateCmsFaq(id: string, body: CmsFaqInput) {
+  return requestJson<CmsActionEnvelope>(`/admin/cms/faqs/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function fetchCmsTestimonials() {
+  return requestJson<CmsTestimonialsEnvelope>("/admin/cms/testimonials");
+}
+
+export async function createCmsTestimonial(body: CmsTestimonialInput) {
+  return requestJson<CmsActionEnvelope>("/admin/cms/testimonials", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function updateCmsTestimonial(id: string, body: CmsTestimonialInput) {
+  return requestJson<CmsActionEnvelope>(`/admin/cms/testimonials/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(body)
+  });
 }
 
 export async function fetchLoyaltyAccounts() {

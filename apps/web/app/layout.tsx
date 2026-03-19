@@ -2,14 +2,33 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { siteSetting, webNavigation } from "@huelegood/shared";
 import { Button, PublicBrandStrip } from "@huelegood/ui";
+import { fetchCmsSnapshot } from "../lib/api";
 import "./globals.css";
 
-export const metadata = {
-  title: `${siteSetting.brandName} | Plataforma comercial modular`,
-  description: siteSetting.tagline
-};
+async function loadLayoutCms() {
+  try {
+    const response = await fetchCmsSnapshot();
+    return response.data;
+  } catch {
+    return null;
+  }
+}
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export async function generateMetadata() {
+  const cms = await loadLayoutCms();
+  const settings = cms?.siteSetting ?? siteSetting;
+
+  return {
+    title: `${settings.brandName} | Plataforma comercial modular`,
+    description: settings.tagline
+  };
+}
+
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const cms = await loadLayoutCms();
+  const settings = cms?.siteSetting ?? siteSetting;
+  const navigation = cms?.webNavigation ?? webNavigation;
+
   return (
     <html lang="es">
       <body>
@@ -21,7 +40,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 <PublicBrandStrip />
               </div>
               <nav className="flex flex-wrap items-center gap-2">
-                {webNavigation.flatMap((group) => group.items).map((item) => (
+                {navigation.flatMap((group) => group.items).map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
@@ -40,11 +59,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <footer className="mt-10 rounded-[1.75rem] border border-black/10 bg-[#132016] px-6 py-6 text-white shadow-soft">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <div className="text-sm uppercase tracking-[0.24em] text-white/45">{siteSetting.brandName}</div>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-white/72">{siteSetting.tagline}</p>
+                <div className="text-sm uppercase tracking-[0.24em] text-white/45">{settings.brandName}</div>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-white/72">{settings.tagline}</p>
               </div>
               <div className="text-sm text-white/70">
-                Soporte: {siteSetting.supportEmail} · WhatsApp: {siteSetting.whatsapp}
+                Soporte: {settings.supportEmail} · WhatsApp: {settings.whatsapp}
               </div>
             </div>
           </footer>
@@ -53,4 +72,3 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     </html>
   );
 }
-
