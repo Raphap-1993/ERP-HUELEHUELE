@@ -4,11 +4,22 @@ import type {
   CommissionPayoutSummary,
   CommissionRuleSummary,
   CommissionSummary,
+  MarketingCampaignInput,
+  MarketingCampaignSummary,
+  MarketingEventSummary,
+  MarketingSegmentSummary,
+  MarketingTemplateSummary,
   AdminManualPaymentRequestSummary,
   AdminOrderDetail,
   AdminOrderSummary,
   AdminPaymentSummary,
   ManualReviewActionInput,
+  WholesaleLeadInput,
+  WholesaleLeadStatusInput,
+  WholesaleLeadSummary,
+  WholesalePlan,
+  WholesaleQuoteAdminSummary,
+  WholesaleQuoteInput,
   VendorApplicationActionInput,
   VendorApplicationSummary,
   VendorCodeSummary,
@@ -98,6 +109,55 @@ export async function fetchVendorCodes() {
   return requestJson<VendorCodesEnvelope>("/admin/vendors/codes");
 }
 
+export async function fetchWholesaleLeads() {
+  return requestJson<WholesaleLeadsEnvelope>("/admin/wholesale-leads");
+}
+
+export async function updateWholesaleLeadStatus(id: string, body: WholesaleLeadStatusInput) {
+  return requestJson<WholesaleLeadActionEnvelope>(`/admin/wholesale-leads/${encodeURIComponent(id)}/status`, {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function fetchWholesaleQuotes() {
+  return requestJson<WholesaleQuotesEnvelope>("/admin/wholesale-quotes");
+}
+
+export async function createWholesaleQuote(body: WholesaleQuoteInput) {
+  return requestJson<WholesaleQuoteActionEnvelope>("/admin/wholesale-quotes", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function fetchWholesaleTiers() {
+  return requestJson<WholesaleTiersEnvelope>("/admin/wholesale-tiers");
+}
+
+export async function fetchCampaigns() {
+  return requestJson<MarketingCampaignsEnvelope>("/admin/campaigns");
+}
+
+export async function createCampaign(body: MarketingCampaignInput) {
+  return requestJson<MarketingCampaignActionEnvelope>("/admin/campaigns", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function fetchCampaignSegments() {
+  return requestJson<MarketingSegmentsEnvelope>("/admin/campaigns/segments");
+}
+
+export async function fetchCampaignTemplates() {
+  return requestJson<MarketingTemplatesEnvelope>("/admin/campaigns/templates");
+}
+
+export async function fetchCampaignEvents() {
+  return requestJson<MarketingEventsEnvelope>("/admin/campaigns/events");
+}
+
 export async function fetchCommissions() {
   return requestJson<CommissionsEnvelope>("/admin/commissions");
 }
@@ -172,6 +232,64 @@ export type VendorsEnvelope = {
 
 export type VendorCodesEnvelope = {
   data: VendorCodeSummary[];
+  meta?: Record<string, unknown>;
+};
+
+export type WholesaleLeadsEnvelope = {
+  data: WholesaleLeadSummary[];
+  meta?: Record<string, unknown>;
+};
+
+export type WholesaleLeadActionEnvelope = {
+  status: string;
+  message: string;
+  referenceId?: string;
+  lead?: WholesaleLeadSummary;
+  nextStep?: string;
+};
+
+export type WholesaleQuotesEnvelope = {
+  data: WholesaleQuoteAdminSummary[];
+  meta?: Record<string, unknown>;
+};
+
+export type WholesaleQuoteActionEnvelope = {
+  status: string;
+  message: string;
+  referenceId?: string;
+  quote?: WholesaleQuoteAdminSummary;
+  lead?: WholesaleLeadSummary;
+};
+
+export type WholesaleTiersEnvelope = {
+  data: WholesalePlan[];
+  meta?: Record<string, unknown>;
+};
+
+export type MarketingCampaignsEnvelope = {
+  data: MarketingCampaignSummary[];
+  meta?: Record<string, unknown>;
+};
+
+export type MarketingCampaignActionEnvelope = {
+  status: string;
+  message: string;
+  referenceId?: string;
+  campaign?: MarketingCampaignSummary;
+};
+
+export type MarketingSegmentsEnvelope = {
+  data: MarketingSegmentSummary[];
+  meta?: Record<string, unknown>;
+};
+
+export type MarketingTemplatesEnvelope = {
+  data: MarketingTemplateSummary[];
+  meta?: Record<string, unknown>;
+};
+
+export type MarketingEventsEnvelope = {
+  data: MarketingEventSummary[];
   meta?: Record<string, unknown>;
 };
 

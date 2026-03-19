@@ -1,4 +1,6 @@
 import type {
+  CampaignRunStatus,
+  CampaignStatus,
   CampaignRecipientStatus,
   CommissionPayoutStatus,
   CommissionStatus,
@@ -8,7 +10,9 @@ import type {
   PaymentStatus,
   RoleCode,
   VendorApplicationStatus,
-  VendorStatus
+  VendorStatus,
+  WholesaleLeadStatus,
+  WholesaleQuoteStatus
 } from "../domain/enums";
 import type { CatalogProduct, FaqItem, HeroCopy, PromoBanner, SiteSetting, WholesalePlan } from "../domain/models";
 
@@ -111,6 +115,126 @@ export interface VendorCodeSummary {
   status: VendorStatus;
   approvedAt?: string;
   updatedAt: string;
+}
+
+export interface WholesaleLeadInput {
+  company: string;
+  contact: string;
+  email: string;
+  city: string;
+  phone?: string;
+  notes?: string;
+  source?: string;
+}
+
+export interface WholesaleLeadSummary {
+  id: string;
+  company: string;
+  contact: string;
+  email: string;
+  city: string;
+  source: string;
+  status: WholesaleLeadStatus;
+  phone?: string;
+  notes?: string;
+  reviewer?: string;
+  reviewedAt?: string;
+  quoteCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WholesaleLeadStatusInput {
+  status: WholesaleLeadStatus;
+  reviewer?: string;
+  notes?: string;
+}
+
+export interface WholesaleQuoteItemSummary {
+  label: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
+export interface WholesaleQuoteInput {
+  leadId: string;
+  amount: number;
+  status?: WholesaleQuoteStatus;
+  notes?: string;
+  expiresAt?: string;
+  items?: WholesaleQuoteItemSummary[];
+}
+
+export interface WholesaleQuoteAdminSummary {
+  id: string;
+  leadId: string;
+  company: string;
+  contact: string;
+  email: string;
+  status: WholesaleQuoteStatus;
+  amount: number;
+  currencyCode: string;
+  itemsCount: number;
+  notes?: string;
+  reviewer?: string;
+  sentAt?: string;
+  expiresAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MarketingSegmentSummary {
+  id: string;
+  name: string;
+  definition: string;
+  audienceSize: number;
+  status: "active" | "inactive";
+  updatedAt: string;
+}
+
+export interface MarketingTemplateSummary {
+  id: string;
+  name: string;
+  channel: "email" | "sms" | "whatsapp";
+  subject: string;
+  status: "draft" | "active" | "archived";
+  updatedAt: string;
+}
+
+export interface MarketingCampaignSummary {
+  id: string;
+  name: string;
+  segmentId: string;
+  segmentName: string;
+  templateId: string;
+  templateName: string;
+  channel: "email" | "sms" | "whatsapp";
+  status: CampaignStatus;
+  runStatus: CampaignRunStatus;
+  recipients: number;
+  goal: string;
+  scheduledAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MarketingEventSummary {
+  id: string;
+  eventName: string;
+  source: string;
+  subject: string;
+  payloadSummary: string;
+  occurredAt: string;
+}
+
+export interface MarketingCampaignInput {
+  name: string;
+  segmentId: string;
+  templateId: string;
+  channel: "email" | "sms" | "whatsapp";
+  goal: string;
+  scheduledAt?: string;
 }
 
 export interface CommissionRuleSummary {

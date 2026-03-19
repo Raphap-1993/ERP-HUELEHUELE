@@ -17,7 +17,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <aside className="rounded-[1.75rem] border border-black/10 bg-[#132016] p-6 text-white shadow-soft">
             <div className="space-y-3">
               <div className="text-xs uppercase tracking-[0.24em] text-white/45">{siteSetting.brandName} Admin</div>
-              <p className="text-sm leading-6 text-white/72">Operación de pedidos, pagos, CMS, vendedores, comisiones y marketing.</p>
+              <p className="text-sm leading-6 text-white/72">
+                Operación de pedidos, pagos, CMS, vendedores, mayoristas, CRM, comisiones y marketing.
+              </p>
             </div>
             <div className="my-6">
               <Button href="/" variant="secondary" size="sm">
@@ -64,4 +66,3 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     </html>
   );
 }
-

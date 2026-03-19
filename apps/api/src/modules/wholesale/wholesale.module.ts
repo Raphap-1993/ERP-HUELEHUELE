@@ -1,11 +1,24 @@
 import { Module } from "@nestjs/common";
-import { AdminWholesaleLeadsController, AdminWholesaleQuotesController, WholesaleLeadsController } from "./wholesale.controller";
+import { MarketingModule } from "../marketing/marketing.module";
+import {
+  AdminWholesaleLeadsController,
+  AdminWholesaleQuotesController,
+  AdminWholesaleTiersController,
+  WholesaleLeadsController,
+  WholesaleTiersController
+} from "./wholesale.controller";
 import { WholesaleService } from "./wholesale.service";
 
 @Module({
-  controllers: [WholesaleLeadsController, AdminWholesaleLeadsController, AdminWholesaleQuotesController],
+  imports: [MarketingModule],
+  controllers: [
+    WholesaleLeadsController,
+    WholesaleTiersController,
+    AdminWholesaleLeadsController,
+    AdminWholesaleQuotesController,
+    AdminWholesaleTiersController
+  ],
   providers: [WholesaleService],
   exports: [WholesaleService]
 })
 export class WholesaleModule {}
-

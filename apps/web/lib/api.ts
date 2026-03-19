@@ -7,7 +7,10 @@ import type {
   CheckoutActionSummary,
   CheckoutQuoteInput,
   CheckoutQuoteSummary,
-  CheckoutRequestInput
+  CheckoutRequestInput,
+  WholesaleLeadInput,
+  WholesalePlan,
+  WholesaleLeadSummary
 } from "@huelegood/shared";
 
 function normalizeBaseUrl(value: string | undefined) {
@@ -74,6 +77,17 @@ export async function createManualCheckout(body: CheckoutRequestInput) {
   });
 }
 
+export async function submitWholesaleLead(body: WholesaleLeadInput) {
+  return requestJson<WholesaleLeadActionEnvelope>("/store/wholesale-leads", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function fetchWholesaleTiers() {
+  return requestJson<WholesaleTiersEnvelope>("/store/wholesale-tiers");
+}
+
 export async function login(body: AuthCredentialsInput) {
   return requestJson<AuthSessionEnvelope>("/auth/login", {
     method: "POST",
@@ -132,4 +146,17 @@ export type CheckoutActionEnvelope = {
   referenceId?: string;
   order?: CheckoutActionSummary;
   quote?: CheckoutQuoteSummary;
+};
+
+export type WholesaleLeadActionEnvelope = {
+  status: string;
+  message: string;
+  referenceId?: string;
+  lead?: WholesaleLeadSummary;
+  nextStep?: string;
+};
+
+export type WholesaleTiersEnvelope = {
+  data: WholesalePlan[];
+  meta?: Record<string, unknown>;
 };
