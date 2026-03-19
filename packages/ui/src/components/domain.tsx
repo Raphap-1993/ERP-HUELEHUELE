@@ -2,6 +2,7 @@ import {
   adminMetrics,
   adminNavigation,
   adminDashboard,
+  filterNavigationGroupsByRoles,
   commissionRows,
   faqItems,
   featuredProducts,
@@ -15,6 +16,7 @@ import {
   type CommissionRow,
   type FaqItem,
   type HeroCopy,
+  type RoleCode,
   type NavigationItem,
   type OrderSummaryRow,
   type PromoBanner,
@@ -463,22 +465,48 @@ export function PublicBrandStrip() {
   );
 }
 
-export function AdminSidebarLinkGroup() {
+export function AdminSidebarLinkGroup({
+  roles,
+  currentPath,
+  variant = "light"
+}: {
+  roles?: readonly RoleCode[];
+  currentPath?: string;
+  variant?: "light" | "dark";
+}) {
+  const groups = filterNavigationGroupsByRoles(adminNavigation, roles);
+
+  if (!groups.length) {
+    return null;
+  }
+
+  const groupLabelClass = variant === "dark" ? "text-white/45" : "text-black/40";
+  const linkBaseClass =
+    variant === "dark"
+      ? "text-white/85 hover:bg-white/10 hover:text-white"
+      : "text-[#132016] hover:bg-black/5";
+  const activeClass = variant === "dark" ? "bg-white/10 text-white" : "bg-black/5 text-[#132016]";
+
   return (
     <div className="space-y-8">
-      {adminNavigation.map((group) => (
+      {groups.map((group) => (
         <div key={group.title} className="space-y-3">
-          <p className="text-xs uppercase tracking-[0.22em] text-black/40">{group.title}</p>
+          <p className={cn("text-xs uppercase tracking-[0.22em]", groupLabelClass)}>{group.title}</p>
           <div className="space-y-2">
-            {group.items.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                className="block rounded-2xl px-4 py-2 text-sm text-[#132016] transition hover:bg-black/5"
-              >
-                {item.label}
-              </a>
-            ))}
+            {group.items.map((item) => {
+              const isActive = currentPath === item.href || (item.href !== "/" && currentPath?.startsWith(`${item.href}/`));
+              return (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  target={item.external ? "_blank" : undefined}
+                  rel={item.external ? "noreferrer" : undefined}
+                  className={cn("block rounded-2xl px-4 py-2 text-sm transition", linkBaseClass, isActive && activeClass)}
+                >
+                  {item.label}
+                </a>
+              );
+            })}
           </div>
         </div>
       ))}

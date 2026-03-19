@@ -17,6 +17,7 @@ import {
   WholesaleLeadStatus,
   WholesaleQuoteStatus
 } from "./domain/enums";
+import { adminAccessRoles } from "./domain/admin-access";
 import type {
   AdminMetric,
   AdminNavigationGroup,
@@ -79,24 +80,24 @@ export const adminNavigation: AdminNavigationGroup[] = [
   {
     title: "Operación",
     items: [
-      { label: "Dashboard", href: "/" },
-      { label: "Pedidos", href: "/pedidos" },
-      { label: "Pagos", href: "/pagos" },
-      { label: "Vendedores", href: "/vendedores" },
-      { label: "Comisiones", href: "/comisiones" }
+      { label: "Dashboard", href: "/", requiredRoles: adminAccessRoles.dashboard },
+      { label: "Pedidos", href: "/pedidos", requiredRoles: adminAccessRoles.orders },
+      { label: "Pagos", href: "/pagos", requiredRoles: adminAccessRoles.payments },
+      { label: "Vendedores", href: "/vendedores", requiredRoles: adminAccessRoles.vendors },
+      { label: "Comisiones", href: "/comisiones", requiredRoles: adminAccessRoles.commissions }
     ]
   },
   {
     title: "Gestión",
     items: [
-      { label: "CMS", href: "/cms" },
-      { label: "Mayoristas", href: "/mayoristas" },
-      { label: "Fidelización", href: "/loyalty" },
-      { label: "Marketing", href: "/marketing" },
-      { label: "CRM", href: "/crm" },
-      { label: "Notificaciones", href: "/notificaciones" },
-      { label: "Auditoría", href: "/auditoria" },
-      { label: "Configuración", href: "/configuracion" }
+      { label: "CMS", href: "/cms", requiredRoles: adminAccessRoles.cms },
+      { label: "Mayoristas", href: "/mayoristas", requiredRoles: adminAccessRoles.wholesale },
+      { label: "Fidelización", href: "/loyalty", requiredRoles: adminAccessRoles.loyalty },
+      { label: "Marketing", href: "/marketing", requiredRoles: adminAccessRoles.marketing },
+      { label: "CRM", href: "/crm", requiredRoles: adminAccessRoles.crm },
+      { label: "Notificaciones", href: "/notificaciones", requiredRoles: adminAccessRoles.notifications },
+      { label: "Auditoría", href: "/auditoria", requiredRoles: adminAccessRoles.audit },
+      { label: "Configuración", href: "/configuracion", requiredRoles: adminAccessRoles.configuration }
     ]
   }
 ];

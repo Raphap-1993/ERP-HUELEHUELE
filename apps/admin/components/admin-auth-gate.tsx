@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { RoleCode, type AuthCredentialsInput, type AuthSessionSummary } from "@huelegood/shared";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { RoleCode, hasAdminAccess, type AuthCredentialsInput } from "@huelegood/shared";
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, SectionHeader } from "@huelegood/ui";
-import { fetchAdminSession, loginAdmin, logoutAdmin } from "../lib/api";
-import { clearStoredAdminSessionToken, readStoredAdminSessionToken, writeStoredAdminSessionToken } from "../lib/session";
+import { useAdminSession } from "./admin-session-provider";
 
 type AdminAuthGateProps = {
   title?: string;
@@ -25,53 +24,13 @@ const roleLabels: Record<RoleCode, string> = {
 };
 
 export function AdminAuthGate({ title, description, allowedRoles, children }: AdminAuthGateProps) {
-  const [session, setSession] = useState<AuthSessionSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { session, loading, login, logout } = useAdminSession();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loginForm, setLoginForm] = useState<AuthCredentialsInput>({
     email: "admin@huelegood.com",
     password: "huelegood123"
   });
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadSession() {
-      const token = readStoredAdminSessionToken();
-      if (!token) {
-        if (active) {
-          setLoading(false);
-        }
-        return;
-      }
-
-      try {
-        const response = await fetchAdminSession(token);
-        if (!active) {
-          return;
-        }
-
-        if (response.data) {
-          setSession(response.data);
-        } else {
-          clearStoredAdminSessionToken();
-        }
-      } catch {
-        clearStoredAdminSessionToken();
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-
-    void loadSession();
-
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const roleList = useMemo(() => {
     if (!allowedRoles?.length) {
@@ -86,16 +45,8 @@ export function AdminAuthGate({ title, description, allowedRoles, children }: Ad
       return false;
     }
 
-    if (!allowedRoles?.length) {
-      return true;
-    }
-
     const sessionRoles = session.user.roles.map((role) => role.code);
-    if (sessionRoles.includes(RoleCode.SuperAdmin)) {
-      return true;
-    }
-
-    return sessionRoles.some((role) => allowedRoles.includes(role));
+    return hasAdminAccess(sessionRoles, allowedRoles);
   }, [allowedRoles, session]);
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
@@ -104,11 +55,7 @@ export function AdminAuthGate({ title, description, allowedRoles, children }: Ad
     setError(null);
 
     try {
-      const response = await loginAdmin(loginForm);
-      if (response.data) {
-        setSession(response.data);
-        writeStoredAdminSessionToken(response.data.token);
-      }
+      await login(loginForm);
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : "No pudimos iniciar sesión.");
     } finally {
@@ -117,12 +64,10 @@ export function AdminAuthGate({ title, description, allowedRoles, children }: Ad
   }
 
   async function handleLogout() {
-    const token = readStoredAdminSessionToken();
     try {
-      await logoutAdmin(token ?? undefined);
+      await logout();
     } finally {
-      clearStoredAdminSessionToken();
-      setSession(null);
+      setError(null);
     }
   }
 

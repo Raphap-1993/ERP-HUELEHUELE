@@ -27,6 +27,7 @@ export interface NavigationItem {
   label: string;
   href: string;
   external?: boolean;
+  requiredRoles?: readonly RoleCode[];
 }
 
 export interface HeroCopy {

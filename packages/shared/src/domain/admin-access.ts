@@ -31,3 +31,22 @@ export const adminAccessRoles = {
 } as const;
 
 export type AdminAccessModule = keyof typeof adminAccessRoles;
+
+export function hasAdminAccess(
+  userRoles: readonly RoleCode[] | undefined,
+  requiredRoles: readonly RoleCode[] | undefined
+) {
+  if (!requiredRoles?.length) {
+    return true;
+  }
+
+  if (!userRoles?.length) {
+    return false;
+  }
+
+  if (userRoles.includes(RoleCode.SuperAdmin)) {
+    return true;
+  }
+
+  return requiredRoles.some((role) => userRoles.includes(role));
+}
