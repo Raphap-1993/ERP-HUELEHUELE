@@ -11,7 +11,6 @@ import {
   CardHeader,
   CardTitle,
   MetricCard,
-  SectionHeader,
   StatusBadge
 } from "@huelegood/ui";
 import {
@@ -165,11 +164,6 @@ export function AuditWorkspace() {
 
   return (
     <div className="space-y-6 pb-8">
-      <SectionHeader
-        title="Auditoría y seguridad"
-        description="Trazabilidad de acciones, postura de seguridad y salud operativa del API."
-      />
-
       <div className="flex flex-wrap items-center gap-3">
         <Button onClick={refresh} variant="secondary" disabled={loading}>
           {loading ? "Actualizando..." : "Actualizar estado"}

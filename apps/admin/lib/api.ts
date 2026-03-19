@@ -1,4 +1,6 @@
 import type {
+  AuthCredentialsInput,
+  AuthSessionSummary,
   CmsActionEnvelope,
   CmsBannerInput,
   CmsBannersEnvelope,
@@ -49,6 +51,7 @@ import type {
   VendorCodeSummary,
   VendorSummary
 } from "@huelegood/shared";
+import { readStoredAdminSessionToken } from "./session";
 
 function normalizeBaseUrl(value: string | undefined) {
   return value?.replace(/\/$/, "") || "http://localhost:4000/api/v1";
@@ -58,12 +61,19 @@ export function getApiBaseUrl() {
   return normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL);
 }
 
+export function getSessionHeaders(token?: string): HeadersInit | undefined {
+  const resolvedToken = token ?? readStoredAdminSessionToken();
+  return resolvedToken ? { authorization: `Bearer ${resolvedToken}` } : undefined;
+}
+
 async function requestJson<T>(path: string, init: RequestInit = {}) {
   const url = `${getApiBaseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
+  const sessionHeaders = getSessionHeaders();
   const response = await fetch(url, {
     ...init,
     headers: {
       "Content-Type": "application/json",
+      ...(sessionHeaders ?? {}),
       ...(init.headers ?? {})
     }
   });
@@ -75,6 +85,26 @@ async function requestJson<T>(path: string, init: RequestInit = {}) {
   }
 
   return payload as T;
+}
+
+export async function loginAdmin(body: AuthCredentialsInput) {
+  return requestJson<AuthSessionEnvelope>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function fetchAdminSession(token?: string) {
+  return requestJson<AuthSessionEnvelope>("/auth/me", {
+    headers: getSessionHeaders(token)
+  });
+}
+
+export async function logoutAdmin(token?: string) {
+  return requestJson<{ status: string; message: string }>("/auth/logout", {
+    method: "POST",
+    headers: getSessionHeaders(token)
+  });
 }
 
 export async function fetchOrders() {
@@ -527,6 +557,11 @@ export type LoyaltyActionEnvelope = {
 
 export type NotificationsEnvelope = {
   data: NotificationSummary[];
+  meta?: Record<string, unknown>;
+};
+
+export type AuthSessionEnvelope = {
+  data: AuthSessionSummary | null;
   meta?: Record<string, unknown>;
 };
 

@@ -10,6 +10,7 @@ import {
 } from "@huelegood/shared";
 import { actionResponse, wrapResponse } from "../../common/response";
 import { AuditService } from "../audit/audit.service";
+import { parseAuthorizationToken, resolveSession as resolveStoredSession, revokeSession, storeSession } from "./auth-session";
 
 type AccountType = AuthUserSummary["accountType"];
 
@@ -70,25 +71,11 @@ const initialAccounts: AuthRecord[] = [
 ];
 
 const accounts = new Map<string, AuthRecord>(initialAccounts.map((account) => [normalizeEmail(account.email), account]));
-const sessions = new Map<string, AuthSessionSummary>();
 
 let userSequence = 5;
 
 function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
-}
-
-function parseAuthorization(authorization?: string) {
-  if (!authorization) {
-    return null;
-  }
-
-  const [scheme, token] = authorization.split(" ");
-  if (scheme?.toLowerCase() === "bearer" && token) {
-    return token.trim();
-  }
-
-  return authorization.trim();
 }
 
 function createSession(account: AuthRecord): AuthSessionSummary {
@@ -106,12 +93,8 @@ function createSession(account: AuthRecord): AuthSessionSummary {
     }
   };
 
-  sessions.set(token, session);
+  storeSession(session);
   return session;
-}
-
-function isExpired(session: AuthSessionSummary) {
-  return new Date(session.expiresAt).getTime() <= Date.now();
 }
 
 function ensureAccount(account?: AuthRecord) {
@@ -125,6 +108,10 @@ function ensureAccount(account?: AuthRecord) {
 @Injectable()
 export class AuthService {
   constructor(private readonly auditService: AuditService) {}
+
+  resolveSession(authorization?: string | string[]) {
+    return resolveStoredSession(authorization);
+  }
 
   login(body: AuthCredentialsInput) {
     if (!body.email?.trim() || !body.password?.trim()) {
@@ -212,16 +199,8 @@ export class AuthService {
   }
 
   me(authorization?: string) {
-    const token = parseAuthorization(authorization);
-    if (!token) {
-      return wrapResponse<AuthSessionSummary | null>(null, { authenticated: false });
-    }
-
-    const session = sessions.get(token);
-    if (!session || isExpired(session)) {
-      if (session) {
-        sessions.delete(token);
-      }
+    const session = this.resolveSession(authorization);
+    if (!session) {
       return wrapResponse<AuthSessionSummary | null>(null, { authenticated: false });
     }
 
@@ -231,10 +210,10 @@ export class AuthService {
   }
 
   logout(authorization?: string) {
-    const token = parseAuthorization(authorization);
-    const session = token ? sessions.get(token) : undefined;
+    const token = parseAuthorizationToken(authorization);
+    const session = resolveStoredSession(authorization);
     if (token) {
-      sessions.delete(token);
+      revokeSession(token);
     }
 
     if (session) {
