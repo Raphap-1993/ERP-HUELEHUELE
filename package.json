@@ -12,11 +12,17 @@
     "dev:api": "npm run start:dev -w @huelegood/api",
     "dev:worker": "npm run dev -w @huelegood/worker",
     "build": "npm run build -w @huelegood/web && npm run build -w @huelegood/admin && npm run build -w @huelegood/api && npm run build -w @huelegood/worker",
+    "build:apps": "npm run build",
     "typecheck": "npm run typecheck -ws",
     "lint": "npm run typecheck -ws",
     "prisma:generate": "npm run prisma:generate -w @huelegood/api",
     "prisma:push": "npm run db:push -w @huelegood/api",
-    "prisma:seed": "npm run seed -w @huelegood/api"
+    "prisma:seed": "npm run seed -w @huelegood/api",
+    "pm2:start": "pm2 start ecosystem.config.cjs --env production",
+    "pm2:reload": "pm2 startOrReload ecosystem.config.cjs --env production --update-env",
+    "deploy:smoke": "node scripts/smoke-check.mjs",
+    "deploy:release": "bash scripts/release-production.sh",
+    "deploy:backup": "bash scripts/backup-production.sh"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.10",
@@ -44,4 +50,3 @@
     "typescript": "^5.7.3"
   }
 }
-

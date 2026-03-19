@@ -6,7 +6,7 @@ Ordenar la construcción de Huelegood en fases ejecutables, distinguiendo lo ya 
 
 ## Estado actual
 
-Al `19 de marzo de 2026`, la base funcional del proyecto ya existe en el repositorio. El foco deja de ser "arrancar desde cero" y pasa a ser "cerrar endurecimiento transaccional, observabilidad y estabilización productiva".
+Al `19 de marzo de 2026`, la base funcional del proyecto ya existe en el repositorio. El foco deja de ser "arrancar desde cero" y pasa a ser "cerrar automatización asíncrona operativa y preparar optimización comercial".
 
 ### Ya entregado
 
@@ -23,11 +23,11 @@ Al `19 de marzo de 2026`, la base funcional del proyecto ya existe en el reposit
 - [x] persistencia operativa en PostgreSQL para módulos stateful mediante `Prisma` + `module_snapshots`
 - [x] BullMQ operativo para notificaciones y base reutilizable para jobs asíncronos
 - [x] observabilidad operativa con logs estructurados, métricas HTTP, colas y eventos de dominio
+- [x] despliegue reproducible sobre VPS con `PM2`, health endpoints, smoke checks, backups y snippets `Nginx/Hestia`
 
 ### Pendiente inmediato
 
 - [ ] ampliación de jobs BullMQ a conciliación y liquidación donde aporte valor operativo
-- [ ] despliegue productivo estabilizado sobre VPS, PM2 y Nginx
 
 ## Fase 1. Cierre del MVP operativo
 
@@ -44,7 +44,7 @@ Convertir la base funcional actual en una operación estable, persistida y segur
 - observabilidad operativa con logs JSON, métricas HTTP, eventos de dominio y estado de colas desde admin
 - panel admin conectado a datos persistidos y no a estado efímero en memoria
 - semillas, migraciones y limpieza de datos operativos
-- healthchecks y logs estructurados para operación diaria
+- healthchecks, smoke checks, backups y logs estructurados para operación diaria
 
 ## Fase 2. Optimización comercial
 

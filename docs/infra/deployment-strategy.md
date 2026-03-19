@@ -28,14 +28,22 @@ Notas:
 - Los puertos son sugeridos y pueden ajustarse si el VPS ya tiene ocupación previa.
 - Hestia gestiona los virtual hosts y Nginx hace reverse proxy a cada proceso PM2.
 
+## Artefactos operativos versionados
+
+- `ecosystem.config.cjs`: definición operativa de `PM2`
+- `.env.production.example`: plantilla de variables para el VPS
+- `scripts/release-production.sh`: release reproducible con build, recarga PM2 y smoke checks
+- `scripts/backup-production.sh`: backup de PostgreSQL y uploads
+- `scripts/smoke-check.mjs`: verificación post-deploy
+- `ops/nginx/*.conf`: snippets de reverse proxy para Hestia/Nginx
+
 ## Flujo de despliegue recomendado
 
-1. Actualizar código desde Git.
-2. Instalar dependencias de producción.
-3. Ejecutar build de `web`, `admin` y `api`.
-4. Ejecutar migraciones Prisma contra la base PostgreSQL ya existente.
-5. Reiniciar o recargar procesos PM2.
-6. Validar healthchecks y logs.
+1. Actualizar código desde Git y preparar `.env.production`.
+2. Ejecutar `npm run deploy:release`.
+3. Si la release incluye cambios de esquema, activar `HUELEGOOD_RUN_DB_PUSH=1` antes de lanzar el script.
+4. Validar `pm2 status`, logs y smoke checks.
+5. Ejecutar `npm run deploy:backup` o dejarlo programado por `cron`.
 
 ## Base de datos
 
@@ -58,12 +66,14 @@ Notas:
 - compresión y headers seguros
 - logs de acceso y error
 - limitación básica de tamaño de upload para evidencias
+- exposición de `/health` en `web` y `admin`
 
 ### Recomendaciones
 
 - habilitar `client_max_body_size` acorde al tamaño máximo de comprobantes
 - propagar headers `X-Forwarded-*`
 - restringir rutas sensibles de admin si se requiere endurecimiento adicional
+- usar los snippets de `ops/nginx/` como base de la configuración gestionada por Hestia
 
 ## Healthchecks
 
@@ -71,11 +81,11 @@ Notas:
 
 - `GET /health/liveness`
 - `GET /health/readiness`
-- `GET /health/queues`
+- `GET /health/operational`
 
 ### Web y admin
 
-- ruta simple de disponibilidad o verificación por respuesta HTTP `200`
+- `GET /health` con payload JSON simple y `release`
 
 ## Logs
 
@@ -95,6 +105,7 @@ Notas:
 
 - retención de al menos 7 a 14 días
 - verificación periódica de restauración
+- automatizar con `scripts/backup-production.sh` y `cron`
 
 ## Estrategia de releases
 
@@ -114,3 +125,4 @@ Notas:
 - rotación de logs
 - monitoreo básico de disco, memoria y colas
 - revisar tamaño de backups y uploads desde el inicio
+- smoke checks post-deploy sobre `web`, `admin` y `api`

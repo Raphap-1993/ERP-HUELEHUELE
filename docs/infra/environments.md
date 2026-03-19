@@ -22,6 +22,8 @@ Si solo existe un VPS:
 | --- | --- |
 | `NODE_ENV` | modo de ejecución |
 | `APP_NAME` | nombre lógico del servicio |
+| `APP_RELEASE_SHA` | versión o commit desplegado |
+| `APP_BASE_DIR` | directorio base del release en el VPS |
 | `APP_URL` | URL pública del storefront |
 | `ADMIN_URL` | URL pública del admin |
 | `API_URL` | URL pública de la API |
@@ -80,10 +82,23 @@ Si solo existe un VPS:
 | `API_PORT` | puerto local de la API |
 | `WORKER_CONCURRENCY` | concurrencia de jobs |
 
+## Operación y backups
+
+| Variable | Uso |
+| --- | --- |
+| `BACKUP_DIR` | directorio base de respaldos |
+| `BACKUP_RETENTION_DAYS` | retención de carpetas de backup |
+| `WEB_HEALTH_URL` | endpoint de smoke check para storefront |
+| `ADMIN_HEALTH_URL` | endpoint de smoke check para admin |
+| `API_HEALTH_URL` | endpoint de smoke check para liveness |
+| `API_READINESS_URL` | endpoint de smoke check para readiness |
+| `API_OPERATIONAL_URL` | endpoint de smoke check para salud operativa |
+
 ## Reglas de manejo de secretos
 
 - nunca versionar `.env` reales
 - mantener archivos de ejemplo por entorno cuando se implemente código
+- usar `.env.production` en el VPS a partir de `.env.production.example`
 - rotar secretos de Openpay y auth ante incidente o cambio operativo
 
 ## Separación por entorno

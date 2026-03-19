@@ -30,8 +30,10 @@ Monorepo de implementación para la plataforma comercial modular Huelegood.
 - `npm run dev:admin`
 - `npm run dev:api`
 - `npm run dev:worker`
+- `npm run deploy:release`
+- `npm run deploy:smoke`
+- `npm run deploy:backup`
 
 ## Estado
 
-Esta rama contiene el esqueleto inicial para empezar implementación real del MVP según los documentos de producto, arquitectura y flujos.
-
+La rama `main` ya contiene una base funcional del MVP con despliegue reproducible sobre `PM2` y verificación operativa vía healthchecks y smoke checks. La documentación de infraestructura vive en [`docs/infra/`](/Users/rapha/Projects/ERP-HUELEHUELE/docs/infra/deployment-strategy.md).

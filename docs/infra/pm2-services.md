@@ -39,7 +39,7 @@ Definir los procesos PM2 mínimos necesarios para ejecutar Huelegood en producci
 - notificaciones
 - reconciliaciones
 
-## Configuración conceptual
+## Configuración operativa
 
 ```js
 module.exports = {
@@ -47,34 +47,46 @@ module.exports = {
     {
       name: "huelegood-web",
       script: "npm",
-      args: "run start:web",
+      args: "run start",
+      exec_mode: "fork",
+      instances: 1,
+      max_memory_restart: "512M",
       env: {
         NODE_ENV: "production",
-        WEB_PORT: 3000
+        PORT: 3000
       }
     },
     {
       name: "huelegood-admin",
       script: "npm",
-      args: "run start:admin",
+      args: "run start",
+      exec_mode: "fork",
+      instances: 1,
+      max_memory_restart: "512M",
       env: {
         NODE_ENV: "production",
-        ADMIN_PORT: 3001
+        PORT: 3001
       }
     },
     {
       name: "huelegood-api",
       script: "npm",
-      args: "run start:api",
+      args: "run start",
+      exec_mode: "fork",
+      instances: 1,
+      max_memory_restart: "768M",
       env: {
         NODE_ENV: "production",
-        API_PORT: 4000
+        PORT: 4000
       }
     },
     {
       name: "huelegood-worker",
       script: "npm",
-      args: "run start:worker",
+      args: "run start",
+      exec_mode: "fork",
+      instances: 1,
+      max_memory_restart: "512M",
       env: {
         NODE_ENV: "production",
         WORKER_CONCURRENCY: 5
@@ -84,9 +96,7 @@ module.exports = {
 };
 ```
 
-Nota:
-
-Los scripts exactos se ajustarán a la estructura real del repositorio, pero los nombres de proceso deben mantenerse estables para operación y monitoreo.
+El archivo versionado real es `ecosystem.config.cjs`. Los nombres de proceso deben mantenerse estables para operación, monitoreo y smoke checks.
 
 ## Lineamientos operativos
 
@@ -94,12 +104,14 @@ Los scripts exactos se ajustarán a la estructura real del repositorio, pero los
 - separar logs por proceso
 - configurar reinicio automático
 - no ejecutar el worker en modo cluster si la idempotencia de jobs no está garantizada
+- usar `startOrReload` con `--update-env` para no perder secretos ni variables del release
 
 ## Observabilidad mínima
 
 - revisar `pm2 status`
 - revisar `pm2 logs huelegood-api`
 - monitorear reinicios frecuentes o memory restarts
+- correr `npm run deploy:smoke` después de cada release
 
 ## Política de reinicios
 

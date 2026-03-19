@@ -35,6 +35,7 @@ Ya están cubiertos en el repositorio, entre otros, los siguientes bloques:
 - `MVP-024` upload seguro de evidencias y assets
 - `MVP-025` healthchecks y logs estructurados
 - `MVP-027` observabilidad operativa en admin con métricas, requests y colas
+- operación reproducible con `PM2`, smoke checks, backups y snippets `Nginx/Hestia`
 
 En este punto, la cobertura de `MVP-023` ya existe para notificaciones y deja lista la infraestructura BullMQ para ampliar jobs hacia conciliación y liquidación sin rehacer la base.
 
