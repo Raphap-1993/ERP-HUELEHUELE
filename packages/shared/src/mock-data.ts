@@ -101,6 +101,7 @@ export const featuredProducts: CatalogProduct[] = [
     id: "prod-classic-green",
     name: "Clásico Verde",
     slug: "clasico-verde",
+    categorySlug: "productos",
     tagline: "Fresco, directo y portable.",
     description:
       "La referencia base para una experiencia limpia y práctica, pensada para la narrativa de reset y movimiento.",
@@ -115,6 +116,7 @@ export const featuredProducts: CatalogProduct[] = [
     id: "prod-premium-black",
     name: "Premium Negro",
     slug: "premium-negro",
+    categorySlug: "productos",
     tagline: "Más sobrio, más premium.",
     description:
       "La línea con percepción más elegante para reforzar la narrativa de marca y conversión aspiracional.",
@@ -129,6 +131,7 @@ export const featuredProducts: CatalogProduct[] = [
     id: "prod-duo-perfect",
     name: "Combo Dúo Perfecto",
     slug: "combo-duo-perfecto",
+    categorySlug: "bundles",
     tagline: "La compra ideal para rotación y bundle.",
     description:
       "Bundle pensado para elevar ticket promedio y facilitar campañas, códigos de vendedor y promociones.",

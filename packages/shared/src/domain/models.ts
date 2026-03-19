@@ -41,6 +41,7 @@ export interface CatalogProduct {
   id: string;
   name: string;
   slug: string;
+  categorySlug: string;
   tagline: string;
   description: string;
   price: number;
@@ -213,4 +214,3 @@ export interface PaymentReviewSummary {
   manualStatus: ManualPaymentRequestStatus;
   notificationStatus: NotificationStatus;
 }
-
