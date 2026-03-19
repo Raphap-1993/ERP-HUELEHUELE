@@ -82,6 +82,8 @@ Si solo existe un VPS:
 | `API_PORT` | puerto local de la API |
 | `WORKER_CONCURRENCY` | concurrencia de jobs |
 
+No definir `PORT` como variable global en `.env.production`. En este monolito modular cada proceso recibe su puerto por `PM2` usando `WEB_PORT`, `ADMIN_PORT` y `API_PORT`.
+
 ## Operación y backups
 
 | Variable | Uso |

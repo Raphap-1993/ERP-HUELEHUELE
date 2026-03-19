@@ -11,6 +11,9 @@ if [[ -f ".env.production" ]]; then
   set +a
 fi
 
+# Avoid leaking a single global PORT into all PM2 apps.
+unset PORT || true
+
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "Missing required command: $1" >&2
