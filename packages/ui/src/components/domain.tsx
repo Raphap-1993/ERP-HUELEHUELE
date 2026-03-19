@@ -189,7 +189,7 @@ export function SellerCodeInput() {
       <CardContent className="space-y-4">
         <div className="space-y-1">
           <CardTitle>Ingresa tu código de vendedor</CardTitle>
-          <CardDescription>La atribución se conserva en carrito y pedido.</CardDescription>
+          <CardDescription>Aplica tu código antes de pagar para conservar tu descuento o recomendación.</CardDescription>
         </div>
         <div className="grid gap-3 md:grid-cols-[1fr_auto]">
           <Input placeholder="VEND-014" aria-label="Código de vendedor" />
@@ -197,7 +197,7 @@ export function SellerCodeInput() {
             Aplicar
           </Button>
         </div>
-        <p className="text-xs text-black/45">Compatible con promociones autorizadas y trazabilidad interna.</p>
+        <p className="text-xs text-black/45">Compatible con promociones activas autorizadas.</p>
       </CardContent>
     </Card>
   );
@@ -220,7 +220,7 @@ export function CheckoutSummary({
     <Card>
       <CardHeader>
         <CardTitle>Resumen de checkout</CardTitle>
-        <CardDescription>Totales calculados con snapshot comercial.</CardDescription>
+        <CardDescription>Totales estimados al momento de tu compra.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <Row label="Subtotal" value={subtotal} />
