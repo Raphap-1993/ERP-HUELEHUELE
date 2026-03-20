@@ -11,20 +11,6 @@ import {
   type CatalogProduct
 } from "@huelegood/shared";
 import {
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CheckoutSummary,
-  Input,
-  StatusBadge,
-  Textarea,
-  Badge,
-  Separator
-} from "@huelegood/ui";
-import {
   createManualCheckout,
   createOpenpayCheckout,
   fetchCatalogSummary,
@@ -39,9 +25,6 @@ import {
   readStoredSessionToken,
   writeStoredCart
 } from "../lib/session";
-import { EditorialMedia } from "./public-brand";
-import { brandArt } from "./public-brand-art";
-import { PublicField, PublicPageHero, PublicSectionHeading } from "./public-shell";
 
 type PaymentMethod = "openpay" | "manual";
 
@@ -346,374 +329,338 @@ export function CheckoutWorkspace() {
   };
 
   return (
-    <div className="space-y-10 py-6 md:space-y-14 md:py-10">
-      <PublicPageHero
-        eyebrow="Checkout"
-        title="Compra clara, elegante y sin pasos que distraigan."
-        description="La experiencia de cierre debe verse tan cuidada como la home: producto, datos, pago y confirmación en un flujo limpio."
-        actions={[
-          { label: "Ver catálogo", href: "/catalogo" },
-          { label: "Mi cuenta", href: "/cuenta", variant: "secondary" }
-        ]}
-        metrics={[
-          { label: "Métodos", value: "2", detail: "Openpay o comprobante manual con revisión." },
-          { label: "Compra", value: session ? "Autocompleta" : "Invitado", detail: "Puedes comprar con o sin sesión activa." },
-          { label: "Resumen", value: quote ? `$${quote.grandTotal}` : "En vivo", detail: "Los totales se recalculan durante tu compra." }
-        ]}
-        aside={<EditorialMedia src={brandArt.checkout} alt="Visual editorial del checkout" className="min-h-[440px]" />}
-      />
-
-      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <div className="space-y-6">
-          <Card className="rounded-[2.3rem] border-black/8 bg-white/92">
-            <CardHeader>
-              <CardTitle>Productos seleccionados</CardTitle>
-              <CardDescription>Agrega productos desde el catálogo o ajusta la cantidad aquí mismo.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-                <select
-                  className="h-11 rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none"
-                  defaultValue={availableToAdd[0]?.slug ?? ""}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    if (value) {
-                      addItem(value);
-                      event.target.value = "";
-                    }
-                  }}
-                >
-                  <option value="">Agregar un producto</option>
-                  {availableToAdd.map((product) => (
-                    <option key={product.slug} value={product.slug}>
-                      {product.name}
-                    </option>
-                  ))}
-                </select>
-                <Button type="button" variant="secondary" onClick={() => addItem(resolvedProducts[0].slug)}>
-                  Agregar destacado
-                </Button>
-              </div>
-
-              <div className="space-y-3">
-                {activeItems.map((item) => {
-                  const product = resolvedProducts.find((entry) => entry.slug === item.slug);
-                  return (
-                    <div key={item.slug} className="rounded-3xl border border-black/10 p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="font-semibold text-[#1a3a2e]">{product?.name ?? item.slug}</p>
-                          <p className="text-sm text-black/55">{product?.sku ?? "Referencia del producto"}</p>
-                        </div>
-                        <Badge tone="neutral">{product?.categorySlug ?? "productos"}</Badge>
-                      </div>
-                      <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto_auto] md:items-center">
-                        <Input
-                          type="number"
-                          min={1}
-                          value={item.quantity}
-                          onChange={(event) => updateItem(item.slug, Number(event.target.value))}
-                        />
-                        <div className="text-sm font-semibold text-[#1a3a2e]">
-                          ${(product?.price ?? 0) * item.quantity}
-                        </div>
-                        <Button type="button" variant="secondary" onClick={() => removeItem(item.slug)}>
-                          Quitar
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-[2.3rem] border-black/8 bg-[linear-gradient(180deg,#ffffff_0%,#faf8f3_100%)]">
-            <CardHeader>
-              <CardTitle>Datos del cliente y envío</CardTitle>
-              <CardDescription>Completa los datos necesarios para entregar tu pedido correctamente.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-2">
-              <PublicField label="Nombre">
-                <Input
-                  value={customer.firstName}
-                  onChange={(event) => setCustomer((current) => ({ ...current, firstName: event.target.value }))}
-                  placeholder="Nombre"
-                />
-              </PublicField>
-              <PublicField label="Apellido">
-                <Input
-                  value={customer.lastName}
-                  onChange={(event) => setCustomer((current) => ({ ...current, lastName: event.target.value }))}
-                  placeholder="Apellido"
-                />
-              </PublicField>
-              <PublicField label="Correo electrónico">
-                <Input
-                  type="email"
-                  value={customer.email}
-                  onChange={(event) => setCustomer((current) => ({ ...current, email: event.target.value }))}
-                  placeholder="Email"
-                />
-              </PublicField>
-              <PublicField label="Teléfono">
-                <Input
-                  value={customer.phone}
-                  onChange={(event) => setCustomer((current) => ({ ...current, phone: event.target.value }))}
-                  placeholder="Teléfono"
-                />
-              </PublicField>
-              <PublicField label="Destinatario">
-                <Input
-                  value={address.recipientName}
-                  onChange={(event) => setAddress((current) => ({ ...current, recipientName: event.target.value }))}
-                  placeholder="Destinatario"
-                />
-              </PublicField>
-              <PublicField label="Etiqueta">
-                <Input
-                  value={address.label}
-                  onChange={(event) => setAddress((current) => ({ ...current, label: event.target.value }))}
-                  placeholder="Casa, oficina, etc."
-                />
-              </PublicField>
-              <PublicField label="Dirección principal" className="md:col-span-2">
-                <Input
-                  value={address.line1}
-                  onChange={(event) => setAddress((current) => ({ ...current, line1: event.target.value }))}
-                  placeholder="Dirección 1"
-                />
-              </PublicField>
-              <PublicField label="Complemento" className="md:col-span-2">
-                <Input
-                  value={address.line2}
-                  onChange={(event) => setAddress((current) => ({ ...current, line2: event.target.value }))}
-                  placeholder="Dirección 2"
-                />
-              </PublicField>
-              <PublicField label="Ciudad">
-                <Input
-                  value={address.city}
-                  onChange={(event) => setAddress((current) => ({ ...current, city: event.target.value }))}
-                  placeholder="Ciudad"
-                />
-              </PublicField>
-              <PublicField label="Región o estado">
-                <Input
-                  value={address.region}
-                  onChange={(event) => setAddress((current) => ({ ...current, region: event.target.value }))}
-                  placeholder="Región"
-                />
-              </PublicField>
-              <PublicField label="Código postal">
-                <Input
-                  value={address.postalCode}
-                  onChange={(event) => setAddress((current) => ({ ...current, postalCode: event.target.value }))}
-                  placeholder="Código postal"
-                />
-              </PublicField>
-              <PublicField label="País">
-                <Input
-                  value={address.countryCode}
-                  onChange={(event) => setAddress((current) => ({ ...current, countryCode: event.target.value }))}
-                  placeholder="País"
-                />
-              </PublicField>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-[2.3rem] border-black/8 bg-white/92">
-            <CardHeader>
-              <CardTitle>Pago y reglas comerciales</CardTitle>
-              <CardDescription>Elige tu método de pago y agrega un código si cuentas con uno.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant={paymentMethod === "openpay" ? "primary" : "secondary"} onClick={() => setPaymentMethod("openpay")}>
-                  Openpay
-                </Button>
-                <Button type="button" variant={paymentMethod === "manual" ? "primary" : "secondary"} onClick={() => setPaymentMethod("manual")}>
-                  Pago manual
-                </Button>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <PublicField label="Código de vendedor o recomendación">
-                  <Input value={vendorCode} onChange={(event) => setVendorCode(event.target.value)} placeholder="Opcional" />
-                </PublicField>
-                <PublicField label="Cupón de descuento">
-                  <Input value={couponCode} onChange={(event) => setCouponCode(event.target.value)} placeholder="Opcional" />
-                </PublicField>
-              </div>
-              <PublicField label="Indicaciones del pedido">
-                <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Opcional" />
-              </PublicField>
-              {paymentMethod === "manual" ? (
-                <div className="space-y-4 rounded-3xl border border-black/10 bg-black/[0.02] p-4">
-                  <div className="space-y-1">
-                    <p className="text-sm font-semibold text-[#1a3a2e]">Comprobante manual</p>
-                    <p className="text-xs text-black/55">
-                      Comparte una referencia clara para identificar tu pago y agilizar la validación.
-                    </p>
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <PublicField label="Referencia del comprobante">
-                      <Input
-                        value={manualEvidenceReference}
-                        onChange={(event) => setManualEvidenceReference(event.target.value)}
-                        placeholder="Referencia o nombre del comprobante"
-                      />
-                    </PublicField>
-                    <PublicField label="Notas del comprobante">
-                      <Input
-                        value={manualEvidenceNotes}
-                        onChange={(event) => setManualEvidenceNotes(event.target.value)}
-                        placeholder="Ejemplo: transferencia enviada desde banca móvil"
-                      />
-                    </PublicField>
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="flex flex-wrap gap-3">
-                <Button type="button" onClick={handleSubmit} disabled={submitting || activeItems.length === 0}>
-                  {submitting ? "Procesando..." : paymentMethod === "openpay" ? "Pagar con Openpay" : "Enviar pago manual"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => {
-                    setItems([{ slug: resolvedProducts[0].slug, quantity: 1 }]);
-                    writeStoredCart([{ slug: resolvedProducts[0].slug, quantity: 1 }]);
-                    checkoutRequestIdRef.current = null;
-                  }}
-                >
-                  Reiniciar
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-6">
-          <div className="sticky top-24 space-y-6">
-            <Card className="rounded-[2.3rem] border-black/8 bg-[linear-gradient(180deg,#ffffff_0%,#faf8f3_100%)]">
-              <CardHeader>
-                <CardTitle>Resumen</CardTitle>
-                <CardDescription>{quoteLoading ? "Calculando totales..." : "Totales actualizados al momento de tu compra."}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <CheckoutSummary
-                  subtotal={summary.subtotal}
-                  discount={summary.discount}
-                  shipping={summary.shipping}
-                  total={summary.grandTotal}
-                  vendorCode={summary.vendorCode}
-                />
-                <div className="flex flex-wrap gap-2">
-                  <StatusBadge
-                    tone={paymentMethod === "openpay" ? "info" : "warning"}
-                    label={paymentMethod === "openpay" ? "Openpay" : "Manual"}
-                  />
-                  <Badge tone="neutral">{summary.estimatedPoints} puntos estimados</Badge>
-                </div>
-                {quoteError ? <p className="text-sm text-rose-700">{quoteError}</p> : null}
-              </CardContent>
-            </Card>
-
-            <section className="space-y-4">
-              <PublicSectionHeading
-                eyebrow="Apoyo visual"
-                title="Una compra bien presentada transmite confianza."
-                description="El checkout no tiene que verse técnico; tiene que verse claro."
-              />
-              <EditorialMedia src={brandArt.office} alt="Apoyo visual del checkout" className="min-h-[220px]" />
-            </section>
-
-            {result ? (
-              <Card className="rounded-[2.3rem] border-black/8 bg-white/92">
-                <CardHeader>
-                  <CardTitle>Confirmación</CardTitle>
-                  <CardDescription>Resumen de tu compra y siguientes pasos.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="rounded-3xl bg-[#1a3a2e] px-5 py-4 text-white">
-                    <p className="text-xs uppercase tracking-[0.22em] text-white/45">Estado</p>
-                    <p className="mt-2 text-xl font-semibold">{result.message}</p>
-                    <p className="text-sm text-white/70">Referencia: {result.referenceId}</p>
-                  </div>
-                  {result.order ? (
-                    <div className="space-y-2 rounded-3xl border border-black/10 p-4 text-sm text-[#1a3a2e]">
-                      <p>
-                        <strong>Pedido:</strong> {result.order.orderNumber}
-                      </p>
-                      <p>
-                        <strong>Estado del pedido:</strong> {result.order.orderStatus}
-                      </p>
-                      <p>
-                        <strong>Estado del pago:</strong> {result.order.paymentStatus}
-                      </p>
-                      <p>
-                        <strong>Método:</strong> {result.order.paymentMethod === "manual" ? "Pago manual" : "Openpay"}
-                      </p>
-                      {result.order.manualRequestId ? (
-                        <p>
-                          <strong>Solicitud manual:</strong> {result.order.manualRequestId}
-                        </p>
-                      ) : null}
-                      {result.order.manualEvidenceReference ? (
-                        <p>
-                          <strong>Comprobante:</strong> {result.order.manualEvidenceReference}
-                        </p>
-                      ) : null}
-                      {result.order.manualEvidenceNotes ? (
-                        <p>
-                          <strong>Notas del comprobante:</strong> {result.order.manualEvidenceNotes}
-                        </p>
-                      ) : null}
-                      {result.order.evidenceRequired ? (
-                        <p>
-                          <strong>Evidencia requerida:</strong> Sí
-                        </p>
-                      ) : null}
-                      <p>
-                        <strong>Siguiente paso:</strong> {result.order.nextStep}
-                      </p>
-                      {result.order.checkoutUrl ? (
-                        <p className="break-all">
-                          <strong>URL:</strong> {result.order.checkoutUrl}
-                        </p>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </CardContent>
-              </Card>
-            ) : null}
-
-            <Card className="rounded-[2.3rem] border-black/8 bg-white/92">
-              <CardHeader>
-                <CardTitle>Datos aplicados</CardTitle>
-                <CardDescription>Si tienes sesión activa, tus datos pueden autocompletarse para una compra más rápida.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-black/65">
-                <p>
-                  <strong>Sesión:</strong> {session ? `${session.user.name} · ${session.user.email}` : "Compra como invitado"}
-                </p>
-                <p>
-                  <strong>Código aplicado:</strong> {vendorCode || "Ninguno"}
-                </p>
-                <p>
-                  <strong>Cupón:</strong> {couponCode || "Sin cupón"}
-                </p>
-                <Separator />
-                <p>
-                  Revisa bien tus datos antes de confirmar. Si eliges pago manual, usa una referencia clara para facilitar la validación.
-                </p>
-              </CardContent>
-            </Card>
+    <div className="mx-auto max-w-[1120px] px-6 py-12">
+      {result ? (
+        /* ── Pantalla de éxito ── */
+        <div className="flex flex-col items-center py-16 text-center">
+          <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#d8f3dc] text-4xl">🎉</div>
+          <h2 className="font-serif text-3xl font-bold text-[#1a3a2e]">¡Pedido confirmado!</h2>
+          <p className="mt-3 max-w-md text-sm leading-7 text-[#6b7280]">
+            Gracias por tu compra. Te enviaremos la confirmación y coordinaremos la entrega contigo.
+          </p>
+          {result.order ? (
+            <div className="mt-6 rounded-[14px] bg-[#d8f3dc] px-8 py-4 font-serif text-2xl font-black text-[#1a3a2e]">
+              #{result.order.orderNumber}
+            </div>
+          ) : null}
+          <div className="mt-8 w-full max-w-sm space-y-2 rounded-[16px] border border-[rgba(26,58,46,0.1)] bg-white p-5 text-left text-sm text-[#6b7280]">
+            {result.order ? (
+              <>
+                <p><strong className="text-[#1a3a2e]">Estado:</strong> {result.order.orderStatus}</p>
+                <p><strong className="text-[#1a3a2e]">Pago:</strong> {result.order.paymentStatus}</p>
+                <p><strong className="text-[#1a3a2e]">Método:</strong> {result.order.paymentMethod === "manual" ? "Pago manual" : "Openpay"}</p>
+                {result.order.manualEvidenceReference ? <p><strong className="text-[#1a3a2e]">Comprobante:</strong> {result.order.manualEvidenceReference}</p> : null}
+                <p><strong className="text-[#1a3a2e]">Siguiente paso:</strong> {result.order.nextStep}</p>
+                {result.order.checkoutUrl ? <p className="break-all"><strong className="text-[#1a3a2e]">URL Pago:</strong> {result.order.checkoutUrl}</p> : null}
+              </>
+            ) : (
+              <p>{result.message}</p>
+            )}
+          </div>
+          <div className="mt-8">
+            <a href="/catalogo" className="rounded-full bg-[#2d6a4f] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#1a3a2e]">
+              Seguir comprando
+            </a>
           </div>
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Steps bar */}
+          <div className="mb-10 flex flex-wrap items-center gap-0">
+            <div className="flex items-center gap-2.5 text-[13px] font-medium text-[#52b788]">
+              <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[#52b788] text-[11px] font-bold text-white">✓</div>
+              <span>Carrito</span>
+            </div>
+            <div className="mx-2 h-px w-10 bg-[#52b788]" />
+            <div className="flex items-center gap-2.5 text-[13px] font-semibold text-[#1a3a2e]">
+              <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[#2d6a4f] text-[11px] font-bold text-white">2</div>
+              <span>Datos y envío</span>
+            </div>
+            <div className="mx-2 h-px w-10 bg-[rgba(26,58,46,0.15)]" />
+            <div className="flex items-center gap-2.5 text-[13px] font-medium text-[#6b7280]">
+              <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border-2 border-[rgba(26,58,46,0.2)] text-[11px] font-bold text-[#6b7280]">3</div>
+              <span>Pago</span>
+            </div>
+            <div className="mx-2 h-px w-10 bg-[rgba(26,58,46,0.15)]" />
+            <div className="flex items-center gap-2.5 text-[13px] font-medium text-[#6b7280]">
+              <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border-2 border-[rgba(26,58,46,0.2)] text-[11px] font-bold text-[#6b7280]">4</div>
+              <span>Confirmación</span>
+            </div>
+          </div>
+
+          {/* Main grid */}
+          <div className="grid gap-8 lg:grid-cols-[1fr_420px] lg:items-start">
+
+            {/* LEFT: Forms */}
+            <div className="space-y-5">
+
+              {/* Productos */}
+              <div className="rounded-[22px] border border-[rgba(26,58,46,0.1)] bg-white p-8">
+                <h3 className="mb-1 font-serif text-xl font-bold text-[#1a3a2e]">Productos en tu pedido</h3>
+                <p className="mb-6 text-sm leading-relaxed text-[#6b7280]">Ajusta cantidades o agrega un producto desde el catálogo.</p>
+                <div className="mb-4">
+                  <div className="relative">
+                    <select
+                      className="w-full cursor-pointer appearance-none rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] outline-none transition focus:border-[#52b788] focus:bg-white"
+                      defaultValue=""
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        if (value) { addItem(value); event.target.value = ""; }
+                      }}
+                    >
+                      <option value="">Agregar un producto</option>
+                      {availableToAdd.map((product) => (
+                        <option key={product.slug} value={product.slug}>{product.name}</option>
+                      ))}
+                    </select>
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#6b7280]">▾</span>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {activeItems.length === 0 ? (
+                    <p className="text-sm text-[#6b7280]">No hay productos. Agrega uno arriba.</p>
+                  ) : activeItems.map((item) => {
+                    const product = resolvedProducts.find((p) => p.slug === item.slug);
+                    return (
+                      <div key={item.slug} className="flex items-center gap-4 rounded-[13px] border border-[rgba(26,58,46,0.08)] bg-[#f4f4f0] p-4">
+                        <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-[10px] bg-[#d8f3dc] text-xl">
+                          {item.slug.includes("negro") ? "🖤" : (item.slug.includes("combo") || item.slug.includes("pack")) ? "✨" : "🌿"}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[13px] font-semibold text-[#1a3a2e]">{product?.name ?? item.slug}</p>
+                          <p className="text-[11px] text-[#6b7280]">{product?.sku ?? ""}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min={1}
+                            value={item.quantity}
+                            onChange={(e) => updateItem(item.slug, Number(e.target.value))}
+                            className="w-14 rounded-[8px] border border-[rgba(26,58,46,0.12)] bg-white px-2 py-1.5 text-center text-sm outline-none"
+                          />
+                          <span className="font-serif text-[15px] font-bold text-[#1a3a2e]">
+                            S/ {((product?.price ?? 0) * item.quantity).toFixed(2)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeItem(item.slug)}
+                            className="ml-1 rounded-[7px] px-2 py-1.5 text-xs text-[#6b7280] transition hover:bg-rose-50 hover:text-rose-600"
+                          >
+                            Quitar
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Datos de contacto */}
+              <div className="rounded-[22px] border border-[rgba(26,58,46,0.1)] bg-white p-8">
+                <h3 className="mb-1 font-serif text-xl font-bold text-[#1a3a2e]">Datos de contacto</h3>
+                <p className="mb-6 text-sm leading-relaxed text-[#6b7280]">
+                  {session ? `Sesión activa: ${session.user.name}` : "Puedes comprar sin cuenta o iniciar sesión para autocompletar."}
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Nombre *</label>
+                    <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Tu nombre" value={customer.firstName} onChange={(e) => setCustomer((c) => ({ ...c, firstName: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Apellido *</label>
+                    <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Tu apellido" value={customer.lastName} onChange={(e) => setCustomer((c) => ({ ...c, lastName: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Email *</label>
+                    <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="email" placeholder="tu@correo.com" value={customer.email} onChange={(e) => setCustomer((c) => ({ ...c, email: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">WhatsApp *</label>
+                    <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="tel" placeholder="+51 999 000 000" value={customer.phone} onChange={(e) => setCustomer((c) => ({ ...c, phone: e.target.value }))} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Dirección */}
+              <div className="rounded-[22px] border border-[rgba(26,58,46,0.1)] bg-white p-8">
+                <h3 className="mb-1 font-serif text-xl font-bold text-[#1a3a2e]">Dirección de envío</h3>
+                <p className="mb-6 text-sm leading-relaxed text-[#6b7280]">Enviamos a todo el Perú con Olva Courier y Shalom.</p>
+                <div className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Destinatario</label>
+                      <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Nombre destinatario" value={address.recipientName} onChange={(e) => setAddress((a) => ({ ...a, recipientName: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Etiqueta</label>
+                      <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Casa, oficina..." value={address.label} onChange={(e) => setAddress((a) => ({ ...a, label: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Dirección principal *</label>
+                    <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Calle, número, referencia" value={address.line1} onChange={(e) => setAddress((a) => ({ ...a, line1: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Complemento</label>
+                    <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Referencia adicional" value={address.line2} onChange={(e) => setAddress((a) => ({ ...a, line2: e.target.value }))} />
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <div>
+                      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Ciudad *</label>
+                      <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Ciudad" value={address.city} onChange={(e) => setAddress((a) => ({ ...a, city: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Región *</label>
+                      <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Región" value={address.region} onChange={(e) => setAddress((a) => ({ ...a, region: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">País *</label>
+                      <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="PE" value={address.countryCode} onChange={(e) => setAddress((a) => ({ ...a, countryCode: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Código postal</label>
+                    <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Código postal" value={address.postalCode} onChange={(e) => setAddress((a) => ({ ...a, postalCode: e.target.value }))} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Método de pago */}
+              <div className="rounded-[22px] border border-[rgba(26,58,46,0.1)] bg-white p-8">
+                <h3 className="mb-1 font-serif text-xl font-bold text-[#1a3a2e]">Método de pago</h3>
+                <p className="mb-6 text-sm leading-relaxed text-[#6b7280]">Todos los pagos son 100% seguros.</p>
+                <div className="mb-6 flex flex-wrap gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("openpay")}
+                    className={`flex items-center gap-2 rounded-[10px] border-[1.5px] px-4 py-2.5 text-[13px] font-medium transition ${paymentMethod === "openpay" ? "border-[#2d6a4f] bg-[#d8f3dc] text-[#1a3a2e]" : "border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] text-[#6b7280] hover:border-[rgba(82,183,136,0.4)]"}`}
+                  >
+                    <span className="text-lg">💳</span> Tarjeta / Openpay
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("manual")}
+                    className={`flex items-center gap-2 rounded-[10px] border-[1.5px] px-4 py-2.5 text-[13px] font-medium transition ${paymentMethod === "manual" ? "border-[#2d6a4f] bg-[#d8f3dc] text-[#1a3a2e]" : "border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] text-[#6b7280] hover:border-[rgba(82,183,136,0.4)]"}`}
+                  >
+                    <span className="text-lg">📱</span> Yape / Plin / Transferencia
+                  </button>
+                </div>
+                {paymentMethod === "openpay" ? (
+                  <div className="rounded-[14px] bg-[#f4f4f0] p-5">
+                    <p className="mb-2 text-[13px] font-semibold text-[#1a3a2e]">Pago con tarjeta vía Openpay</p>
+                    <p className="text-[12px] leading-relaxed text-[#6b7280]">
+                      Al confirmar, te redirigiremos al portal seguro de Openpay para completar el pago con tu tarjeta de débito o crédito.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="rounded-[14px] bg-[#d8f3dc] p-5">
+                      <p className="mb-1.5 text-[13px] font-semibold text-[#1a3a2e]">Pago manual (Yape / Plin / Transferencia)</p>
+                      <p className="text-[12px] leading-relaxed text-[#2d6a4f]">Realiza el pago y comparte el comprobante. Lo validamos manualmente.</p>
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Referencia del comprobante *</label>
+                      <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Ej: N° operación Yape / N° transferencia" value={manualEvidenceReference} onChange={(e) => setManualEvidenceReference(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Notas del comprobante</label>
+                      <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Ej: transferencia desde BCP móvil" value={manualEvidenceNotes} onChange={(e) => setManualEvidenceNotes(e.target.value)} />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Cupón y código */}
+              <div className="rounded-[22px] border border-[rgba(26,58,46,0.1)] bg-white p-8">
+                <h3 className="mb-1 font-serif text-xl font-bold text-[#1a3a2e]">Códigos de descuento</h3>
+                <p className="mb-6 text-sm leading-relaxed text-[#6b7280]">Aplica un cupón promocional o el código de tu vendedor.</p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Cupón de descuento</label>
+                    <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Ej: ROSA5, CUPON10" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Código de vendedor</label>
+                    <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Opcional" value={vendorCode} onChange={(e) => setVendorCode(e.target.value)} />
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Indicaciones del pedido</label>
+                  <textarea className="w-full resize-none rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" rows={3} placeholder="Indicaciones opcionales para tu pedido" value={notes} onChange={(e) => setNotes(e.target.value)} />
+                </div>
+              </div>
+            </div>
+
+            {/* RIGHT: Order Summary */}
+            <div className="sticky top-[84px]">
+              <div className="rounded-[22px] border border-[rgba(26,58,46,0.1)] bg-white p-7">
+                <h3 className="mb-5 font-serif text-[18px] font-bold text-[#1a3a2e]">Tu pedido</h3>
+                <div className="mb-5 space-y-3.5">
+                  {activeItems.length === 0 ? (
+                    <p className="text-sm text-[#6b7280]">Sin productos seleccionados.</p>
+                  ) : activeItems.map((item) => {
+                    const product = resolvedProducts.find((p) => p.slug === item.slug);
+                    return (
+                      <div key={item.slug} className="flex items-center gap-3.5">
+                        <div className="flex h-[52px] w-[52px] flex-shrink-0 items-center justify-center rounded-[12px] bg-[#f4f4f0] text-2xl">
+                          {item.slug.includes("negro") ? "🖤" : (item.slug.includes("combo") || item.slug.includes("pack")) ? "✨" : "🌿"}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[13px] font-semibold text-[#1a3a2e]">{product?.name ?? item.slug}</p>
+                          <p className="text-[12px] text-[#6b7280]">x {item.quantity}</p>
+                        </div>
+                        <div className="font-serif text-[15px] font-bold text-[#1a3a2e]">
+                          S/ {((product?.price ?? 0) * item.quantity).toFixed(2)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="h-px bg-[rgba(26,58,46,0.08)]" />
+                <div className="my-4 space-y-2.5">
+                  <div className="flex justify-between text-[13px] text-[#6b7280]">
+                    <span>Subtotal</span>
+                    <strong className="text-[#1c1c1c]">S/ {summary.subtotal.toFixed(2)}</strong>
+                  </div>
+                  {summary.discount > 0 ? (
+                    <div className="flex justify-between text-[13px] text-[#52b788]">
+                      <span>Descuento</span>
+                      <strong>− S/ {summary.discount.toFixed(2)}</strong>
+                    </div>
+                  ) : null}
+                  <div className="flex justify-between text-[13px] text-[#6b7280]">
+                    <span>Envío</span>
+                    <strong className="text-[#1c1c1c]">S/ {summary.shipping.toFixed(2)}</strong>
+                  </div>
+                </div>
+                <div className="h-px bg-[rgba(26,58,46,0.08)]" />
+                <div className="mt-4 flex justify-between font-bold text-[#1a3a2e]">
+                  <span className="text-[16px]">Total</span>
+                  <span className="font-serif text-[22px] font-black">S/ {summary.grandTotal.toFixed(2)}</span>
+                </div>
+                {quoteLoading ? <p className="mt-2 text-[11px] text-[#6b7280]">Calculando totales...</p> : null}
+                {quoteError ? <p className="mt-2 text-[11px] text-rose-600">{quoteError}</p> : null}
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={submitting || activeItems.length === 0}
+                  className="mt-5 w-full rounded-[13px] bg-[#2d6a4f] py-4 text-[15px] font-bold text-white shadow-[0_8px_24px_rgba(45,106,79,0.3)] transition hover:-translate-y-0.5 hover:bg-[#1a3a2e] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {submitting ? "Procesando..." : paymentMethod === "openpay" ? "Confirmar y pagar →" : "Confirmar pedido →"}
+                </button>
+                <div className="mt-4 flex justify-center gap-5">
+                  {[{ icon: "🔒", label: "Pago seguro" }, { icon: "📍", label: "Envío rastreado" }, { icon: "🌿", label: "100% natural" }].map((badge) => (
+                    <div key={badge.label} className="flex items-center gap-1.5 text-[11px] text-[#6b7280]">
+                      <span>{badge.icon}</span>{badge.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -54,11 +54,11 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f5f6f2] px-4 py-10">
+      <div className="min-h-screen bg-[#f4f6f5] px-4 py-10">
         <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-xl items-center justify-center">
-          <div className="w-full rounded-[2rem] border border-black/8 bg-white px-8 py-10 text-center shadow-[0_18px_54px_rgba(18,34,20,0.06)]">
+          <div className="w-full rounded-[2rem] border border-black/8 bg-white px-8 py-10 text-center shadow-[0_18px_54px_rgba(26,58,46,0.06)]">
             <p className="text-xs uppercase tracking-[0.28em] text-black/40">Huelegood Admin</p>
-            <h1 className="mt-4 text-2xl font-semibold tracking-tight text-[#132016]">Verificando acceso</h1>
+            <h1 className="mt-4 text-2xl font-semibold tracking-tight text-[#1a3a2e]">Verificando acceso</h1>
             <p className="mt-3 text-sm leading-6 text-black/58">Estamos confirmando tu sesión para cargar el panel operativo.</p>
           </div>
         </div>
@@ -68,7 +68,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-[#f5f6f2] px-4 py-8 md:px-6 md:py-10">
+      <div className="min-h-screen bg-[#f4f6f5] px-4 py-8 md:px-6 md:py-10">
         <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-[1120px] items-center justify-center">{children}</div>
       </div>
     );

@@ -3,17 +3,17 @@
 @tailwind utilities;
 
 :root {
-  --background: 42 24% 95%;
-  --foreground: 160 16% 11%;
+  --background: 150 10% 96%;
+  --foreground: 157 38% 17%;
   --card: 0 0% 100%;
-  --card-foreground: 160 16% 11%;
-  --muted: 46 18% 94%;
-  --muted-foreground: 160 8% 38%;
-  --primary: 148 34% 11%;
+  --card-foreground: 157 38% 17%;
+  --muted: 150 8% 94%;
+  --muted-foreground: 157 8% 38%;
+  --primary: 157 38% 17%;
   --primary-foreground: 0 0% 100%;
   --accent: 38 95% 56%;
-  --accent-foreground: 160 16% 11%;
-  --border: 40 12% 88%;
+  --accent-foreground: 157 38% 17%;
+  --border: 153 12% 88%;
 }
 
 html,
@@ -25,9 +25,7 @@ body,
 body {
   margin: 0;
   color: hsl(var(--foreground));
-  background:
-    radial-gradient(circle at top left, rgba(26, 40, 28, 0.04), transparent 20%),
-    linear-gradient(180deg, #f5f6f2 0%, #eef1eb 100%);
+  background: #f4f6f5;
   font-family: "Avenir Next", "Satoshi", "Helvetica Neue", sans-serif;
 }
 

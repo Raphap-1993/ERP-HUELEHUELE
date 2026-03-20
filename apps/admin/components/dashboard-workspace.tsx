@@ -236,7 +236,7 @@ function DashboardSection({
     <section className="space-y-4">
       <div className="space-y-2">
         <p className="text-xs uppercase tracking-[0.24em] text-black/40">{eyebrow}</p>
-        <h2 className="text-[1.85rem] font-semibold tracking-[-0.03em] text-[#132016]">{title}</h2>
+        <h2 className="text-[1.85rem] font-semibold tracking-[-0.03em] text-[#1a3a2e]">{title}</h2>
         <p className="max-w-3xl text-sm leading-6 text-black/56">{description}</p>
       </div>
       {children}
@@ -448,7 +448,7 @@ export function DashboardWorkspace() {
 
   return (
     <div className="space-y-8 pb-10">
-      <Card className="overflow-hidden rounded-[1.85rem] border-black/8 bg-white shadow-[0_16px_46px_rgba(18,34,20,0.05)]">
+      <Card className="overflow-hidden rounded-[1.85rem] border-black/8 bg-white shadow-[0_4px_20px_rgba(26,58,46,0.08)]">
         <CardHeader className="gap-5 border-b border-black/6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3">
@@ -456,7 +456,7 @@ export function DashboardWorkspace() {
               {overview ? <Badge tone="info">Vista {focusLabel(overview.focus)}</Badge> : null}
             </div>
             <div className="space-y-2">
-              <h2 className="text-[2rem] font-semibold tracking-[-0.03em] text-[#132016]">{overview?.title ?? "Panel operativo"}</h2>
+              <h2 className="text-[2rem] font-semibold tracking-[-0.03em] text-[#1a3a2e]">{overview?.title ?? "Panel operativo"}</h2>
               <p className="max-w-3xl text-sm leading-6 text-black/58">
                 {overview?.description ?? "Cargando vista operacional por rol."}
               </p>
@@ -469,12 +469,12 @@ export function DashboardWorkspace() {
         <CardContent className="grid gap-4 md:grid-cols-3">
           {overview
             ? highlights.map((item) => (
-                <div key={item} className="rounded-[1.35rem] border border-black/8 bg-[#f7f8f4] px-4 py-4 text-sm leading-6 text-[#132016]">
+                <div key={item} className="rounded-[13px] border border-[rgba(26,58,46,0.08)] bg-[#f4f6f5] px-4 py-4 text-sm leading-6 text-[#1a3a2e]">
                   {item}
                 </div>
               ))
             : Array.from({ length: 3 }).map((_, index) => (
-                <div key={index} className="h-20 rounded-[1.35rem] border border-black/8 bg-[#f7f8f4]" />
+                <div key={index} className="h-20 rounded-[13px] border border-[rgba(26,58,46,0.08)] bg-[#f4f6f5]" />
               ))}
         </CardContent>
       </Card>
@@ -483,6 +483,68 @@ export function DashboardWorkspace() {
         {(overview?.metrics ?? []).map((metric) => (
           <MetricCard key={metric.label} metric={metric} />
         ))}
+      </div>
+
+      {/* Charts visuales */}
+      <div className="grid gap-3 md:grid-cols-[2fr_1fr]">
+        {/* Gráfica de barras */}
+        <div className="rounded-[13px] border border-[rgba(26,58,46,0.1)] bg-white p-4">
+          <h3 className="text-[13px] font-semibold text-[#1c1c1c] mb-1">Ventas por semana</h3>
+          <p className="text-[11px] text-[#6b7280] mb-4">Unidades vendidas en los últimos 7 períodos</p>
+          <svg viewBox="0 0 380 145" className="w-full" xmlns="http://www.w3.org/2000/svg">
+            <line x1="30" y1="118" x2="370" y2="118" stroke="#f0f0ee" strokeWidth="1"/>
+            <line x1="30" y1="90"  x2="370" y2="90"  stroke="#f0f0ee" strokeWidth="1"/>
+            <line x1="30" y1="62"  x2="370" y2="62"  stroke="#f0f0ee" strokeWidth="1"/>
+            <line x1="30" y1="34"  x2="370" y2="34"  stroke="#f0f0ee" strokeWidth="1"/>
+            <text x="4" y="121" fontSize="9" fill="#c0c8c4">0</text>
+            <text x="4" y="93"  fontSize="9" fill="#c0c8c4">30</text>
+            <text x="4" y="65"  fontSize="9" fill="#c0c8c4">60</text>
+            <text x="4" y="37"  fontSize="9" fill="#c0c8c4">90</text>
+            <rect x="38"  y="62" width="26" height="56" rx="5" fill="#2d6a4f" fillOpacity=".65"/>
+            <text x="51"  y="133" textAnchor="middle" fontSize="9" fill="#9ca3af">S1</text>
+            <rect x="88"  y="46" width="26" height="72" rx="5" fill="#2d6a4f" fillOpacity=".7"/>
+            <text x="101" y="133" textAnchor="middle" fontSize="9" fill="#9ca3af">S2</text>
+            <rect x="138" y="70" width="26" height="48" rx="5" fill="#2d6a4f" fillOpacity=".65"/>
+            <text x="151" y="133" textAnchor="middle" fontSize="9" fill="#9ca3af">S3</text>
+            <rect x="188" y="28" width="26" height="90" rx="5" fill="#2d6a4f" fillOpacity=".78"/>
+            <text x="201" y="133" textAnchor="middle" fontSize="9" fill="#9ca3af">S4</text>
+            <rect x="238" y="50" width="26" height="68" rx="5" fill="#2d6a4f" fillOpacity=".72"/>
+            <text x="251" y="133" textAnchor="middle" fontSize="9" fill="#9ca3af">S5</text>
+            <rect x="288" y="20" width="26" height="98" rx="5" fill="#2d6a4f" fillOpacity=".85"/>
+            <text x="301" y="133" textAnchor="middle" fontSize="9" fill="#9ca3af">S6</text>
+            <rect x="338" y="37" width="26" height="81" rx="5" fill="#52b788"/>
+            <text x="351" y="133" textAnchor="middle" fontSize="9" fill="#6b7280" fontWeight="500">S7</text>
+            <text x="351" y="32"  textAnchor="middle" fontSize="10" fontWeight="600" fill="#2d6a4f">81</text>
+          </svg>
+        </div>
+
+        {/* Donut chart */}
+        <div className="rounded-[13px] border border-[rgba(26,58,46,0.1)] bg-white p-4">
+          <h3 className="text-[13px] font-semibold text-[#1c1c1c] mb-1">Mix de productos</h3>
+          <p className="text-[11px] text-[#6b7280] mb-4">Distribución por SKU este mes</p>
+          <div className="flex items-center gap-5">
+            <svg viewBox="0 0 100 100" width="100" height="100" className="flex-shrink-0">
+              <circle cx="50" cy="50" r="36" fill="none" stroke="#f3f4f6" strokeWidth="17"/>
+              <circle cx="50" cy="50" r="36" fill="none" stroke="#1a3a2e" strokeWidth="17" strokeDasharray="118 226" strokeDashoffset="0" transform="rotate(-90 50 50)"/>
+              <circle cx="50" cy="50" r="36" fill="none" stroke="#52b788" strokeWidth="17" strokeDasharray="70 226" strokeDashoffset="-118" transform="rotate(-90 50 50)"/>
+              <circle cx="50" cy="50" r="36" fill="none" stroke="#c9a84c" strokeWidth="17" strokeDasharray="38 226" strokeDashoffset="-188" transform="rotate(-90 50 50)"/>
+              <text x="50" y="47" textAnchor="middle" fontSize="12" fontWeight="700" fill="#1a3a2e">438</text>
+              <text x="50" y="57" textAnchor="middle" fontSize="7" fill="#9ca3af">unidades</text>
+            </svg>
+            <div className="flex flex-col gap-2.5">
+              {[
+                { color: "#1a3a2e", label: "Negro 52%" },
+                { color: "#52b788", label: "Verde 31%" },
+                { color: "#c9a84c", label: "Packs 17%" },
+              ].map(item => (
+                <div key={item.label} className="flex items-center gap-2 text-[12px] text-[#6b7280]">
+                  <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ background: item.color }} />
+                  {item.label}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
       {overview?.focus === "payments" ? (
@@ -634,11 +696,11 @@ export function DashboardWorkspace() {
 function CardSnapshot({ order }: { order: AdminOrderDetail }) {
   return (
     <div className="grid gap-6 xl:grid-cols-3">
-      <div className="rounded-[1.75rem] border border-black/8 bg-white p-6 shadow-[0_14px_42px_rgba(18,34,20,0.05)] xl:col-span-2">
+      <div className="rounded-[1.75rem] border border-black/8 bg-white p-6 shadow-[0_4px_20px_rgba(26,58,46,0.08)] xl:col-span-2">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.24em] text-black/45">Último pedido</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#132016]">{order.orderNumber}</h2>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#1a3a2e]">{order.orderNumber}</h2>
             <p className="mt-2 text-sm text-black/60">
               {order.customer.firstName} {order.customer.lastName} · {order.customer.email}
             </p>
@@ -647,16 +709,16 @@ function CardSnapshot({ order }: { order: AdminOrderDetail }) {
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <div className="rounded-[1.35rem] border border-black/8 bg-[#f7f8f4] p-4">
+          <div className="rounded-[1.35rem] border border-black/8 bg-[#f4f6f5] p-4">
             <p className="text-xs uppercase tracking-[0.22em] text-black/45">Total</p>
-            <p className="mt-2 text-3xl font-semibold text-[#132016]">{formatCurrency(order.total)}</p>
+            <p className="mt-2 text-3xl font-semibold text-[#1a3a2e]">{formatCurrency(order.total)}</p>
             <p className="mt-2 text-sm text-black/60">
               {order.items.length} artículo(s) · {order.orderStatus}
             </p>
           </div>
-          <div className="rounded-[1.35rem] border border-black/8 bg-[#f7f8f4] p-4">
+          <div className="rounded-[1.35rem] border border-black/8 bg-[#f4f6f5] p-4">
             <p className="text-xs uppercase tracking-[0.22em] text-black/45">Dirección</p>
-            <p className="mt-2 text-sm font-medium text-[#132016]">{order.address.recipientName}</p>
+            <p className="mt-2 text-sm font-medium text-[#1a3a2e]">{order.address.recipientName}</p>
             <p className="text-sm text-black/60">{order.address.line1}</p>
             <p className="text-sm text-black/60">
               {order.address.city}, {order.address.region} · {order.address.postalCode}
@@ -665,7 +727,7 @@ function CardSnapshot({ order }: { order: AdminOrderDetail }) {
         </div>
       </div>
 
-      <div className="rounded-[1.75rem] border border-black/8 bg-[#132016] p-6 text-white shadow-[0_16px_46px_rgba(19,32,22,0.2)]">
+      <div className="rounded-[1.75rem] border border-black/8 bg-[#1a3a2e] p-6 text-white shadow-[0_4px_20px_rgba(26,58,46,0.18)]">
         <p className="text-xs uppercase tracking-[0.24em] text-white/45">Resumen financiero</p>
         <div className="mt-4 space-y-3 text-sm text-white/80">
           <p>Subtotal: {formatCurrency(order.subtotal)}</p>
@@ -688,7 +750,7 @@ function EmptyDashboardCard({
   description: string;
 }) {
   return (
-    <Card className="rounded-[1.75rem] border-black/8 shadow-[0_14px_42px_rgba(18,34,20,0.05)]">
+    <Card className="rounded-[1.75rem] border-black/8 shadow-[0_4px_20px_rgba(26,58,46,0.08)]">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         <CardDescription>{description}</CardDescription>

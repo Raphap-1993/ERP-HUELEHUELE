@@ -77,84 +77,124 @@ export function AdminAuthGate({ title, description, allowedRoles, children }: Ad
 
   if (!session) {
     return (
-      <section className="grid w-full gap-6 lg:grid-cols-[0.88fr_1.12fr]">
-        <div className="rounded-[2rem] border border-black/8 bg-[#132016] px-8 py-10 text-white shadow-[0_22px_72px_rgba(19,32,22,0.22)]">
-          <div className="space-y-5">
-            <div className="space-y-2">
-              <p className="text-xs uppercase tracking-[0.28em] text-white/42">Huelegood Admin</p>
-              <h1 className="text-[2.4rem] font-semibold leading-[0.98] tracking-[-0.04em] text-white md:text-[3.2rem]">
-                {title ?? "Acceso administrativo seguro"}
-              </h1>
-              <p className="max-w-xl text-sm leading-7 text-white/72">
-                {description ?? "Ingresa con tus credenciales para operar pedidos, pagos, contenido y frentes comerciales."}
+      <div className="flex min-h-screen items-center justify-center bg-[#faf8f3] p-6">
+        <div className="grid w-full max-w-[860px] grid-cols-2 min-h-[520px] overflow-hidden rounded-[24px] shadow-[0_24px_80px_rgba(26,58,46,0.18)]">
+
+          {/* Izquierda: dark panel */}
+          <div className="relative flex flex-col justify-between overflow-hidden bg-[#1a3a2e] px-10 py-11">
+            {/* Círculos decorativos */}
+            <div className="pointer-events-none absolute -right-[70px] -top-[70px] h-[300px] w-[300px] rounded-full bg-[rgba(82,183,136,0.08)]" />
+            <div className="pointer-events-none absolute -bottom-[50px] -left-[50px] h-[220px] w-[220px] rounded-full bg-[rgba(201,168,76,0.06)]" />
+
+            {/* Logo */}
+            <div className="relative flex items-center gap-2.5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-[11px] bg-[#52b788] font-bold text-[15px] text-[#1a3a2e]">
+                HH
+              </div>
+              <div>
+                <div className="font-semibold text-[19px] text-white leading-tight">Huele Huele</div>
+                <div className="text-[10px] text-white/30">Panel de administración</div>
+              </div>
+            </div>
+
+            {/* Copy */}
+            <div className="relative">
+              <h2 className="mb-3 text-[26px] font-bold text-white leading-[1.2]">
+                Gestiona tu negocio desde un solo lugar
+              </h2>
+              <p className="text-[13px] leading-[1.7] text-white/50">
+                Pedidos, pagos, contenido y frentes comerciales — todo centralizado para tomar mejores decisiones cada día.
               </p>
             </div>
 
-            <div className="grid gap-3">
-              <div className="rounded-[1.4rem] border border-white/12 bg-white/8 px-4 py-4 text-sm leading-6 text-white/76">
-                El panel operativo se abre solo después de autenticar la sesión y cargar los permisos reales.
-              </div>
-              <div className="rounded-[1.4rem] border border-white/12 bg-white/8 px-4 py-4 text-sm leading-6 text-white/76">
-                La navegación y los módulos se filtran por rol para que cada perfil vea solo lo que le corresponde.
-              </div>
+            {/* Stats */}
+            <div className="relative flex gap-4">
+              {[
+                { n: "450", l: "Unidades" },
+                { n: "S/17K", l: "Este mes" },
+                { n: "18", l: "Distrib." },
+              ].map(stat => (
+                <div key={stat.l} className="rounded-[12px] border border-white/10 bg-white/6 px-4 py-3.5 text-center">
+                  <div className="font-bold text-[22px] text-[#52b788]">{stat.n}</div>
+                  <div className="mt-1 text-[10px] text-white/35">{stat.l}</div>
+                </div>
+              ))}
             </div>
+          </div>
+
+          {/* Derecha: form */}
+          <div className="flex flex-col justify-center bg-white px-10 py-11">
+            <h3 className="mb-1.5 font-bold text-[23px] text-[#1a3a2e]">Bienvenida de vuelta</h3>
+            <p className="mb-7 text-[13px] text-[#6b7280]">Ingresa tus credenciales para acceder al panel</p>
+
+            {error ? (
+              <div className="mb-4 rounded-[11px] bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
+            ) : null}
+
+            <form className="space-y-4" onSubmit={handleLogin}>
+              <label className="block space-y-1.5">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">
+                  Correo electrónico
+                </span>
+                <input
+                  id="admin-email"
+                  type="email"
+                  autoComplete="username"
+                  required
+                  value={loginForm.email}
+                  onChange={(e) => setLoginForm(curr => ({ ...curr, email: e.target.value }))}
+                  placeholder="admin@huelegood.com"
+                  className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white"
+                />
+              </label>
+
+              <label className="block space-y-1.5">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">
+                  Contraseña
+                </span>
+                <input
+                  id="admin-password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={loginForm.password}
+                  onChange={(e) => setLoginForm(curr => ({ ...curr, password: e.target.value }))}
+                  placeholder="••••••••"
+                  className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white"
+                />
+              </label>
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full rounded-[11px] bg-[#2d6a4f] py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#1a3a2e] hover:-translate-y-px disabled:opacity-60"
+              >
+                {submitting ? "Validando..." : "Ingresar al panel →"}
+              </button>
+            </form>
 
             {roleList.length ? (
-              <div className="space-y-3">
-                <p className="text-xs uppercase tracking-[0.24em] text-white/40">Módulo habilitado para</p>
-                <div className="flex flex-wrap gap-2">
+              <div className="mt-5 space-y-2">
+                <p className="text-[11px] uppercase tracking-[0.07em] text-[#6b7280]">Módulo habilitado para</p>
+                <div className="flex flex-wrap gap-1.5">
                   {roleList.map((role) => (
-                    <Badge key={role} className="bg-white/10 text-white">
+                    <span key={role} className="rounded-full bg-[#d8f3dc] px-2.5 py-0.5 text-[11px] font-medium text-[#2d6a4f]">
                       {role}
-                    </Badge>
+                    </span>
                   ))}
                 </div>
               </div>
             ) : null}
+
+            <p className="mt-4 text-center text-[11px] text-[#6b7280]">
+              ¿Problemas para ingresar?{" "}
+              <a href="mailto:admin@huelegood.com" className="font-medium text-[#2d6a4f]">
+                Contáctanos
+              </a>
+            </p>
           </div>
         </div>
-
-        <Card className="rounded-[2rem] border-black/8 bg-white shadow-[0_18px_60px_rgba(18,34,20,0.06)]">
-          <CardHeader className="space-y-2">
-            <CardTitle className="text-[2rem] tracking-[-0.03em]">Iniciar sesión</CardTitle>
-            <CardDescription>Usa tu correo y contraseña operativos para entrar al backoffice.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            {error ? <div className="rounded-[1.25rem] bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div> : null}
-            <form className="space-y-4" onSubmit={handleLogin}>
-              <div className="space-y-2">
-                <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="admin-email">
-                  Email
-                </label>
-                <Input
-                  id="admin-email"
-                  type="email"
-                  autoComplete="username"
-                  value={loginForm.email}
-                  onChange={(event) => setLoginForm((current) => ({ ...current, email: event.target.value }))}
-                  placeholder="correo@huelegood.com"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="admin-password">
-                  Contraseña
-                </label>
-                <Input
-                  id="admin-password"
-                  type="password"
-                  autoComplete="current-password"
-                  value={loginForm.password}
-                  onChange={(event) => setLoginForm((current) => ({ ...current, password: event.target.value }))}
-                  placeholder="Contraseña"
-                />
-              </div>
-              <Button type="submit" disabled={submitting}>
-                {submitting ? "Validando..." : "Ingresar al panel"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </section>
+      </div>
     );
   }
 

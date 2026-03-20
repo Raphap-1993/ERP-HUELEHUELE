@@ -1,9 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { adminNavigation, filterNavigationGroupsByRoles, siteSetting } from "@huelegood/shared";
-import { Badge, Button } from "@huelegood/ui";
+import { adminNavigation, filterNavigationGroupsByRoles } from "@huelegood/shared";
 import { useAdminSession } from "./admin-session-provider";
 
 type AdminTopbarProps = {
@@ -13,73 +12,81 @@ type AdminTopbarProps = {
 export function AdminTopbar({ onMenuClick }: AdminTopbarProps) {
   const pathname = usePathname();
   const { session } = useAdminSession();
+  const [period, setPeriod] = useState<"semana" | "mes" | "año">("semana");
 
   const roleCodes = session?.user.roles.map((role) => role.code) ?? [];
-  const roleLabels = session?.user.roles.map((role) => role.label) ?? [];
   const visibleNavigation = session ? filterNavigationGroupsByRoles(adminNavigation, roleCodes) : [];
-  const visibleLinks = useMemo(() => visibleNavigation.flatMap((group) => group.items), [visibleNavigation]);
-  const quickLinks = visibleLinks.slice(0, 4);
-  const currentItem = useMemo(
-    () => visibleLinks.find((item) => pathname === item.href || (item.href !== "/" && pathname.startsWith(`${item.href}/`))),
-    [pathname, visibleLinks]
+  const visibleLinks = visibleNavigation.flatMap((group) => group.items);
+  const currentItem = visibleLinks.find(
+    (item) => pathname === item.href || (item.href !== "/" && pathname.startsWith(`${item.href}/`))
   );
 
-  const sectionDescription = currentItem
-    ? `Gestiona ${currentItem.label.toLowerCase()} con contexto operativo claro y acceso filtrado por rol.`
-    : "Vista central de operación para pedidos, pagos, contenido y frentes comerciales.";
-
   return (
-    <header className="rounded-[1.6rem] border border-black/8 bg-white px-5 py-5 shadow-[0_14px_42px_rgba(18,34,20,0.05)]">
-      <div className="space-y-4">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex items-start gap-3">
-            {session ? (
-              <Button type="button" variant="secondary" size="sm" className="mt-1 lg:hidden" onClick={onMenuClick}>
-                Menú
-              </Button>
-            ) : null}
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="text-xs uppercase tracking-[0.24em] text-black/42">{siteSetting.brandName}</div>
-                {currentItem ? <Badge tone="info">{currentItem.label}</Badge> : <Badge tone="neutral">Panel operativo</Badge>}
-              </div>
-              <div className="space-y-1">
-                <h1 className="text-[2rem] font-semibold tracking-[-0.03em] text-[#132016]">
-                  {currentItem?.label ?? "Panel de operación"}
-                </h1>
-                <p className="max-w-3xl text-sm leading-6 text-black/56">{sectionDescription}</p>
-              </div>
-            </div>
-          </div>
+    <header className="sticky top-0 z-10 flex items-center justify-between border-b border-[rgba(26,58,46,0.1)] bg-white px-5 py-3 flex-shrink-0">
 
-          {session ? (
-            <div className="rounded-[1.4rem] border border-black/8 bg-[#f7f8f4] px-4 py-3">
-              <div className="text-sm font-medium text-[#132016]">{session.user.name}</div>
-              <div className="text-sm text-black/52">{session.user.email}</div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {roleLabels.slice(0, 2).map((role) => (
-                  <Badge key={role} tone="neutral">
-                    {role}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          ) : null}
+      {/* Izquierda: burger (mobile) + título */}
+      <div className="flex items-center gap-3">
+        {session ? (
+          <button
+            type="button"
+            onClick={onMenuClick}
+            className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-[#f4f6f5] lg:hidden"
+          >
+            <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <line x1="3" y1="12" x2="21" y2="12"/>
+              <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
+        ) : null}
+        <div>
+          <h2 className="text-[15px] font-semibold text-[#1c1c1c]">
+            {currentItem?.label ?? "Dashboard"}
+          </h2>
+          <p className="text-[11px] text-[#6b7280] mt-0.5">
+            {currentItem
+              ? `Gestiona ${currentItem.label.toLowerCase()} del negocio`
+              : "Resumen general del negocio"}
+          </p>
+        </div>
+      </div>
+
+      {/* Derecha: período + notif + user */}
+      <div className="flex items-center gap-2.5">
+
+        {/* Selector período */}
+        <div className="hidden items-center overflow-hidden rounded-[9px] border border-[rgba(26,58,46,0.1)] md:flex">
+          {(["semana", "mes", "año"] as const).map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setPeriod(p)}
+              className={`px-3.5 py-1.5 text-[12px] font-medium capitalize transition
+                ${period === p
+                  ? "bg-[#2d6a4f] text-white"
+                  : "bg-transparent text-[#6b7280] hover:bg-[#f4f6f5]"
+                }`}
+            >
+              {p.charAt(0).toUpperCase() + p.slice(1)}
+            </button>
+          ))}
         </div>
 
-        {session && quickLinks.length ? (
-          <div className="hidden items-center gap-2 border-t border-black/6 pt-4 lg:flex">
-            <div className="text-xs uppercase tracking-[0.22em] text-black/38">Accesos rápidos</div>
-            <div className="flex flex-wrap gap-2">
-              {quickLinks.map((item) => {
-                const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(`${item.href}/`));
-                return (
-                  <Button key={item.href} href={item.href} size="sm" variant={isActive ? "primary" : "secondary"}>
-                    {item.label}
-                  </Button>
-                );
-              })}
-            </div>
+        {/* Notificaciones */}
+        <div className="relative flex h-8 w-8 items-center justify-center rounded-[8px] border border-[rgba(26,58,46,0.1)] bg-[#f4f6f5] cursor-pointer">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 01-3.46 0"/>
+          </svg>
+          <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500 ring-[1.5px] ring-white" />
+        </div>
+
+        {/* User avatar */}
+        {session ? (
+          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#2d6a4f] text-[11px] font-semibold text-white">
+            {session.user.name
+              ? session.user.name.split(" ").slice(0, 2).map(n => n[0]).join("").toUpperCase()
+              : "AD"}
           </div>
         ) : null}
       </div>
