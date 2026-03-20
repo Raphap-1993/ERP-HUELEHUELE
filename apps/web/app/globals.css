@@ -3,17 +3,17 @@
 @tailwind utilities;
 
 :root {
-  --background: 42 44% 97%;
-  --foreground: 160 16% 11%;
+  --background: 42 37% 97%;
+  --foreground: 150 18% 12%;
   --card: 0 0% 100%;
-  --card-foreground: 160 16% 11%;
-  --muted: 46 18% 94%;
-  --muted-foreground: 160 8% 38%;
+  --card-foreground: 150 18% 12%;
+  --muted: 42 22% 94%;
+  --muted-foreground: 150 9% 37%;
   --primary: 148 34% 11%;
   --primary-foreground: 0 0% 100%;
-  --accent: 38 95% 56%;
-  --accent-foreground: 160 16% 11%;
-  --border: 40 12% 88%;
+  --accent: 44 78% 68%;
+  --accent-foreground: 150 18% 12%;
+  --border: 42 15% 86%;
 }
 
 html,
@@ -22,27 +22,41 @@ body,
   min-height: 100%;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
   color: hsl(var(--foreground));
   background:
-    radial-gradient(circle at top left, rgba(174, 193, 160, 0.14), transparent 24%),
-    linear-gradient(180deg, #faf8f3 0%, #f3f5ef 46%, #f8f8f5 100%);
+    radial-gradient(circle at top, rgba(211, 221, 196, 0.42), transparent 28%),
+    radial-gradient(circle at bottom left, rgba(214, 204, 183, 0.18), transparent 30%),
+    linear-gradient(180deg, #fbfaf6 0%, #f4f4ee 48%, #f8f7f3 100%);
   font-family: "Avenir Next", "Satoshi", "Helvetica Neue", sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 h1,
 h2,
 h3 {
   font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  font-weight: 600;
 }
 
 * {
   box-sizing: border-box;
 }
 
+*,
+*::before,
+*::after {
+  border-color: rgba(19, 32, 22, 0.08);
+}
+
 ::selection {
-  background: rgba(19, 32, 22, 0.18);
+  background: rgba(19, 32, 22, 0.16);
 }
 
 a {

@@ -38,19 +38,19 @@ export function EditorialMedia({
   return (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-[2rem] border border-[#d7ddd3] bg-[#eef3ea] shadow-[0_18px_54px_rgba(20,32,22,0.08)]",
+        "group relative overflow-hidden rounded-[2.1rem] border border-[#d9dfd4] bg-[#eef2ea] shadow-[0_18px_54px_rgba(20,32,22,0.06)]",
         className
       )}
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(19,32,22,0.06),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(186,171,140,0.18),transparent_30%)]" />
-      <div className="absolute inset-[1px] rounded-[1.92rem] border border-white/55" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(19,32,22,0.05),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(198,184,157,0.16),transparent_30%)]" />
+      <div className="absolute inset-[1px] rounded-[2rem] border border-white/55" />
       <Image
         fill
         priority={priority}
         sizes="(min-width: 1280px) 42vw, (min-width: 768px) 50vw, 100vw"
         src={src}
         alt={alt}
-        className={cn("object-cover transition-transform duration-500 group-hover:scale-[1.015]", imageClassName)}
+        className={cn("object-cover transition-transform duration-500 group-hover:scale-[1.01]", imageClassName)}
       />
       {overlay ? <div className="absolute inset-0">{overlay}</div> : null}
     </div>
@@ -66,10 +66,10 @@ export function EditorialProductGrid({ products }: { products: CatalogProduct[] 
         return (
           <Card
             key={product.id}
-            className="overflow-hidden rounded-[1.9rem] border-[#d7ddd3] bg-white shadow-[0_14px_40px_rgba(22,34,20,0.06)]"
+            className="overflow-hidden rounded-[2rem] border-[#d9dfd4] bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(247,248,243,0.96)_100%)] shadow-[0_14px_40px_rgba(22,34,20,0.05)]"
           >
             <div className={cn("relative aspect-[4/4.4] overflow-hidden bg-gradient-to-br p-4", toneFrame(product.tone))}>
-              <div className="absolute inset-4 rounded-[1.5rem] border border-white/40" />
+              <div className="absolute inset-4 rounded-[1.6rem] border border-white/40" />
               <Image fill src={art} alt={product.name} sizes="(min-width: 1280px) 28vw, (min-width: 768px) 42vw, 100vw" className="object-cover" />
               <div className="absolute left-4 top-4">
                 <Badge
@@ -91,7 +91,7 @@ export function EditorialProductGrid({ products }: { products: CatalogProduct[] 
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-1">
                     <CardTitle className="text-[1.45rem]">{product.name}</CardTitle>
-                    <CardDescription className="text-sm leading-6">{product.tagline}</CardDescription>
+                    <CardDescription className="text-sm leading-6 text-black/55">{product.tagline}</CardDescription>
                   </div>
                   <div className="text-right text-[#132016]">
                     <div className="text-[1.9rem] font-semibold tracking-tight">${product.price}</div>
@@ -100,11 +100,11 @@ export function EditorialProductGrid({ products }: { products: CatalogProduct[] 
                     ) : null}
                   </div>
                 </div>
-                <p className="text-sm leading-6 text-black/64">{product.description}</p>
+                <p className="text-sm leading-6 text-black/62">{product.description}</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 {product.benefits.map((benefit) => (
-                  <Badge key={benefit} tone="neutral" className="bg-[#eef3e8] text-[#213523]">
+                  <Badge key={benefit} tone="neutral" className="bg-[#edf2e8] text-[#213523]">
                     {benefit}
                   </Badge>
                 ))}

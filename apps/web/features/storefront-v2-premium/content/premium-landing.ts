@@ -94,46 +94,46 @@ export interface StorefrontV2PremiumContent {
 
 export const storefrontV2PremiumContent: StorefrontV2PremiumContent = {
   hero: {
-    eyebrow: "Inhalador herbal aromático",
-    title: "Frescura herbal que cabe en tu ritmo diario.",
+    eyebrow: "Inhaladores herbales premium",
+    title: "Frescura herbal que viaja contigo, del tráfico a la altura.",
     description:
-      "Huele Huele acompaña tráfico, oficina, viaje y momentos de pausa con una sensación fresca, portable y fácil de llevar a cualquier parte.",
+      "Huelegood reúne tres formatos clave para quienes quieren una sensación fresca, portátil y sobria en oficina, carretera, viajes y días de altura.",
     primaryCta: {
-      label: "Ver catálogo",
+      label: "Explorar colección",
       href: "/catalogo"
     },
     secondaryCta: {
-      label: "Comprar ahora",
+      label: "Comprar Clásico Verde",
       href: "/checkout?producto=clasico-verde"
     },
     metrics: [
       {
-        label: "Favoritos",
-        value: "3 formatos",
-        detail: "La selección principal se entiende rápido y sin saturación."
+        label: "Selección",
+        value: "3 esenciales",
+        detail: "Clásico Verde, Premium Negro y Combo Dúo Perfecto concentran la lectura principal del home."
       },
       {
-        label: "Uso diario",
-        value: "Portable",
-        detail: "Cabe en bolso, carro, escritorio o equipaje sin complicaciones."
+        label: "Portabilidad",
+        value: "Siempre a mano",
+        detail: "Cabe fácil en bolso, mochila, carro o escritorio sin sumar volumen innecesario."
       },
       {
-        label: "Compra",
-        value: "Directa",
-        detail: "Exploras, eliges y compras desde la misma experiencia pública."
+        label: "Momentos clave",
+        value: "Viaje + altura",
+        detail: "La narrativa prioriza trayectos, movilidad y frescura cuando pasas muchas horas fuera."
       }
     ],
     productChips: ["Clásico Verde", "Premium Negro", "Combo Dúo Perfecto"],
     notes: [
       {
-        label: "No es vape",
-        title: "Es una alternativa herbal fresca y portable.",
-        description: "La marca se entiende mejor cuando el producto se ve dentro de una rutina real y sobria."
+        label: "Selección curada",
+        title: "Tres formatos claros para comprar sin saturarte.",
+        description: "La home concentra los favoritos y deja el resto de la navegación como apoyo, no como distracción."
       },
       {
-        label: "Uso real",
-        title: "Pensado para pausa breve, movimiento y trayectos largos.",
-        description: "Cuando el día no se detiene, el formato sigue siendo fácil de llevar y fácil de usar.",
+        label: "Viajes y altura",
+        title: "Ligero, discreto y fácil de llevar cuando tu día se mueve.",
+        description: "Desde cabina hasta carretera, el formato acompaña trayectos largos sin perder una presencia limpia.",
         tone: "dark"
       }
     ]
@@ -142,147 +142,147 @@ export const storefrontV2PremiumContent: StorefrontV2PremiumContent = {
   productHighlights: [
     {
       slug: "clasico-verde",
-      eyebrow: "Uso diario",
-      story: "La referencia más directa para quien quiere una sensación fresca siempre a la mano."
+      eyebrow: "Favorito diario",
+      story: "La referencia más directa para quienes quieren frescura herbal de uso diario con salida rápida a compra."
     },
     {
       slug: "premium-negro",
       eyebrow: "Acabado sobrio",
-      story: "Una versión más sobria para quienes prefieren un look discreto y limpio."
+      story: "Un look más limpio y premium para bolso, oficina o trayectos largos donde prefieres discreción."
     },
     {
       slug: "combo-duo-perfecto",
       eyebrow: "Más valor",
-      story: "Dos formatos listos para tener uno contigo y otro donde más lo necesitas."
+      story: "Dos unidades para dejar una contigo y otra lista en carro, escritorio o equipaje."
     }
   ],
   useCases: [
     {
-      label: "Tráfico y trayecto",
-      title: "Listo para carro, bolso y movimiento constante.",
-      description: "Se integra bien a trayectos largos, cambios de ritmo y días en movimiento sin pedir una rutina nueva.",
+      label: "Trayecto diario",
+      title: "Pensado para tráfico, carretera y cambios de ritmo.",
+      description: "Su formato portátil entra bien en carro, bolso o mochila cuando necesitas una sensación fresca sin detener el día.",
       image: "traffic"
     },
     {
-      label: "Oficina y foco",
-      title: "Un gesto breve que cabe en una jornada larga.",
-      description: "Acompaña escritorio, reuniones y bloques de trabajo sin volverse un objeto invasivo.",
+      label: "Oficina",
+      title: "Una pausa breve que encaja en jornadas largas y espacios compartidos.",
+      description: "Acompaña escritorio, reuniones y bloques intensos con una presencia discreta y fácil de guardar.",
       image: "office"
     },
     {
       label: "Viaje y altura",
-      title: "Ligero, limpio y fácil de llevar fuera de casa.",
-      description: "En equipaje, mochila o bolso conserva una presencia limpia y una lectura simple del producto.",
+      title: "Ligero para salir de casa, sobrio para moverte entre ciudades.",
+      description: "En equipaje de mano, mochila o bolso mantiene una lectura premium y un uso simple en trayectos largos o destinos de altura.",
       image: "travel"
     }
   ],
   benefits: [
     {
       eyebrow: "Portabilidad real",
-      title: "Se guarda fácil y mantiene una presencia cuidada.",
-      description: "La compra se siente más premium cuando el objeto se percibe útil, discreto y listo para acompañar el día."
+      title: "Cabe fácil y se siente bien resuelto desde el primer contacto.",
+      description: "El formato gana valor cuando se percibe útil, limpio y listo para acompañar trayectos, oficina o viaje."
     },
     {
-      eyebrow: "Jerarquía curada",
-      title: "Cada bloque hace una sola cosa, pero mejor.",
-      description: "Hero, catálogo, escena, marca y CTA viven separados para que la lectura sea más rápida y con mejor conversión."
+      eyebrow: "Selección curada",
+      title: "Menos opciones visibles, mejor comprensión comercial.",
+      description: "Una selección corta ayuda a elegir rápido y deja que la historia visual haga el trabajo pesado."
     },
     {
-      eyebrow: "Compatibilidad operativa",
-      title: "Checkout, ERP y admin quedan fuera del experimento visual.",
-      description: "La nueva landing es aditiva: mejora percepción pública sin tocar contratos API ni flujos críticos.",
+      eyebrow: "Look premium",
+      title: "Sobrio por fuera, fácil de integrar por dentro.",
+      description: "El lenguaje visual se apoya en bienestar, viaje y frescura sin caer en estética clínica ni promesas exageradas.",
       tone: "dark"
     },
     {
-      eyebrow: "Escala editorial",
-      title: "Lista para campañas, temporadas y media remota.",
-      description: "Los assets pueden migrar progresivamente a Cloudflare sin rehacer la composición premium."
+      eyebrow: "Escena correcta",
+      title: "La marca se entiende mejor en movimiento que en discurso.",
+      description: "Tráfico, escritorio, trayecto y altura construyen una narrativa más aspiracional y más útil para vender."
     }
   ],
   brandMetrics: [
     {
-      label: "Ruta comercial",
-      value: "D2C + B2B",
-      detail: "Compra directa, mayoristas y canal vendedor conviven sin mezclar promesas ni contratos."
+      label: "Selección principal",
+      value: "3 SKUs",
+      detail: "La home premium enfoca la decisión en los formatos que mejor explican la marca."
     },
     {
-      label: "Momentos clave",
-      value: "4",
-      detail: "Carro, bolso, escritorio y viaje como escenas base para explicar el producto."
+      label: "Escenas de uso",
+      value: "Tráfico + oficina + viaje",
+      detail: "Los momentos reales de uso le dan contexto comercial al producto sin sobreexplicarlo."
     },
     {
       label: "Lenguaje",
-      value: "Premium",
-      detail: "Editorial natural/wellness sin caer en clichés spa, claims clínicos ni estética genérica."
+      value: "Premium y portable",
+      detail: "La composición prioriza frescura, portabilidad y una sensación de compra limpia."
     }
   ],
   brandStoryCards: [
     {
-      label: "Ritmo",
-      title: "La landing no intenta vender todo al mismo tiempo.",
-      description: "Primero atmósfera, luego producto, después claridad comercial. Ese orden mejora comprensión y confianza."
+      label: "Edición",
+      title: "La home vende mejor cuando respira y no compite consigo misma.",
+      description: "Primero aparece la atmósfera, luego la selección curada y al final las rutas para comprar o escalar volumen."
     },
     {
       label: "Objeto",
-      title: "El producto se presenta como parte de una rutina bien editada.",
-      description: "La marca gana cuando el formato se ve útil y refinado, no cuando se sobreexplica con claims ambiguos."
+      title: "Cada inhalador se presenta como parte de una rutina móvil y sobria.",
+      description: "Eso eleva la percepción del producto y lo vuelve más claro para quien compra por primera vez."
     },
     {
-      label: "Operación",
-      title: "La capa premium vive encima de la base que ya funciona.",
-      description: "Esto permite iterar visualmente sin afectar checkout, admin ni la operación del ERP."
+      label: "Compra",
+      title: "La decisión de compra se vuelve más directa cuando el contexto está bien elegido.",
+      description: "Viaje, altura y uso diario hacen visible el valor del formato sin necesidad de sobreprometer."
     }
   ],
   whyChooseReasons: [
     {
-      title: "No depende de humo ni vapor.",
-      description: "La experiencia se entiende mejor cuando el producto se presenta con lenguaje claro y una categoría propia."
+      title: "Portátil de verdad para bolso, carro o escritorio.",
+      description: "No exige espacio extra ni una rutina nueva: se guarda fácil y acompaña el día sin fricción."
     },
     {
-      title: "No requiere una rutina complicada.",
-      description: "Se guarda fácil, se entiende rápido y entra bien en el día a día sin fricción extra."
+      title: "Frescura herbal con una lectura clara y contemporánea.",
+      description: "La propuesta se entiende desde el primer vistazo: sensación fresca, formato limpio y estética sobria."
     },
     {
-      title: "Se percibe discreto y bien resuelto.",
-      description: "Diseño, acabado y narrativa apuntan a una sensación premium sin convertir la marca en algo frío."
+      title: "Tres opciones bien diferenciadas para elegir rápido.",
+      description: "Clásico Verde resuelve el día a día, Premium Negro eleva el acabado y el Combo suma valor para uso frecuente."
     }
   ],
   whyChooseCallout: {
-    label: "Lo esencial",
-    title: "Una alternativa fresca, portable y fácil de integrar a la rutina.",
+    label: "Guía rápida",
+    title: "Qué elegir según tu ritmo y tu forma de moverte.",
     description:
-      "La decisión mejora cuando queda claro qué es, cómo encaja en el día y por qué se siente más simple de llevar que otras alternativas.",
+      "Cuando la selección está bien curada, cada formato ocupa un rol claro y la elección se siente más simple desde el primer scroll.",
     points: [
-      "Frescura herbal y portable sin lenguaje clínico.",
-      "Selección corta que facilita la decisión.",
-      "Diseño sobrio para carro, escritorio, bolso o viaje.",
-      "Compra directa y rutas comerciales bien separadas."
+      "Clásico Verde para frescura diaria y entrada directa a la marca.",
+      "Premium Negro para quienes prefieren un acabado más sobrio y premium.",
+      "Combo Dúo Perfecto para tener una unidad contigo y otra en oficina, carro o equipaje.",
+      "Compra directa, mayoristas y representación comercial en rutas separadas."
     ]
   },
   wholesalePlans,
   wholesaleCallout: {
     label: "Mayoristas",
-    title: "Compra por volumen y distribución con una ruta clara.",
+    title: "Compra por volumen con una ruta clara y separada de la tienda.",
     description:
-      "Si buscas reposición, volumen o distribución, el canal mayorista mantiene una entrada separada con condiciones visibles y atención comercial.",
+      "Si buscas reposición o distribución, la conversación comercial vive en su propio espacio para no mezclarla con la compra individual.",
     points: [
       "Cotización rápida para volumen y reposición.",
-      "Acompañamiento comercial y continuidad operativa.",
-      "Planes escalables según volumen."
+      "Condiciones visibles para compras recurrentes.",
+      "Escalado comercial para puntos de venta y distribución."
     ]
   },
   vendorCallout: {
     label: "Vendedores",
-    title: "Un canal para personas que quieren representar la marca.",
+    title: "Una ruta aparte para quienes quieren representar la marca.",
     description:
-      "La postulación vive en una ruta propia para mantener el foco del home en producto y dejar el onboarding comercial donde corresponde.",
+      "La tienda premium mantiene el foco en producto y deja la representación comercial en una ruta dedicada, con información más clara para aplicar.",
     points: [
-      "Código comercial para atribución y seguimiento.",
-      "Proceso de revisión con screening y aprobación.",
-      "Comisiones y seguimiento dentro del panel vendedor."
+      "Proceso claro para aplicar y entender el perfil buscado.",
+      "Acompañamiento comercial según desempeño y zona.",
+      "Separación limpia entre compra directa y representación."
     ],
     primaryCta: {
-      label: "Postularme",
+      label: "Quiero vender Huelegood",
       href: "/trabaja-con-nosotros"
     },
     secondaryCta: {
@@ -292,42 +292,42 @@ export const storefrontV2PremiumContent: StorefrontV2PremiumContent = {
   },
   faqs: [
     {
-      question: "¿Qué es Huele Huele?",
+      question: "¿Qué tipo de producto es Huelegood?",
       answer:
-        "Es un formato herbal aromático portátil pensado para acompañar momentos de tráfico, oficina, viaje y cambios de ritmo con una sensación fresca y limpia."
+        "Es un inhalador herbal aromático pensado para acompañar tráfico, oficina, viaje y altura con una sensación fresca, portable y fácil de llevar."
     },
     {
-      question: "¿Cuál debería elegir primero?",
+      question: "¿Cuál debería elegir si es mi primera compra?",
       answer:
-        "Clásico Verde es la opción más directa para uso diario, Premium Negro prioriza un acabado más sobrio y Combo Dúo Perfecto ofrece más valor si quieres dos formatos listos."
+        "Clásico Verde es la entrada más directa para uso diario, Premium Negro prioriza un acabado más sobrio y Combo Dúo Perfecto da más valor si quieres dos unidades listas."
     },
     {
-      question: "¿Cómo compro?",
+      question: "¿Sirve para llevar en viaje o altura?",
       answer:
-        "Puedes entrar por catálogo para comparar los formatos o ir directo al checkout desde la referencia que más te guste."
+        "Sí. Su formato ligero y fácil de guardar funciona bien para equipaje de mano, mochila o bolso cuando pasas muchas horas fuera de casa."
     },
     {
-      question: "¿Puedo comprar por volumen o distribuir?",
+      question: "¿Cómo compro o cotizo por volumen?",
       answer:
-        "Sí. La landing mantiene visible la ruta mayorista para cotización y conversación comercial sin mezclarla con la compra directa."
+        "Puedes comprar directo desde catálogo o ir a la ruta mayorista si necesitas cotización, reposición o distribución."
     }
   ],
   faqCallout: {
-    label: "Antes de decidir",
-    title: "La duda principal casi siempre es qué elegir y cómo comprar.",
+    label: "Antes de comprar",
+    title: "Las dudas clave suelen ser formato, portabilidad y cuál elegir primero.",
     description:
-      "Este bloque resuelve las preguntas que sí afectan la conversión: formato, elección y rutas de compra.",
+      "Este bloque responde lo que sí mueve la decisión: qué es, cómo encaja en tu rutina y cuál formato te conviene más.",
     points: [
-      "Qué es y cómo se interpreta el formato.",
-      "Cuál referencia elegir según momento o preferencia.",
-      "Cómo conviven compra directa, mayoristas y vendedores."
+      "Qué es y en qué momentos suele acompañarte mejor.",
+      "Cuál referencia conviene para uso diario, look premium o compra doble.",
+      "Cómo conviven compra directa, mayoristas y representación comercial."
     ]
   },
   ctaBanner: {
-    eyebrow: "Cierre de compra",
-    title: "Elige tu formato y entra por la ruta que mejor te convenga.",
+    eyebrow: "Compra con claridad",
+    title: "Elige entre Clásico Verde, Premium Negro y Combo Dúo Perfecto.",
     description:
-      "Compra directa si ya sabes qué formato quieres. Ruta comercial si necesitas volumen, atención o quieres vender la marca.",
+      "Compra directo si ya sabes qué formato va contigo. Si buscas volumen o representación, la ruta comercial sigue visible y separada.",
     primaryCta: {
       label: "Comprar ahora",
       href: "/catalogo"
@@ -337,7 +337,7 @@ export const storefrontV2PremiumContent: StorefrontV2PremiumContent = {
       href: "/mayoristas"
     },
     tertiaryCta: {
-      label: "Atención comercial",
+      label: "Quiero vender Huelegood",
       href: "/trabaja-con-nosotros"
     }
   }
