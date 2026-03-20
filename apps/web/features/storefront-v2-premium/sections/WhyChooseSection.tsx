@@ -12,9 +12,9 @@ export function WhyChooseSection({
     <section className="grid gap-6 xl:grid-cols-[1.04fr_0.96fr]">
       <StorefrontV2PremiumPanel tone="light" className="space-y-6">
         <StorefrontV2PremiumSectionHeading
-          eyebrow="Por qué elegirlo"
-          title="La decisión mejora cuando la propuesta se explica con calma, no con ruido."
-          description="Este bloque deja clara la diferencia entre formato, ritual y facilidad de compra para reducir fricción de conversión."
+          eyebrow="Por qué Huele Huele"
+          title="Lo esencial, sin ruido y sin claims que la marca no necesita."
+          description="Aquí se concentra la diferencia real del producto: formato, sensación de uso y facilidad para integrarlo a la rutina."
         />
         <div className="grid gap-4">
           {reasons.map((reason) => (

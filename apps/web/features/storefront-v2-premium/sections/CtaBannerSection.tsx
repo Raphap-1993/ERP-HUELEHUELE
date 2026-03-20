@@ -21,22 +21,22 @@ export function CtaBannerSection({ banner }: { banner: PremiumCtaBanner }) {
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-[1.75rem] border border-white/12 bg-white/8 p-5 backdrop-blur">
-            <p className="text-[11px] uppercase tracking-[0.24em] text-white/42">Ruta comercial</p>
+            <p className="text-[11px] uppercase tracking-[0.24em] text-white/42">Compra guiada</p>
             <h3 className="mt-3 text-xl font-semibold tracking-tight text-white">{banner.tertiaryCta.label}</h3>
             <p className="mt-2 text-sm leading-7 text-white/72">
-              El canal vendedor sigue vivo como entrada separada para onboarding comercial y no interrumpe el flujo D2C.
+              Si necesitas atención comercial, venta por volumen o quieres representar la marca, aquí está la ruta correcta.
             </p>
             <div className="mt-4">
               <Button href={banner.tertiaryCta.href} variant="secondary">
-                Ir a la postulación
+                Abrir ruta comercial
               </Button>
             </div>
           </div>
           <div className="rounded-[1.75rem] border border-white/12 bg-white/8 p-5 backdrop-blur">
-            <p className="text-[11px] uppercase tracking-[0.24em] text-white/42">Rollout seguro</p>
-            <p className="mt-3 text-xl font-semibold tracking-tight text-white">La experiencia premium ya es la home oficial y mantiene una ruta dedicada para QA.</p>
+            <p className="text-[11px] uppercase tracking-[0.24em] text-white/42">Compra directa</p>
+            <p className="mt-3 text-xl font-semibold tracking-tight text-white">Si ya sabes cuál te gusta, entra directo al catálogo o al checkout.</p>
             <p className="mt-2 text-sm leading-7 text-white/72">
-              El storefront anterior queda solo como referencia histórica. La evolución del canal público continúa sobre esta capa premium.
+              El storefront principal se queda limpio para que el producto sea el centro y la decisión sea rápida.
             </p>
           </div>
         </div>

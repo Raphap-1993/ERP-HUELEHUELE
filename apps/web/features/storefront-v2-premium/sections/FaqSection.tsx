@@ -13,7 +13,7 @@ export function FaqSection({
   return (
     <section className="grid gap-6 xl:grid-cols-[1.04fr_0.96fr]">
       <StorefrontV2PremiumPanel tone="light" className="space-y-6">
-        <StorefrontV2PremiumSectionHeading eyebrow="FAQ" title="La información crítica sigue visible, breve y alineada a la conversión." description="Las preguntas frecuentes cierran objeciones sobre formato, elección y compra sin volver técnica ni fría la experiencia pública." />
+        <StorefrontV2PremiumSectionHeading eyebrow="FAQ" title="Respuestas rápidas antes de comprar." description="Solo lo que ayuda a decidir mejor: qué es, cuál elegir y cómo comprar." />
         <div className="rounded-[1.85rem] border border-[#112017]/8 bg-white/76 p-3 md:p-4">
           <FAQAccordion items={faqs} />
         </div>

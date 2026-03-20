@@ -20,8 +20,8 @@ export function UseCasesSection({ items }: { items: PremiumUseCase[] }) {
     <section className="space-y-6">
       <StorefrontV2PremiumSectionHeading
         eyebrow="Momentos de uso"
-        title="La promesa se vuelve premium cuando entra en escenas reales y no en un claim vacío."
-        description="Tráfico, escritorio y viaje ordenan la narrativa pública para que el producto se entienda rápido y con contexto."
+        title="Se entiende mejor cuando entra en escenas reales."
+        description="Tráfico, escritorio y viaje resumen dónde encaja Huele Huele sin sobreexplicar la promesa."
       />
 
       <div className="grid gap-5 md:grid-cols-3">

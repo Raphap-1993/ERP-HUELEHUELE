@@ -40,14 +40,14 @@ export function HeroEditorialSection({ hero, preview = false }: { hero: PremiumH
             ))}
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-3">
             {hero.metrics.map((metric) => (
               <div
                 key={metric.label}
                 className="rounded-[1.65rem] border border-[#112017]/8 bg-white/74 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] backdrop-blur"
               >
                 <p className="text-[11px] uppercase tracking-[0.24em] text-black/40">{metric.label}</p>
-                <p className="mt-3 text-2xl font-semibold tracking-tight text-[#112017]">{metric.value}</p>
+                <p className="mt-3 text-[1.8rem] font-semibold tracking-tight text-[#112017]">{metric.value}</p>
                 <p className="mt-2 text-sm leading-6 text-black/56">{metric.detail}</p>
               </div>
             ))}
@@ -62,15 +62,12 @@ export function HeroEditorialSection({ hero, preview = false }: { hero: PremiumH
         className="min-h-[560px]"
         overlay={
           <div className="flex h-full flex-col justify-between p-6">
-            <div className="flex justify-between gap-3">
+            <div className="flex justify-end">
               <div className="rounded-full border border-white/24 bg-white/76 px-4 py-2 text-xs uppercase tracking-[0.24em] text-[#112017] backdrop-blur">
-                Editorial wellness
-              </div>
-              <div className="rounded-full bg-[#112017]/84 px-4 py-2 text-xs uppercase tracking-[0.24em] text-white backdrop-blur">
-                Premium curated
+                Huele Huele
               </div>
             </div>
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-3">
               {hero.notes.map((note) => {
                 const dark = note.tone === "dark";
 
@@ -79,8 +76,8 @@ export function HeroEditorialSection({ hero, preview = false }: { hero: PremiumH
                     key={note.label}
                     className={
                       dark
-                        ? "rounded-[1.7rem] border border-white/12 bg-[#112017]/84 p-4 text-white backdrop-blur"
-                        : "rounded-[1.7rem] border border-white/22 bg-white/82 p-4 backdrop-blur"
+                        ? "max-w-md justify-self-end rounded-[1.7rem] border border-white/12 bg-[#112017]/84 p-4 text-white backdrop-blur"
+                        : "max-w-md rounded-[1.7rem] border border-white/22 bg-white/82 p-4 backdrop-blur"
                     }
                   >
                     <p className={`text-[11px] uppercase tracking-[0.24em] ${dark ? "text-white/42" : "text-black/38"}`}>{note.label}</p>

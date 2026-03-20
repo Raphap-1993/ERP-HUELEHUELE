@@ -26,9 +26,9 @@ export function ProductCatalogSection({
   return (
     <section className="space-y-6">
       <StorefrontV2PremiumSectionHeading
-        eyebrow="Catálogo curado"
-        title="Pocas referencias, mejor editadas y con una salida clara a compra."
-        description="La premium storefront no inventa un catálogo nuevo: toma la selección actual y la presenta con más contraste, mejor objeto y más decisión."
+        eyebrow="Elige tu formato"
+        title="Tres favoritos, una lectura rápida y salida directa a compra."
+        description="El home no necesita un catálogo infinito. Solo la selección principal para decidir rápido y seguir al checkout sin fricción."
         action={{ label: "Ver catálogo completo", href: "/catalogo" }}
       />
 
@@ -69,7 +69,7 @@ export function ProductCatalogSection({
                 <div className="space-y-3">
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-2">
-                      <p className={cn("text-[11px] uppercase tracking-[0.24em]", tone.accent)}>{product.categorySlug}</p>
+                      <p className={cn("text-[11px] uppercase tracking-[0.24em]", tone.accent)}>{highlight?.eyebrow ?? product.badge}</p>
                       <h3 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-[#112017]">{product.name}</h3>
                     </div>
                     <div className="text-right text-[#112017]">
@@ -82,7 +82,7 @@ export function ProductCatalogSection({
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  {product.benefits.map((benefit) => (
+                  {product.benefits.slice(0, 3).map((benefit) => (
                     <span
                       key={benefit}
                       className="inline-flex items-center rounded-full border border-[#112017]/8 bg-[#f2f4ed] px-3 py-1 text-xs font-medium text-[#253326]"
@@ -92,8 +92,7 @@ export function ProductCatalogSection({
                   ))}
                 </div>
 
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs uppercase tracking-[0.18em] text-black/36">{product.sku}</span>
+                <div className="flex items-center justify-end gap-3">
                   <Button href={`/checkout?producto=${product.slug}`}>Comprar</Button>
                 </div>
               </div>

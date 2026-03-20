@@ -94,51 +94,46 @@ export interface StorefrontV2PremiumContent {
 
 export const storefrontV2PremiumContent: StorefrontV2PremiumContent = {
   hero: {
-    eyebrow: "Storefront premium curado en código",
-    title: "Huele Huele se entiende mejor cuando la marca respira como un editorial, no como una promo genérica.",
+    eyebrow: "Inhalador herbal aromático",
+    title: "Frescura herbal que cabe en tu ritmo diario.",
     description:
-      "Una landing premium para mostrar producto, atmósfera y compra directa con claridad. La operación sigue intacta: catálogo, checkout y canal comercial continúan sobre las rutas actuales.",
+      "Huele Huele acompaña tráfico, oficina, viaje y momentos de pausa con una sensación fresca, portable y fácil de llevar a cualquier parte.",
     primaryCta: {
-      label: "Explorar catálogo",
+      label: "Ver catálogo",
       href: "/catalogo"
     },
     secondaryCta: {
-      label: "Comprar el favorito",
+      label: "Comprar ahora",
       href: "/checkout?producto=clasico-verde"
     },
     metrics: [
       {
-        label: "Selección",
+        label: "Favoritos",
         value: "3 formatos",
-        detail: "Catálogo corto y legible, pensado para decidir rápido sin perder percepción premium."
+        detail: "La selección principal se entiende rápido y sin saturación."
       },
       {
-        label: "Experiencia",
-        value: "Editorial",
-        detail: "Más aire, mejor ritmo visual y escenas de uso concretas en lugar de saturación."
+        label: "Uso diario",
+        value: "Portable",
+        detail: "Cabe en bolso, carro, escritorio o equipaje sin complicaciones."
       },
       {
         label: "Compra",
-        value: "Sin ruptura",
-        detail: "Las salidas siguen usando `/catalogo`, `/checkout` y las rutas productivas ya operativas."
-      },
-      {
-        label: "Media",
-        value: "Cloudflare-ready",
-        detail: "La capa admite assets remotos en `cdn.huelegood.com` e `images.huelegood.com`."
+        value: "Directa",
+        detail: "Exploras, eliges y compras desde la misma experiencia pública."
       }
     ],
     productChips: ["Clásico Verde", "Premium Negro", "Combo Dúo Perfecto"],
     notes: [
       {
-        label: "Narrativa",
-        title: "Rutina real, no promesa abstracta.",
-        description: "La marca entra por escenas concretas: tráfico, escritorio, viaje y momentos de pausa breve."
+        label: "No es vape",
+        title: "Es una alternativa herbal fresca y portable.",
+        description: "La marca se entiende mejor cuando el producto se ve dentro de una rutina real y sobria."
       },
       {
-        label: "Canal",
-        title: "D2C, wholesale y vendor sin mezclar mensajes.",
-        description: "La landing prioriza compra directa y deja visibles las rutas comerciales paralelas.",
+        label: "Uso real",
+        title: "Pensado para pausa breve, movimiento y trayectos largos.",
+        description: "Cuando el día no se detiene, el formato sigue siendo fácil de llevar y fácil de usar.",
         tone: "dark"
       }
     ]
@@ -148,36 +143,36 @@ export const storefrontV2PremiumContent: StorefrontV2PremiumContent = {
     {
       slug: "clasico-verde",
       eyebrow: "Uso diario",
-      story: "El formato más directo para quien quiere una sensación fresca siempre cerca, sin complicar la compra."
+      story: "La referencia más directa para quien quiere una sensación fresca siempre a la mano."
     },
     {
       slug: "premium-negro",
       eyebrow: "Acabado sobrio",
-      story: "La versión de presencia más limpia y premium para una rutina que exige discreción y mejor objeto."
+      story: "Una versión más sobria para quienes prefieren un look discreto y limpio."
     },
     {
       slug: "combo-duo-perfecto",
       eyebrow: "Más valor",
-      story: "Pensado para tener un formato contigo y otro listo en carro, escritorio o viaje sin volver a empezar."
+      story: "Dos formatos listos para tener uno contigo y otro donde más lo necesitas."
     }
   ],
   useCases: [
     {
       label: "Tráfico y trayecto",
       title: "Listo para carro, bolso y movimiento constante.",
-      description: "La propuesta se vuelve creíble cuando se muestra en trayectos largos, cambios de ritmo y días sin pausa.",
+      description: "Se integra bien a trayectos largos, cambios de ritmo y días en movimiento sin pedir una rutina nueva.",
       image: "traffic"
     },
     {
       label: "Oficina y foco",
       title: "Un gesto breve que cabe en una jornada larga.",
-      description: "Mesa, escritorio y reuniones: el formato acompaña bloques de trabajo sin volverse protagonista visual.",
+      description: "Acompaña escritorio, reuniones y bloques de trabajo sin volverse un objeto invasivo.",
       image: "office"
     },
     {
       label: "Viaje y altura",
       title: "Ligero, limpio y fácil de llevar fuera de casa.",
-      description: "La estética premium gana fuerza cuando el producto se lee como parte natural de la rutina y del equipaje.",
+      description: "En equipaje, mochila o bolso conserva una presencia limpia y una lectura simple del producto.",
       image: "travel"
     }
   ],
@@ -241,50 +236,50 @@ export const storefrontV2PremiumContent: StorefrontV2PremiumContent = {
   whyChooseReasons: [
     {
       title: "No depende de humo ni vapor.",
-      description: "La propuesta pública se sostiene mejor cuando se diferencia con lenguaje claro y sin confundir el ritual de uso."
+      description: "La experiencia se entiende mejor cuando el producto se presenta con lenguaje claro y una categoría propia."
     },
     {
       title: "No requiere una rutina complicada.",
-      description: "Cabe en el día a día y se entiende rápido: se ve, se elige y se compra sin fricción adicional."
+      description: "Se guarda fácil, se entiende rápido y entra bien en el día a día sin fricción extra."
     },
     {
-      title: "Se percibe discreto y mejor resuelto.",
-      description: "Diseño, acabado y narrativa apuntan a una sensación premium sin convertir la página en un catálogo frío."
+      title: "Se percibe discreto y bien resuelto.",
+      description: "Diseño, acabado y narrativa apuntan a una sensación premium sin convertir la marca en algo frío."
     }
   ],
   whyChooseCallout: {
-    label: "Por qué elegirlo",
-    title: "Una alternativa limpia y portable que se compra con claridad.",
+    label: "Lo esencial",
+    title: "Una alternativa fresca, portable y fácil de integrar a la rutina.",
     description:
-      "La experiencia premium no depende solo de colores o layout. Depende de hacer evidente qué es, cuándo entra en juego y cómo se compra sin rodeos.",
+      "La decisión mejora cuando queda claro qué es, cómo encaja en el día y por qué se siente más simple de llevar que otras alternativas.",
     points: [
-      "Frescura herbal y portátil sin lenguaje clínico.",
+      "Frescura herbal y portable sin lenguaje clínico.",
       "Selección corta que facilita la decisión.",
-      "Salida directa a checkout y canal mayorista actual.",
-      "Narrativa editorial alineada con una marca de wellness sobria."
+      "Diseño sobrio para carro, escritorio, bolso o viaje.",
+      "Compra directa y rutas comerciales bien separadas."
     ]
   },
   wholesalePlans,
   wholesaleCallout: {
-    label: "Canal mayorista",
-    title: "El bloque B2B debe sentirse serio, no como una promo lateral.",
+    label: "Mayoristas",
+    title: "Compra por volumen y distribución con una ruta clara.",
     description:
-      "Mayoristas y distribuidores necesitan una salida clara y visible desde la landing sin competir con la compra directa. Por eso el canal vive en su propio bloque, con beneficios y umbrales concretos.",
+      "Si buscas reposición, volumen o distribución, el canal mayorista mantiene una entrada separada con condiciones visibles y atención comercial.",
     points: [
       "Cotización rápida para volumen y reposición.",
       "Acompañamiento comercial y continuidad operativa.",
-      "Condiciones visibles sin tocar la lógica del ERP."
+      "Planes escalables según volumen."
     ]
   },
   vendorCallout: {
-    label: "Canal vendedor",
-    title: "Buscamos personas capaces de representar bien la marca, no solo mover inventario.",
+    label: "Vendedores",
+    title: "Un canal para personas que quieren representar la marca.",
     description:
-      "El onboarding comercial debe verse cuidado, breve y serio. La landing lo anuncia, pero la postulación completa vive en una ruta dedicada para no romper foco de compra.",
+      "La postulación vive en una ruta propia para mantener el foco del home en producto y dejar el onboarding comercial donde corresponde.",
     points: [
       "Código comercial para atribución y seguimiento.",
       "Proceso de revisión con screening y aprobación.",
-      "Relación alineada con narrativa, presencia y criterio de venta."
+      "Comisiones y seguimiento dentro del panel vendedor."
     ],
     primaryCta: {
       label: "Postularme",
@@ -307,9 +302,9 @@ export const storefrontV2PremiumContent: StorefrontV2PremiumContent = {
         "Clásico Verde es la opción más directa para uso diario, Premium Negro prioriza un acabado más sobrio y Combo Dúo Perfecto ofrece más valor si quieres dos formatos listos."
     },
     {
-      question: "¿La compra premium cambia el checkout?",
+      question: "¿Cómo compro?",
       answer:
-        "No. Esta landing eleva la presentación visual, pero la salida a compra sigue usando catálogo y checkout ya operativos."
+        "Puedes entrar por catálogo para comparar los formatos o ir directo al checkout desde la referencia que más te guste."
     },
     {
       question: "¿Puedo comprar por volumen o distribuir?",
@@ -318,10 +313,10 @@ export const storefrontV2PremiumContent: StorefrontV2PremiumContent = {
     }
   ],
   faqCallout: {
-    label: "Menos duda, más claridad",
-    title: "La landing premium también debe cerrar objeciones prácticas.",
+    label: "Antes de decidir",
+    title: "La duda principal casi siempre es qué elegir y cómo comprar.",
     description:
-      "FAQ no es relleno. Aquí sirve para bajar fricción sobre formato, elección, compra y rutas comerciales sin sobreexplicar el producto.",
+      "Este bloque resuelve las preguntas que sí afectan la conversión: formato, elección y rutas de compra.",
     points: [
       "Qué es y cómo se interpreta el formato.",
       "Cuál referencia elegir según momento o preferencia.",
@@ -329,10 +324,10 @@ export const storefrontV2PremiumContent: StorefrontV2PremiumContent = {
     ]
   },
   ctaBanner: {
-    eyebrow: "Cierre comercial",
-    title: "Compra directa si ya sabes qué formato quieres. Canal comercial si quieres escalar.",
+    eyebrow: "Cierre de compra",
+    title: "Elige tu formato y entra por la ruta que mejor te convenga.",
     description:
-      "La nueva capa premium no reemplaza la operación actual: solo la presenta con más orden, más contraste y una salida más clara a compra, wholesale y vendor onboarding.",
+      "Compra directa si ya sabes qué formato quieres. Ruta comercial si necesitas volumen, atención o quieres vender la marca.",
     primaryCta: {
       label: "Comprar ahora",
       href: "/catalogo"
@@ -342,7 +337,7 @@ export const storefrontV2PremiumContent: StorefrontV2PremiumContent = {
       href: "/mayoristas"
     },
     tertiaryCta: {
-      label: "Trabaja con nosotros",
+      label: "Atención comercial",
       href: "/trabaja-con-nosotros"
     }
   }

@@ -5,6 +5,15 @@ import { Button, PublicBrandStrip } from "@huelegood/ui";
 import { fetchCmsSnapshot } from "../lib/api";
 import "./globals.css";
 
+function isPlaceholderValue(value?: string | null) {
+  if (!value) {
+    return true;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  return normalized.includes("000") || normalized.includes("replace") || normalized.includes("example");
+}
+
 async function loadLayoutCms() {
   try {
     const response = await fetchCmsSnapshot();
@@ -29,23 +38,22 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const settings = cms?.siteSetting ?? siteSetting;
   const navigation = cms?.webNavigation ?? webNavigation;
   const links = navigation.flatMap((group) => group.items);
+  const supportEmail = isPlaceholderValue(settings.supportEmail) ? "hola@huelegood.com" : settings.supportEmail;
+  const whatsapp = isPlaceholderValue(settings.whatsapp) ? "Canal comercial por WhatsApp" : settings.whatsapp;
 
   return (
     <html lang="es">
       <body>
         <div className="mx-auto flex min-h-screen w-full max-w-[1380px] flex-col px-4 py-4 md:px-6 md:py-6">
-          <header className="sticky top-4 z-30 mb-8 overflow-hidden rounded-[2.25rem] border border-black/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.86)_0%,rgba(246,248,240,0.94)_100%)] px-5 py-4 shadow-[0_26px_80px_rgba(22,34,20,0.09)] backdrop-blur-xl md:px-7 md:py-5">
+          <header className="sticky top-4 z-30 mb-8 overflow-hidden rounded-[2.25rem] border border-black/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.9)_0%,rgba(248,249,244,0.94)_100%)] px-5 py-4 shadow-[0_26px_80px_rgba(22,34,20,0.08)] backdrop-blur-xl md:px-7 md:py-5">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(171,192,154,0.18),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(201,166,109,0.12),transparent_26%)]" />
-            <div className="relative flex flex-col gap-5">
+            <div className="relative flex flex-col gap-4">
               <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <Link href="/" className="block text-xs uppercase tracking-[0.38em] text-black/42">
                     {settings.brandName}
                   </Link>
-                  <div className="space-y-2">
-                    <PublicBrandStrip />
-                    <p className="max-w-xl text-sm leading-6 text-black/52">{settings.tagline}</p>
-                  </div>
+                  <PublicBrandStrip />
                 </div>
 
                 <div className="flex flex-col gap-4 xl:items-end">
@@ -67,12 +75,6 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                     </Button>
                   </div>
                 </div>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/6 pt-4 text-xs uppercase tracking-[0.2em] text-black/38">
-                <span>Envíos nacionales</span>
-                <span>Pago con tarjeta o comprobante</span>
-                <span>Atención comercial por WhatsApp</span>
               </div>
             </div>
           </header>
@@ -105,8 +107,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
               <div className="space-y-3">
                 <p className="text-xs uppercase tracking-[0.24em] text-white/42">Contacto</p>
                 <div className="space-y-2 text-sm leading-6 text-white/76">
-                  <p>{settings.supportEmail}</p>
-                  <p>{settings.whatsapp}</p>
+                  <p>{supportEmail}</p>
+                  <p>{whatsapp}</p>
                   <p>Respuesta comercial y soporte de compra.</p>
                 </div>
               </div>

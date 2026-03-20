@@ -494,15 +494,11 @@ export function SectionHeader({
 export function PublicBrandStrip() {
   return (
     <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.22em] text-black/45">
-      <span>Frescura</span>
+      <span>Herbal</span>
       <span>·</span>
-      <span>Portabilidad</span>
+      <span>Fresco</span>
       <span>·</span>
-      <span>Viajes</span>
-      <span>·</span>
-      <span>Tráfico</span>
-      <span>·</span>
-      <span>Altura</span>
+      <span>Portable</span>
     </div>
   );
 }
