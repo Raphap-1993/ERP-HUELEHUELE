@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { AdminDataTable, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, MetricCard, SectionHeader, Separator, StatusBadge, TimelinePedido } from "@huelegood/ui";
 import type { AdminOrderDetail, AdminOrderSummary, OrderStatus, PaymentStatus, ManualPaymentRequestStatus } from "@huelegood/shared";
 import { fetchOrder, fetchOrders } from "../lib/api";
@@ -11,6 +11,13 @@ function formatCurrency(value: number) {
     currency: "MXN",
     maximumFractionDigits: 0
   }).format(value);
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("es-MX", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(new Date(value));
 }
 
 function orderTone(status: OrderStatus): "neutral" | "success" | "warning" | "danger" | "info" {
@@ -99,6 +106,38 @@ function manualStatusLabel(status?: ManualPaymentRequestStatus) {
   };
 
   return status ? labels[status] : "Sin solicitud";
+}
+
+function orderPriorityWeight(order: AdminOrderSummary) {
+  if (order.manualStatus === "under_review" || order.orderStatus === "payment_under_review") {
+    return 4;
+  }
+
+  if (order.orderStatus === "pending_payment") {
+    return 3;
+  }
+
+  if (order.paymentStatus === "paid" && (order.orderStatus === "paid" || order.orderStatus === "confirmed")) {
+    return 2;
+  }
+
+  return 1;
+}
+
+function orderPriorityLabel(order: AdminOrderSummary) {
+  if (order.manualStatus === "under_review" || order.orderStatus === "payment_under_review") {
+    return { label: "Requiere revisión", tone: "warning" as const };
+  }
+
+  if (order.orderStatus === "pending_payment") {
+    return { label: "Cobro pendiente", tone: "info" as const };
+  }
+
+  if (order.orderStatus === "paid" || order.orderStatus === "confirmed") {
+    return { label: "Listo para avanzar", tone: "success" as const };
+  }
+
+  return { label: "Seguimiento", tone: "neutral" as const };
 }
 
 export function OrdersWorkspace() {
@@ -222,18 +261,105 @@ export function OrdersWorkspace() {
   );
 
   const selectedSummary = orders.find((order) => order.orderNumber === selectedOrderNumber) ?? null;
+  const priorityOrders = useMemo(
+    () =>
+      [...orders]
+        .sort((left, right) => {
+          const byPriority = orderPriorityWeight(right) - orderPriorityWeight(left);
+          if (byPriority !== 0) {
+            return byPriority;
+          }
+
+          return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+        })
+        .slice(0, 6),
+    [orders]
+  );
+  const reviewCount = useMemo(
+    () => orders.filter((order) => order.orderStatus === "payment_under_review" || order.manualStatus === "under_review").length,
+    [orders]
+  );
+  const pendingCollectionCount = useMemo(() => orders.filter((order) => order.orderStatus === "pending_payment").length, [orders]);
+  const fulfilledCount = useMemo(
+    () => orders.filter((order) => ["confirmed", "preparing", "shipped", "delivered", "completed"].includes(order.orderStatus)).length,
+    [orders]
+  );
+  const averageTicket = useMemo(
+    () => (orders.length ? orders.reduce((sum, order) => sum + order.total, 0) / orders.length : 0),
+    [orders]
+  );
+  const spotlightText = reviewCount
+    ? `${reviewCount} pedido(s) requieren validación inmediata.`
+    : pendingCollectionCount
+      ? `${pendingCollectionCount} pedido(s) siguen esperando pago.`
+      : "La cola operativa está estable y lista para seguimiento normal.";
+  const allOrdersRows = useMemo(
+    () =>
+      orders.map((order) => [
+        <div key={`${order.orderNumber}-meta`} className="space-y-1">
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-auto px-0 py-0 text-left font-semibold"
+            onClick={() => setSelectedOrderNumber(order.orderNumber)}
+          >
+            {order.orderNumber}
+          </Button>
+          <div className="text-xs text-black/45">{formatDateTime(order.createdAt)}</div>
+        </div>,
+        <div key={`${order.orderNumber}-customer`} className="space-y-1">
+          <div className="font-medium text-[#132016]">{order.customerName}</div>
+          <div className="text-xs text-black/45">{order.paymentMethod === "manual" ? "Pago manual" : "Openpay"}</div>
+        </div>,
+        formatCurrency(order.total),
+        <StatusBadge key={`${order.orderNumber}-status`} tone={orderTone(order.orderStatus)} label={orderStatusLabel(order.orderStatus)} />,
+        <StatusBadge
+          key={`${order.orderNumber}-payment`}
+          tone={paymentTone(order.paymentStatus)}
+          label={paymentStatusLabel(order.paymentStatus)}
+        />,
+        order.vendorCode ?? "Sin código",
+        formatDateTime(order.updatedAt)
+      ]),
+    [orders]
+  );
 
   return (
     <div className="space-y-6 pb-8">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <SectionHeader
-          title="Pedidos"
-          description="Listado operativo de órdenes con trazabilidad de estado, pago y comprobante manual."
-        />
-        <Button type="button" variant="secondary" onClick={() => setRefreshKey((current) => current + 1)} disabled={loading}>
-          {loading ? "Actualizando..." : "Refrescar"}
-        </Button>
-      </div>
+      <Card className="overflow-hidden border-black/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.99)_0%,rgba(241,246,239,0.96)_45%,rgba(247,244,238,0.98)_100%)]">
+        <CardContent className="grid gap-6 px-6 py-6 xl:grid-cols-[1.1fr_0.9fr] xl:items-end">
+          <div className="space-y-4">
+            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <SectionHeader
+                title="Pedidos"
+                description="Vista priorizada para cobro, validación y trazabilidad del pedido completo."
+              />
+              <Button type="button" variant="secondary" onClick={() => setRefreshKey((current) => current + 1)} disabled={loading}>
+                {loading ? "Actualizando..." : "Refrescar"}
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge tone={reviewCount ? "warning" : "success"}>{spotlightText}</Badge>
+              <Badge tone="neutral">Ticket promedio {formatCurrency(averageTicket)}</Badge>
+            </div>
+            <div className="grid gap-3 md:grid-cols-3">
+              <HeroFact label="En revisión" value={String(reviewCount)} detail="Pedidos bloqueando decisión operativa." />
+              <HeroFact label="Cobro pendiente" value={String(pendingCollectionCount)} detail="Órdenes listas pero sin pago final." />
+              <HeroFact label="En curso" value={String(fulfilledCount)} detail="Pedidos ya pagados o avanzando logística." />
+            </div>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-1">
+            <OperationalCallout
+              title="Prioridad de hoy"
+              description="Primero revisar comprobantes y pagos retenidos. Luego confirmar órdenes pagadas para que pasen a preparación."
+            />
+            <OperationalCallout
+              title="Cobertura"
+              description={`${orders.length} pedido(s) visibles con ${orders.filter((order) => order.vendorCode).length} atribuido(s) a vendedor y ${orders.filter((order) => order.paymentMethod === "manual").length} por pago manual.`}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
@@ -241,81 +367,106 @@ export function OrdersWorkspace() {
         ))}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
-        <AdminDataTable
-          title="Pedidos activos"
-          description={error ?? "Resumen operativo del flujo comercial."}
-          headers={["Pedido", "Cliente", "Total", "Estado", "Pago", "Vendedor", "Actualizado"]}
-          rows={orders.map((order) => [
-            <Button
-              key={order.orderNumber}
-              type="button"
-              variant="ghost"
-              className="px-0 font-semibold"
-              onClick={() => setSelectedOrderNumber(order.orderNumber)}
-            >
-              {order.orderNumber}
-            </Button>,
-            order.customerName,
-            formatCurrency(order.total),
-            <StatusBadge key={`${order.orderNumber}-status`} tone={orderTone(order.orderStatus)} label={orderStatusLabel(order.orderStatus)} />,
-            <StatusBadge
-              key={`${order.orderNumber}-payment`}
-              tone={paymentTone(order.paymentStatus)}
-              label={paymentStatusLabel(order.paymentStatus)}
-            />,
-            order.vendorCode ?? "Sin código",
-            order.updatedAt
-          ])}
-        />
+      <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <Card className="h-full">
+          <CardHeader>
+            <CardTitle>Cola prioritaria</CardTitle>
+            <CardDescription>{error ?? "Los pedidos más urgentes para decisión o seguimiento inmediato."}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {priorityOrders.length ? (
+              priorityOrders.map((order) => {
+                const priority = orderPriorityLabel(order);
+                const isSelected = order.orderNumber === selectedOrderNumber;
+
+                return (
+                  <button
+                    key={order.orderNumber}
+                    type="button"
+                    onClick={() => setSelectedOrderNumber(order.orderNumber)}
+                    className={`w-full rounded-[1.5rem] border p-4 text-left transition ${
+                      isSelected
+                        ? "border-[#132016]/20 bg-[#132016] text-white shadow-soft"
+                        : "border-black/10 bg-black/[0.02] text-[#132016] hover:border-black/15 hover:bg-black/[0.035]"
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="text-sm font-semibold">{order.orderNumber}</div>
+                        <div className={isSelected ? "text-sm text-white/78" : "text-sm text-black/58"}>{order.customerName}</div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge tone={priority.tone} className={isSelected ? "!bg-white/14 !text-white" : ""}>
+                          {priority.label}
+                        </Badge>
+                        <Badge tone="neutral" className={isSelected ? "!bg-white/14 !text-white" : ""}>
+                          {formatCurrency(order.total)}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className={`mt-4 grid gap-2 text-sm md:grid-cols-2 ${isSelected ? "text-white/82" : "text-black/62"}`}>
+                      <div>Estado: {orderStatusLabel(order.orderStatus)}</div>
+                      <div>Pago: {paymentStatusLabel(order.paymentStatus)}</div>
+                      <div>Método: {order.paymentMethod === "manual" ? "Pago manual" : "Openpay"}</div>
+                      <div>Actualizado: {formatDateTime(order.updatedAt)}</div>
+                    </div>
+                  </button>
+                );
+              })
+            ) : (
+              <EmptySurface
+                title="Sin pedidos visibles"
+                description="Cuando entren nuevas órdenes o cambien de estado, aparecerán aquí por prioridad."
+              />
+            )}
+          </CardContent>
+        </Card>
 
         <Card className="h-full">
           <CardHeader>
-            <CardTitle>Detalle del pedido</CardTitle>
+            <CardTitle>Pedido seleccionado</CardTitle>
             <CardDescription>
               {detailLoading
                 ? "Cargando detalle..."
                 : selectedSummary
                   ? `${selectedSummary.orderNumber} · ${selectedSummary.customerName}`
-                  : "Selecciona un pedido para ver su traza completa."}
+                  : "Selecciona un pedido de la cola para ver su detalle completo."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             {selectedOrder ? (
               <>
-                <div className="space-y-3 rounded-3xl border border-black/10 bg-black/[0.02] p-4">
-                  <div className="flex flex-wrap gap-2">
-                    <StatusBadge tone={orderTone(selectedOrder.orderStatus)} label={orderStatusLabel(selectedOrder.orderStatus)} />
-                    <StatusBadge tone={paymentTone(selectedOrder.paymentStatus)} label={paymentStatusLabel(selectedOrder.paymentStatus)} />
-                    <StatusBadge tone={manualTone(selectedOrder.manualStatus)} label={manualStatusLabel(selectedOrder.manualStatus)} />
+                <div className="rounded-[1.75rem] border border-black/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(245,243,237,0.94)_100%)] p-5">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div className="space-y-2">
+                      <p className="text-xs uppercase tracking-[0.24em] text-black/42">Resumen inmediato</p>
+                      <h3 className="text-2xl font-semibold tracking-tight text-[#132016]">{selectedOrder.orderNumber}</h3>
+                      <p className="text-sm text-black/58">
+                        {selectedOrder.customer.firstName} {selectedOrder.customer.lastName} · {selectedOrder.customer.email}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <StatusBadge tone={orderTone(selectedOrder.orderStatus)} label={orderStatusLabel(selectedOrder.orderStatus)} />
+                      <StatusBadge tone={paymentTone(selectedOrder.paymentStatus)} label={paymentStatusLabel(selectedOrder.paymentStatus)} />
+                      <StatusBadge tone={manualTone(selectedOrder.manualStatus)} label={manualStatusLabel(selectedOrder.manualStatus)} />
+                    </div>
                   </div>
-                  <div className="space-y-1 text-sm text-[#132016]">
-                    <p>
-                      <strong>Proveedor:</strong> {selectedOrder.payment.provider === "manual" ? "Pago manual" : "Openpay"}
-                    </p>
-                    <p>
-                      <strong>Referencia:</strong> {selectedOrder.providerReference}
-                    </p>
-                    <p>
-                      <strong>Total:</strong> {formatCurrency(selectedOrder.total)}
-                    </p>
-                    <p>
-                      <strong>Vendedor:</strong> {selectedOrder.vendorCode ?? "Sin código"}
-                    </p>
-                    <p>
-                      <strong>Actualizado:</strong> {selectedOrder.updatedAt}
-                    </p>
+                  <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <SummaryTile label="Proveedor" value={selectedOrder.payment.provider === "manual" ? "Pago manual" : "Openpay"} />
+                    <SummaryTile label="Referencia" value={selectedOrder.providerReference} />
+                    <SummaryTile label="Total" value={formatCurrency(selectedOrder.total)} />
+                    <SummaryTile label="Vendedor" value={selectedOrder.vendorCode ?? "Sin código"} />
                   </div>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-3xl border border-black/10 p-4">
+                  <div className="rounded-[1.5rem] border border-black/10 bg-white p-4">
                     <p className="text-xs uppercase tracking-[0.22em] text-black/45">Cliente</p>
                     <p className="mt-2 font-semibold text-[#132016]">{selectedOrder.customer.firstName} {selectedOrder.customer.lastName}</p>
                     <p className="text-sm text-black/60">{selectedOrder.customer.email}</p>
                     <p className="text-sm text-black/60">{selectedOrder.customer.phone}</p>
                   </div>
-                  <div className="rounded-3xl border border-black/10 p-4">
+                  <div className="rounded-[1.5rem] border border-black/10 bg-white p-4">
                     <p className="text-xs uppercase tracking-[0.22em] text-black/45">Envío</p>
                     <p className="mt-2 font-semibold text-[#132016]">{selectedOrder.address.recipientName}</p>
                     <p className="text-sm text-black/60">{selectedOrder.address.line1}</p>
@@ -327,14 +478,14 @@ export function OrdersWorkspace() {
                   </div>
                 </div>
 
-                <div className="space-y-3 rounded-3xl border border-black/10 p-4">
+                <div className="space-y-3 rounded-[1.5rem] border border-black/10 bg-white p-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-xs uppercase tracking-[0.22em] text-black/45">Items</p>
                     <Badge tone="neutral">{selectedOrder.items.length} líneas</Badge>
                   </div>
                   <div className="space-y-3">
                     {selectedOrder.items.map((item) => (
-                      <div key={item.slug} className="flex items-center justify-between gap-4 rounded-2xl bg-black/[0.02] px-4 py-3">
+                      <div key={item.slug} className="flex items-center justify-between gap-4 rounded-2xl border border-black/8 bg-black/[0.02] px-4 py-3">
                         <div>
                           <p className="font-semibold text-[#132016]">{item.name}</p>
                           <p className="text-sm text-black/55">{item.sku} · x{item.quantity}</p>
@@ -345,7 +496,7 @@ export function OrdersWorkspace() {
                   </div>
                 </div>
 
-                <div className="grid gap-3 rounded-3xl border border-black/10 p-4 text-sm text-[#132016]">
+                <div className="grid gap-3 rounded-[1.5rem] border border-black/10 bg-white p-4 text-sm text-[#132016]">
                   <div className="flex items-center justify-between">
                     <span>Subtotal</span>
                     <span>{formatCurrency(selectedOrder.subtotal)}</span>
@@ -366,7 +517,7 @@ export function OrdersWorkspace() {
                 </div>
 
                 {selectedOrder.manualRequest ? (
-                  <div className="space-y-2 rounded-3xl border border-amber-200 bg-amber-50 p-4">
+                  <div className="space-y-2 rounded-[1.5rem] border border-amber-200 bg-amber-50 p-4">
                     <p className="text-sm font-semibold text-amber-950">Solicitud manual</p>
                     <p className="text-sm text-amber-950/80">
                       {selectedOrder.manualRequest.id} · {manualStatusLabel(selectedOrder.manualRequest.status)}
@@ -388,15 +539,101 @@ export function OrdersWorkspace() {
                 ) : null}
               </>
             ) : (
-              <div className="rounded-3xl border border-dashed border-black/15 bg-black/[0.015] p-6 text-sm text-black/55">
-                No hay un pedido seleccionado.
-              </div>
+              <EmptySurface
+                title="Sin pedido seleccionado"
+                description="Selecciona un pedido de la cola para abrir el resumen financiero, cliente, envío y traza."
+              />
             )}
           </CardContent>
         </Card>
       </div>
 
-      {selectedOrder ? <TimelinePedido items={selectedOrder.statusHistory} /> : null}
+      <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
+        <AdminDataTable
+          title="Cola completa"
+          description="Listado completo para búsqueda rápida y navegación entre órdenes visibles."
+          headers={["Pedido", "Cliente", "Total", "Estado", "Pago", "Vendedor", "Actualizado"]}
+          rows={allOrdersRows}
+        />
+        {selectedOrder ? (
+          <TimelinePedido items={selectedOrder.statusHistory} />
+        ) : (
+          <EmptySurface
+            title="Sin trazabilidad visible"
+            description="El timeline aparecerá aquí cuando selecciones un pedido con historial de cambios."
+          />
+        )}
+      </div>
     </div>
+  );
+}
+
+function HeroFact({
+  label,
+  value,
+  detail
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-[1.5rem] border border-black/8 bg-white/78 px-4 py-4">
+      <div className="text-xs uppercase tracking-[0.22em] text-black/40">{label}</div>
+      <div className="mt-2 text-3xl font-semibold tracking-tight text-[#132016]">{value}</div>
+      <p className="mt-2 text-sm leading-6 text-black/58">{detail}</p>
+    </div>
+  );
+}
+
+function OperationalCallout({
+  title,
+  description
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="rounded-[1.5rem] border border-black/8 bg-white/78 px-4 py-4">
+      <div className="text-sm font-semibold text-[#132016]">{title}</div>
+      <p className="mt-2 text-sm leading-6 text-black/58">{description}</p>
+    </div>
+  );
+}
+
+function SummaryTile({
+  label,
+  value
+}: {
+  label: string;
+  value: ReactNode;
+}) {
+  return (
+    <div className="rounded-[1.25rem] border border-black/8 bg-white/76 px-4 py-3">
+      <div className="text-xs uppercase tracking-[0.2em] text-black/42">{label}</div>
+      <div className="mt-2 text-sm font-semibold text-[#132016]">{value}</div>
+    </div>
+  );
+}
+
+function EmptySurface({
+  title,
+  description
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <Card className="h-full">
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="rounded-[1.5rem] border border-dashed border-black/15 bg-black/[0.015] p-6 text-sm leading-6 text-black/55">
+          Esta superficie se completa automáticamente cuando exista actividad operativa relevante.
+        </div>
+      </CardContent>
+    </Card>
   );
 }
