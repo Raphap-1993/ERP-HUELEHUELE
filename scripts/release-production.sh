@@ -4,11 +4,17 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+incoming_release_sha="${APP_RELEASE_SHA:-}"
+
 if [[ -f ".env.production" ]]; then
   set -a
   # shellcheck disable=SC1091
   source ".env.production"
   set +a
+fi
+
+if [[ -n "$incoming_release_sha" ]]; then
+  export APP_RELEASE_SHA="$incoming_release_sha"
 fi
 
 # Avoid leaking a single global PORT into all PM2 apps.

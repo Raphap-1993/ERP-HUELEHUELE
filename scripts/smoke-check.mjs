@@ -10,7 +10,7 @@ const checks = [
   },
   {
     name: "admin",
-    url: process.env.ADMIN_HEALTH_URL || "http://127.0.0.1:3001/health",
+    url: process.env.ADMIN_HEALTH_URL || "http://127.0.0.1:3005/health",
     expectedStatus: "ok"
   },
   {
