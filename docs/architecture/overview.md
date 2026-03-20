@@ -18,7 +18,7 @@ Todos estos procesos comparten una misma plataforma de datos y operación:
 - PostgreSQL existente en el VPS como base persistente principal
 - Redis para colas, locks livianos y tareas asíncronas
 - Prisma ORM como capa de acceso a datos
-- Cloudflare Images como destino objetivo de media pública del storefront
+- Cloudflare R2 como storage objetivo de media pública del storefront
 - PM2 como supervisor de procesos
 - Hestia/Nginx como reverse proxy y terminación HTTP(S)
 

@@ -95,7 +95,7 @@ Motivo:
 
 Decisión vigente:
 
-- `Cloudflare Images` reemplaza la propuesta previa basada en `R2` como destino preferido de media pública del storefront
+- `Cloudflare R2` queda fijado como storage vigente de media pública del storefront
 
 Resultado esperado:
 

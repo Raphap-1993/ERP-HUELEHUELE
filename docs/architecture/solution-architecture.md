@@ -15,7 +15,7 @@ Describir cómo se compone la solución Huelegood en runtime, cómo se distribuy
 | Base de datos | PostgreSQL | Persistencia transaccional y reporting operacional |
 | Cola | Redis + BullMQ | Jobs, reintentos, programación diferida, desacople temporal |
 | Pasarela de pagos | Openpay | Cobro online y confirmaciones de pago |
-| Media pública | Cloudflare Images | Upload, almacenamiento y entrega optimizada de imágenes públicas del storefront |
+| Media pública | Cloudflare R2 | Upload y almacenamiento de imágenes públicas del storefront vía API S3-compatible y delivery por URL pública/custom domain |
 | Reverse proxy | Hestia + Nginx | Enrutamiento por dominio, TLS, headers, compresión, logs HTTP |
 | Supervisor | PM2 | Arranque, reinicio, logs y supervivencia de procesos |
 
@@ -33,7 +33,7 @@ flowchart LR
 
   API --> PG[(PostgreSQL)]
   API --> R[(Redis)]
-  API --> CI[Cloudflare Images]
+  API --> R2[Cloudflare R2]
   API --> FS[(Storage local protegido)]
   API <--> OP[Openpay]
 
@@ -89,7 +89,7 @@ flowchart LR
 - `Openpay`: cobro online, recepción de eventos, conciliación y validación de estado
 - `Redis/BullMQ`: colas internas
 - `PostgreSQL`: persistencia principal
-- `Cloudflare Images`: media pública del storefront, catálogo y CMS visual
+- `Cloudflare R2`: media pública del storefront, catálogo y CMS visual
 
 ### Integraciones internas necesarias
 
@@ -129,7 +129,7 @@ No debe existir acceso directo a tablas de otro módulo desde pantallas front si
 
 ### Archivos
 
-- activos públicos: imágenes de producto, banners, hero, logo y testimoniales servidos desde `Cloudflare Images`
+- activos públicos: imágenes de producto, banners, hero, logo y testimoniales servidos desde `Cloudflare R2`
 - activos privados: comprobantes de pago, evidencia operativa
 - los activos privados no deben quedar accesibles por URL pública directa
 

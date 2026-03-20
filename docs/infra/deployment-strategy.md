@@ -39,7 +39,7 @@ Notas:
 
 Decisión vigente de media pública:
 
-- `Cloudflare Images` es el proveedor objetivo para logo, hero, banners e imágenes de producto en storefront
+- `Cloudflare R2` es el storage objetivo para logo, hero, banners e imágenes de producto en storefront
 - el VPS sigue reteniendo uploads privados y evidencias operativas
 
 En el VPS actual, el archivo de entorno efectivo vive fuera del repo en:
@@ -142,7 +142,7 @@ Notas operativas:
 
 Nota:
 
-- si la media pública ya vive en `Cloudflare Images`, los backups del VPS no son la fuente principal de recuperación de esos activos
+- si la media pública ya vive en `Cloudflare R2`, los backups del VPS no son la fuente principal de recuperación de esos activos
 - los backups locales siguen siendo obligatorios para evidencias privadas y cualquier activo aún no migrado
 
 ## Estrategia de releases

@@ -59,10 +59,14 @@ Si solo existe un VPS:
 
 | Variable | Uso |
 | --- | --- |
-| `CLOUDFLARE_IMAGES_ACCOUNT_ID` | cuenta de Cloudflare Images |
-| `CLOUDFLARE_IMAGES_API_TOKEN` | token backend para upload y administración |
-| `CLOUDFLARE_IMAGES_DELIVERY_URL` | base pública de delivery de imágenes |
-| `CLOUDFLARE_IMAGES_DEFAULT_VARIANT` | variante por defecto para storefront |
+| `R2_ACCOUNT_ID` | cuenta de Cloudflare R2 |
+| `R2_ACCESS_KEY_ID` | access key para API S3-compatible |
+| `R2_SECRET_ACCESS_KEY` | secret key para API S3-compatible |
+| `R2_BUCKET_PUBLIC` | bucket público para media del storefront |
+| `R2_BUCKET_PRIVATE` | bucket privado opcional para archivos no públicos |
+| `R2_ENDPOINT` | endpoint S3-compatible de R2 |
+| `R2_REGION` | región lógica, normalmente `auto` |
+| `R2_PUBLIC_BASE_URL` | URL pública o custom domain para servir assets públicos |
 | `UPLOADS_PUBLIC_DIR` | activos públicos legacy o fallback local |
 | `UPLOADS_PRIVATE_DIR` | evidencias y archivos sensibles |
 | `UPLOADS_BASE_URL` | URL pública fallback si todavía existen assets servidos por Nginx |
@@ -141,7 +145,7 @@ Ubicación efectiva en producción actual:
 - Openpay productivo
 - base `huelegood` productiva
 - logs, backups y uploads con retención formal
-- `Cloudflare Images` para media pública del storefront
+- `Cloudflare R2` para media pública del storefront
 - puertos operativos actuales: `3000` para `web`, `3005` para `admin`, `4000` para `api`
 
 ## Variables mínimas por aplicación
@@ -171,4 +175,4 @@ Ubicación efectiva en producción actual:
 
 ## Observación
 
-La elección exacta de proveedor de correo puede variar. Para media pública del storefront, la decisión vigente queda fijada en `Cloudflare Images`. Los uploads privados pueden seguir resolviéndose localmente mientras no exista una decisión distinta.
+La elección exacta de proveedor de correo puede variar. Para media pública del storefront, la decisión vigente queda fijada en `Cloudflare R2`. Los uploads privados pueden seguir resolviéndose localmente mientras no exista una decisión distinta.

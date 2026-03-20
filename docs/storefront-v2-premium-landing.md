@@ -99,9 +99,9 @@ Estado actual:
 
 Decisión homologada:
 
-- la media pública del storefront debe migrar a `Cloudflare Images`
-- `Cloudflare Images` pasa a ser el destino preferido para logo, hero, banners e imágenes de producto
-- el helper de media debe evolucionar para servir variantes reales sin obligar a mantener SVG placeholder como fuente operativa
+- la media pública del storefront debe migrar a `Cloudflare R2`
+- `Cloudflare R2` pasa a ser el storage vigente para logo, hero, banners e imágenes de producto
+- el helper de media debe evolucionar para servir URLs públicas o custom domain sobre R2 sin obligar a mantener SVG placeholder como fuente operativa
 
 ### Base visual con Preline
 

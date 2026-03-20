@@ -48,7 +48,8 @@ Huelegood separa capacidades por dominio funcional. Cada módulo tiene una respo
 
 - centraliza logo, hero, banners, imágenes de producto y otros activos públicos del storefront
 - separa activos públicos de activos privados como evidencias operativas
-- para media pública del storefront, el destino objetivo es `Cloudflare Images`
+- para media pública del storefront, el destino vigente es `Cloudflare R2`
+- el delivery público debe resolverse con bucket público o dominio custom sobre R2
 - no debe obligar a escribir URLs manuales en el backoffice cuando el flujo esperado es upload y selección
 
 ### Promociones

@@ -24,7 +24,7 @@ Resultado esperado:
 - productos administrables desde backoffice con fuente persistida real
 - catálogo, home y checkout leyendo productos persistidos, no `featuredProducts`
 - logo, hero, banners e imágenes de producto administrables
-- media pública del storefront resuelta sobre `Cloudflare Images`
+- media pública del storefront resuelta sobre `Cloudflare R2`
 
 ## Alcance del desvío urgente
 
@@ -35,7 +35,7 @@ Resultado esperado:
 - refactor de catálogo público y checkout para usar productos persistidos
 - integración runtime del layout público con branding persistido
 - capa de media pública administrable
-- adopción de `Cloudflare Images` como proveedor objetivo para imágenes públicas del storefront
+- adopción de `Cloudflare R2` como storage vigente para imágenes públicas del storefront
 
 ### Fuera de alcance
 
@@ -119,7 +119,7 @@ Nota:
 | `F2-URG-02` | Implementar módulo real de productos | `backend-lead` + `data-agent` | `products`, `catalog`, `commerce`, Prisma | CRUD y lecturas consistentes de producto en PostgreSQL |
 | `F2-URG-03` | Crear backoffice de productos | `frontend-lead` | `apps/admin`, navegación, permisos | Pantalla admin para alta, edición, publicación e imagen principal de producto |
 | `F2-URG-04` | Conectar catálogo, home y checkout a productos persistidos | `backend-lead` + `frontend-lead` | `catalog`, `commerce`, `web`, `storefront-v2-premium` | La web deja de depender de `featuredProducts` como fuente operativa |
-| `F2-URG-05` | Incorporar media pública con Cloudflare Images | `software-architect` + `backend-lead` | `media`, `cms`, `catalog`, `web`, infra | Upload y delivery de logo, hero, banners e imágenes de producto vía `Cloudflare Images` |
+| `F2-URG-05` | Incorporar media pública con Cloudflare R2 | `software-architect` + `backend-lead` | `media`, `cms`, `catalog`, `web`, infra | Upload y delivery de logo, hero, banners e imágenes de producto vía `Cloudflare R2` |
 | `F2-URG-06` | Conectar branding persistido al layout público | `frontend-lead` | `apps/web/app/layout.tsx`, `cms`, `settings` | El logo del menú y branding público reflejan el estado guardado en backoffice |
 | `F2-URG-07` | QA y cierre del frente catálogo/media | `qa-lead` + `documentation-agent` | web, admin, api, docs | Catálogo/media funcionando de extremo a extremo y documentación alineada |
 
