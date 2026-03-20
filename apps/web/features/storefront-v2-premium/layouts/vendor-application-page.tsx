@@ -1,127 +1,91 @@
-import { Badge, Button } from "@huelegood/ui";
-import { StorefrontV2PremiumMedia } from "../components/storefront-v2-premium-media";
-import { StorefrontV2PremiumPanel } from "../components/storefront-v2-premium-section";
 import { VendorApplicationForm } from "../components/vendor-application-form";
-import { vendorApplicationContent } from "../content";
-import { storefrontV2PremiumMedia } from "../lib/media";
+
+const ROLES = [
+  { id: "afiliado", icon: "🔗", title: "Afiliado/a de ventas", desc: "Recomienda con tu código personalizado y gana comisión. Sin inversión, sin stock." },
+  { id: "contenido", icon: "📱", title: "Creador/a de contenido", desc: "Crea Reels, TikToks y Stories. Ideal si tienes comunidad en redes sociales." },
+  { id: "vendedor", icon: "🛍️", title: "Vendedor/a presencial", desc: "Vende en ferias, mercados, eventos o tu barrio. Te damos el stock y tú eliges cómo." },
+  { id: "otro", icon: "✨", title: "Otra propuesta", desc: "¿Tienes una idea de cómo colaborar? Cuéntanos — estamos abiertos a todo." },
+];
+
+const PERKS = [
+  { icon: "💸", text: "Comisiones reales pagadas cada fin de mes por Yape o Plin" },
+  { icon: "🎁", text: "Producto gratis para usar y recomendar con honestidad" },
+  { icon: "📈", text: "Mejores condiciones cuanto más vendas" },
+  { icon: "🤝", text: "Comunidad activa de colaboradores con soporte directo" },
+];
 
 export function VendorApplicationPage() {
-  const { hero, evaluationChecklist, sellerBenefits, steps } = vendorApplicationContent;
-
   return (
-    <div className="space-y-10 py-6 md:space-y-14 md:py-10">
-      <section className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr]">
-        <div className="relative overflow-hidden rounded-[2.6rem] border border-[#1a3a2e]/8 bg-[linear-gradient(160deg,rgba(255,255,255,0.97)_0%,rgba(250,248,243,0.95)_55%,rgba(232,242,235,0.94)_100%)] px-7 py-8 shadow-[0_34px_90px_rgba(26,58,46,0.09)] md:px-10 md:py-10">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(82,183,136,0.18),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(201,168,76,0.12),transparent_30%)]" />
-          <div className="relative space-y-8">
-            <div className="space-y-4">
-              <Badge className="bg-[#1a3a2e] text-white">{hero.eyebrow}</Badge>
-              <div className="space-y-4">
-                <h1 className="max-w-4xl text-4xl font-semibold leading-[0.93] tracking-[-0.045em] text-[#1a3a2e] md:text-[4.15rem]">{hero.title}</h1>
-                <p className="max-w-2xl text-base leading-7 text-black/64 md:text-lg">{hero.description}</p>
-              </div>
-            </div>
+    <section className="bg-[#faf8f3] py-24">
+      <div className="mx-auto max-w-[1120px] px-6">
 
-            <div className="flex flex-wrap gap-3">
-              <Button href="#postulacion">Postularme ahora</Button>
-              <Button href="#proceso" variant="secondary">
-                Ver proceso
-              </Button>
-            </div>
+        {/* Header centrado */}
+        <div className="text-center mb-14">
+          <span className="inline-block text-xs font-semibold uppercase tracking-widest text-[#2d6a4f] bg-[#d8f3dc] px-4 py-1.5 rounded-full mb-5">
+            Únete al equipo
+          </span>
+          <h2 className="font-serif text-4xl font-black text-[#1a3a2e] md:text-5xl mb-4">
+            Trabaja con nosotros
+          </h2>
+          <p className="text-[17px] text-[#6b7280] leading-7 max-w-[520px] mx-auto">
+            ¿Te apasiona el bienestar o las ventas? Huele Huele está creciendo y queremos que seas parte.
+          </p>
+        </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              {hero.metrics.map((metric) => (
+        {/* Grid: roles+perks izquierda | formulario derecha */}
+        <div className="grid grid-cols-1 gap-16 xl:grid-cols-2 xl:items-start">
+
+          {/* Columna izquierda */}
+          <div>
+            <h3 className="font-serif text-xl text-[#1a3a2e] mb-2">¿Cómo puedes sumarte?</h3>
+            <p className="text-[15px] text-[#6b7280] leading-7 mb-6">
+              No buscamos solo empleados — buscamos personas con energía que crean en el producto y quieran crecer con la marca.
+            </p>
+
+            {/* Roles: tarjetas estáticas */}
+            <div className="flex flex-col gap-3 mb-8">
+              {ROLES.map((role, i) => (
                 <div
-                  key={metric.label}
-                  className="rounded-[1.65rem] border border-[#1a3a2e]/8 bg-white/74 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] backdrop-blur"
+                  key={role.id}
+                  className={`flex gap-4 items-start rounded-[17px] p-5 border cursor-default transition
+                    ${i === 0
+                      ? "border-[#52b788] bg-[#d8f3dc]"
+                      : "border-[rgba(26,58,46,0.08)] bg-white hover:shadow-[0_4px_20px_rgba(26,58,46,0.08)] hover:translate-x-1"
+                    }`}
                 >
-                  <p className="text-[11px] uppercase tracking-[0.24em] text-black/40">{metric.label}</p>
-                  <p className="mt-3 text-2xl font-semibold tracking-tight text-[#1a3a2e]">{metric.value}</p>
-                  <p className="mt-2 text-sm leading-6 text-black/56">{metric.detail}</p>
+                  <div
+                    className={`w-11 h-11 rounded-[12px] flex-shrink-0 flex items-center justify-center text-[18px]
+                      ${i === 0 ? "bg-white" : "bg-[#d8f3dc]"}`}
+                  >
+                    {role.icon}
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold text-[#1a3a2e] mb-1">{role.title}</h4>
+                    <p className="text-[13px] text-[#6b7280] leading-[1.5]">{role.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Perks en grid 2 cols */}
+            <div className="grid grid-cols-2 gap-2.5">
+              {PERKS.map((perk) => (
+                <div
+                  key={perk.text}
+                  className="bg-white rounded-[13px] p-4 border border-[rgba(26,58,46,0.07)] flex gap-2.5 items-start"
+                >
+                  <span className="text-[17px] flex-shrink-0 mt-0.5">{perk.icon}</span>
+                  <p className="text-[13px] text-[#6b7280] leading-[1.55]">{perk.text}</p>
                 </div>
               ))}
             </div>
           </div>
+
+          {/* Columna derecha: formulario */}
+          <VendorApplicationForm source="Trabaja con nosotros" />
+
         </div>
-
-        <StorefrontV2PremiumMedia
-          src={storefrontV2PremiumMedia.seller}
-          alt="Visual editorial para vendedores Huele Huele"
-          className="min-h-[520px]"
-          overlay={
-            <div className="flex h-full items-end p-6">
-              <div className="max-w-sm rounded-[1.7rem] border border-white/18 bg-white/80 p-5 backdrop-blur">
-                <p className="text-[11px] uppercase tracking-[0.24em] text-black/38">Onboarding comercial</p>
-                <p className="mt-3 text-sm font-semibold leading-6 text-[#1a3a2e]">
-                  Esta página ahora sí registra postulaciones reales contra el endpoint existente del backend.
-                </p>
-              </div>
-            </div>
-          }
-        />
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[1fr_0.92fr]">
-        <VendorApplicationForm source="Trabaja con nosotros" className="h-fit" />
-
-        <StorefrontV2PremiumPanel id="proceso" tone="dark" className="space-y-6">
-          <div className="space-y-3">
-            <Badge className="w-fit bg-white/14 text-white">Proceso comercial</Badge>
-            <h2 className="text-3xl font-semibold tracking-[-0.03em] text-white">Qué evaluamos y qué recibe el vendedor.</h2>
-            <p className="text-sm leading-7 text-white/74">
-              La ruta debe verse profesional, corta y entendible. No vende humo: explica screening, activación y salida real dentro del sistema.
-            </p>
-          </div>
-
-          <div className="grid gap-4">
-            <div className="rounded-[1.8rem] border border-white/10 bg-white/8 p-5">
-              <p className="text-xs uppercase tracking-[0.24em] text-white/45">Lo que evaluamos</p>
-              <div className="mt-4 grid gap-3">
-                {evaluationChecklist.map((item) => (
-                  <div key={item} className="rounded-[1.35rem] border border-white/12 bg-white/8 px-4 py-3 text-sm leading-6 text-white/82">
-                    {item}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-[1.8rem] border border-white/10 bg-white/8 p-5">
-              <p className="text-xs uppercase tracking-[0.24em] text-white/45">Lo que recibe</p>
-              <div className="mt-4 grid gap-3">
-                {sellerBenefits.map((item) => (
-                  <div key={item} className="rounded-[1.35rem] border border-white/12 bg-white/8 px-4 py-3 text-sm leading-6 text-white/82">
-                    {item}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </StorefrontV2PremiumPanel>
-      </section>
-
-      <section id="postulacion" className="space-y-6">
-        <div className="space-y-2">
-          <p className="text-xs uppercase tracking-[0.28em] text-black/42">Ruta de entrada</p>
-          <h2 className="max-w-3xl text-3xl font-semibold tracking-[-0.03em] text-[#1a3a2e] md:text-[2.65rem]">
-            Así se activa un vendedor dentro de Huele Huele.
-          </h2>
-          <p className="max-w-2xl text-base leading-7 text-black/62">
-            La postulación se captura desde la web pública, se revisa en admin y se integra al flujo operativo ya definido por el backend.
-          </p>
-        </div>
-
-        <div className="grid gap-5 md:grid-cols-3">
-          {steps.map((step, index) => (
-            <StorefrontV2PremiumPanel key={step.step} tone={index === 1 ? "muted" : "light"}>
-              <div className="space-y-3">
-                <p className="text-xs uppercase tracking-[0.24em] text-black/38">Paso {step.step}</p>
-                <h3 className="text-[1.45rem] font-semibold tracking-tight text-[#1a3a2e]">{step.title}</h3>
-                <p className="text-sm leading-6 text-black/64">{step.description}</p>
-              </div>
-            </StorefrontV2PremiumPanel>
-          ))}
-        </div>
-      </section>
-    </div>
+      </div>
+    </section>
   );
 }
