@@ -37,6 +37,11 @@ Notas:
 - `scripts/smoke-check.mjs`: verificación post-deploy
 - `ops/nginx/*.conf`: snippets de reverse proxy para Hestia/Nginx
 
+Decisión vigente de media pública:
+
+- `Cloudflare Images` es el proveedor objetivo para logo, hero, banners e imágenes de producto en storefront
+- el VPS sigue reteniendo uploads privados y evidencias operativas
+
 En el VPS actual, el archivo de entorno efectivo vive fuera del repo en:
 
 - `/home/huelehuele/apps/huelegood.com/shared/.env.production`
@@ -134,6 +139,11 @@ Notas operativas:
 - retención de al menos 7 a 14 días
 - verificación periódica de restauración
 - automatizar con `scripts/backup-production.sh` y `cron`
+
+Nota:
+
+- si la media pública ya vive en `Cloudflare Images`, los backups del VPS no son la fuente principal de recuperación de esos activos
+- los backups locales siguen siendo obligatorios para evidencias privadas y cualquier activo aún no migrado
 
 ## Estrategia de releases
 

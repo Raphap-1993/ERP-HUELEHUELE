@@ -37,6 +37,11 @@ Al `20 de marzo de 2026`, la base funcional del proyecto ya existe en el reposit
 
 ### Pendiente inmediato
 
+- [ ] frente urgente de catálogo y media administrable antes de seguir ampliando Fase 2
+- [ ] CRUD real de productos desde backoffice conectado a PostgreSQL
+- [ ] conexión de catálogo, home y checkout a productos persistidos en vez de `featuredProducts`
+- [ ] media pública administrable para logo, hero, banners e imágenes de producto
+- [ ] adopción de `Cloudflare Images` para media pública del storefront
 - [ ] homologación visual fina de superficies secundarias al baseline actual (`catalogo`, `checkout`, `cuenta`, `panel-vendedor`, `configuracion`)
 - [ ] automatización de campañas más rica y menos manual
 - [ ] segmentación comercial más profunda
@@ -73,6 +78,9 @@ Mejorar eficiencia operativa, visibilidad comercial y capacidad de crecimiento s
 - [x] dashboards operativos por rol
 - [x] reglas de comisión más flexibles
 - [x] migración base de home/storefront a lenguaje visual `Preline` con la home oficial publicada en `/`
+- [ ] módulo real de productos administrables desde admin
+- [ ] fuente persistida de catálogo conectada a storefront y checkout
+- [ ] pipeline de media pública con `Cloudflare Images` para hero, logo, banners e imágenes de producto
 - [ ] homologación visual completa de rutas públicas y administrativas secundarias sobre ese baseline
 - [ ] mayor automatización de campañas
 - [ ] segmentación más rica
@@ -85,7 +93,7 @@ Mejorar eficiencia operativa, visibilidad comercial y capacidad de crecimiento s
 
 - Fase 2 ya fue abierta y tiene entregables funcionales reales en producción.
 - Lo ya construido cubre seller panel, dashboards por rol, reglas flexibles de comisión y una base visual pública activa para la home oficial.
-- El frente pendiente ya no es "migrar la home", sino homologar superficies secundarias, automatización comercial, reporting y una capa UX final consistente de nivel productivo.
+- El frente pendiente ya no es "migrar la home", sino cerrar la brecha entre promesa y runtime en catálogo/media, luego homologar superficies secundarias, automatización comercial, reporting y una capa UX final consistente de nivel productivo.
 - El plan operativo aterrizado para ejecutar este frente vive en [fase-2-execution-plan.md](./fase-2-execution-plan.md).
 
 ### Criterios de aceptación para la homologación visual sobre la base `Preline`

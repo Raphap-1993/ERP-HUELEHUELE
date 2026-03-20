@@ -47,6 +47,13 @@ Como base funcional, el proyecto ya cubre:
 - resolución del API normalizada en `web` y `admin` para producción, sin depender de `localhost`
 - release script alineado con `.env.production` local o `shared/.env.production` en el VPS
 
+Pendiente estructural inmediato antes de seguir ampliando Fase 2:
+
+- conectar catálogo, checkout y superficies públicas a una fuente real de productos persistidos
+- habilitar gestión real de productos desde backoffice, no sólo contenido CMS
+- habilitar media pública administrable para logo, hero, banners e imágenes de producto
+- adoptar `Cloudflare Images` como destino preferido de media pública del storefront
+
 Como insumo funcional, se asume que la v1 de Huelegood ya comunica:
 
 - operación seller-first
@@ -74,6 +81,7 @@ Como insumo funcional, se asume que la v1 de Huelegood ya comunica:
 - `Redis` + `BullMQ`
 - `Prisma ORM`
 - `Preline` como librería de layout en storefront público
+- `Cloudflare Images` como proveedor objetivo para media pública del storefront
 - `PM2`
 - `Hestia + Nginx`
 

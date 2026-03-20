@@ -18,6 +18,7 @@ Todos estos procesos comparten una misma plataforma de datos y operación:
 - PostgreSQL existente en el VPS como base persistente principal
 - Redis para colas, locks livianos y tareas asíncronas
 - Prisma ORM como capa de acceso a datos
+- Cloudflare Images como destino objetivo de media pública del storefront
 - PM2 como supervisor de procesos
 - Hestia/Nginx como reverse proxy y terminación HTTP(S)
 
@@ -91,6 +92,7 @@ Clientes / Vendedores / Mayoristas / Admins
 - Auth
 - CMS interno
 - Catálogo
+- Media
 - Promociones
 - Carrito
 - Pedidos
@@ -133,6 +135,7 @@ Notas:
 - Eventos internos para procesos asíncronos, no acoplamiento entre pantallas.
 - Reglas sensibles centralizadas en API: pagos, comisiones, puntos, permisos, auditoría.
 - Backoffice diseñado para operación real, no solo para configuración.
+- Catálogo y media pública no deben depender de mocks compartidos si el backoffice declara que son administrables.
 
 ## Estado esperado tras esta documentación
 

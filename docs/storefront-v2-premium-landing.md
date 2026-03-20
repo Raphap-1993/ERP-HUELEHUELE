@@ -92,7 +92,16 @@ La nueva feature reutiliza los helpers existentes para media remota y mantiene c
 - `cdn.huelegood.com`
 - `images.huelegood.com`
 
-No se creó pipeline backend de media.
+Estado actual:
+
+- no existe todavía un pipeline backend de media conectado al backoffice
+- varias superficies siguen resolviendo assets locales como `/brand/*.svg`
+
+Decisión homologada:
+
+- la media pública del storefront debe migrar a `Cloudflare Images`
+- `Cloudflare Images` pasa a ser el destino preferido para logo, hero, banners e imágenes de producto
+- el helper de media debe evolucionar para servir variantes reales sin obligar a mantener SVG placeholder como fuente operativa
 
 ### Base visual con Preline
 

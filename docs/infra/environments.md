@@ -59,9 +59,13 @@ Si solo existe un VPS:
 
 | Variable | Uso |
 | --- | --- |
-| `UPLOADS_PUBLIC_DIR` | activos públicos |
+| `CLOUDFLARE_IMAGES_ACCOUNT_ID` | cuenta de Cloudflare Images |
+| `CLOUDFLARE_IMAGES_API_TOKEN` | token backend para upload y administración |
+| `CLOUDFLARE_IMAGES_DELIVERY_URL` | base pública de delivery de imágenes |
+| `CLOUDFLARE_IMAGES_DEFAULT_VARIANT` | variante por defecto para storefront |
+| `UPLOADS_PUBLIC_DIR` | activos públicos legacy o fallback local |
 | `UPLOADS_PRIVATE_DIR` | evidencias y archivos sensibles |
-| `UPLOADS_BASE_URL` | URL pública de assets públicos si se exponen por Nginx |
+| `UPLOADS_BASE_URL` | URL pública fallback si todavía existen assets servidos por Nginx |
 
 ## Correo y notificaciones
 
@@ -137,6 +141,7 @@ Ubicación efectiva en producción actual:
 - Openpay productivo
 - base `huelegood` productiva
 - logs, backups y uploads con retención formal
+- `Cloudflare Images` para media pública del storefront
 - puertos operativos actuales: `3000` para `web`, `3005` para `admin`, `4000` para `api`
 
 ## Variables mínimas por aplicación
@@ -166,4 +171,4 @@ Ubicación efectiva en producción actual:
 
 ## Observación
 
-La elección exacta de proveedor de correo o almacenamiento puede variar en implementación sin romper esta documentación, siempre que respete el contrato funcional definido aquí.
+La elección exacta de proveedor de correo puede variar. Para media pública del storefront, la decisión vigente queda fijada en `Cloudflare Images`. Los uploads privados pueden seguir resolviéndose localmente mientras no exista una decisión distinta.

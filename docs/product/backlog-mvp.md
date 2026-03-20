@@ -82,6 +82,27 @@ Plan operativo detallado:
 
 - ver [fase-2-execution-plan.md](./fase-2-execution-plan.md) para épicas, tickets, dependencias y definición de terminado
 
+## Desvío urgente homologado antes de continuar Fase 2
+
+### F2-URG Catálogo y media administrable
+
+Motivo:
+
+- hoy el catálogo y parte del storefront siguen dependiendo de `featuredProducts`
+- el backoffice no tiene CRUD real de productos
+- el logo del menú y otros activos visuales no están conectados de extremo a extremo al runtime público
+- la media pública necesita un proveedor claro y una decisión vigente de arquitectura
+
+Decisión vigente:
+
+- `Cloudflare Images` reemplaza la propuesta previa basada en `R2` como destino preferido de media pública del storefront
+
+Resultado esperado:
+
+- productos administrables desde backoffice
+- catálogo, home y checkout leyendo productos persistidos
+- hero, logo, banners e imágenes de producto servidos desde una capa real de media pública
+
 ## Prioridad crítica
 
 | ID | Ítem | Resultado esperado |

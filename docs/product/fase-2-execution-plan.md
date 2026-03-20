@@ -6,13 +6,45 @@ Traducir la Fase 2 actual de Huelegood a un frente ejecutable, secuenciado y tra
 
 ## Decisión de priorización
 
-Al `20 de marzo de 2026`, la Fase 2 ya no necesita abrir una nueva migración visual de la home. Esa base ya existe en producción. La prioridad inmediata pasa a ser:
+Al `20 de marzo de 2026`, la Fase 2 ya no necesita abrir una nueva migración visual de la home. Esa base ya existe en producción. Antes de seguir con automatización y reporting, se abre un desvío urgente para cerrar la brecha entre promesa y runtime en catálogo y media.
 
-1. `automatización comercial`
-2. `reporting operativo y comercial`
-3. `homologación visual fina de superficies secundarias` como frente complementario, no como bloqueo del frente activo
+La prioridad inmediata pasa a ser:
 
-## Frente activo
+1. `catálogo y media administrable`
+2. `automatización comercial`
+3. `reporting operativo y comercial`
+4. `homologación visual fina de superficies secundarias` como frente complementario, no como bloqueo del frente activo
+
+## Desvío urgente homologado
+
+### F2-URG Catálogo y media administrable
+
+Resultado esperado:
+
+- productos administrables desde backoffice con fuente persistida real
+- catálogo, home y checkout leyendo productos persistidos, no `featuredProducts`
+- logo, hero, banners e imágenes de producto administrables
+- media pública del storefront resuelta sobre `Cloudflare Images`
+
+## Alcance del desvío urgente
+
+### Dentro de alcance
+
+- módulo real de productos en API
+- CRUD admin de productos
+- refactor de catálogo público y checkout para usar productos persistidos
+- integración runtime del layout público con branding persistido
+- capa de media pública administrable
+- adopción de `Cloudflare Images` como proveedor objetivo para imágenes públicas del storefront
+
+### Fuera de alcance
+
+- rehacer el circuito de pedidos o pagos más allá del consumo de producto persistido
+- abrir DAM complejo o media library enterprise
+- sustituir la arquitectura actual de monolito modular
+- mover evidencias privadas operativas a un proveedor externo en esta iteración
+
+## Frente activo posterior
 
 ### F2-002 Automatización comercial y reporting
 
@@ -22,6 +54,42 @@ Resultado esperado:
 - segmentos más útiles para operación comercial real
 - lectura clara de pedidos, pagos, comisiones y conversión sin inspección manual por módulo
 - entregables suficientemente cerrados para convertirse en vistas, exports y rutinas operativas dentro del admin
+
+## Épicas sugeridas para Linear
+
+### Epic A. F2-URG Catálogo y media administrable
+
+Dueño sugerido:
+
+- `product-manager` para alcance y priorización
+- `software-architect` para diseño del frente
+- `backend-lead` + `data-agent` para persistencia y contratos
+- `frontend-lead` para admin/web
+- `ui-ux-agent` para media/branding runtime
+- `qa-lead` para cierre
+
+### Epic B. F2-002 Automatización comercial y reporting
+
+Dueño sugerido:
+
+- `product-manager` para alcance y priorización
+- `tech-lead` para secuencia
+- `backend-lead` y `data-agent` para contratos y persistencia
+- `frontend-lead` para superficies admin
+- `qa-lead` para cierre
+
+### Epic C. F2-VIS Homologación visual fina
+
+Dueño sugerido:
+
+- `ui-ux-agent` para brief y consistencia
+- `frontend-lead` para implementación
+- `qa-lead` para revisión cross-device
+
+Nota:
+
+- `Epic A` sí bloquea parte del valor de `Epic B`, porque campañas y reporting no deben seguir naciendo sobre productos y branding no administrables.
+- `Epic C` no bloquea `Epic A` ni `Epic B`, pero debe coordinarse para no pisar superficies en reescritura.
 
 ## Alcance
 
@@ -41,31 +109,19 @@ Resultado esperado:
 - introducir microservicios o pipelines analíticos externos
 - reemplazar la base actual de `module_snapshots`, `Prisma`, `BullMQ` o `PM2`
 
-## Épicas sugeridas para Linear
-
-### Epic A. F2-002 Automatización comercial y reporting
-
-Dueño sugerido:
-
-- `product-manager` para alcance y priorización
-- `tech-lead` para secuencia
-- `backend-lead` y `data-agent` para contratos y persistencia
-- `frontend-lead` para superficies admin
-- `qa-lead` para cierre
-
-### Epic B. F2-VIS Homologación visual fina
-
-Dueño sugerido:
-
-- `ui-ux-agent` para brief y consistencia
-- `frontend-lead` para implementación
-- `qa-lead` para revisión cross-device
-
-Nota:
-
-- `Epic B` no bloquea `Epic A`, pero debe correr en paralelo cuando el frente activo no requiera cambios de backend en el mismo tramo.
-
 ## Tickets ejecutables
+
+### Bloque 0. Catálogo y media administrable
+
+| ID | Título | Agente líder sugerido | Módulos tocados | Resultado esperado |
+| --- | --- | --- | --- | --- |
+| `F2-URG-01` | Diseñar fuente única de producto y branding runtime | `software-architect` + `system-analyst` | `catalog`, `cms`, `commerce`, docs | Contrato claro de qué sale de producto persistido, qué sale de CMS y qué sale de media |
+| `F2-URG-02` | Implementar módulo real de productos | `backend-lead` + `data-agent` | `products`, `catalog`, `commerce`, Prisma | CRUD y lecturas consistentes de producto en PostgreSQL |
+| `F2-URG-03` | Crear backoffice de productos | `frontend-lead` | `apps/admin`, navegación, permisos | Pantalla admin para alta, edición, publicación e imagen principal de producto |
+| `F2-URG-04` | Conectar catálogo, home y checkout a productos persistidos | `backend-lead` + `frontend-lead` | `catalog`, `commerce`, `web`, `storefront-v2-premium` | La web deja de depender de `featuredProducts` como fuente operativa |
+| `F2-URG-05` | Incorporar media pública con Cloudflare Images | `software-architect` + `backend-lead` | `media`, `cms`, `catalog`, `web`, infra | Upload y delivery de logo, hero, banners e imágenes de producto vía `Cloudflare Images` |
+| `F2-URG-06` | Conectar branding persistido al layout público | `frontend-lead` | `apps/web/app/layout.tsx`, `cms`, `settings` | El logo del menú y branding público reflejan el estado guardado en backoffice |
+| `F2-URG-07` | QA y cierre del frente catálogo/media | `qa-lead` + `documentation-agent` | web, admin, api, docs | Catálogo/media funcionando de extremo a extremo y documentación alineada |
 
 ### Bloque 1. Fundaciones de automatización comercial
 
@@ -118,6 +174,20 @@ Tickets sugeridos:
 
 ### Ola 1
 
+- `F2-URG-01`
+- `F2-URG-02`
+- `F2-URG-03`
+- `F2-URG-04`
+- `F2-URG-05`
+- `F2-URG-06`
+- `F2-URG-07`
+
+Objetivo:
+
+- cerrar productos administrables y media pública antes de seguir sofisticando automatización y reporting sobre una base incompleta
+
+### Ola 2
+
 - `F2-002-01`
 - `F2-002-02`
 - `F2-002-03`
@@ -126,7 +196,7 @@ Objetivo:
 
 - cerrar taxonomía, segmentos y contratos antes de abrir UI nueva o automatizaciones que luego cambien dos veces
 
-### Ola 2
+### Ola 3
 
 - `F2-002-04`
 - `F2-002-05`
@@ -136,7 +206,7 @@ Objetivo:
 
 - llevar campañas desde una lógica semi-manual a una base automatizable y observable
 
-### Ola 3
+### Ola 4
 
 - `F2-002-07`
 - `F2-002-08`
@@ -147,7 +217,7 @@ Objetivo:
 
 - convertir datos dispersos en lectura comercial real para operación y toma de decisión
 
-### Ola 4
+### Ola 5
 
 - `F2-002-11`
 - `F2-002-12`
@@ -162,6 +232,11 @@ Objetivo:
 
 ## Dependencias críticas
 
+- `F2-002-*` no debe asumir productos mockeados como fuente final de catálogo
+- `F2-URG-04` depende de `F2-URG-02`
+- `F2-URG-05` depende de `F2-URG-01`
+- `F2-URG-06` depende de `F2-URG-05`
+- `F2-URG-07` depende del cierre funcional de `F2-URG-02` a `F2-URG-06`
 - `F2-002-04` depende de `F2-002-01` y `F2-002-02`
 - `F2-002-05` depende de `F2-002-04`
 - `F2-002-06` depende de que `F2-002-04` tenga contrato estable
@@ -174,6 +249,7 @@ Objetivo:
 
 La Fase 2 no debe considerarse cerrada si solo existen vistas nuevas. Se considera cerrada cuando:
 
+- productos, branding y media pública se administran de extremo a extremo desde backoffice
 - campañas pueden dispararse por condiciones reales sin intervención manual constante
 - segmentos nuevos tienen definición explícita y trazable
 - existe lectura útil de pedidos, pagos, comisiones y conversión por periodo
@@ -191,6 +267,14 @@ La Fase 2 no debe considerarse cerrada si solo existen vistas nuevas. Se conside
 Control:
 
 - comenzar con reglas simples y triggers explícitos
+
+### Riesgo
+
+- seguir ampliando UX y reporting sobre catálogo y branding no persistidos
+
+Control:
+
+- cerrar primero el desvío urgente `F2-URG`
 
 ### Riesgo
 
@@ -212,14 +296,15 @@ Control:
 
 Estructura sugerida:
 
-1. Crear la épica `F2-002 Automatización comercial y reporting`
-2. Crear la épica `F2-VIS Homologación visual fina`
-3. Cargar cada ticket con su mismo ID
-4. Etiquetar por disciplina: `product`, `backend`, `frontend`, `data`, `qa`, `docs`, `ux`
-5. Relacionar dependencias entre tickets antes de asignar responsables
+1. Crear la épica `F2-URG Catálogo y media administrable`
+2. Crear la épica `F2-002 Automatización comercial y reporting`
+3. Crear la épica `F2-VIS Homologación visual fina`
+4. Cargar cada ticket con su mismo ID
+5. Etiquetar por disciplina: `product`, `backend`, `frontend`, `data`, `qa`, `docs`, `ux`, `infra`
+6. Relacionar dependencias entre tickets antes de asignar responsables
 
 ## Siguiente decisión recomendada
 
-Abrir primero `F2-002-01`, `F2-002-02` y `F2-002-03`.
+Abrir primero `F2-URG-01`, `F2-URG-02` y `F2-URG-05`.
 
-Ese bloque fija lenguaje, datos y contratos. Sin eso, cualquier automatización o dashboard nuevo vuelve a nacer ambiguo.
+Ese bloque fija producto, branding, media y contratos de runtime. Sin eso, cualquier automatización o dashboard nuevo sigue naciendo sobre una base a medias.

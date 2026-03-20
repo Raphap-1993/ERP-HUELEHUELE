@@ -11,6 +11,7 @@ Huelegood separa capacidades por dominio funcional. Cada módulo tiene una respo
 | Auth | identidad, login, sesiones, recuperación, guards | `users`, `roles`, `permissions`, `admins`, `customers` | todos |
 | CMS interno | contenido administrable del sitio | `site_settings`, `pages`, `page_blocks`, `faqs`, `banners`, `testimonials`, `seo_meta`, `navigation_items` | catálogo, marketing |
 | Catálogo | productos, variantes, imágenes, categorías | `categories`, `products`, `product_variants`, `product_images`, `inventory_movements` | promociones, carrito, pedidos |
+| Media | gestión de activos públicos y privados | `media_assets`, `media_usages`, `upload_jobs` | CMS, catálogo, pagos, mayoristas |
 | Promociones | ofertas y cupones | `promotions`, `coupons` | catálogo, carrito, pedidos, marketing |
 | Carrito | sesión de compra y preparación de checkout | `carts`, `cart_items` | catálogo, promociones, vendedores |
 | Pedidos | orden comercial y su ciclo de vida | `orders`, `order_items`, `order_addresses`, `order_status_history` | pagos, comisiones, fidelización, notificaciones |
@@ -35,11 +36,20 @@ Huelegood separa capacidades por dominio funcional. Cada módulo tiene una respo
 
 - debe poder editar la web sin redeploy para cambios de contenido no estructural
 - no administra reglas comerciales sensibles
+- si referencia logo, hero o banners, debe hacerlo contra activos persistidos y no contra rutas hardcodeadas en código
 
 ### Catálogo
 
 - controla disponibilidad comercial y consistencia de variantes
 - no ejecuta cobros ni descuentos finales por sí solo
+- debe ser fuente real de productos para storefront, checkout y secciones comerciales, no una copia estática en `shared`
+
+### Media
+
+- centraliza logo, hero, banners, imágenes de producto y otros activos públicos del storefront
+- separa activos públicos de activos privados como evidencias operativas
+- para media pública del storefront, el destino objetivo es `Cloudflare Images`
+- no debe obligar a escribir URLs manuales en el backoffice cuando el flujo esperado es upload y selección
 
 ### Promociones
 
@@ -94,6 +104,7 @@ Huelegood separa capacidades por dominio funcional. Cada módulo tiene una respo
 - Comisiones depende de Pedidos, Pagos y Vendedores para atribución y payout.
 - Fidelización depende de Pedidos para cálculo base.
 - Notificaciones depende de eventos emitidos por otros módulos.
+- CMS y Catálogo dependen de Media cuando necesitan resolver activos públicos persistidos.
 
 ## Dependencias no deseadas
 
@@ -101,6 +112,7 @@ Huelegood separa capacidades por dominio funcional. Cada módulo tiene una respo
 - CMS modificando reglas de negocio transaccional.
 - Worker escribiendo estados arbitrarios sin validar reglas del módulo dueño.
 - Vendedores gestionando entidades administrativas fuera de su dominio.
+- layout público leyendo branding estático desde código cuando el backoffice declara branding administrable.
 
 ## Corte operacional recomendado
 
@@ -108,4 +120,4 @@ Para efectos de implementación y ownership técnico, los módulos pueden agrupa
 
 - Comercial: catálogo, promociones, carrito, pedidos, pagos
 - Growth: vendedores, comisiones, mayoristas, fidelización, marketing
-- Plataforma: auth, CMS, notificaciones, auditoría
+- Plataforma: auth, CMS, media, notificaciones, auditoría
