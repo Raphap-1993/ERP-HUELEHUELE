@@ -2,23 +2,10 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { RoleCode, type AuthSessionSummary, type LoyaltyAccountSummary } from "@huelegood/shared";
-import {
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Input,
-  SectionHeader,
-  StatusBadge,
-  Separator
-} from "@huelegood/ui";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, StatusBadge } from "@huelegood/ui";
 import { clearStoredSessionToken, readStoredSessionToken, writeStoredSessionToken } from "../lib/session";
 import { fetchLoyaltySummary, fetchSession, login, logout, register } from "../lib/api";
-import { EditorialMedia } from "./public-brand";
-import { brandArt } from "./public-brand-art";
-import { PublicField, PublicPageHero, PublicPanel, PublicSectionHeading } from "./public-shell";
+import { PublicChecklist, PublicField, PublicPanel, PublicSectionHeading } from "./public-shell";
 
 function splitName(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -47,6 +34,24 @@ function redemptionLabel(status: LoyaltyAccountSummary["redemptionStatus"]) {
   };
 
   return labels[status];
+}
+
+function AccountDetail({
+  label,
+  value,
+  helper
+}: {
+  label: string;
+  value: string;
+  helper: string;
+}) {
+  return (
+    <div className="rounded-[1.35rem] border border-[#d7ddd3] bg-[#f7f8f4] px-4 py-4">
+      <p className="text-[11px] uppercase tracking-[0.24em] text-black/40">{label}</p>
+      <p className="mt-3 text-xl font-semibold text-[#132016]">{value}</p>
+      <p className="mt-2 text-sm leading-6 text-black/56">{helper}</p>
+    </div>
+  );
 }
 
 export function AccountWorkspace() {
@@ -121,7 +126,8 @@ export function AccountWorkspace() {
       setLoadingLoyalty(true);
 
       try {
-        const response = await fetchLoyaltySummary();
+        const token = readStoredSessionToken();
+        const response = await fetchLoyaltySummary(token ?? undefined);
         if (!active) {
           return;
         }
@@ -205,227 +211,273 @@ export function AccountWorkspace() {
     } finally {
       clearStoredSessionToken();
       setSession(null);
+      setLoyaltySummary(null);
     }
   }
 
-  return (
-    <div className="space-y-10 py-6 md:space-y-14 md:py-10">
-      <PublicPageHero
-        eyebrow="Mi cuenta"
-        title="Tu acceso personal a compras, puntos y seguimiento."
-        description="La página de cuenta también debe sentirse terminada: acceso claro, estado de sesión visible y beneficios explicados sin ambigüedad."
-        actions={[
-          { label: mode === "login" ? "Entrar" : "Crear cuenta", href: "#acceso" },
-          { label: "Ver checkout", href: "/checkout", variant: "secondary" }
-        ]}
-        metrics={[
-          { label: "Acceso", value: session ? "Activo" : "Seguro", detail: session ? "Tu sesión está abierta." : "Ingresa o crea tu cuenta." },
-          { label: "Cuenta", value: session ? (session.user.accountType === "customer" ? "Cliente" : "Registrada") : "Nueva", detail: "Compra, seguimiento y beneficios." },
-          { label: "Loyalty", value: session && loyaltySummary ? String(loyaltySummary.availablePoints) : "Puntos", detail: "Disponibles cuando la compra queda confirmada." }
-        ]}
-        aside={<EditorialMedia src={brandArt.office} alt="Visual editorial de cuenta Huelegood" className="min-h-[440px]" />}
-      />
+  if (loadingSession) {
+    return (
+      <div className="py-10">
+        <PublicPanel className="mx-auto max-w-2xl text-center">
+          <p className="text-sm text-black/58">Verificando tu sesión...</p>
+        </PublicPanel>
+      </div>
+    );
+  }
 
-      <section className="grid gap-6 xl:grid-cols-[0.96fr_1.04fr]">
-        <Card id="acceso" className="rounded-[2.4rem] border-black/8 bg-[linear-gradient(180deg,#ffffff_0%,#f2f6ee_100%)]">
-          <CardHeader>
-            <CardTitle>Acceso</CardTitle>
-            <CardDescription>Inicia sesión o crea tu cuenta para gestionar tu experiencia de compra.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Button type="button" variant={mode === "login" ? "primary" : "secondary"} onClick={() => setMode("login")}>
-                Entrar
-              </Button>
-              <Button type="button" variant={mode === "register" ? "primary" : "secondary"} onClick={() => setMode("register")}>
-                Crear cuenta
-              </Button>
+  if (!session) {
+    return (
+      <div className="space-y-10 py-6 md:space-y-12 md:py-8">
+        <section className="grid gap-6 xl:grid-cols-[0.88fr_1.12fr]">
+          <PublicPanel className="space-y-8 bg-[#f4f6f1] p-8">
+            <div className="space-y-4">
+              <p className="text-[11px] uppercase tracking-[0.28em] text-black/42">Mi cuenta</p>
+              <h1 className="max-w-3xl text-[2.8rem] font-semibold leading-[0.96] tracking-[-0.04em] text-[#102114] md:text-[4rem]">
+                Acceso simple para compras, puntos y seguimiento.
+              </h1>
+              <p className="max-w-2xl text-base leading-7 text-black/60">
+                Ingresa con tu cuenta para consultar compras, beneficios y estado de tu experiencia Huelegood desde un mismo lugar.
+              </p>
             </div>
 
-            {error ? <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div> : null}
+            <PublicChecklist
+              items={[
+                "Login y registro claros, sin pasos innecesarios.",
+                "Seguimiento de beneficios desde una sola vista.",
+                "Acceso a panel comercial solo cuando tu perfil lo requiere."
+              ]}
+            />
 
-            {mode === "login" ? (
-              <form className="space-y-4" onSubmit={handleLogin}>
-                <PublicField label="Correo electrónico">
-                  <Input
-                    type="email"
-                    value={loginForm.email}
-                    onChange={(event) => setLoginForm((current) => ({ ...current, email: event.target.value }))}
-                    placeholder="correo@huelegood.com"
-                  />
-                </PublicField>
-                <PublicField label="Contraseña">
-                  <Input
-                    type="password"
-                    value={loginForm.password}
-                    onChange={(event) => setLoginForm((current) => ({ ...current, password: event.target.value }))}
-                    placeholder="Contraseña"
-                  />
-                </PublicField>
-                <Button type="submit" disabled={submitting || loadingSession}>
-                  {submitting ? "Validando..." : "Ingresar"}
-                </Button>
-              </form>
-            ) : (
-              <form className="space-y-4" onSubmit={handleRegister}>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <PublicField label="Nombre y apellido">
-                    <Input
-                      value={registerForm.name}
-                      onChange={(event) => setRegisterForm((current) => ({ ...current, name: event.target.value }))}
-                      placeholder="Nombre y apellido"
-                    />
-                  </PublicField>
+            <div className="grid gap-3 md:grid-cols-3">
+              <AccountDetail label="Cuenta" value="Privada" helper="Tu correo y datos quedan ligados a tu historial de compra." />
+              <AccountDetail label="Puntos" value="Activos" helper="Se reflejan cuando la compra queda confirmada." />
+              <AccountDetail label="Soporte" value="Directo" helper="Puedes seguir tu compra y resolver dudas desde tu cuenta." />
+            </div>
+          </PublicPanel>
+
+          <Card id="acceso" className="rounded-[2rem] border-[#d7ddd3] bg-white shadow-[0_18px_54px_rgba(22,34,20,0.06)]">
+            <CardHeader className="space-y-3">
+              <CardTitle className="text-[1.85rem] tracking-[-0.03em]">Entrar o crear cuenta</CardTitle>
+              <CardDescription>Accede con tu correo o crea una cuenta para revisar compras y beneficios.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="inline-flex rounded-full border border-[#d7ddd3] bg-[#f7f8f4] p-1">
+                <button
+                  type="button"
+                  className={`rounded-full px-4 py-2 text-sm transition ${mode === "login" ? "bg-[#132016] text-white" : "text-[#132016]"}`}
+                  onClick={() => setMode("login")}
+                >
+                  Ingresar
+                </button>
+                <button
+                  type="button"
+                  className={`rounded-full px-4 py-2 text-sm transition ${mode === "register" ? "bg-[#132016] text-white" : "text-[#132016]"}`}
+                  onClick={() => setMode("register")}
+                >
+                  Crear cuenta
+                </button>
+              </div>
+
+              {error ? <div className="rounded-[1.25rem] bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div> : null}
+
+              {mode === "login" ? (
+                <form className="space-y-4" onSubmit={handleLogin}>
                   <PublicField label="Correo electrónico">
                     <Input
                       type="email"
-                      value={registerForm.email}
-                      onChange={(event) => setRegisterForm((current) => ({ ...current, email: event.target.value }))}
+                      value={loginForm.email}
+                      onChange={(event) => setLoginForm((current) => ({ ...current, email: event.target.value }))}
                       placeholder="correo@huelegood.com"
                     />
                   </PublicField>
                   <PublicField label="Contraseña">
                     <Input
                       type="password"
-                      value={registerForm.password}
-                      onChange={(event) => setRegisterForm((current) => ({ ...current, password: event.target.value }))}
+                      value={loginForm.password}
+                      onChange={(event) => setLoginForm((current) => ({ ...current, password: event.target.value }))}
                       placeholder="Contraseña"
                     />
                   </PublicField>
-                  <PublicField label="Teléfono">
-                    <Input
-                      value={registerForm.phone}
-                      onChange={(event) => setRegisterForm((current) => ({ ...current, phone: event.target.value }))}
-                      placeholder="Teléfono"
-                    />
-                  </PublicField>
-                </div>
-                <Button type="submit" disabled={submitting || loadingSession}>
-                  {submitting ? "Creando..." : "Crear cuenta"}
-                </Button>
-              </form>
-            )}
+                  <Button type="submit" disabled={submitting}>
+                    {submitting ? "Validando..." : "Ingresar"}
+                  </Button>
+                </form>
+              ) : (
+                <form className="space-y-4" onSubmit={handleRegister}>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <PublicField label="Nombre y apellido" className="md:col-span-2">
+                      <Input
+                        value={registerForm.name}
+                        onChange={(event) => setRegisterForm((current) => ({ ...current, name: event.target.value, accountType: "customer" }))}
+                        placeholder="Nombre y apellido"
+                      />
+                    </PublicField>
+                    <PublicField label="Correo electrónico">
+                      <Input
+                        type="email"
+                        value={registerForm.email}
+                        onChange={(event) => setRegisterForm((current) => ({ ...current, email: event.target.value }))}
+                        placeholder="correo@huelegood.com"
+                      />
+                    </PublicField>
+                    <PublicField label="Contraseña">
+                      <Input
+                        type="password"
+                        value={registerForm.password}
+                        onChange={(event) => setRegisterForm((current) => ({ ...current, password: event.target.value, accountType: "customer" }))}
+                        placeholder="Contraseña"
+                      />
+                    </PublicField>
+                    <PublicField label="Teléfono" helper="Opcional">
+                      <Input
+                        value={registerForm.phone}
+                        onChange={(event) => setRegisterForm((current) => ({ ...current, phone: event.target.value, accountType: "customer" }))}
+                        placeholder="Teléfono"
+                      />
+                    </PublicField>
+                  </div>
+                  <Button type="submit" disabled={submitting}>
+                    {submitting ? "Creando..." : "Crear cuenta"}
+                  </Button>
+                </form>
+              )}
+            </CardContent>
+          </Card>
+        </section>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8 py-6 md:space-y-10 md:py-8">
+      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <Card className="rounded-[2rem] border-[#d7ddd3] bg-white shadow-[0_18px_54px_rgba(22,34,20,0.06)]">
+          <CardHeader className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="space-y-2">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-black/40">Sesión activa</p>
+              <CardTitle className="text-[2rem] tracking-[-0.03em]">{session.user.name}</CardTitle>
+              <CardDescription>{session.user.email}</CardDescription>
+            </div>
+            <Button type="button" variant="secondary" onClick={handleLogout}>
+              Cerrar sesión
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid gap-3 md:grid-cols-2">
+              <AccountDetail
+                label="Cuenta"
+                value={session.user.accountType === "customer" ? "Cliente" : "Registrada"}
+                helper="Tu perfil está listo para compras, seguimiento y beneficios."
+              />
+              <AccountDetail label="Estado" value="Activa" helper="Tu sesión está lista para operar en el sitio." />
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-[1.35rem] border border-[#d7ddd3] bg-[#f7f8f4] px-4 py-4">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-black/40">Nombre</p>
+                <p className="mt-3 text-lg font-semibold text-[#132016]">
+                  {accountState?.firstName ?? "-"} {accountState?.lastName ?? ""}
+                </p>
+              </div>
+              <div className="rounded-[1.35rem] border border-[#d7ddd3] bg-[#f7f8f4] px-4 py-4">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-black/40">Correo</p>
+                <p className="mt-3 text-lg font-semibold text-[#132016]">{session.user.email}</p>
+              </div>
+            </div>
+
+            {session.user.vendorCode ? (
+              <div className="rounded-[1.35rem] border border-[#d7ddd3] bg-[#f7f8f4] px-4 py-4">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-black/40">Código vendedor</p>
+                <p className="mt-3 text-lg font-semibold text-[#132016]">{session.user.vendorCode}</p>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
 
-        <Card className="rounded-[2.4rem] border-black/8 bg-white/92">
+        <Card className="rounded-[2rem] border-[#d7ddd3] bg-[#f4f6f1] shadow-[0_18px_54px_rgba(22,34,20,0.05)]">
           <CardHeader>
-            <CardTitle>Sesión activa</CardTitle>
-            <CardDescription>Consulta los datos principales de tu cuenta cuando hayas iniciado sesión.</CardDescription>
+            <CardTitle className="text-[2rem] tracking-[-0.03em]">Puntos y beneficios</CardTitle>
+            <CardDescription>Consulta aquí el estado actual de tus puntos y redenciones.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {loadingSession ? (
-              <p className="text-sm text-black/55">Cargando sesión...</p>
-            ) : session ? (
-              <div className="space-y-4">
-                <div className="rounded-3xl bg-[#132016] px-5 py-4 text-white">
-                  <p className="text-xs uppercase tracking-[0.22em] text-white/45">Usuario</p>
-                  <h3 className="mt-2 text-2xl font-semibold">{session.user.name}</h3>
-                  <p className="text-sm text-white/70">{session.user.email}</p>
+          <CardContent className="space-y-5">
+            {loadingLoyalty ? (
+              <p className="text-sm text-black/58">Cargando puntos...</p>
+            ) : loyaltySummary ? (
+              <>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <AccountDetail label="Disponibles" value={String(loyaltySummary.availablePoints)} helper="Listos para usarse." />
+                  <AccountDetail label="Pendientes" value={String(loyaltySummary.pendingPoints)} helper="Se consolidan cuando la compra se confirma." />
+                  <AccountDetail label="Canjeados" value={String(loyaltySummary.redeemedPoints)} helper="Historial total aplicado." />
                 </div>
-
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div className="rounded-2xl bg-black/[0.03] p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-black/40">Cuenta</p>
-                    <p className="mt-2 text-sm font-semibold text-[#132016]">{session.user.accountType === "customer" ? "Cliente" : "Cuenta registrada"}</p>
+                <div className="rounded-[1.35rem] border border-[#d7ddd3] bg-white px-4 py-4">
+                  <p className="text-[11px] uppercase tracking-[0.24em] text-black/40">Estado actual</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <StatusBadge tone="info" label={loyaltyMovementLabel(loyaltySummary.recentMovement)} />
+                    <StatusBadge tone="warning" label={redemptionLabel(loyaltySummary.redemptionStatus)} />
                   </div>
-                  <div className="rounded-2xl bg-black/[0.03] p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-black/40">Estado</p>
-                    <p className="mt-2 text-sm font-semibold text-[#132016]">Sesión activa</p>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-2 text-sm text-black/65">
-                  <p>
-                    <strong>Nombre:</strong> {accountState?.firstName ?? "-"} {accountState?.lastName ?? ""}
+                  <p className="mt-3 text-sm leading-6 text-black/58">
+                    Tus puntos se reflejan y cambian de estado conforme se confirman tus compras y redenciones.
                   </p>
-                  <p>
-                    <strong>Correo:</strong> {session.user.email}
-                  </p>
-                  {session.user.vendorCode ? (
-                    <p>
-                      <strong>Código vendedor:</strong> {session.user.vendorCode}
-                    </p>
-                  ) : null}
                 </div>
-
-                {hasSellerPanelAccess ? (
-                  <div className="rounded-3xl border border-[#132016]/10 bg-[#132016]/[0.04] p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-black/40">Acceso comercial</p>
-                    <h4 className="mt-2 text-lg font-semibold text-[#132016]">Tu cuenta tiene panel vendedor</h4>
-                    <p className="mt-2 text-sm leading-6 text-black/65">
-                      Revisa pedidos atribuidos, comisiones y liquidaciones desde tu vista comercial.
-                    </p>
-                    <div className="mt-4">
-                      <Button href="/panel-vendedor">Ir al panel vendedor</Button>
-                    </div>
-                  </div>
-                ) : null}
-
-                <Button type="button" variant="secondary" onClick={handleLogout}>
-                  Cerrar sesión
-                </Button>
-              </div>
+              </>
             ) : (
-              <PublicPanel className="space-y-4 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(243,246,238,0.98)_100%)]">
-                <p className="text-sm text-black/60">Aún no has iniciado sesión. Entra con tu cuenta o crea una para ver tus pedidos y beneficios.</p>
-                <div className="rounded-2xl border border-black/10 bg-black/[0.02] p-4 text-sm text-black/65">
-                  Tu cuenta te permitirá guardar tus datos, revisar tu compra y consultar tus puntos cuando estén disponibles.
-                </div>
-              </PublicPanel>
+              <p className="text-sm text-black/58">Todavía no encontramos información de fidelización asociada a tu cuenta.</p>
             )}
           </CardContent>
         </Card>
       </section>
 
-      <section className="space-y-6">
-        <PublicSectionHeading
-          eyebrow="Fidelización"
-          title="Tus puntos y movimientos viven dentro de la misma cuenta."
-          description="La vista de cuenta debe explicar con claridad cómo se refleja la actividad de loyalty una vez confirmadas las compras."
-        />
-        <Card className="rounded-[2.4rem] border-black/8 bg-white/92">
-          <CardHeader>
-            <CardTitle>Fidelización</CardTitle>
-            <CardDescription>Consulta tus puntos disponibles, pendientes y canjes desde tu cuenta.</CardDescription>
-          </CardHeader>
-          <CardContent>
-          {!session ? (
-            <p className="text-sm text-black/55">Inicia sesión para consultar tu saldo de puntos y tus movimientos.</p>
-          ) : loadingLoyalty ? (
-            <p className="text-sm text-black/55">Cargando puntos...</p>
-          ) : loyaltySummary ? (
-            <div className="grid gap-4 md:grid-cols-4">
-              <div className="rounded-2xl bg-black/[0.03] p-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-black/40">Disponibles</p>
-                <p className="mt-2 text-3xl font-semibold text-[#132016]">{loyaltySummary.availablePoints}</p>
-              </div>
-              <div className="rounded-2xl bg-black/[0.03] p-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-black/40">Pendientes</p>
-                <p className="mt-2 text-3xl font-semibold text-[#132016]">{loyaltySummary.pendingPoints}</p>
-              </div>
-              <div className="rounded-2xl bg-black/[0.03] p-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-black/40">Canjeados</p>
-                <p className="mt-2 text-3xl font-semibold text-[#132016]">{loyaltySummary.redeemedPoints}</p>
-              </div>
-              <div className="rounded-2xl bg-[#132016] p-4 text-white">
-                <p className="text-xs uppercase tracking-[0.18em] text-white/45">Estado</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <StatusBadge tone="info" label={loyaltyMovementLabel(loyaltySummary.recentMovement)} />
-                  <StatusBadge tone="warning" label={redemptionLabel(loyaltySummary.redemptionStatus)} />
-                </div>
-                <p className="mt-3 text-sm leading-6 text-white/75">
-                  Tus puntos se irán reflejando conforme se confirmen tus compras y redenciones.
-                </p>
-              </div>
+      <section className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
+        <PublicPanel className="space-y-4">
+          <PublicSectionHeading
+            eyebrow="Beneficios"
+            title="Tu cuenta concentra lo importante."
+            description="Compras, beneficios y soporte se mantienen dentro de una sola vista para que la experiencia se sienta clara y terminada."
+          />
+          <PublicChecklist
+            items={[
+              "Seguimiento de compra y estado de beneficios desde el mismo acceso.",
+              "Cuenta lista para futuras recompensas y atención comercial.",
+              "Experiencia consistente entre compra directa y panel comercial."
+            ]}
+          />
+        </PublicPanel>
+
+        {hasSellerPanelAccess ? (
+          <PublicPanel className="space-y-4 bg-[#132016] text-white">
+            <div className="space-y-2">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-white/44">Acceso comercial</p>
+              <h2 className="text-[2rem] font-semibold tracking-[-0.04em] text-white">Tu cuenta también tiene panel vendedor.</h2>
+              <p className="max-w-2xl text-sm leading-7 text-white/70">
+                Desde ahí puedes revisar pedidos atribuidos, comisiones y liquidaciones sin salir del ecosistema de la marca.
+              </p>
             </div>
-          ) : (
-            <p className="text-sm text-black/55">No encontramos una cuenta de loyalty para mostrar.</p>
-          )}
-          </CardContent>
-        </Card>
+            <div className="flex flex-wrap gap-3">
+              <Button href="/panel-vendedor" variant="secondary">
+                Ir al panel vendedor
+              </Button>
+              <Button href="/checkout" variant="ghost" className="text-white hover:bg-white/10 hover:text-white">
+                Ver checkout
+              </Button>
+            </div>
+          </PublicPanel>
+        ) : (
+          <PublicPanel className="space-y-4 bg-[#f4f6f1]">
+            <div className="space-y-2">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-black/40">Siguiente paso</p>
+              <h2 className="text-[2rem] font-semibold tracking-[-0.04em] text-[#132016]">Tu cuenta ya está lista para seguir comprando.</h2>
+              <p className="max-w-2xl text-sm leading-7 text-black/58">
+                Puedes volver al catálogo, avanzar al checkout o seguir explorando la experiencia Huelegood con una sesión ya activa.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button href="/catalogo">Ver catálogo</Button>
+              <Button href="/checkout" variant="secondary">
+                Ir al checkout
+              </Button>
+            </div>
+          </PublicPanel>
+        )}
       </section>
     </div>
   );

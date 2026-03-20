@@ -42,41 +42,67 @@ const roleLabels: Record<RoleCode, string> = {
   [RoleCode.Cliente]: "Cliente"
 };
 
-const initialAccounts: AuthRecord[] = [
-  {
-    id: "usr-admin-001",
-    name: "Admin Huelegood",
-    email: "admin@huelegood.com",
-    password: "huelegood123",
-    accountType: "admin",
-    roles: [RoleCode.SuperAdmin, RoleCode.Admin].map((code) => ({ code, label: roleLabels[code] }))
-  },
-  {
-    id: "usr-seller-014",
-    name: "Mónica Herrera",
-    email: "monica@seller.com",
-    password: "huelegood123",
-    accountType: "seller",
-    roles: [RoleCode.SellerManager, RoleCode.Vendedor].map((code) => ({ code, label: roleLabels[code] })),
-    vendorCode: "VEND-014"
-  },
-  {
-    id: "usr-operator-001",
-    name: "Operador de Pagos",
-    email: "pagos@huelegood.com",
-    password: "huelegood123",
-    accountType: "operator",
-    roles: [RoleCode.OperadorPagos].map((code) => ({ code, label: roleLabels[code] }))
-  },
-  {
-    id: "usr-customer-001",
-    name: "Cliente Huelegood",
-    email: "cliente@huelegood.com",
-    password: "huelegood123",
-    accountType: "customer",
-    roles: [RoleCode.Cliente].map((code) => ({ code, label: roleLabels[code] }))
+function buildRoles(codes: RoleCode[]) {
+  return codes.map((code) => ({ code, label: roleLabels[code] }));
+}
+
+function envValue(name: string) {
+  const value = process.env[name]?.trim();
+  return value ? value : undefined;
+}
+
+function bootstrapEnv(name: string, fallback: string) {
+  const value = envValue(name);
+  if (value) {
+    return value;
   }
-];
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(`${name} must be configured in production.`);
+  }
+
+  return fallback;
+}
+
+function createBootstrapAccounts(): AuthRecord[] {
+  return [
+    {
+      id: "usr-admin-001",
+      name: bootstrapEnv("BOOTSTRAP_ADMIN_NAME", "Admin Huelegood"),
+      email: bootstrapEnv("BOOTSTRAP_ADMIN_EMAIL", "admin@huelegood.com"),
+      password: bootstrapEnv("BOOTSTRAP_ADMIN_PASSWORD", "huelegood123"),
+      accountType: "admin",
+      roles: buildRoles([RoleCode.SuperAdmin, RoleCode.Admin])
+    },
+    {
+      id: "usr-seller-014",
+      name: bootstrapEnv("BOOTSTRAP_SELLER_NAME", "Mónica Herrera"),
+      email: bootstrapEnv("BOOTSTRAP_SELLER_EMAIL", "monica@seller.com"),
+      password: bootstrapEnv("BOOTSTRAP_SELLER_PASSWORD", "huelegood123"),
+      accountType: "seller",
+      roles: buildRoles([RoleCode.SellerManager, RoleCode.Vendedor]),
+      vendorCode: bootstrapEnv("BOOTSTRAP_SELLER_VENDOR_CODE", "VEND-014")
+    },
+    {
+      id: "usr-operator-001",
+      name: bootstrapEnv("BOOTSTRAP_PAYMENTS_NAME", "Operador de Pagos"),
+      email: bootstrapEnv("BOOTSTRAP_PAYMENTS_EMAIL", "pagos@huelegood.com"),
+      password: bootstrapEnv("BOOTSTRAP_PAYMENTS_PASSWORD", "huelegood123"),
+      accountType: "operator",
+      roles: buildRoles([RoleCode.OperadorPagos])
+    },
+    {
+      id: "usr-customer-001",
+      name: bootstrapEnv("BOOTSTRAP_CUSTOMER_NAME", "Cliente Huelegood"),
+      email: bootstrapEnv("BOOTSTRAP_CUSTOMER_EMAIL", "cliente@huelegood.com"),
+      password: bootstrapEnv("BOOTSTRAP_CUSTOMER_PASSWORD", "huelegood123"),
+      accountType: "customer",
+      roles: buildRoles([RoleCode.Cliente])
+    }
+  ];
+}
+
+const initialAccounts: AuthRecord[] = createBootstrapAccounts();
 
 const accounts = new Map<string, AuthRecord>(initialAccounts.map((account) => [normalizeEmail(account.email), account]));
 
@@ -283,7 +309,10 @@ export class AuthService implements OnModuleInit {
 
     for (const seed of initialAccounts) {
       const key = normalizeEmail(seed.email);
-      const current = accounts.get(key);
+      const current =
+        Array.from(accounts.values()).find((account) => account.id === seed.id) ??
+        accounts.get(key);
+
       if (!current) {
         accounts.set(key, {
           ...seed,
@@ -294,19 +323,30 @@ export class AuthService implements OnModuleInit {
       }
 
       const next: AuthRecord = {
-        ...current,
-        name: seed.name,
-        accountType: seed.accountType,
+        ...seed,
+        phone: current.phone,
         roles: seed.roles.map((role) => ({ ...role })),
         vendorCode: seed.vendorCode
       };
 
+      const currentKey = normalizeEmail(current.email);
+
       if (
+        current.email !== next.email ||
         current.name !== next.name ||
+        current.password !== next.password ||
         current.accountType !== next.accountType ||
         current.vendorCode !== next.vendorCode ||
         JSON.stringify(current.roles) !== JSON.stringify(next.roles)
       ) {
+        if (currentKey !== key) {
+          accounts.delete(currentKey);
+        }
+
+        accounts.set(key, next);
+        changed = true;
+      } else if (currentKey !== key) {
+        accounts.delete(currentKey);
         accounts.set(key, next);
         changed = true;
       }

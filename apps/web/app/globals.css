@@ -26,10 +26,8 @@ body {
   margin: 0;
   color: hsl(var(--foreground));
   background:
-    radial-gradient(circle at top left, rgba(177, 197, 158, 0.28), transparent 28%),
-    radial-gradient(circle at top right, rgba(201, 169, 117, 0.16), transparent 24%),
-    radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.84), transparent 30%),
-    linear-gradient(180deg, #f7f4ee 0%, #eef2e8 44%, #f6f7f1 100%);
+    radial-gradient(circle at top left, rgba(174, 193, 160, 0.14), transparent 24%),
+    linear-gradient(180deg, #faf8f3 0%, #f3f5ef 46%, #f8f8f5 100%);
   font-family: "Avenir Next", "Satoshi", "Helvetica Neue", sans-serif;
 }
 
@@ -50,24 +48,4 @@ h3 {
 a {
   color: inherit;
   text-decoration: none;
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.55), transparent 24%),
-    radial-gradient(circle at 80% 10%, rgba(255, 255, 255, 0.32), transparent 18%);
-  opacity: 0.42;
-}
-
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), transparent 22%, transparent 78%, rgba(255, 255, 255, 0.12));
-  opacity: 0.9;
 }

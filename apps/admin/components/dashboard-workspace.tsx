@@ -235,9 +235,9 @@ function DashboardSection({
   return (
     <section className="space-y-4">
       <div className="space-y-2">
-        <p className="text-xs uppercase tracking-[0.24em] text-black/42">{eyebrow}</p>
-        <h2 className="text-2xl font-semibold tracking-tight text-[#132016]">{title}</h2>
-        <p className="max-w-3xl text-sm leading-6 text-black/58">{description}</p>
+        <p className="text-xs uppercase tracking-[0.24em] text-black/40">{eyebrow}</p>
+        <h2 className="text-[1.85rem] font-semibold tracking-[-0.03em] text-[#132016]">{title}</h2>
+        <p className="max-w-3xl text-sm leading-6 text-black/56">{description}</p>
       </div>
       {children}
     </section>
@@ -447,26 +447,36 @@ export function DashboardWorkspace() {
   }
 
   return (
-    <div className="space-y-6 pb-8">
-      <Card className="overflow-hidden border-black/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.98)_0%,rgba(242,246,239,0.96)_100%)] shadow-soft">
-        <CardHeader className="gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className="space-y-8 pb-10">
+      <Card className="overflow-hidden rounded-[1.85rem] border-black/8 bg-white shadow-[0_16px_46px_rgba(18,34,20,0.05)]">
+        <CardHeader className="gap-5 border-b border-black/6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
-            <SectionHeader title={overview?.title ?? "Dashboard"} description={overview?.description ?? "Cargando vista operacional por rol."} />
-            {overview ? <Badge tone="info">Vista {focusLabel(overview.focus)}</Badge> : null}
+            <div className="flex flex-wrap items-center gap-3">
+              <Badge tone="neutral">Dashboard</Badge>
+              {overview ? <Badge tone="info">Vista {focusLabel(overview.focus)}</Badge> : null}
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-[2rem] font-semibold tracking-[-0.03em] text-[#132016]">{overview?.title ?? "Panel operativo"}</h2>
+              <p className="max-w-3xl text-sm leading-6 text-black/58">
+                {overview?.description ?? "Cargando vista operacional por rol."}
+              </p>
+            </div>
           </div>
           <Button variant="secondary" onClick={refresh} disabled={loading}>
             Refrescar
           </Button>
         </CardHeader>
-        {overview ? (
-          <CardContent className="grid gap-4 border-t border-black/6 pt-6 md:grid-cols-3">
-            {highlights.map((item) => (
-              <div key={item} className="rounded-3xl border border-black/8 bg-white/78 px-4 py-4 text-sm leading-6 text-[#132016]">
-                {item}
-              </div>
-            ))}
-          </CardContent>
-        ) : null}
+        <CardContent className="grid gap-4 md:grid-cols-3">
+          {overview
+            ? highlights.map((item) => (
+                <div key={item} className="rounded-[1.35rem] border border-black/8 bg-[#f7f8f4] px-4 py-4 text-sm leading-6 text-[#132016]">
+                  {item}
+                </div>
+              ))
+            : Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="h-20 rounded-[1.35rem] border border-black/8 bg-[#f7f8f4]" />
+              ))}
+        </CardContent>
       </Card>
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -477,25 +487,25 @@ export function DashboardWorkspace() {
 
       {overview?.focus === "payments" ? (
         <>
-          <DashboardSection eyebrow="Prioridad" title="Resolución inmediata" description="Primero lo que bloquea cobro, aprobación manual o conciliación.">
+          <DashboardSection eyebrow="Prioridad" title="Resolución inmediata" description="Lo primero es destrabar cobro, revisión manual y conciliación.">
             <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
               <ReviewDrawer title="Revisión manual" items={reviewItems} />
               {latestOrder ? <CardSnapshot order={latestOrder} /> : <EmptyDashboardCard title="Sin pedido destacado" description="Todavía no hay un pedido reciente para mostrar en detalle." />}
             </div>
           </DashboardSection>
-          <DashboardSection eyebrow="Seguimiento" title="Cola de cobro" description="Vista operativa de pagos y pedidos que impactan la conciliación.">
+          <DashboardSection eyebrow="Seguimiento" title="Cola de cobro" description="Pagos y pedidos con impacto directo en conciliación.">
             <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
               <AdminDataTable
                 title="Cola de pagos"
-                description="Cobros y conciliaciones que requieren atención."
+                description="Cobros que requieren seguimiento."
                 headers={["Pedido", "Cliente", "Proveedor", "Monto", "Estado", "Manual", "Actualizado"]}
-                rows={paymentRows}
+                rows={paymentRows.slice(0, 6)}
               />
               <AdminDataTable
                 title="Pedidos relacionados"
-                description="Últimos pedidos con impacto en la conciliación."
+                description="Pedidos recientes conectados a cobro."
                 headers={["Pedido", "Cliente", "Total", "Estado", "Pago", "Vendedor", "Actualizado"]}
-                rows={recentOrdersRows}
+                rows={recentOrdersRows.slice(0, 5)}
               />
             </div>
           </DashboardSection>
@@ -507,31 +517,31 @@ export function DashboardWorkspace() {
 
       {overview?.focus === "sales" ? (
         <>
-          <DashboardSection eyebrow="Pipeline comercial" title="Ventas, comisión y red de vendedores" description="La vista comercial se ordena por tres frentes: pedidos atribuidos, rendimiento vendedor y liquidaciones.">
+          <DashboardSection eyebrow="Pipeline comercial" title="Ventas, comisión y red de vendedores" description="Primero rendimiento vendedor, luego comisiones y finalmente liquidaciones.">
             <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-              <CommissionTable rows={commissionRows as CommissionRow[]} />
+              <CommissionTable rows={commissionRows.slice(0, 6) as CommissionRow[]} />
               <AdminDataTable
                 title="Vendedores activos"
-                description="Rendimiento comercial y saldo pendiente."
+                description="Rendimiento comercial visible."
                 headers={["Vendedor", "Código", "Estado", "Ventas", "Pendiente", "Pedidos", "Actualizado"]}
-                rows={vendorRows}
+                rows={vendorRows.slice(0, 6)}
               />
             </div>
           </DashboardSection>
           <DashboardSection eyebrow="Pedidos" title="Pedidos atribuidos" description="Pedidos recientes que ya cargan trazabilidad comercial por código vendedor.">
             <AdminDataTable
               title="Pedidos atribuidos"
-              description="Pedidos recientes con código vendedor."
+              description="Pedidos recientes con atribución comercial."
               headers={["Pedido", "Cliente", "Total", "Estado", "Pago", "Vendedor", "Actualizado"]}
-              rows={recentOrdersRows}
+              rows={recentOrdersRows.slice(0, 6)}
             />
           </DashboardSection>
           <DashboardSection eyebrow="Liquidación" title="Pagos a sellers" description="Estado actual de las liquidaciones visibles para el equipo comercial.">
             <AdminDataTable
               title="Liquidaciones"
-              description="Estado actual de pagos a sellers."
+              description="Resumen de pagos a vendedores."
               headers={["Liquidación", "Vendedor", "Periodo", "Monto", "Estado", "Actualizado"]}
-              rows={payoutRows}
+              rows={payoutRows.slice(0, 6)}
             />
           </DashboardSection>
         </>
@@ -539,35 +549,35 @@ export function DashboardWorkspace() {
 
       {overview?.focus === "marketing" ? (
         <>
-          <DashboardSection eyebrow="Adquisición" title="Campañas y leads" description="Primero visibilidad de demanda activa y pipeline mayorista abierto.">
+          <DashboardSection eyebrow="Adquisición" title="Campañas y leads" description="Visibilidad compacta de demanda activa y pipeline mayorista.">
             <div className="grid gap-6 xl:grid-cols-2">
               <AdminDataTable
                 title="Campañas"
                 description="Campañas activas y programadas."
                 headers={["Campaña", "Segmento", "Canal", "Estado", "Recipients", "Actualizado"]}
-                rows={campaignRows}
+                rows={campaignRows.slice(0, 6)}
               />
               <AdminDataTable
                 title="Leads mayoristas"
-                description="Pipeline comercial abierto."
+                description="Leads en seguimiento."
                 headers={["Empresa", "Contacto", "Ciudad", "Estado", "Cotizaciones", "Actualizado"]}
-                rows={leadRows}
+                rows={leadRows.slice(0, 6)}
               />
             </div>
           </DashboardSection>
-          <DashboardSection eyebrow="Retención" title="Mensajería y fidelización" description="Luego seguimiento de notificaciones y comportamiento de cuentas con puntos.">
+          <DashboardSection eyebrow="Retención" title="Mensajería y fidelización" description="Después, señales recientes de mensajes y cuentas con puntos.">
             <div className="grid gap-6 xl:grid-cols-2">
               <AdminDataTable
                 title="Notificaciones"
-                description="Despachos comerciales recientes."
+                description="Despachos recientes."
                 headers={["Asunto", "Audiencia", "Canal", "Estado", "Origen", "Actualizado"]}
-                rows={notificationRows}
+                rows={notificationRows.slice(0, 6)}
               />
               <AdminDataTable
                 title="Fidelización"
-                description="Cuentas con puntos disponibles o en espera."
+                description="Resumen de cuentas con puntos."
                 headers={["Cliente", "Disponibles", "Pendientes", "Canjeados", "Movimiento", "Canje"]}
-                rows={loyaltyRows}
+                rows={loyaltyRows.slice(0, 6)}
               />
             </div>
           </DashboardSection>
@@ -576,38 +586,38 @@ export function DashboardWorkspace() {
 
       {overview?.focus === "executive" ? (
         <>
-          <DashboardSection eyebrow="Atención inmediata" title="Operación transversal" description="Lo primero es ver pagos por revisar, pedido reciente y el estado general de la operación.">
+          <DashboardSection eyebrow="Atención inmediata" title="Operación transversal" description="Lo primero es revisar cobros pendientes, pedido reciente y señales del frente comercial.">
             <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
               <ReviewDrawer title="Revisión de pagos" items={reviewItems} />
               {latestOrder ? <CardSnapshot order={latestOrder} /> : <EmptyDashboardCard title="Sin pedido destacado" description="Todavía no hay un pedido reciente para mostrar en detalle." />}
             </div>
           </DashboardSection>
-          <DashboardSection eyebrow="Pedidos" title="Últimos movimientos" description="Pedidos recientes y timeline del pedido más representativo para mantener contexto operativo.">
+          <DashboardSection eyebrow="Pedidos" title="Últimos movimientos" description="Pedidos recientes y timeline del pedido más representativo.">
             <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
               <AdminDataTable
                 title="Pedidos recientes"
                 description="Vista transversal de la operación."
                 headers={["Pedido", "Cliente", "Total", "Estado", "Pago", "Vendedor", "Actualizado"]}
-                rows={recentOrdersRows}
+                rows={recentOrdersRows.slice(0, 6)}
               />
               <TimelinePedido items={timelineItems} />
             </div>
           </DashboardSection>
-          <DashboardSection eyebrow="Frente comercial" title="Comisiones, campañas y leads" description="Una vista ejecutiva compacta del frente seller y del pipeline comercial.">
+          <DashboardSection eyebrow="Frente comercial" title="Comisiones, campañas y leads" description="Resumen ejecutivo del frente seller y del pipeline comercial.">
             <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-              <CommissionTable rows={commissionRows as CommissionRow[]} />
+              <CommissionTable rows={commissionRows.slice(0, 6) as CommissionRow[]} />
               <div className="grid gap-6">
                 <AdminDataTable
                   title="Campañas y CRM"
                   description="Señales del frente comercial."
                   headers={["Campaña", "Segmento", "Canal", "Estado", "Recipients", "Actualizado"]}
-                  rows={campaignRows}
+                  rows={campaignRows.slice(0, 5)}
                 />
                 <AdminDataTable
                   title="Leads abiertos"
                   description="Mayoristas y distribuidores en seguimiento."
                   headers={["Empresa", "Contacto", "Ciudad", "Estado", "Cotizaciones", "Actualizado"]}
-                  rows={leadRows}
+                  rows={leadRows.slice(0, 5)}
                 />
               </div>
             </div>
@@ -624,7 +634,7 @@ export function DashboardWorkspace() {
 function CardSnapshot({ order }: { order: AdminOrderDetail }) {
   return (
     <div className="grid gap-6 xl:grid-cols-3">
-      <div className="rounded-[1.75rem] border border-black/10 bg-white p-6 shadow-soft xl:col-span-2">
+      <div className="rounded-[1.75rem] border border-black/8 bg-white p-6 shadow-[0_14px_42px_rgba(18,34,20,0.05)] xl:col-span-2">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.24em] text-black/45">Último pedido</p>
@@ -637,14 +647,14 @@ function CardSnapshot({ order }: { order: AdminOrderDetail }) {
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <div className="rounded-3xl border border-black/10 bg-black/[0.02] p-4">
+          <div className="rounded-[1.35rem] border border-black/8 bg-[#f7f8f4] p-4">
             <p className="text-xs uppercase tracking-[0.22em] text-black/45">Total</p>
             <p className="mt-2 text-3xl font-semibold text-[#132016]">{formatCurrency(order.total)}</p>
             <p className="mt-2 text-sm text-black/60">
               {order.items.length} artículo(s) · {order.orderStatus}
             </p>
           </div>
-          <div className="rounded-3xl border border-black/10 bg-black/[0.02] p-4">
+          <div className="rounded-[1.35rem] border border-black/8 bg-[#f7f8f4] p-4">
             <p className="text-xs uppercase tracking-[0.22em] text-black/45">Dirección</p>
             <p className="mt-2 text-sm font-medium text-[#132016]">{order.address.recipientName}</p>
             <p className="text-sm text-black/60">{order.address.line1}</p>
@@ -655,7 +665,7 @@ function CardSnapshot({ order }: { order: AdminOrderDetail }) {
         </div>
       </div>
 
-      <div className="rounded-[1.75rem] border border-black/10 bg-[#132016] p-6 text-white shadow-soft">
+      <div className="rounded-[1.75rem] border border-black/8 bg-[#132016] p-6 text-white shadow-[0_16px_46px_rgba(19,32,22,0.2)]">
         <p className="text-xs uppercase tracking-[0.24em] text-white/45">Resumen financiero</p>
         <div className="mt-4 space-y-3 text-sm text-white/80">
           <p>Subtotal: {formatCurrency(order.subtotal)}</p>
@@ -678,7 +688,7 @@ function EmptyDashboardCard({
   description: string;
 }) {
   return (
-    <Card className="rounded-[1.75rem] border-black/10 shadow-soft">
+    <Card className="rounded-[1.75rem] border-black/8 shadow-[0_14px_42px_rgba(18,34,20,0.05)]">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         <CardDescription>{description}</CardDescription>

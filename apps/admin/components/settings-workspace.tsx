@@ -100,7 +100,7 @@ export function SettingsWorkspace() {
   const [heroForm, setHeroForm] = useState<CmsHeroCopyInput>(cloneHeroForm(defaultHeroCopy));
   const [navigationJson, setNavigationJson] = useState(JSON.stringify(defaultWebNavigation, null, 2));
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [savingSection, setSavingSection] = useState<"site" | "hero" | "navigation" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -144,22 +144,22 @@ export function SettingsWorkspace() {
       {
         label: "Grupos",
         value: String(snapshot.webNavigation.length),
-        detail: "Secciones visibles en la barra pública."
+        detail: "Bloques visibles de navegación pública."
       },
       {
         label: "Enlaces",
         value: String(navigationPreviewCount(snapshot.webNavigation)),
-        detail: "Navegación directa al storefront."
+        detail: "Rutas activas del storefront."
       },
       {
         label: "Páginas",
         value: String(snapshot.pages.length),
-        detail: "Blueprints publicables."
+        detail: "Páginas editables registradas."
       },
       {
-        label: "Logo menú",
+        label: "Logo",
         value: snapshot.siteSetting.headerLogoUrl ? "Activo" : "Texto",
-        detail: snapshot.siteSetting.headerLogoUrl ? "La cabecera pública usa imagen." : "La cabecera pública usa texto."
+        detail: snapshot.siteSetting.headerLogoUrl ? "La cabecera usa imagen." : "La cabecera usa nombre en texto."
       }
     ],
     [snapshot]
@@ -170,7 +170,7 @@ export function SettingsWorkspace() {
   }
 
   async function handleSaveSiteSettings() {
-    setActionLoading(true);
+    setSavingSection("site");
     setError(null);
 
     try {
@@ -179,12 +179,12 @@ export function SettingsWorkspace() {
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : "No pudimos actualizar la configuración base.");
     } finally {
-      setActionLoading(false);
+      setSavingSection(null);
     }
   }
 
   async function handleSaveHeroCopy() {
-    setActionLoading(true);
+    setSavingSection("hero");
     setError(null);
 
     try {
@@ -193,12 +193,12 @@ export function SettingsWorkspace() {
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : "No pudimos actualizar el hero.");
     } finally {
-      setActionLoading(false);
+      setSavingSection(null);
     }
   }
 
   async function handleSaveNavigation() {
-    setActionLoading(true);
+    setSavingSection("navigation");
     setError(null);
 
     try {
@@ -208,13 +208,16 @@ export function SettingsWorkspace() {
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : "No pudimos actualizar la navegación.");
     } finally {
-      setActionLoading(false);
+      setSavingSection(null);
     }
   }
 
   return (
-    <div className="space-y-6 pb-8">
-      <SectionHeader title="Configuración" description="Branding, hero, navegación y parámetros base del storefront." />
+    <div className="space-y-8 pb-10">
+      <SectionHeader
+        title="Configuración"
+        description="Branding, navegación y mensajes públicos del storefront desde un panel más ordenado."
+      />
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
@@ -222,37 +225,33 @@ export function SettingsWorkspace() {
         ))}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <Card>
+      <div className="grid gap-6 xl:grid-cols-[0.96fr_1.04fr]">
+        <Card className="rounded-[1.75rem] border-black/8 shadow-[0_14px_42px_rgba(18,34,20,0.05)]">
           <CardHeader>
-            <CardTitle>Configuración base</CardTitle>
-            <CardDescription>Valores base que alimentan storefront, admin y API.</CardDescription>
+            <CardTitle>Identidad y contacto</CardTitle>
+            <CardDescription>Valores base que alimentan la navegación, el footer y el branding público.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#132016]" htmlFor="site-brand">
+              <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="site-brand">
                 Marca
               </label>
               <Input id="site-brand" value={siteForm.brandName} onChange={(event) => setSiteForm({ ...siteForm, brandName: event.target.value })} />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#132016]" htmlFor="site-support">
+              <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="site-support">
                 Soporte
               </label>
-              <Input
-                id="site-support"
-                value={siteForm.supportEmail}
-                onChange={(event) => setSiteForm({ ...siteForm, supportEmail: event.target.value })}
-              />
+              <Input id="site-support" value={siteForm.supportEmail} onChange={(event) => setSiteForm({ ...siteForm, supportEmail: event.target.value })} />
             </div>
             <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-medium text-[#132016]" htmlFor="site-tagline">
+              <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="site-tagline">
                 Tagline
               </label>
               <Textarea id="site-tagline" value={siteForm.tagline} onChange={(event) => setSiteForm({ ...siteForm, tagline: event.target.value })} />
             </div>
             <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-medium text-[#132016]" htmlFor="site-logo">
+              <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="site-logo">
                 Logo del menú
               </label>
               <Input
@@ -266,14 +265,14 @@ export function SettingsWorkspace() {
               </p>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#132016]" htmlFor="site-whatsapp">
+              <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="site-whatsapp">
                 WhatsApp
               </label>
               <Input id="site-whatsapp" value={siteForm.whatsapp} onChange={(event) => setSiteForm({ ...siteForm, whatsapp: event.target.value })} />
             </div>
-            <div className="rounded-3xl border border-black/10 bg-black/[0.02] p-4 md:col-span-2">
-              <p className="text-xs uppercase tracking-[0.22em] text-black/45">Preview cabecera</p>
-              <div className="mt-3 flex min-h-14 items-center rounded-[1.25rem] border border-black/8 bg-white px-4">
+            <div className="rounded-[1.5rem] border border-black/8 bg-[#f7f8f4] p-4">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-black/40">Vista previa cabecera</p>
+              <div className="mt-3 flex min-h-14 items-center rounded-[1rem] border border-black/8 bg-white px-4">
                 {siteForm.headerLogoUrl ? (
                   <img src={siteForm.headerLogoUrl} alt={siteForm.brandName} className="h-10 w-auto max-w-[180px] object-contain" />
                 ) : (
@@ -282,152 +281,146 @@ export function SettingsWorkspace() {
               </div>
             </div>
             <div className="md:col-span-2">
-              <Button onClick={handleSaveSiteSettings} disabled={actionLoading}>
-                {actionLoading ? "Guardando..." : "Guardar configuración base"}
+              <Button onClick={handleSaveSiteSettings} disabled={savingSection === "site"}>
+                {savingSection === "site" ? "Guardando..." : "Guardar identidad"}
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-[1.75rem] border-black/8 shadow-[0_14px_42px_rgba(18,34,20,0.05)]">
           <CardHeader>
             <CardTitle>Hero del storefront</CardTitle>
             <CardDescription>Mensaje principal de la home y sus llamadas a la acción.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#132016]" htmlFor="hero-eyebrow">
+              <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="hero-eyebrow">
                 Eyebrow
               </label>
               <Input id="hero-eyebrow" value={heroForm.eyebrow} onChange={(event) => setHeroForm({ ...heroForm, eyebrow: event.target.value })} />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#132016]" htmlFor="hero-title">
+              <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="hero-title">
                 Título
               </label>
               <Input id="hero-title" value={heroForm.title} onChange={(event) => setHeroForm({ ...heroForm, title: event.target.value })} />
             </div>
             <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-medium text-[#132016]" htmlFor="hero-description">
+              <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="hero-description">
                 Descripción
               </label>
-              <Textarea
-                id="hero-description"
-                value={heroForm.description}
-                onChange={(event) => setHeroForm({ ...heroForm, description: event.target.value })}
-              />
+              <Textarea id="hero-description" value={heroForm.description} onChange={(event) => setHeroForm({ ...heroForm, description: event.target.value })} />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#132016]" htmlFor="hero-primary-label">
+              <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="hero-primary-label">
                 CTA principal
               </label>
               <Input
                 id="hero-primary-label"
                 value={heroForm.primaryCta.label}
-                onChange={(event) =>
-                  setHeroForm({
-                    ...heroForm,
-                    primaryCta: { ...heroForm.primaryCta, label: event.target.value }
-                  })
-                }
+                onChange={(event) => setHeroForm({ ...heroForm, primaryCta: { ...heroForm.primaryCta, label: event.target.value } })}
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#132016]" htmlFor="hero-primary-href">
+              <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="hero-primary-href">
                 Ruta principal
               </label>
               <Input
                 id="hero-primary-href"
                 value={heroForm.primaryCta.href}
-                onChange={(event) =>
-                  setHeroForm({
-                    ...heroForm,
-                    primaryCta: { ...heroForm.primaryCta, href: event.target.value }
-                  })
-                }
+                onChange={(event) => setHeroForm({ ...heroForm, primaryCta: { ...heroForm.primaryCta, href: event.target.value } })}
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#132016]" htmlFor="hero-secondary-label">
+              <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="hero-secondary-label">
                 CTA secundaria
               </label>
               <Input
                 id="hero-secondary-label"
                 value={heroForm.secondaryCta.label}
-                onChange={(event) =>
-                  setHeroForm({
-                    ...heroForm,
-                    secondaryCta: { ...heroForm.secondaryCta, label: event.target.value }
-                  })
-                }
+                onChange={(event) => setHeroForm({ ...heroForm, secondaryCta: { ...heroForm.secondaryCta, label: event.target.value } })}
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#132016]" htmlFor="hero-secondary-href">
+              <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="hero-secondary-href">
                 Ruta secundaria
               </label>
               <Input
                 id="hero-secondary-href"
                 value={heroForm.secondaryCta.href}
-                onChange={(event) =>
-                  setHeroForm({
-                    ...heroForm,
-                    secondaryCta: { ...heroForm.secondaryCta, href: event.target.value }
-                  })
-                }
+                onChange={(event) => setHeroForm({ ...heroForm, secondaryCta: { ...heroForm.secondaryCta, href: event.target.value } })}
               />
             </div>
             <div className="md:col-span-2">
-              <Button onClick={handleSaveHeroCopy} disabled={actionLoading}>
-                {actionLoading ? "Guardando..." : "Guardar hero"}
+              <Button onClick={handleSaveHeroCopy} disabled={savingSection === "hero"}>
+                {savingSection === "hero" ? "Guardando..." : "Guardar hero"}
               </Button>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
+      <Card className="rounded-[1.75rem] border-black/8 shadow-[0_14px_42px_rgba(18,34,20,0.05)]">
         <CardHeader>
-          <CardTitle>Navegación</CardTitle>
-          <CardDescription>Editar grupos y enlaces visibles en el storefront mediante JSON estructurado.</CardDescription>
+          <CardTitle>Navegación pública</CardTitle>
+          <CardDescription>Editor avanzado de grupos y enlaces visibles en el storefront.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <Textarea value={navigationJson} onChange={(event) => setNavigationJson(event.target.value)} className="min-h-52 font-mono text-xs" />
-          <Button onClick={handleSaveNavigation} disabled={actionLoading}>
-            {actionLoading ? "Guardando..." : "Guardar navegación"}
-          </Button>
+        <CardContent className="grid gap-6 xl:grid-cols-[0.7fr_1.3fr]">
+          <div className="space-y-4 rounded-[1.5rem] border border-black/8 bg-[#f7f8f4] p-5">
+            <div className="space-y-2">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-black/40">Resumen actual</p>
+              <p className="text-sm leading-6 text-black/58">
+                {snapshot.webNavigation.length} grupos y {navigationPreviewCount(snapshot.webNavigation)} enlaces visibles.
+              </p>
+            </div>
+            <div className="grid gap-3">
+              {snapshot.webNavigation.map((group) => (
+                <div key={group.title} className="rounded-[1.2rem] border border-black/8 bg-white px-4 py-4">
+                  <p className="text-[11px] uppercase tracking-[0.24em] text-black/40">{group.title}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {group.items.map((item) => (
+                      <StatusBadge key={`${group.title}-${item.href}`} label={item.label} tone="neutral" />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-4">
+            <Textarea value={navigationJson} onChange={(event) => setNavigationJson(event.target.value)} className="min-h-64 font-mono text-xs" />
+            <Button onClick={handleSaveNavigation} disabled={savingSection === "navigation"}>
+              {savingSection === "navigation" ? "Guardando..." : "Guardar navegación"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
-      <AdminDataTable
-        title="Páginas"
-        description="Blueprints publicables y su estado."
-        headers={["Slug", "Título", "Estado", "Bloques", "SEO", "Actualizado"]}
-        rows={snapshot.pages.map((page) => [
-          page.slug,
-          page.title,
-          <StatusBadge key={`${page.slug}-status`} label={pageStatusLabel(page.status)} tone={pageStatusTone(page.status)} />,
-          String(page.blocks.length),
-          page.seoMeta.title,
-          formatDate(page.updatedAt)
-        ])}
-      />
+      <section className="space-y-4">
+        <SectionHeader title="Lectura operativa" description="Inventario actual de páginas, SEO y navegación publicada." />
+        <div className="grid gap-6 xl:grid-cols-2">
+          <AdminDataTable
+            title="Páginas"
+            description="Páginas publicables y su estado."
+            headers={["Slug", "Título", "Estado", "Bloques", "SEO", "Actualizado"]}
+            rows={snapshot.pages.map((page) => [
+              page.slug,
+              page.title,
+              <StatusBadge key={`${page.slug}-status`} label={pageStatusLabel(page.status)} tone={pageStatusTone(page.status)} />,
+              String(page.blocks.length),
+              page.seoMeta.title,
+              formatDate(page.updatedAt)
+            ])}
+          />
 
-      <AdminDataTable
-        title="SEO"
-        description="Metadatos por página."
-        headers={["Página", "Canonical", "Robots", "Actualizado"]}
-        rows={snapshot.seoMeta.map((meta) => [meta.pageSlug, meta.canonicalPath ?? "-", meta.robots, formatDate(meta.updatedAt)])}
-      />
-
-      <AdminDataTable
-        title="Navegación visible"
-        description="Rutas editadas desde el CMS."
-        headers={["Grupo", "Etiqueta", "Ruta", "Externa"]}
-        rows={snapshot.webNavigation.flatMap((group) =>
-          group.items.map((item) => [group.title, item.label, item.href, item.external ? "Sí" : "No"])
-        )}
-      />
+          <AdminDataTable
+            title="SEO"
+            description="Metadatos por página."
+            headers={["Página", "Canonical", "Robots", "Actualizado"]}
+            rows={snapshot.seoMeta.map((meta) => [meta.pageSlug, meta.canonicalPath ?? "-", meta.robots, formatDate(meta.updatedAt)])}
+          />
+        </div>
+      </section>
 
       {error ? <p className="text-sm text-rose-700">{error}</p> : null}
       {loading ? <p className="text-sm text-black/55">Cargando configuración...</p> : null}

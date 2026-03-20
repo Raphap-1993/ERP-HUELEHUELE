@@ -261,16 +261,16 @@ export function StatusBadge({ tone, label }: { tone: "neutral" | "success" | "wa
 
 export function MetricCard({ metric }: { metric: AdminMetric }) {
   return (
-    <Card>
+    <Card className="rounded-[1.5rem] border-black/8 bg-white shadow-[0_12px_34px_rgba(18,34,20,0.05)]">
       <CardContent className="space-y-2">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm text-black/55">{metric.label}</p>
+            <p className="text-xs uppercase tracking-[0.22em] text-black/42">{metric.label}</p>
             <div className="text-3xl font-semibold text-[#132016]">{metric.value}</div>
           </div>
           {metric.trend ? <Badge tone="success">{metric.trend}</Badge> : null}
         </div>
-        <p className="text-sm text-black/60">{metric.detail}</p>
+        <p className="text-sm leading-6 text-black/56">{metric.detail}</p>
       </CardContent>
     </Card>
   );
@@ -288,14 +288,14 @@ export function AdminDataTable({
   rows: Array<Array<ReactNode>>;
 }) {
   return (
-    <Card>
+    <Card className="rounded-[1.6rem] border-black/8 bg-white shadow-[0_12px_34px_rgba(18,34,20,0.05)]">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         {description ? <CardDescription>{description}</CardDescription> : null}
       </CardHeader>
       <CardContent className="overflow-x-auto p-0">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-[#f7f8f4]">
             <TableRow>
               {headers.map((header) => (
                 <TableHead key={header}>{header}</TableHead>

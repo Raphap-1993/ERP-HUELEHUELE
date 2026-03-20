@@ -38,19 +38,19 @@ export function EditorialMedia({
   return (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-[2.55rem] border border-black/8 bg-[linear-gradient(145deg,#edf2e6_0%,#f9faf5_46%,#dde7d2_100%)] shadow-[0_28px_80px_rgba(20,32,22,0.1)]",
+        "group relative overflow-hidden rounded-[2rem] border border-[#d7ddd3] bg-[#eef3ea] shadow-[0_18px_54px_rgba(20,32,22,0.08)]",
         className
       )}
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(19,32,22,0.08),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(196,155,93,0.22),transparent_28%)]" />
-      <div className="absolute inset-[1px] rounded-[2.45rem] border border-white/35" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(19,32,22,0.06),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(186,171,140,0.18),transparent_30%)]" />
+      <div className="absolute inset-[1px] rounded-[1.92rem] border border-white/55" />
       <Image
         fill
         priority={priority}
         sizes="(min-width: 1280px) 42vw, (min-width: 768px) 50vw, 100vw"
         src={src}
         alt={alt}
-        className={cn("object-cover transition-transform duration-500 group-hover:scale-[1.025]", imageClassName)}
+        className={cn("object-cover transition-transform duration-500 group-hover:scale-[1.015]", imageClassName)}
       />
       {overlay ? <div className="absolute inset-0">{overlay}</div> : null}
     </div>
@@ -66,10 +66,10 @@ export function EditorialProductGrid({ products }: { products: CatalogProduct[] 
         return (
           <Card
             key={product.id}
-            className="overflow-hidden rounded-[2.2rem] border-black/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(248,249,244,0.96)_100%)] shadow-[0_24px_70px_rgba(22,34,20,0.07)]"
+            className="overflow-hidden rounded-[1.9rem] border-[#d7ddd3] bg-white shadow-[0_14px_40px_rgba(22,34,20,0.06)]"
           >
             <div className={cn("relative aspect-[4/4.4] overflow-hidden bg-gradient-to-br p-4", toneFrame(product.tone))}>
-              <div className="absolute inset-4 rounded-[1.75rem] border border-white/35" />
+              <div className="absolute inset-4 rounded-[1.5rem] border border-white/40" />
               <Image fill src={art} alt={product.name} sizes="(min-width: 1280px) 28vw, (min-width: 768px) 42vw, 100vw" className="object-cover" />
               <div className="absolute left-4 top-4">
                 <Badge
@@ -109,10 +109,9 @@ export function EditorialProductGrid({ products }: { products: CatalogProduct[] 
                   </Badge>
                 ))}
               </div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-xs uppercase tracking-[0.18em] text-black/38">{product.sku}</span>
+              <div className="flex items-center justify-end gap-3">
                 <Button href={`/checkout?producto=${product.slug}`} size="sm">
-                  Comprar
+                  Comprar ahora
                 </Button>
               </div>
             </CardContent>

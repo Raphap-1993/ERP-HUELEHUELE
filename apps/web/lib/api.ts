@@ -100,8 +100,10 @@ export async function fetchCmsSnapshot() {
   });
 }
 
-export async function fetchLoyaltySummary() {
-  return requestJson<LoyaltySummaryEnvelope>("/store/me/loyalty");
+export async function fetchLoyaltySummary(token?: string) {
+  return requestJson<LoyaltySummaryEnvelope>("/store/me/loyalty", {
+    headers: getSessionHeaders(token)
+  });
 }
 
 export async function submitVendorApplication(body: VendorApplicationInput) {
