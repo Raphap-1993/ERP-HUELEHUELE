@@ -3,17 +3,18 @@
 @tailwind utilities;
 
 :root {
-  --background: 42 37% 97%;
-  --foreground: 150 18% 12%;
+  --background: 38 31% 96%;
+  --foreground: 153 15% 12%;
   --card: 0 0% 100%;
-  --card-foreground: 150 18% 12%;
-  --muted: 42 22% 94%;
-  --muted-foreground: 150 9% 37%;
-  --primary: 148 34% 11%;
+  --card-foreground: 153 15% 12%;
+  --muted: 39 24% 93%;
+  --muted-foreground: 153 8% 36%;
+  --primary: 153 24% 11%;
   --primary-foreground: 0 0% 100%;
-  --accent: 44 78% 68%;
-  --accent-foreground: 150 18% 12%;
-  --border: 42 15% 86%;
+  --accent: 35 48% 66%;
+  --accent-foreground: 153 15% 12%;
+  --border: 38 15% 85%;
+  color-scheme: light;
 }
 
 html,
@@ -30,10 +31,13 @@ body {
   margin: 0;
   color: hsl(var(--foreground));
   background:
-    radial-gradient(circle at top, rgba(211, 221, 196, 0.42), transparent 28%),
-    radial-gradient(circle at bottom left, rgba(214, 204, 183, 0.18), transparent 30%),
-    linear-gradient(180deg, #fbfaf6 0%, #f4f4ee 48%, #f8f7f3 100%);
-  font-family: "Avenir Next", "Satoshi", "Helvetica Neue", sans-serif;
+    radial-gradient(circle at top left, rgba(195, 166, 120, 0.17), transparent 28%),
+    radial-gradient(circle at 82% 10%, rgba(197, 212, 187, 0.24), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(214, 201, 180, 0.18), transparent 30%),
+    linear-gradient(180deg, #fbf7f1 0%, #f5efe7 46%, #f8f4ef 100%);
+  font-family: var(--font-sans), "Avenir Next", "Satoshi", "Helvetica Neue", sans-serif;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
@@ -41,8 +45,17 @@ body {
 h1,
 h2,
 h3 {
-  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  font-family: var(--font-serif), "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
   font-weight: 600;
+  letter-spacing: -0.04em;
+}
+
+h4,
+h5,
+h6 {
+  font-family: var(--font-sans), "Avenir Next", "Satoshi", "Helvetica Neue", sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 * {
@@ -57,6 +70,17 @@ h3 {
 
 ::selection {
   background: rgba(19, 32, 22, 0.16);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+img {
+  display: block;
 }
 
 a {

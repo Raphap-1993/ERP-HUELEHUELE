@@ -17,18 +17,18 @@ export const storefrontV2PremiumTokens = {
   },
   className: {
     canvas:
-      "bg-[linear-gradient(180deg,#f8f3e8_0%,#eef3ea_38%,#f7f2e7_100%)] before:pointer-events-none before:fixed before:inset-0 before:bg-[radial-gradient(circle_at_top_left,rgba(199,160,102,0.14),transparent_26%),radial-gradient(circle_at_top_right,rgba(142,161,123,0.18),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(22,33,23,0.06),transparent_30%)]",
+      "bg-[linear-gradient(180deg,#f7f1e7_0%,#f2ede3_42%,#f7f3eb_100%)] before:pointer-events-none before:fixed before:inset-0 before:bg-[radial-gradient(circle_at_top_left,rgba(199,160,102,0.1),transparent_28%),radial-gradient(circle_at_top_right,rgba(142,161,123,0.12),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(22,33,23,0.05),transparent_30%)]",
     panel:
-      "rounded-[2rem] border border-[#162117]/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(249,244,236,0.94)_100%)] p-6 shadow-[0_30px_85px_rgba(22,33,23,0.08)] backdrop-blur md:p-8",
+      "rounded-[2rem] border border-[#162117]/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(249,245,237,0.96)_100%)] p-6 shadow-[0_18px_55px_rgba(22,33,23,0.05)] backdrop-blur md:p-8",
     panelMuted:
-      "rounded-[2rem] border border-[#162117]/8 bg-[linear-gradient(180deg,rgba(239,244,236,0.96)_0%,rgba(251,246,238,0.94)_100%)] p-6 shadow-[0_24px_70px_rgba(22,33,23,0.07)] md:p-8",
+      "rounded-[2rem] border border-[#162117]/8 bg-[linear-gradient(180deg,rgba(242,239,231,0.96)_0%,rgba(251,247,240,0.96)_100%)] p-6 shadow-[0_18px_50px_rgba(22,33,23,0.05)] md:p-8",
     panelDark:
-      "rounded-[2rem] border border-white/10 bg-[linear-gradient(140deg,#162117_0%,#2d3b2d_52%,#647254_100%)] p-6 text-white shadow-[0_36px_95px_rgba(22,33,23,0.26)] md:p-8",
+      "rounded-[2rem] border border-white/10 bg-[linear-gradient(140deg,#121613_0%,#242b22_48%,#374234_100%)] p-6 text-white shadow-[0_26px_70px_rgba(22,33,23,0.2)] md:p-8",
     media:
-      "group relative overflow-hidden rounded-[2.4rem] border border-[#162117]/8 bg-[linear-gradient(145deg,#edf2ea_0%,#f8f2e7_58%,#dce5d5_100%)] shadow-[0_38px_110px_rgba(22,33,23,0.12)]",
-    eyebrow: "text-[11px] uppercase tracking-[0.32em] text-[#5f675d]",
+      "group relative overflow-hidden rounded-[2.4rem] border border-[#162117]/8 bg-[linear-gradient(145deg,#f0f2eb_0%,#f7f1e6_58%,#dce2d6_100%)] shadow-[0_24px_70px_rgba(22,33,23,0.08)]",
+    eyebrow: "text-[11px] uppercase tracking-[0.32em] text-[#667064]",
     title: "text-3xl font-semibold tracking-[-0.045em] text-[#162117] md:text-[3.1rem]",
-    description: "max-w-2xl text-base leading-7 text-black/62",
+    description: "max-w-2xl text-base leading-7 text-black/60",
     pill:
       "inline-flex items-center rounded-full border border-[#162117]/10 bg-white/82 px-4 py-2 text-[11px] uppercase tracking-[0.26em] text-[#162117]/58 backdrop-blur"
   }

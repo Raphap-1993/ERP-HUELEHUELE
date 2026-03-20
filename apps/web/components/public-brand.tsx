@@ -38,12 +38,12 @@ export function EditorialMedia({
   return (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-[2.1rem] border border-[#d9dfd4] bg-[#eef2ea] shadow-[0_18px_54px_rgba(20,32,22,0.06)]",
+        "group relative overflow-hidden rounded-[2rem] border border-black/6 bg-[#efeae1] shadow-[0_16px_42px_rgba(20,32,22,0.05)]",
         className
       )}
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(19,32,22,0.05),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(198,184,157,0.16),transparent_30%)]" />
-      <div className="absolute inset-[1px] rounded-[2rem] border border-white/55" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(19,32,22,0.05),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(198,184,157,0.14),transparent_30%)]" />
+      <div className="absolute inset-[1px] rounded-[1.95rem] border border-white/55" />
       <Image
         fill
         priority={priority}
@@ -59,22 +59,22 @@ export function EditorialMedia({
 
 export function EditorialProductGrid({ products }: { products: CatalogProduct[] }) {
   return (
-    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
       {products.map((product) => {
         const art = productArtBySlug[product.slug] ?? brandArt.hero;
 
         return (
           <Card
             key={product.id}
-            className="overflow-hidden rounded-[2rem] border-[#d9dfd4] bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(247,248,243,0.96)_100%)] shadow-[0_14px_40px_rgba(22,34,20,0.05)]"
+            className="overflow-hidden rounded-[1.9rem] border-black/6 bg-[linear-gradient(180deg,rgba(255,252,247,0.98)_0%,rgba(247,241,233,0.94)_100%)] shadow-[0_12px_36px_rgba(22,34,20,0.04)]"
           >
-            <div className={cn("relative aspect-[4/4.4] overflow-hidden bg-gradient-to-br p-4", toneFrame(product.tone))}>
-              <div className="absolute inset-4 rounded-[1.6rem] border border-white/40" />
+            <div className={cn("relative aspect-[4/4.4] overflow-hidden bg-gradient-to-br p-3.5", toneFrame(product.tone))}>
+              <div className="absolute inset-3.5 rounded-[1.45rem] border border-white/40" />
               <Image fill src={art} alt={product.name} sizes="(min-width: 1280px) 28vw, (min-width: 768px) 42vw, 100vw" className="object-cover" />
               <div className="absolute left-4 top-4">
                 <Badge
                   className={cn(
-                    "backdrop-blur",
+                    "rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.18em] backdrop-blur",
                     product.tone === "amber"
                       ? "bg-white/72 text-[#7b4f1e]"
                       : product.tone === "graphite"
@@ -86,25 +86,25 @@ export function EditorialProductGrid({ products }: { products: CatalogProduct[] 
                 </Badge>
               </div>
             </div>
-            <CardContent className="space-y-5">
+            <CardContent className="space-y-4">
               <div className="space-y-2">
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-1">
-                    <CardTitle className="text-[1.45rem]">{product.name}</CardTitle>
-                    <CardDescription className="text-sm leading-6 text-black/55">{product.tagline}</CardDescription>
+                    <CardTitle className="font-serif text-[1.5rem] tracking-[-0.04em]">{product.name}</CardTitle>
+                    <CardDescription className="text-sm leading-6 text-black/56">{product.tagline}</CardDescription>
                   </div>
                   <div className="text-right text-[#132016]">
-                    <div className="text-[1.9rem] font-semibold tracking-tight">${product.price}</div>
+                    <div className="text-[1.8rem] font-semibold tracking-[-0.04em]">${product.price}</div>
                     {product.compareAtPrice ? (
                       <div className="text-sm text-black/35 line-through">${product.compareAtPrice}</div>
                     ) : null}
                   </div>
                 </div>
-                <p className="text-sm leading-6 text-black/62">{product.description}</p>
+                <p className="text-sm leading-6 text-black/60">{product.description}</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 {product.benefits.map((benefit) => (
-                  <Badge key={benefit} tone="neutral" className="bg-[#edf2e8] text-[#213523]">
+                  <Badge key={benefit} tone="neutral" className="rounded-full bg-[#edf2e8] px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-[#213523]">
                     {benefit}
                   </Badge>
                 ))}

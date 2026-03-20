@@ -94,12 +94,12 @@ export interface StorefrontV2PremiumContent {
 
 export const storefrontV2PremiumContent: StorefrontV2PremiumContent = {
   hero: {
-    eyebrow: "Inhaladores herbales premium",
-    title: "Frescura herbal que viaja contigo, del tráfico a la altura.",
+    eyebrow: "Edición premium",
+    title: "Tres formatos, una lectura clara y una compra sin ruido.",
     description:
-      "Huelegood reúne tres formatos clave para quienes quieren una sensación fresca, portátil y sobria en oficina, carretera, viajes y días de altura.",
+      "Clásico Verde abre la puerta, Premium Negro afina la presencia y Combo Dúo Perfecto resuelve una compra doble con más valor.",
     primaryCta: {
-      label: "Explorar colección",
+      label: "Ver la selección",
       href: "/catalogo"
     },
     secondaryCta: {
@@ -110,30 +110,30 @@ export const storefrontV2PremiumContent: StorefrontV2PremiumContent = {
       {
         label: "Selección",
         value: "3 esenciales",
-        detail: "Clásico Verde, Premium Negro y Combo Dúo Perfecto concentran la lectura principal del home."
+        detail: "La home se concentra en las tres referencias que mejor explican la marca."
       },
       {
-        label: "Portabilidad",
-        value: "Siempre a mano",
-        detail: "Cabe fácil en bolso, mochila, carro o escritorio sin sumar volumen innecesario."
+        label: "Formato",
+        value: "Portátil",
+        detail: "Cabe fácil en bolso, mochila, carro o escritorio sin sumar peso visual."
       },
       {
-        label: "Momentos clave",
-        value: "Viaje + altura",
-        detail: "La narrativa prioriza trayectos, movilidad y frescura cuando pasas muchas horas fuera."
+        label: "Escena",
+        value: "Trabajo y viaje",
+        detail: "La narrativa prioriza movimiento, pausa breve y días con muchas horas fuera."
       }
     ],
     productChips: ["Clásico Verde", "Premium Negro", "Combo Dúo Perfecto"],
     notes: [
       {
-        label: "Selección curada",
-        title: "Tres formatos claros para comprar sin saturarte.",
-        description: "La home concentra los favoritos y deja el resto de la navegación como apoyo, no como distracción."
+        label: "Selección clara",
+        title: "Tres formatos editados para decidir rápido.",
+        description: "La home deja respirar el producto y reduce el ruido a lo esencial."
       },
       {
-        label: "Viajes y altura",
-        title: "Ligero, discreto y fácil de llevar cuando tu día se mueve.",
-        description: "Desde cabina hasta carretera, el formato acompaña trayectos largos sin perder una presencia limpia.",
+        label: "Uso diario",
+        title: "Ligero, discreto y fácil de llevar durante el día.",
+        description: "En bolso, carro o escritorio mantiene una presencia limpia y resuelve bien la pausa breve.",
         tone: "dark"
       }
     ]
@@ -142,17 +142,17 @@ export const storefrontV2PremiumContent: StorefrontV2PremiumContent = {
   productHighlights: [
     {
       slug: "clasico-verde",
-      eyebrow: "Favorito diario",
-      story: "La referencia más directa para quienes quieren frescura herbal de uso diario con salida rápida a compra."
+      eyebrow: "Entrada limpia",
+      story: "La referencia más directa para quienes quieren una compra clara y una sensación fresca para el día a día."
     },
     {
       slug: "premium-negro",
-      eyebrow: "Acabado sobrio",
-      story: "Un look más limpio y premium para bolso, oficina o trayectos largos donde prefieres discreción."
+      eyebrow: "Presencia sobria",
+      story: "Un acabado más limpio y premium para bolso, oficina o trayectos largos donde prefieres discreción."
     },
     {
       slug: "combo-duo-perfecto",
-      eyebrow: "Más valor",
+      eyebrow: "Compra doble",
       story: "Dos unidades para dejar una contigo y otra lista en carro, escritorio o equipaje."
     }
   ],
@@ -202,35 +202,35 @@ export const storefrontV2PremiumContent: StorefrontV2PremiumContent = {
   brandMetrics: [
     {
       label: "Selección principal",
-      value: "3 SKUs",
-      detail: "La home premium enfoca la decisión en los formatos que mejor explican la marca."
+      value: "3 formatos",
+      detail: "La home enfoca la decisión en las referencias que mejor explican la marca."
     },
     {
       label: "Escenas de uso",
-      value: "Tráfico + oficina + viaje",
-      detail: "Los momentos reales de uso le dan contexto comercial al producto sin sobreexplicarlo."
+      value: "Movimiento",
+      detail: "Los momentos reales de uso le dan contexto al producto sin sobreexplicarlo."
     },
     {
       label: "Lenguaje",
-      value: "Premium y portable",
-      detail: "La composición prioriza frescura, portabilidad y una sensación de compra limpia."
+      value: "Sobrio y portable",
+      detail: "La composición prioriza claridad, portabilidad y una sensación de compra limpia."
     }
   ],
   brandStoryCards: [
     {
       label: "Edición",
       title: "La home vende mejor cuando respira y no compite consigo misma.",
-      description: "Primero aparece la atmósfera, luego la selección curada y al final las rutas para comprar o escalar volumen."
+      description: "Primero aparece la atmósfera, luego la selección curada y al final la salida de compra."
     },
     {
       label: "Objeto",
-      title: "Cada inhalador se presenta como parte de una rutina móvil y sobria.",
+      title: "Cada formato se presenta como parte de una rutina móvil y sobria.",
       description: "Eso eleva la percepción del producto y lo vuelve más claro para quien compra por primera vez."
     },
     {
       label: "Compra",
       title: "La decisión de compra se vuelve más directa cuando el contexto está bien elegido.",
-      description: "Viaje, altura y uso diario hacen visible el valor del formato sin necesidad de sobreprometer."
+      description: "Uso diario, oficina y viaje hacen visible el valor del formato sin necesidad de sobreprometer."
     }
   ],
   whyChooseReasons: [
@@ -313,32 +313,32 @@ export const storefrontV2PremiumContent: StorefrontV2PremiumContent = {
     }
   ],
   faqCallout: {
-    label: "Antes de comprar",
-    title: "Las dudas clave suelen ser formato, portabilidad y cuál elegir primero.",
+    label: "Contacto",
+    title: "Si necesitas ayuda para elegir, te respondemos con una recomendación simple.",
     description:
-      "Este bloque responde lo que sí mueve la decisión: qué es, cómo encaja en tu rutina y cuál formato te conviene más.",
+      "Clásico Verde, Premium Negro y Combo Dúo Perfecto cubren las dudas más comunes: cuál elegir, cómo se usa y qué formato encaja mejor contigo.",
     points: [
-      "Qué es y en qué momentos suele acompañarte mejor.",
-      "Cuál referencia conviene para uso diario, look premium o compra doble.",
-      "Cómo conviven compra directa, mayoristas y representación comercial."
+      "Te orientamos por correo o WhatsApp.",
+      "Te ayudamos a elegir entre Verde, Negro y Dúo.",
+      "La compra directa sigue visible y sin rodeos."
     ]
   },
   ctaBanner: {
-    eyebrow: "Compra con claridad",
-    title: "Elige entre Clásico Verde, Premium Negro y Combo Dúo Perfecto.",
+    eyebrow: "Cierre editorial",
+    title: "Elige el formato que mejor encaja con tu ritmo.",
     description:
-      "Compra directo si ya sabes qué formato va contigo. Si buscas volumen o representación, la ruta comercial sigue visible y separada.",
+      "Compra directo si ya sabes cuál va contigo. Si quieres revisar las tres referencias, vuelve al catálogo y compara sin prisa.",
     primaryCta: {
-      label: "Comprar ahora",
-      href: "/catalogo"
+      label: "Clásico Verde",
+      href: "/checkout?producto=clasico-verde"
     },
     secondaryCta: {
-      label: "Canal mayorista",
-      href: "/mayoristas"
+      label: "Premium Negro",
+      href: "/checkout?producto=premium-negro"
     },
     tertiaryCta: {
-      label: "Quiero vender Huelegood",
-      href: "/trabaja-con-nosotros"
+      label: "Combo Dúo Perfecto",
+      href: "/checkout?producto=combo-duo-perfecto"
     }
   }
 };
