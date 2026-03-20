@@ -146,6 +146,7 @@ export interface SiteSetting {
   tagline: string;
   supportEmail: string;
   whatsapp: string;
+  headerLogoUrl?: string;
 }
 
 export type AuditSeverity = "info" | "warning" | "error" | "critical";

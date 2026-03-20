@@ -40,6 +40,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const links = navigation.flatMap((group) => group.items);
   const supportEmail = isPlaceholderValue(settings.supportEmail) ? "hola@huelegood.com" : settings.supportEmail;
   const whatsapp = isPlaceholderValue(settings.whatsapp) ? "Canal comercial por WhatsApp" : settings.whatsapp;
+  const headerLogoUrl = isPlaceholderValue(settings.headerLogoUrl) ? undefined : settings.headerLogoUrl;
 
   return (
     <html lang="es">
@@ -50,8 +51,15 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             <div className="relative flex flex-col gap-4">
               <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
                 <div className="space-y-2">
-                  <Link href="/" className="block text-xs uppercase tracking-[0.38em] text-black/42">
-                    {settings.brandName}
+                  <Link href="/" className="inline-flex min-h-10 items-center">
+                    {headerLogoUrl ? (
+                      <>
+                        <img src={headerLogoUrl} alt={settings.brandName} className="h-10 w-auto max-w-[180px] object-contain" />
+                        <span className="sr-only">{settings.brandName}</span>
+                      </>
+                    ) : (
+                      <span className="block text-xs uppercase tracking-[0.38em] text-black/42">{settings.brandName}</span>
+                    )}
                   </Link>
                   <PublicBrandStrip />
                 </div>

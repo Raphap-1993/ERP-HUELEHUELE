@@ -45,7 +45,8 @@ export const siteSetting: SiteSetting = {
   brandName: "Huelegood",
   tagline: "Frescura herbal portátil para acompañarte en tráfico, viajes, oficina y altura.",
   supportEmail: "hola@huelegood.com",
-  whatsapp: "+52 000 000 0000"
+  whatsapp: "+52 000 000 0000",
+  headerLogoUrl: undefined
 };
 
 export const heroCopy: HeroCopy = {

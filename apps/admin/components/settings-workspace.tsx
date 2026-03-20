@@ -80,7 +80,8 @@ function normalizeSiteSetting(value: SiteSetting): CmsSiteSettingsInput {
     brandName: value.brandName,
     tagline: value.tagline,
     supportEmail: value.supportEmail,
-    whatsapp: value.whatsapp
+    whatsapp: value.whatsapp,
+    headerLogoUrl: value.headerLogoUrl
   };
 }
 
@@ -156,9 +157,9 @@ export function SettingsWorkspace() {
         detail: "Blueprints publicables."
       },
       {
-        label: "Publicado",
-        value: String(snapshot.pages.filter((page) => page.status === "published").length),
-        detail: "Páginas visibles al usuario."
+        label: "Logo menú",
+        value: snapshot.siteSetting.headerLogoUrl ? "Activo" : "Texto",
+        detail: snapshot.siteSetting.headerLogoUrl ? "La cabecera pública usa imagen." : "La cabecera pública usa texto."
       }
     ],
     [snapshot]
@@ -250,11 +251,35 @@ export function SettingsWorkspace() {
               </label>
               <Textarea id="site-tagline" value={siteForm.tagline} onChange={(event) => setSiteForm({ ...siteForm, tagline: event.target.value })} />
             </div>
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-sm font-medium text-[#132016]" htmlFor="site-logo">
+                Logo del menú
+              </label>
+              <Input
+                id="site-logo"
+                placeholder="https://... o /brand/logo.svg"
+                value={siteForm.headerLogoUrl ?? ""}
+                onChange={(event) => setSiteForm({ ...siteForm, headerLogoUrl: event.target.value || undefined })}
+              />
+              <p className="text-xs leading-5 text-black/55">
+                Si defines una imagen, la cabecera pública reemplaza el texto de marca. Si lo dejas vacío, vuelve al nombre en texto.
+              </p>
+            </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-[#132016]" htmlFor="site-whatsapp">
                 WhatsApp
               </label>
               <Input id="site-whatsapp" value={siteForm.whatsapp} onChange={(event) => setSiteForm({ ...siteForm, whatsapp: event.target.value })} />
+            </div>
+            <div className="rounded-3xl border border-black/10 bg-black/[0.02] p-4 md:col-span-2">
+              <p className="text-xs uppercase tracking-[0.22em] text-black/45">Preview cabecera</p>
+              <div className="mt-3 flex min-h-14 items-center rounded-[1.25rem] border border-black/8 bg-white px-4">
+                {siteForm.headerLogoUrl ? (
+                  <img src={siteForm.headerLogoUrl} alt={siteForm.brandName} className="h-10 w-auto max-w-[180px] object-contain" />
+                ) : (
+                  <span className="text-xs uppercase tracking-[0.38em] text-black/42">{siteForm.brandName}</span>
+                )}
+              </div>
             </div>
             <div className="md:col-span-2">
               <Button onClick={handleSaveSiteSettings} disabled={actionLoading}>

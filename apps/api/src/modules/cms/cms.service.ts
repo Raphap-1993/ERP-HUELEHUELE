@@ -49,6 +49,19 @@ function normalizeText(value?: string) {
   return normalized ? normalized : undefined;
 }
 
+function normalizeOptionalAssetUrl(value?: string) {
+  const normalized = value?.trim();
+  if (!normalized) {
+    return undefined;
+  }
+
+  if (normalized.startsWith("/") || /^https?:\/\//i.test(normalized)) {
+    return normalized;
+  }
+
+  throw new BadRequestException("El logo del menú debe ser una ruta local o una URL pública válida.");
+}
+
 function normalizeSlug(value: string) {
   return value
     .trim()
@@ -273,6 +286,7 @@ export class CmsService implements OnModuleInit {
     const tagline = normalizeText(body.tagline);
     const supportEmail = normalizeText(body.supportEmail);
     const whatsapp = normalizeText(body.whatsapp);
+    const headerLogoUrl = normalizeOptionalAssetUrl(body.headerLogoUrl);
 
     if (!brandName || !tagline || !supportEmail || !whatsapp) {
       throw new BadRequestException("Marca, tagline, soporte y WhatsApp son obligatorios.");
@@ -282,12 +296,14 @@ export class CmsService implements OnModuleInit {
       brandName,
       tagline,
       supportEmail,
-      whatsapp
+      whatsapp,
+      headerLogoUrl
     };
 
     this.recordAdminAction("cms.site_settings.updated", "site_setting", "global", "La configuración base del storefront quedó actualizada.", {
       brandName: this.siteSettingData.brandName,
-      supportEmail: this.siteSettingData.supportEmail
+      supportEmail: this.siteSettingData.supportEmail,
+      hasHeaderLogo: Boolean(this.siteSettingData.headerLogoUrl)
     });
     void this.persistState();
 
