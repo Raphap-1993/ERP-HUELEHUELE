@@ -6,7 +6,8 @@ const config: Config = {
     "./components/**/*.{ts,tsx}",
     "./features/**/*.{ts,tsx}",
     "../../packages/ui/src/**/*.{ts,tsx}",
-    "../../packages/shared/src/**/*.{ts,tsx}"
+    "../../packages/shared/src/**/*.{ts,tsx}",
+    "../../node_modules/preline/dist/*.js"
   ],
   theme: {
     extend: {
