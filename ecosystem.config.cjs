@@ -1,5 +1,5 @@
 const webPort = Number(process.env.WEB_PORT || 3000);
-const adminPort = Number(process.env.ADMIN_PORT || 3001);
+const adminPort = Number(process.env.ADMIN_PORT || 3005);
 const apiPort = Number(process.env.API_PORT || 4000);
 const workerConcurrency = Number(process.env.WORKER_CONCURRENCY || 5);
 const appRelease = process.env.APP_RELEASE_SHA || "dev";
