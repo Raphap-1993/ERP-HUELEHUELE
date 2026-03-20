@@ -7,8 +7,11 @@ Estandarizar cómo se construyen y extienden componentes en Huelegood usando `sh
 ## Regla base
 
 - `shadcn/ui` es la base de componentes reutilizables
+- `Preline` complementa la capa visual del storefront público
 - `Tailwind CSS` es la capa de estilado
 - la personalización debe concentrarse en tokens y variantes internas
+
+En la web pública, `Preline` se incorpora como librería de apoyo para layouts editoriales, hero sections, bloques de productos destacados y banners, aprovechando una base de más de 300 componentes y ejemplos y su sistema de temas semánticos. `shadcn/ui` sigue siendo la base para primitivas, estados y comportamiento reusable.
 
 ## Principios de uso
 
@@ -26,6 +29,7 @@ Estandarizar cómo se construyen y extienden componentes en Huelegood usando `sh
 
 - colores, radios, sombras y spacing deben apoyarse en variables semánticas
 - no atar componentes de negocio a un color de campaña puntual
+- cuando se use `Preline`, sus tokens deben mapearse a los mismos valores que consume `shadcn/ui`
 
 ### Consistencia compartida
 
@@ -57,6 +61,25 @@ components/
 ```
 
 ## Guías por patrón
+
+### Hero y secciones editoriales con `Preline`
+
+- usar patrones de `Preline` para hero, productos en tendencia y banners promocionales
+- adaptar siempre el layout a la narrativa de Huelegood: inhaladores herbales, frescura, portabilidad, viajes y altura
+- no copiar estilos o contenido de plantilla sin aterrizarlo a los tokens y copy reales del proyecto
+
+Ejemplo conceptual de mapeo:
+
+```css
+:root {
+  --primary: #112017;
+  --background: #f6f1e8;
+  --foreground: #18231b;
+  --border: rgba(17, 32, 23, 0.12);
+}
+```
+
+Con ese mapeo, una sección `Preline` y un `Button`/`Card` de `shadcn/ui` siguen leyendo como parte del mismo sistema.
 
 ### Cards
 
@@ -117,6 +140,8 @@ components/
 - mayor aire visual
 - imágenes más protagonistas
 - CTA comercial dominante
+- uso permitido de `Preline` en hero, selección curada de producto y banners
+- foco del catálogo en `Clásico Verde`, `Premium Negro` y `Combo Dúo Perfecto`
 
 ### Admin
 
@@ -129,6 +154,7 @@ components/
 - centralizar tokens en la raíz del sistema
 - documentar cualquier excepción visual real
 - evitar estilos ad hoc por campaña si pueden resolverse vía contenido
+- si una sección nace desde `Preline`, registrar qué tokens semánticos consume y cómo se traduce a la paleta Huelegood
 
 ## Criterio de aceptación UI
 
@@ -139,3 +165,4 @@ Un componente nuevo está alineado con Huelegood si:
 - resuelve un caso de negocio claro
 - funciona en desktop y mobile cuando aplica
 - mantiene la estética limpia, premium y consistente definida para el proyecto
+- no introduce categorías de producto, copy ni señales visuales ajenas al catálogo real de inhaladores herbales

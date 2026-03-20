@@ -29,10 +29,10 @@ La marca necesita una infraestructura digital propia que permita:
 
 La experiencia Huelegood se articula alrededor de una promesa de uso concreta:
 
-- frescura
-- reset
-- portabilidad
-- apoyo para tráfico, viajes y altura
+- frescura herbal
+- reset rápido y discreto
+- portabilidad real
+- apoyo para trayectos, viajes y altura
 
 El discurso de producto debe mantenerse diferenciado frente a alternativas como vape y pomadas, reforzando conveniencia, practicidad y una identidad propia de marca.
 
@@ -50,7 +50,7 @@ La v1 ya expone señales que el rediseño debe preservar y formalizar:
 
 ### Cliente final
 
-Compra productos, consume contenido, aplica promociones, usa puntos y puede llegar por tráfico orgánico, campañas o referencia de un vendedor.
+Compra inhaladores herbales, consume contenido, aplica promociones, usa puntos y puede llegar por tráfico orgánico, campañas o referencia de un vendedor.
 
 ### Vendedor
 
@@ -84,7 +84,7 @@ Solicita información comercial, cotizaciones y condiciones por volumen.
 
 Al finalizar MVP, Huelegood debe estar listo para operar ventas reales con:
 
-- catálogo y contenido administrable
+- catálogo y contenido administrable centrado en `Clásico Verde`, `Premium Negro` y `Combo Dúo Perfecto`
 - checkout con Openpay
 - pago manual con revisión
 - códigos de vendedor y comisiones
@@ -92,3 +92,13 @@ Al finalizar MVP, Huelegood debe estar listo para operar ventas reales con:
 - campañas iniciales
 - puntos
 - backoffice funcional
+
+## Referencias activas del storefront
+
+Durante el MVP del storefront, la oferta visible al público se centra exclusivamente en:
+
+- `Clásico Verde`
+- `Premium Negro`
+- `Combo Dúo Perfecto`
+
+Esta selección corta favorece claridad comercial, seller-first y una lectura rápida del catálogo. Nuevas referencias podrán incorporarse después, pero no forman parte del núcleo documentado actual.

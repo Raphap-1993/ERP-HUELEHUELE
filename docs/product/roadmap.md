@@ -34,6 +34,7 @@ Al `20 de marzo de 2026`, la base funcional del proyecto ya existe en el reposit
 
 ### Pendiente inmediato
 
+- [ ] migración de la home actual a una composición basada en `Preline` adaptada a Huelegood
 - [ ] automatización de campañas más rica y menos manual
 - [ ] segmentación comercial más profunda
 - [ ] mejores reportes de pedidos, pagos, comisiones y conversión
@@ -68,6 +69,7 @@ Mejorar eficiencia operativa, visibilidad comercial y capacidad de crecimiento s
 - [x] seller panel ampliado
 - [x] dashboards operativos por rol
 - [x] reglas de comisión más flexibles
+- [ ] migración de home/storefront a base visual `Preline` con brief UI/UX actualizado
 - [ ] mayor automatización de campañas
 - [ ] segmentación más rica
 - [ ] reglas avanzadas de promociones
@@ -79,7 +81,15 @@ Mejorar eficiencia operativa, visibilidad comercial y capacidad de crecimiento s
 
 - Fase 2 ya fue abierta y tiene entregables funcionales reales en producción.
 - Lo ya construido cubre seller panel, dashboards por rol y reglas flexibles de comisión.
-- El frente pendiente ya no es "arrancar Fase 2", sino cerrar automatización comercial, reporting y una capa UX final de nivel premium productivo.
+- El frente pendiente ya no es "arrancar Fase 2", sino cerrar la migración visual del storefront, automatización comercial, reporting y una capa UX final de nivel premium productivo.
+
+### Criterios de aceptación para la migración storefront a `Preline`
+
+- navegación pública intacta hacia `/`, `/catalogo`, `/checkout`, `/mayoristas`, `/trabaja-con-nosotros` y `/cuenta`
+- hero, carrusel de productos en tendencia y banners promocionales adaptados sólo a `Clásico Verde`, `Premium Negro` y `Combo Dúo Perfecto`
+- rendimiento equivalente o mejor que la home previa, sin degradar el `Core Web Vitals` base
+- copy SEO alineado a palabras clave como `inhaladores herbales`, `frescura herbal`, `portabilidad`, `viajes` y `altura`
+- brief UI/UX actualizado y anexado al frente activo antes de cerrar implementación
 
 ## Fase 3. Escala controlada
 

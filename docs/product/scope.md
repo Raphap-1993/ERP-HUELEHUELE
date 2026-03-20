@@ -8,12 +8,20 @@ Huelegood cubre las capacidades necesarias para operar comercialmente la marca d
 
 ### Comercio
 
-- catálogo público
+- catálogo público centrado en inhaladores herbales
 - detalle de producto
 - carrito
 - checkout
 - promociones automáticas y cupones
 - pedidos y seguimiento básico
+
+#### Referencias activas del MVP storefront
+
+- `Clásico Verde`
+- `Premium Negro`
+- `Combo Dúo Perfecto`
+
+El storefront MVP se diseña y optimiza alrededor de estas tres referencias y de la experiencia `seller-first`. Nuevas referencias podrán agregarse más adelante, pero no forman parte del alcance comercial documentado hoy.
 
 ### Pagos
 
@@ -78,6 +86,7 @@ Huelegood cubre las capacidades necesarias para operar comercialmente la marca d
 - automatización avanzada de CRM enterprise
 - app móvil nativa
 - CMS headless externo como núcleo
+- nuevas categorías de catálogo como jabones, perfumes, velas o productos de hogar
 
 ## Decisiones funcionales explícitas
 
@@ -89,6 +98,13 @@ Huelegood favorece adquisición por vendedores, pero:
 - el inventario no pertenece al vendedor
 - el checkout lo opera Huelegood
 - la comisión nace de la atribución, no de una subtienda individual
+
+La narrativa pública del storefront debe mantener el foco en:
+
+- frescura herbal
+- portabilidad
+- uso en trayectos, viajes y altura
+- diferenciación frente a vape y pomadas
 
 ### Pagos mixtos
 
@@ -135,3 +151,4 @@ El MVP se considera completo cuando:
 - un lead mayorista puede capturarse y cotizarse
 - un cliente puede acumular y consumir puntos bajo reglas básicas
 - operación puede administrar contenido, promociones y pedidos desde admin
+- el storefront comunica con claridad las tres referencias activas sin introducir categorías ajenas al catálogo real

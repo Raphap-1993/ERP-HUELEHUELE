@@ -48,6 +48,31 @@ Además, el proyecto ya avanzó más allá del backlog MVP original en estos fre
 - primer rediseño funcional del storefront y del backoffice
 - login productivo separado del shell admin y previews públicas retiradas
 
+## Frente activo de Fase 2
+
+### F2-001 Migración de home/storefront a base `Preline`
+
+Resultado esperado:
+
+- migrar la home actual a una composición inspirada en la plantilla `Coffee Shop` de `Preline`
+- adaptar hero, carrusel de productos en tendencia y banners promocionales a la oferta real de inhaladores
+- mantener compatibilidad con `shadcn/ui`, `Tailwind` y los tokens de Huelegood
+- generar un brief UI/UX actualizado antes de cerrar la implementación
+
+Alcance funcional:
+
+- hero con mensaje de `frescura herbal en tu bolsillo`
+- selección curada de `Clásico Verde`, `Premium Negro` y `Combo Dúo Perfecto`
+- banners promocionales orientados a campañas reales de Huelegood
+- narrativa de uso en trayectos, viajes y altura
+
+Criterios de aceptación:
+
+- navegación intacta en todas las rutas públicas activas
+- copy SEO optimizado con `inhaladores herbales` y `frescura`
+- rendimiento estable y sin degradación visible
+- ningún bloque menciona categorías fuera del catálogo real
+
 ## Prioridad crítica
 
 | ID | Ítem | Resultado esperado |

@@ -7,8 +7,11 @@ Definir la capa visual de Huelegood para que web y admin compartan un lenguaje c
 ## Base tecnológica
 
 - `shadcn/ui` como base de componentes reutilizables
+- `Preline` como complemento para secciones editoriales del storefront
 - `Tailwind CSS` como capa de estilado
 - tokens de diseño expuestos mediante variables CSS semánticas
+
+`Preline` no sustituye `shadcn/ui`. Se incorpora para acelerar hero, bloques de productos en tendencia y banners promocionales en la web pública, aprovechando una librería con más de 300 componentes y ejemplos reutilizables, sus temas y su enfoque por tokens semánticos.
 
 ## Dirección visual
 
@@ -42,6 +45,7 @@ La estética no debe caer en un ecommerce genérico. La interfaz debe transmitir
 
 - mismos tokens, spacing y semántica visual entre web y admin
 - diferencias de layout por contexto, no por improvisación de estilos
+- cuando una sección use patrones de `Preline`, debe seguir leyendo como Huelegood y no como una plantilla externa
 
 ### Escalabilidad
 
@@ -62,6 +66,38 @@ La aplicación debe quedar preparada para tematización limpia:
 - colores definidos por tokens semánticos: `background`, `foreground`, `primary`, `muted`, `border`, `success`, `warning`, `danger`
 - no hardcodear colores en componentes de negocio
 - componentes críticos deben consumir tokens y no clases arbitrarias repetidas
+
+### Tokens base de Huelegood
+
+La integración con `Preline Themes` debe mapear sus variables semánticas a la paleta de Huelegood:
+
+| Token | Rol | Valor de referencia Huelegood |
+| --- | --- | --- |
+| `--primary` | CTA y acento principal | verde herbal profundo |
+| `--primary-hover` | hover de CTA | verde bosque más denso |
+| `--background` | fondo general | marfil cálido con lectura limpia |
+| `--foreground` | texto principal | verde negro casi carbón |
+| `--muted` | fondos suaves | salvia muy clara |
+| `--border` | líneas y divisores | oliva desaturado de baja intensidad |
+| `--card` | superficies editoriales | blanco cálido con leve tinte crema |
+| `--ring` | foco accesible | verde fresco de alto contraste |
+
+Ejemplo conceptual:
+
+```css
+:root {
+  --primary: #112017;
+  --primary-hover: #1b2d21;
+  --background: #f6f1e8;
+  --foreground: #18231b;
+  --muted: #e7eee2;
+  --border: rgba(17, 32, 23, 0.12);
+  --card: rgba(255, 255, 255, 0.92);
+  --ring: #87a96b;
+}
+```
+
+Este mapeo permite que `Preline`, `shadcn/ui` y `Tailwind` trabajen sobre el mismo lenguaje visual.
 
 ## Tipografía
 
@@ -101,6 +137,7 @@ Usar escala basada en múltiplos de 4 con énfasis en ritmos de 8 para layout.
 - diseño mobile-first
 - hero y bloques editoriales con composición amplia
 - grillas de producto claras y respiradas
+- secciones tipo `hero`, `trending products` y `promo banners` pueden apoyarse en patrones de `Preline`, siempre aterrizados a tokens Huelegood
 
 ### Admin
 
@@ -185,6 +222,21 @@ La capa visual debe contemplar al menos:
 - `FAQAccordion`
 - `HeroSection`
 - `WholesalePlanCard`
+
+## Uso esperado de `Preline`
+
+Dentro de la web pública, `Preline` se usará principalmente para:
+
+- `HeroSection` con composición editorial basada en la plantilla `Coffee Shop`
+- secciones de productos en tendencia o selección curada
+- banners promocionales y bloques de CTA
+
+No debe convertirse en una segunda fuente de diseño aislada. La coherencia se conserva a través de:
+
+- tokens semánticos compartidos
+- tipografía única del proyecto
+- radios, sombras y spacing alineados con Huelegood
+- copy centrado en inhaladores herbales y no en categorías ajenas al catálogo real
 
 ## Regla de diseño operativo
 
