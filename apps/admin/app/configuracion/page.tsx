@@ -6,7 +6,7 @@ export default function SettingsPage() {
   return (
     <AdminAuthGate
       title="Configuración"
-      description="Parámetros base del storefront, branding y operación central."
+      description="Parámetros base del storefront, branding y operación."
       allowedRoles={adminAccessRoles.configuration}
     >
       <SettingsWorkspace />

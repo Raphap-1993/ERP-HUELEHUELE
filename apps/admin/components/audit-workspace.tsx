@@ -139,7 +139,7 @@ export function AuditWorkspace() {
       {
         label: "Admin actions",
         value: String(overview.totalActions),
-        detail: "Cambios operativos del backoffice."
+        detail: "Cambios operativos del panel."
       },
       {
         label: "Bloqueos",
@@ -294,7 +294,7 @@ export function AuditWorkspace() {
 
       <AdminDataTable
         title="Audit logs recientes"
-        description="Eventos trazables del sistema y del backoffice."
+        description="Eventos trazables del sistema y del panel."
         headers={["Fecha", "Módulo", "Acción", "Entidad", "Severidad", "Resumen"]}
         rows={recentLogs.map((log) => [
           formatDate(log.occurredAt),
@@ -308,7 +308,7 @@ export function AuditWorkspace() {
 
       <AdminDataTable
         title="Admin actions recientes"
-        description="Cambios de backoffice que requieren trazabilidad de operación."
+        description="Cambios del panel que requieren trazabilidad operativa."
         headers={["Fecha", "Tipo", "Objetivo", "Actor", "Resumen", "Detalle"]}
         rows={recentActions.map((action) => [
           formatDate(action.occurredAt),

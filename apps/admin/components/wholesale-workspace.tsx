@@ -245,7 +245,7 @@ export function WholesaleWorkspace() {
       <Card>
         <CardHeader>
           <CardTitle>Gestión de leads</CardTitle>
-          <CardDescription>Actualiza el estado comercial sin salir del backoffice.</CardDescription>
+          <CardDescription>Actualiza el estado comercial sin salir del panel.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-[0.85fr_1.15fr]">
           <div className="space-y-4">

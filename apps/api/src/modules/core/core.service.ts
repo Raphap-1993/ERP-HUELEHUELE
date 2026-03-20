@@ -349,7 +349,7 @@ export class CoreService {
             {
               label: "Pedidos activos",
               value: String(orders.length),
-              detail: "Pedidos visibles en el backoffice."
+              detail: "Pedidos visibles en operación."
             },
             {
               label: "Ventas brutas",

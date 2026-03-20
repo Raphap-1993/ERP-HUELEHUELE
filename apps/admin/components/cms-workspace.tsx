@@ -451,7 +451,7 @@ export function CmsWorkspace() {
 
   return (
     <div className="space-y-6 pb-8">
-      <SectionHeader title="CMS interno" description="Páginas, bloques, banners, FAQs y testimonios editables desde el backoffice." />
+      <SectionHeader title="CMS interno" description="Páginas, bloques, banners, FAQs y testimonios editables desde operación." />
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (

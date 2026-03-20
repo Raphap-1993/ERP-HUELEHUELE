@@ -26,7 +26,7 @@ export class SecurityService {
       authPolicy: {
         sessionTtlHours: 24 * 7,
         passwordMinLength: 6,
-        demoAccounts: true,
+        demoAccounts: false,
         bearerTokens: true
       },
       auditPolicy: {

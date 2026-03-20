@@ -28,8 +28,8 @@ export function AdminAuthGate({ title, description, allowedRoles, children }: Ad
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loginForm, setLoginForm] = useState<AuthCredentialsInput>({
-    email: "admin@huelegood.com",
-    password: "huelegood123"
+    email: "",
+    password: ""
   });
 
   const roleList = useMemo(() => {
@@ -85,31 +85,41 @@ export function AdminAuthGate({ title, description, allowedRoles, children }: Ad
         <Card>
           <CardHeader>
             <CardTitle>Acceso administrador</CardTitle>
-            <CardDescription>Autenticación requerida para módulos sensibles del backoffice.</CardDescription>
+            <CardDescription>Autenticación requerida para módulos sensibles del panel operativo.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {error ? <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div> : null}
             <form className="space-y-4" onSubmit={handleLogin}>
-              <Input
-                type="email"
-                value={loginForm.email}
-                onChange={(event) => setLoginForm((current) => ({ ...current, email: event.target.value }))}
-                placeholder="correo@huelegood.com"
-              />
-              <Input
-                type="password"
-                value={loginForm.password}
-                onChange={(event) => setLoginForm((current) => ({ ...current, password: event.target.value }))}
-                placeholder="Contraseña"
-              />
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[#132016]" htmlFor="admin-email">
+                  Email
+                </label>
+                <Input
+                  id="admin-email"
+                  type="email"
+                  autoComplete="username"
+                  value={loginForm.email}
+                  onChange={(event) => setLoginForm((current) => ({ ...current, email: event.target.value }))}
+                  placeholder="correo@huelegood.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[#132016]" htmlFor="admin-password">
+                  Contraseña
+                </label>
+                <Input
+                  id="admin-password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={loginForm.password}
+                  onChange={(event) => setLoginForm((current) => ({ ...current, password: event.target.value }))}
+                  placeholder="Contraseña"
+                />
+              </div>
               <Button type="submit" disabled={submitting}>
                 {submitting ? "Validando..." : "Ingresar"}
               </Button>
             </form>
-            <div className="rounded-2xl border border-black/10 bg-black/[0.02] px-4 py-3 text-sm text-black/60">
-              <div className="text-xs uppercase tracking-[0.2em] text-black/35">Acceso demo</div>
-              <div className="mt-2">admin@huelegood.com / huelegood123</div>
-            </div>
           </CardContent>
         </Card>
       ) : null}

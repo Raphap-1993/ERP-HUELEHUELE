@@ -70,7 +70,7 @@ const initialAccounts: AuthRecord[] = [
   },
   {
     id: "usr-customer-001",
-    name: "Cliente Demo",
+    name: "Cliente Huelegood",
     email: "cliente@huelegood.com",
     password: "huelegood123",
     accountType: "customer",
@@ -104,14 +104,6 @@ function createSession(account: AuthRecord): AuthSessionSummary {
 
   storeSession(session);
   return session;
-}
-
-function ensureAccount(account?: AuthRecord) {
-  if (!account) {
-    throw new UnauthorizedException("Credenciales inválidas o sesión expirada.");
-  }
-
-  return account;
 }
 
 @Injectable()
@@ -263,27 +255,6 @@ export class AuthService implements OnModuleInit {
     return actionResponse("ok", "Sesión cerrada correctamente.");
   }
 
-  seedDemoSession(email: string) {
-    const account = ensureAccount(accounts.get(normalizeEmail(email)));
-    const session = createSession(account);
-    this.auditService.recordAudit({
-      module: "auth",
-      action: "seed_demo_session",
-      entityType: "user",
-      entityId: account.id,
-      summary: "Sesión demo preparada para pruebas locales.",
-      actorUserId: account.id,
-      actorName: account.name,
-      payload: {
-        email: account.email,
-        accountType: account.accountType
-      }
-    });
-    return wrapResponse(session, {
-      seeded: true
-    });
-  }
-
   private restoreSnapshot(snapshot: AuthSnapshot) {
     accounts.clear();
     for (const account of snapshot.accounts ?? []) {
@@ -312,11 +283,31 @@ export class AuthService implements OnModuleInit {
 
     for (const seed of initialAccounts) {
       const key = normalizeEmail(seed.email);
-      if (!accounts.has(key)) {
+      const current = accounts.get(key);
+      if (!current) {
         accounts.set(key, {
           ...seed,
           roles: seed.roles.map((role) => ({ ...role }))
         });
+        changed = true;
+        continue;
+      }
+
+      const next: AuthRecord = {
+        ...current,
+        name: seed.name,
+        accountType: seed.accountType,
+        roles: seed.roles.map((role) => ({ ...role })),
+        vendorCode: seed.vendorCode
+      };
+
+      if (
+        current.name !== next.name ||
+        current.accountType !== next.accountType ||
+        current.vendorCode !== next.vendorCode ||
+        JSON.stringify(current.roles) !== JSON.stringify(next.roles)
+      ) {
+        accounts.set(key, next);
         changed = true;
       }
     }

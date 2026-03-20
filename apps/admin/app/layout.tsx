@@ -6,7 +6,7 @@ import "./globals.css";
 
 export const metadata = {
   title: `${siteSetting.brandName} Admin`,
-  description: "Backoffice Huelegood"
+  description: "Panel operativo Huelegood"
 };
 
 export default function AdminLayout({ children }: { children: ReactNode }) {

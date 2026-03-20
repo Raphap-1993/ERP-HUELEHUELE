@@ -129,7 +129,7 @@ export function LoyaltyWorkspace() {
   const [redemptionCustomer, setRedemptionCustomer] = useState(loyaltyOverview[0]?.customer ?? "Laura M.");
   const [reward, setReward] = useState("Descuento próxima compra");
   const [redemptionPoints, setRedemptionPoints] = useState("30");
-  const [redemptionNotes, setRedemptionNotes] = useState("Canje desde backoffice");
+  const [redemptionNotes, setRedemptionNotes] = useState("Canje registrado desde operación");
   const [redemptionReviewer, setRedemptionReviewer] = useState("operaciones");
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -271,7 +271,7 @@ export function LoyaltyWorkspace() {
       await updateLoyaltyRedemptionStatus(id, {
         status,
         reviewer: redemptionReviewer.trim() || undefined,
-        notes: `${status === RedemptionStatus.Applied ? "Canje aplicado" : "Canje cancelado"} desde backoffice.`
+        notes: `${status === RedemptionStatus.Applied ? "Canje aplicado" : "Canje cancelado"} desde operación.`
       });
       refresh();
     } catch (actionError) {

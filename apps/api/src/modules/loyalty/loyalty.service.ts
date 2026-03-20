@@ -525,7 +525,7 @@ export class LoyaltyService implements OnModuleInit {
     }
 
     if (status === RedemptionStatus.Pending) {
-      throw new BadRequestException("El canje solo puede aprobarse o cancelarse desde backoffice.");
+      throw new BadRequestException("El canje solo puede aprobarse o cancelarse desde operación.");
     }
 
     const reviewer = normalizeText(body.reviewer) ?? "operaciones";

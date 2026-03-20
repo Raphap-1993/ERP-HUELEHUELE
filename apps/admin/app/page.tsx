@@ -6,7 +6,7 @@ export default function AdminHomePage() {
   return (
     <AdminAuthGate
       title="Dashboard"
-      description="Visión operacional general del backoffice Huelegood."
+      description="Visión operativa general de Huelegood."
       allowedRoles={adminAccessRoles.dashboard}
     >
       <DashboardWorkspace />

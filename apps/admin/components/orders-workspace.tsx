@@ -200,7 +200,7 @@ export function OrdersWorkspace() {
       {
         label: "Pedidos activos",
         value: String(orders.length),
-        detail: "Pedidos visibles en backoffice."
+        detail: "Pedidos visibles en operación."
       },
       {
         label: "Pagados",
