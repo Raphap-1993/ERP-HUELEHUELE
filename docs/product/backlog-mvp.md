@@ -40,6 +40,14 @@ Ya están cubiertos en el repositorio, entre otros, los siguientes bloques:
 
 En este punto, la cobertura de `MVP-023` ya existe para notificaciones, conciliación manual y liquidación de comisiones sin rehacer la base.
 
+Además, el proyecto ya avanzó más allá del backlog MVP original en estos frentes:
+
+- seller panel ampliado con foco comercial real
+- dashboards operativos por rol en admin
+- reglas de comisión con prioridad, elegibilidad y ajustes de payout
+- primer rediseño funcional del storefront y del backoffice
+- login productivo separado del shell admin y previews públicas retiradas
+
 ## Prioridad crítica
 
 | ID | Ítem | Resultado esperado |
@@ -67,9 +75,9 @@ En este punto, la cobertura de `MVP-023` ya existe para notificaciones, concilia
 | MVP-016 | Módulo mayorista | Lead, calificación inicial y cotización |
 | MVP-017 | Loyalty base | Cuenta de puntos, asignación por compra y canje simple |
 | MVP-018 | Campañas y segmentos iniciales | CRM básico para comunicación de promociones y recurrencia |
-| MVP-019 | Dashboard operacional inicial | Visibilidad básica de pedidos, pagos y ventas atribuidas |
-| MVP-020 | Seller panel básico | Vendedor consulta código, pedidos atribuidos y comisiones |
-| MVP-021 | Gestión de reglas de comisión | Configuración administrable por vigencia y alcance |
+| MVP-019 | Dashboard operacional inicial | Visibilidad básica de pedidos, pagos y ventas atribuidas. Implementado y luego ampliado con dashboards por rol. |
+| MVP-020 | Seller panel básico | Vendedor consulta código, pedidos atribuidos y comisiones. Implementado y luego ampliado en Fase 2. |
+| MVP-021 | Gestión de reglas de comisión | Configuración administrable por vigencia y alcance. Implementado y luego ampliado con prioridad, elegibilidad y ajustes. |
 | MVP-022 | Reglas de compatibilidad entre cupones y vendedor | Política clara en checkout y atribución |
 | MVP-023 | Cola de jobs y reintentos | Procesos asíncronos trazables. Implementado en el repo para notificaciones, conciliación manual y liquidación de comisiones. |
 | MVP-024 | Upload seguro de evidencias y assets | Activos públicos y privados gestionados de forma segura |
@@ -79,7 +87,7 @@ En este punto, la cobertura de `MVP-023` ya existe para notificaciones, concilia
 
 | ID | Ítem | Resultado esperado |
 | --- | --- | --- |
-| MVP-026 | Refinamiento UI premium | Consistencia final entre web y admin |
+| MVP-026 | Refinamiento UI premium | Consistencia final entre web y admin. Iniciado en el repo, sin cierre visual final todavía. |
 | MVP-027 | Dashboards de marketing y campañas | Medición táctica inicial |
 | MVP-028 | Reglas avanzadas de loyalty | Bonos especiales, expiraciones y campañas puntuales |
 | MVP-029 | Automatización de follow-up mayorista | Recordatorios y tareas operativas |

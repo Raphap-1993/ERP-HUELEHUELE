@@ -37,6 +37,11 @@ Como base funcional, el proyecto ya cubre:
 - persistencia operativa en PostgreSQL para módulos stateful
 - BullMQ operativo para notificaciones, conciliación manual y liquidación de comisiones
 - observabilidad operativa con logs estructurados y vista admin dedicada
+- seller panel ampliado y dashboards operativos por rol
+- reglas de comisión más flexibles con elegibilidad, prioridad y ajustes de payout
+- despliegue productivo estable sobre VPS con `PM2`, `Hestia` y `Nginx`
+- modo mantenimiento del storefront para cambios sensibles en producción
+- primer rediseño funcional de storefront y backoffice, con login admin separado del shell operativo
 
 Como insumo funcional, se asume que la v1 de Huelegood ya comunica:
 
@@ -114,8 +119,13 @@ Como insumo funcional, se asume que la v1 de Huelegood ya comunica:
 
 ### Storefront
 
-- [storefront-v2-premium-landing.md](./storefront-v2-premium-landing.md)
+- [storefront-v2-premium-landing.md](./storefront-v2-premium-landing.md) `vigente como registro de consolidación`
 - [storefront-redesign-phase7.md](./storefront-redesign-phase7.md) `histórico`
+
+Nota:
+
+- las rutas `/storefront-v2` y `/storefront-v2-premium` ya no operan como previews públicas; en producción redirigen a `/`
+- la experiencia oficial pública vive en `/`, `/catalogo`, `/checkout`, `/cuenta`, `/mayoristas`, `/trabaja-con-nosotros` y `/panel-vendedor`
 
 ### Infraestructura
 

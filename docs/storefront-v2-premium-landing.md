@@ -2,15 +2,15 @@
 
 ## Resumen
 
-Este documento consolida el plan generado por agentes y la implementación de una nueva landing/storefront premium para ERP-HUELEHUELE.
+Este documento consolida el plan generado por agentes y el estado posterior de la consolidación del storefront premium público de Huelegood.
 
-La solución es aditiva:
+La solución ya no se trata como preview pública. Hoy funciona así:
 
-- reemplaza la home actual como experiencia pública oficial
+- la home `/` es la experiencia pública oficial
 - no cambia contratos API
-- no toca checkout, admin ni worker
-- deja una ruta segura en `/storefront-v2-premium`
-- fija una sola fuente de verdad para el storefront
+- no abre rutas demo o preview en producción
+- mantiene una sola fuente de verdad para la narrativa pública
+- convive con mantenimiento controlado del storefront cuando se requiere intervenir producción
 
 ## Plan generado por agentes
 
@@ -25,9 +25,9 @@ La solución es aditiva:
 
 1. La experiencia premium vive aislada en `apps/web/features/storefront-v2-premium/`.
 2. El contenido editorial es curado en código, no en un CMS total.
-3. La ruta segura `/storefront-v2-premium` sirve como preview y QA de la experiencia oficial.
-4. La home `/` usa `storefront-v2-premium` por defecto y deja de arbitrar entre variantes.
-5. `storefront-v2` queda deprecado como preview histórica, no como camino activo.
+3. La home `/` usa `storefront-v2-premium` por defecto y deja de arbitrar entre variantes.
+4. Las rutas `/storefront-v2` y `/storefront-v2-premium` quedaron retiradas como preview pública y hoy redirigen a `/`.
+5. `storefront-v2` y `storefront-v2-premium` se conservan sólo como antecedentes técnicos y documentales.
 6. `trabaja-con-nosotros` se mantiene y se conecta al endpoint existente `POST /store/vendor-applications`.
 
 ## Arquitectura implementada
@@ -73,9 +73,10 @@ No se creó pipeline backend de media.
 
 ### Ruta segura
 
-- `GET /storefront-v2-premium`
-
-Expone la misma experiencia que vive en `/`, pero en una ruta dedicada para QA, comparación visual y revisión controlada.
+- No existe una ruta segura pública para preview en producción.
+- `GET /storefront-v2-premium` hoy redirige a `/`.
+- `GET /storefront-v2` hoy redirige a `/`.
+- El criterio actual es no exponer superficies de QA o demo al usuario final.
 
 ### Home oficial
 
@@ -83,11 +84,11 @@ Expone la misma experiencia que vive en `/`, pero en una ruta dedicada para QA, 
 
 La home productiva ahora renderiza `storefront-v2-premium` de forma directa.
 
-### Deprecación de `storefront-v2`
+### Operación segura en producción
 
-- `GET /storefront-v2`
-
-Se conserva solo como preview histórica y deja de ser candidata a reemplazar la home.
+- existe `WEB_MAINTENANCE_MODE` para cerrar temporalmente el storefront público sin afectar `admin`, `api`, `/health` ni assets
+- el bypass controlado puede habilitarse con `WEB_MAINTENANCE_BYPASS_TOKEN`
+- este mecanismo sustituyó la necesidad de dejar previews públicas vivas
 
 ## Contenido curado local
 
@@ -128,24 +129,25 @@ Campos enviados:
 
 ## Validación esperada
 
-### Smoke path
+### Smoke path actual
 
-1. Abrir `/storefront-v2-premium`.
-2. Verificar navegación y CTAs hacia `/catalogo`, `/checkout`, `/mayoristas` y `/trabaja-con-nosotros`.
-3. Confirmar que `/`, `/checkout`, `/catalogo` y `/trabaja-con-nosotros` siguen vivas.
+1. Abrir `/`.
+2. Verificar navegación y CTAs hacia `/catalogo`, `/checkout`, `/mayoristas`, `/trabaja-con-nosotros` y `/cuenta`.
+3. Confirmar que `/storefront-v2` y `/storefront-v2-premium` redirigen a `/`.
 4. Probar assets locales y remotos.
 5. Enviar una postulación válida en `trabaja-con-nosotros`.
 
 ### Riesgos vigilados
 
-- duplicación editorial parcial con `storefront-v2`
-- mantener viva la variante vieja por inercia de equipo
+- deriva visual entre la home actual y páginas públicas secundarias
+- mantener copy interno, técnico o de demo en superficies públicas
 - fallo de media remota sin fallback local
 - confusión entre wholesale y vendor si el copy cambia sin criterio
+- sobrecargar producción con experimentos visuales sin maintenance mode
 
 ## Cómo probar
 
-### Preview segura
+### Desarrollo local
 
 ```bash
 npm run dev:web
@@ -153,7 +155,8 @@ npm run dev:web
 
 Luego abrir:
 
-- `/storefront-v2-premium`
+- `/`
+- si se necesita revisar comportamiento histórico, abrir el código de `apps/web/features/storefront-v2-premium/`
 
 ### Formulario de vendedores
 
@@ -165,6 +168,6 @@ Enviar una postulación válida y verificar que la API responda con estado `queu
 
 ## Siguientes pasos
 
-- marcar `storefront-v2` como referencia histórica en docs y seguimiento interno
-- medir scroll depth y clics en CTAs ahora que la home premium ya es la experiencia oficial
-- preparar una fase posterior para media remota productiva y campañas editoriales
+- hacer un segundo pase UX de nivel final para que home, catálogo, cuenta y checkout queden alineados visualmente
+- sustituir placeholders editoriales por fotografía real optimizada del producto
+- medir scroll depth y clics en CTAs ahora que la home oficial ya no expone variantes públicas

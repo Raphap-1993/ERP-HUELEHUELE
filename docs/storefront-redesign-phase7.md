@@ -2,7 +2,7 @@
 
 ## Estado actual
 
-`storefront-v2` quedó deprecado como camino principal. Se conserva solo como preview histórica en `/storefront-v2`.
+`storefront-v2` quedó deprecado como camino principal. Ya no se expone como preview pública: en producción, `/storefront-v2` redirige a `/`.
 
 La experiencia oficial del storefront público ahora es `storefront-v2-premium`, con home productiva en `/` y documentación fuente en [storefront-v2-premium-landing.md](./storefront-v2-premium-landing.md).
 
@@ -10,13 +10,13 @@ La experiencia oficial del storefront público ahora es `storefront-v2-premium`,
 
 Se agregó una nueva capa visual premium/editorial del storefront dentro de `apps/web` como fase previa a la consolidación posterior en la home oficial.
 
-La implementación incluye:
+La implementación incluyó:
 
 - nueva estructura modular en `apps/web/features/storefront-v2`
 - tokens visuales premium para paleta, radios, sombras, spacing y gradientes
 - secciones nuevas y reutilizables para hero, beneficios, historia sensorial, uso, prueba social, catálogo destacado, marca, FAQ y CTA final
-- nueva ruta segura de preview en `/storefront-v2`
-- feature flag `NEXT_PUBLIC_STOREFRONT_V2` usado durante la fase transitoria previa a la decisión final
+- una ruta temporal de preview en `/storefront-v2`, ya retirada de producción
+- un feature flag `NEXT_PUBLIC_STOREFRONT_V2`, ya retirado del circuito operativo
 - preparación de `next/image` para media remota en `cdn.huelegood.com` y `images.huelegood.com`
 - helper de media para resolver assets locales o remotos sin cambiar los componentes consumidores
 
@@ -45,13 +45,13 @@ Piezas principales:
 
 ## Estado del feature flag
 
-Este flag pertenece a la fase anterior del rollout:
+Este flag perteneció a la fase anterior del rollout:
 
 ```bash
 NEXT_PUBLIC_STOREFRONT_V2=true
 ```
 
-Ya no debe usarse para decidir la home oficial. La home actual vive sobre `storefront-v2-premium`.
+Ya no debe usarse para decidir la home oficial. La home actual vive sobre `storefront-v2-premium` y las variantes antiguas no deben reaparecer como preview pública.
 
 ## Cómo preparar imágenes remotas con Cloudflare
 
@@ -90,14 +90,14 @@ La nueva capa:
 - no cambia contratos de API
 - no toca checkout ni admin
 - no elimina componentes previos
-- no modifica rutas productivas existentes de forma destructiva
+- no modificó rutas productivas existentes de forma destructiva durante la migración original
 
 ## Cierre de fase
 
-Esta fase queda cerrada como antecedente útil de exploración visual, media remota y composición editorial. El trabajo nuevo del storefront debe continuar sobre `storefront-v2-premium`.
+Esta fase queda cerrada como antecedente útil de exploración visual, media remota y composición editorial. El trabajo nuevo del storefront debe continuar sobre `storefront-v2-premium` y sobre la home oficial `/`, no sobre una variante paralela visible al público.
 
 ## Siguientes pasos históricos
 
 1. Reemplazar gradualmente assets SVG locales por variantes fotográficas remotas en Cloudflare usando el helper ya creado.
 2. Reusar aprendizajes y helpers técnicos de `storefront-v2` dentro de la capa premium oficial cuando haga sentido.
-3. Definir una librería real de imagen lifestyle y packshots premium para que la capa editorial alcance todo su potencial.
+3. Mantener `storefront-v2` sólo como referencia histórica de código y documentación, no como superficie pública.

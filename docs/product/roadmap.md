@@ -6,7 +6,7 @@ Ordenar la construcción de Huelegood en fases ejecutables, distinguiendo lo ya 
 
 ## Estado actual
 
-Al `19 de marzo de 2026`, la base funcional del proyecto ya existe en el repositorio. El foco deja de ser "arrancar desde cero" y pasa a ser "abrir optimización comercial sobre una Fase 1 ya cerrada operativamente".
+Al `20 de marzo de 2026`, la base funcional del proyecto ya existe en el repositorio. El foco dejó de ser "arrancar desde cero" y pasó a ser "abrir y ejecutar Fase 2 sobre una Fase 1 ya cerrada operativamente".
 
 ### Ya entregado
 
@@ -24,10 +24,21 @@ Al `19 de marzo de 2026`, la base funcional del proyecto ya existe en el reposit
 - [x] BullMQ operativo para notificaciones, conciliación manual y liquidación de comisiones
 - [x] observabilidad operativa con logs estructurados, métricas HTTP, colas y eventos de dominio
 - [x] despliegue reproducible sobre VPS con `PM2`, health endpoints, smoke checks, backups y snippets `Nginx/Hestia`
+- [x] seller panel ampliado con métricas, comisiones, payouts y acceso dedicado en web
+- [x] dashboards operativos por rol para foco ejecutivo, pagos, ventas y marketing
+- [x] reglas de comisión más flexibles con prioridad, elegibilidad, bonos, deducciones y payout neto
+- [x] primer rediseño funcional del storefront y del backoffice para separar experiencia pública y shell operativo
+- [x] login productivo del admin separado del shell y bootstrap de accesos por variables de entorno
+- [x] rutas preview públicas retiradas; `/storefront-v2` y `/storefront-v2-premium` redirigen a `/`
+- [x] modo mantenimiento del storefront para cambios sensibles en producción
 
 ### Pendiente inmediato
 
-- [ ] sin pendientes de Fase 1; el siguiente frente es Fase 2
+- [ ] automatización de campañas más rica y menos manual
+- [ ] segmentación comercial más profunda
+- [ ] mejores reportes de pedidos, pagos, comisiones y conversión
+- [ ] reglas avanzadas de promociones y compatibilidades
+- [ ] segundo pase UX de nivel final para storefront, checkout, cuenta y backoffice
 
 ## Fase 1. Cierre del MVP operativo
 
@@ -54,15 +65,21 @@ Mejorar eficiencia operativa, visibilidad comercial y capacidad de crecimiento s
 
 ### Entregables
 
-- seller panel ampliado
-- dashboards operativos por rol
-- reglas de comisión más flexibles
-- mayor automatización de campañas
-- segmentación más rica
-- reglas avanzadas de promociones
-- mejores reportes de pedidos, pagos y conversión
-- refinamiento del CMS y bloques reutilizables
-- optimizaciones de UX móvil y performance
+- [x] seller panel ampliado
+- [x] dashboards operativos por rol
+- [x] reglas de comisión más flexibles
+- [ ] mayor automatización de campañas
+- [ ] segmentación más rica
+- [ ] reglas avanzadas de promociones
+- [ ] mejores reportes de pedidos, pagos y conversión
+- [ ] refinamiento del CMS y bloques reutilizables
+- [ ] optimizaciones de UX móvil y performance
+
+### Lectura PM del estado de Fase 2
+
+- Fase 2 ya fue abierta y tiene entregables funcionales reales en producción.
+- Lo ya construido cubre seller panel, dashboards por rol y reglas flexibles de comisión.
+- El frente pendiente ya no es "arrancar Fase 2", sino cerrar automatización comercial, reporting y una capa UX final de nivel premium productivo.
 
 ## Fase 3. Escala controlada
 
