@@ -1,4 +1,6 @@
-import { Body, Controller, Get, NotFoundException, Param, Patch, Post } from "@nestjs/common";
+import { Body, Controller, Get, NotFoundException, Param, Patch, Post, UploadedFile, UseInterceptors } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { memoryStorage } from "multer";
 import {
   adminAccessRoles,
   type CmsBannerInput,
@@ -31,6 +33,20 @@ export class AdminCmsController {
   @Patch("site-settings")
   updateSiteSettings(@Body() body: CmsSiteSettingsInput) {
     return this.cmsService.updateSiteSettings(body);
+  }
+
+  @Post("site-settings/logo")
+  @UseInterceptors(
+    FileInterceptor("file", {
+      storage: memoryStorage(),
+      limits: {
+        fileSize: 10 * 1024 * 1024,
+        files: 1
+      }
+    })
+  )
+  uploadSiteLogo(@UploadedFile() file: { buffer: Buffer; mimetype?: string; originalname?: string } | undefined) {
+    return this.cmsService.uploadSiteLogo(file);
   }
 
   @Get("hero-copy")

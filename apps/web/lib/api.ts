@@ -4,6 +4,7 @@ import type {
   AuthRegisterInput,
   AuthSessionSummary,
   SellerPanelOverviewSummary,
+  SiteSetting,
   CmsSnapshotEnvelope,
   CatalogProduct,
   CatalogSummaryResponse,
@@ -129,6 +130,12 @@ export async function fetchCmsSnapshot() {
   });
 }
 
+export async function fetchCmsSiteSettings() {
+  return requestJson<CmsSiteSettingsEnvelope>("/store/site-settings", {
+    cache: "no-store"
+  });
+}
+
 export async function fetchLoyaltySummary(token?: string) {
   return requestJson<LoyaltySummaryEnvelope>("/store/me/loyalty", {
     headers: getSessionHeaders(token)
@@ -228,5 +235,10 @@ export type VendorApplicationActionEnvelope = ActionEnvelope & {
 
 export type WholesaleTiersEnvelope = {
   data: WholesalePlan[];
+  meta?: Record<string, unknown>;
+};
+
+export type CmsSiteSettingsEnvelope = {
+  data: SiteSetting;
   meta?: Record<string, unknown>;
 };

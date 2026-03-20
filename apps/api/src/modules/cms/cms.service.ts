@@ -30,6 +30,7 @@ import {
 import { actionResponse, wrapResponse } from "../../common/response";
 import { AuditService } from "../audit/audit.service";
 import { ModuleStateService } from "../../persistence/module-state.service";
+import { MediaService } from "../media/media.service";
 
 interface PageBlockDraft {
   type: string;
@@ -191,7 +192,8 @@ export class CmsService implements OnModuleInit {
 
   constructor(
     private readonly auditService: AuditService,
-    private readonly moduleStateService: ModuleStateService
+    private readonly moduleStateService: ModuleStateService,
+    private readonly mediaService: MediaService
   ) {
     this.seedData();
   }
@@ -309,6 +311,42 @@ export class CmsService implements OnModuleInit {
 
     return {
       ...actionResponse("ok", "Los parámetros base quedaron actualizados."),
+      siteSetting: { ...this.siteSettingData }
+    };
+  }
+
+  async uploadSiteLogo(file: { buffer: Buffer; mimetype?: string; originalname?: string } | undefined) {
+    if (!file?.buffer) {
+      throw new BadRequestException("Debes adjuntar un logo válido.");
+    }
+
+    const upload = await this.mediaService.uploadImage(file, {
+      kind: "logo",
+      slug: this.siteSettingData.brandName || "huelegood",
+      preserveSvg: true
+    });
+
+    const previousLogo = this.siteSettingData.headerLogoUrl;
+    this.siteSettingData = {
+      ...this.siteSettingData,
+      headerLogoUrl: upload.url
+    };
+
+    this.recordAdminAction("cms.site_settings.logo_updated", "site_setting", "global", "El logo del menú quedó actualizado.", {
+      hasHeaderLogo: true
+    });
+    void this.persistState();
+
+    if (previousLogo && previousLogo !== upload.url) {
+      try {
+        await this.mediaService.deleteByPublicUrl(previousLogo);
+      } catch {
+        // Non-blocking cleanup.
+      }
+    }
+
+    return {
+      ...actionResponse("ok", "Logo actualizado correctamente."),
       siteSetting: { ...this.siteSettingData }
     };
   }

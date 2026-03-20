@@ -26,7 +26,7 @@ import {
   type SiteSetting,
   type WebNavigationGroup
 } from "@huelegood/shared";
-import { fetchCmsOverview, updateCmsHeroCopy, updateCmsNavigation, updateCmsSiteSettings } from "../lib/api";
+import { fetchCmsOverview, updateCmsHeroCopy, updateCmsNavigation, updateCmsSiteSettings, uploadCmsHeaderLogo } from "../lib/api";
 
 function formatDate(value?: string) {
   if (!value) {
@@ -103,6 +103,8 @@ export function SettingsWorkspace() {
   const [savingSection, setSavingSection] = useState<"site" | "hero" | "navigation" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -212,6 +214,28 @@ export function SettingsWorkspace() {
     }
   }
 
+  async function handleUploadLogo() {
+    if (!logoFile) {
+      return;
+    }
+
+    setLogoUploading(true);
+    setError(null);
+
+    try {
+      const response = await uploadCmsHeaderLogo(logoFile);
+      if (response.siteSetting) {
+        setSiteForm(response.siteSetting);
+      }
+      setLogoFile(null);
+      refresh();
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "No pudimos subir el logo.");
+    } finally {
+      setLogoUploading(false);
+    }
+  }
+
   return (
     <div className="space-y-8 pb-10">
       <SectionHeader
@@ -260,6 +284,19 @@ export function SettingsWorkspace() {
                 value={siteForm.headerLogoUrl ?? ""}
                 onChange={(event) => setSiteForm({ ...siteForm, headerLogoUrl: event.target.value || undefined })}
               />
+              <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                <input
+                  id="site-logo-upload"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  onChange={(event) => setLogoFile(event.target.files?.[0] ?? null)}
+                  disabled={logoUploading}
+                  className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm outline-none"
+                />
+                <Button type="button" variant="secondary" onClick={handleUploadLogo} disabled={logoUploading || !logoFile}>
+                  {logoUploading ? "Subiendo..." : "Subir logo"}
+                </Button>
+              </div>
               <p className="text-xs leading-5 text-black/55">
                 Si defines una imagen, la cabecera pública reemplaza el texto de marca. Si lo dejas vacío, vuelve al nombre en texto.
               </p>

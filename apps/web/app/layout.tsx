@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
-import { siteSetting, webNavigation, type NavigationItem } from "@huelegood/shared";
+import { siteSetting as fallbackSetting, webNavigation, type NavigationItem } from "@huelegood/shared";
 import "./globals.css";
 import { PrelineScript } from "../components/preline-script";
+import { fetchCmsSiteSettings } from "../lib/api";
 
 const bodyFont = Manrope({
   subsets: ["latin"],
@@ -18,7 +19,6 @@ const displayFont = Cormorant_Garamond({
   display: "swap"
 });
 
-const settings = siteSetting;
 const navigationGroups = webNavigation;
 const links = navigationGroups.flatMap((group) => group.items);
 const currentYear = new Date().getFullYear();
@@ -48,7 +48,19 @@ function NavLink({ item, className }: { item: NavigationItem; className: string 
   );
 }
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+async function resolveRuntimeSettings() {
+  try {
+    const response = await fetchCmsSiteSettings();
+    return response.data;
+  } catch {
+    return fallbackSetting;
+  }
+}
+
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const settings = await resolveRuntimeSettings();
+  const headerLogoUrl = settings.headerLogoUrl?.trim();
+
   return (
     <html lang="es">
       <body className={`${bodyFont.variable} ${displayFont.variable} antialiased`} suppressHydrationWarning>
@@ -60,12 +72,25 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <div className="flex items-center justify-between gap-4 rounded-2xl border border-black/6 bg-white/90 px-4 py-3 shadow-[0_4px_24px_rgba(26,58,46,0.08)] backdrop-blur-xl md:px-5">
                 {/* Brand */}
                 <Link href="/" className="flex items-center gap-2 shrink-0">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1a3a2e] text-sm">
-                    🦜
-                  </span>
-                  <span className="font-serif text-base font-bold text-[#1a3a2e]">
-                    {settings.brandName}
-                  </span>
+                  {headerLogoUrl ? (
+                    <>
+                      <img
+                        src={headerLogoUrl}
+                        alt={settings.brandName}
+                        className="h-8 w-auto max-w-[180px] object-contain"
+                      />
+                      <span className="sr-only">{settings.brandName}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1a3a2e] text-sm">
+                        🦜
+                      </span>
+                      <span className="font-serif text-base font-bold text-[#1a3a2e]">
+                        {settings.brandName}
+                      </span>
+                    </>
+                  )}
                 </Link>
 
                 {/* Nav links */}
@@ -100,7 +125,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 {/* Brand column */}
                 <div>
                   <div className="mb-4 flex items-center gap-2">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15 text-sm">🦜</span>
+                    {headerLogoUrl ? (
+                      <img
+                        src={headerLogoUrl}
+                        alt={settings.brandName}
+                        className="h-8 w-auto max-w-[180px] object-contain"
+                      />
+                    ) : (
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15 text-sm">🦜</span>
+                    )}
                     <span className="font-serif text-base font-bold">{settings.brandName}</span>
                   </div>
                   <p className="max-w-xs text-sm leading-7 text-white/55">
