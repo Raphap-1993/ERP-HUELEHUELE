@@ -56,7 +56,21 @@ Capas creadas:
 - `content`
 - `lib`
 
-### Secciones premium
+### Secciones activas en la home oficial
+
+- `HeroSection`
+- `BenefitsSection`
+- `ComparisonSection`
+- `PricingSection`
+- `TestimonialsSection`
+- `WholesaleB2BSection`
+- `FaqAccordionSection`
+- `InstagramSection`
+- `StickyBarClient`
+
+### Secciones conservadas como antecedentes dentro de la feature
+
+La carpeta también conserva piezas editoriales de iteraciones previas:
 
 - `HeroEditorialSection`
 - `ProductCatalogSection`
@@ -68,6 +82,8 @@ Capas creadas:
 - `VendorCalloutSection`
 - `FaqSection`
 - `CtaBannerSection`
+
+Estas piezas no gobiernan la home actual. Permanecen como reserva compositiva o antecedente documental.
 
 ### Integración de media
 
@@ -104,7 +120,7 @@ Para efectos de planeación visual, se asume Preline como una librería con más
 
 - `GET /`
 
-La home productiva ahora renderiza `storefront-v2-premium` de forma directa.
+La home productiva ahora renderiza `StorefrontV2PremiumExperience` de forma directa.
 
 ### Operación segura en producción
 
@@ -116,13 +132,14 @@ La home productiva ahora renderiza `storefront-v2-premium` de forma directa.
 
 La feature premium define contenido local para:
 
-- hero
-- benefits
-- use cases
-- brand story
-- product highlights
-- faq
-- wholesale callout
+- hero principal
+- beneficios
+- comparativa contra alternativas
+- pricing de los tres productos reales
+- testimonios
+- bloque mayorista B2B
+- FAQ
+- bloque social/Instagram
 
 La fuente operativa de productos sigue siendo `featuredProducts` y la fuente operativa de planes mayoristas sigue siendo `wholesalePlans`.
 
@@ -136,27 +153,27 @@ En storefront y home pública, el catálogo curado debe limitarse a:
 
 No deben documentarse ni mostrarse referencias ficticias o categorías no vendidas por la marca.
 
-## Guía de copy por sección
+## Guía de copy por sección activa
 
-### `HeroEditorialSection`
+### `HeroSection`
 
-La versión premium debe abandonar ejemplos genéricos como `New arrivals` o `Save 45% off` y usar copy alineado a la marca:
+La home oficial debe usar el mensaje ya aceptado en producción:
 
-- eyebrow: `Inhaladores herbales`
-- heading sugerido: `Frescura herbal en tu bolsillo`
-- supporting line: `Clásico Verde, Premium Negro y Combo Dúo Perfecto para trayectos, viaje y altura.`
-- CTA primario: `Ver inhaladores`
-- CTA secundario: `Comprar ahora`
+- badge: `Inspirado en inhaladores tailandeses "Ya Dom" · 100% Natural`
+- heading: `¿Cansado de llegar al destino sintiéndote al piso?`
+- supporting line: soroche, mareos, tráfico y fatiga mental como problemas de entrada
+- CTA primario: `Quiero el mío`
+- CTA secundario: `Ver cómo funciona`
 
-Si existe campaña activa, el descuento se expresa con lenguaje comercial real de Huelegood, por ejemplo:
+Las señales de confianza actuales deben mantenerse concretas:
 
-- `Promo activa de temporada`
-- `Ahorra en tu combo`
-- `Código de vendedor disponible`
+- `Envíos a todo el Perú`
+- `Acción en segundos`
+- `Sin contraindicaciones`
 
 ### Personalización de `productChips`
 
-`HeroEditorialSection` ya soporta la propiedad `productChips` dentro de `PremiumHeroContent`.
+`HeroEditorialSection` todavía soporta la propiedad `productChips` dentro de `PremiumHeroContent`, pero esa variante no es la que hoy renderiza `/`.
 
 Uso documentado:
 
@@ -170,39 +187,76 @@ Reglas:
 - mantener máximo tres chips para no recargar la lectura
 - no introducir labels genéricos como `new`, `trending` o `best seller` si no aportan claridad comercial
 
-### `ProductCatalogSection`
+### `BenefitsSection`
 
-La sección de catálogo debe listar únicamente:
+La sección debe sostener la narrativa de seis razones de uso inmediato:
+
+- alivio del soroche
+- mareos y náuseas
+- malos olores en ciudad o tráfico
+- energía instantánea
+- descongestión nasal
+- producto natural y seguro
+
+Cada tarjeta debe reforzar SEO y uso real sin salir del producto inhalador.
+
+### `ComparisonSection`
+
+La comparativa activa debe seguir enfrentando a Huele Huele contra:
+
+- pomadas o `Vicks`
+- vapes
+
+Mensajes clave:
+
+- no mancha ropa ni piel
+- no usa humo ni vapor
+- cabe en bolsillo
+- mantiene una propuesta natural y discreta
+
+### `PricingSection`
+
+La sección de pricing debe listar únicamente:
 
 - `Clásico Verde`
-- `Premium Negro`
 - `Combo Dúo Perfecto`
+- `Premium Negro`
 
-Las etiquetas y descripciones deben reforzar:
+Las descripciones deben sostener:
 
-- frescura herbal
-- portabilidad
-- uso en trayectos, viajes y altura
-- diferencia frente a vape y pomadas sin sobreexplicar la categoría
+- entrada principal de uso diario
+- mejor valor por ticket medio en el combo
+- opción más intensa y sobria para `Premium Negro`
 
-### `UseCasesSection`
+### `TestimonialsSection`
 
-Los casos de uso deben nombrar escenas reales de los inhaladores:
+Los testimonios activos deben mantenerse en escenas peruanas concretas:
 
-- tráfico y trayectos largos
-- oficina o escritorio
-- viaje y altura
+- soroche en Cusco / Machu Picchu
+- tráfico diario en Lima
+- estudio intenso y fatiga mental en escritorio
 
-La redacción debe evitar ejemplos genéricos de wellness sin vínculo directo con el producto.
+### `WholesaleB2BSection`
 
-### `BenefitsEditorialSection`
+El bloque mayorista activo ya no es un callout corto. Funciona como una sección B2B con:
 
-Los beneficios deben explicarse desde el uso del inhalador:
+- propuesta de distribución
+- perks cuantificados
+- tiers comerciales
+- CTA a catálogo mayorista o canal comercial
 
-- cabe en bolsillo, bolso, carro o mochila
-- permite un reset fresco y discreto
-- acompaña rutina, viaje y movimiento
-- mantiene una lectura visual premium sin convertirse en gadget ambiguo
+### `FaqAccordionSection`
+
+Debe resolver dudas concretas de:
+
+- duración del inhalador
+- envíos a todo el Perú
+- ingredientes reales
+- contraindicaciones y límites de uso
+
+### `InstagramSection`
+
+Debe reforzar comunidad, uso cotidiano y continuidad de marca sin introducir categorías ajenas al catálogo.
 
 ## Trabaja con nosotros
 
@@ -232,11 +286,12 @@ Campos enviados:
 ### Smoke path actual
 
 1. Abrir `/`.
-2. Verificar navegación y CTAs hacia `/catalogo`, `/checkout`, `/mayoristas`, `/trabaja-con-nosotros` y `/cuenta`.
-3. Confirmar que `/storefront-v2` y `/storefront-v2-premium` redirigen a `/`.
-4. Probar assets locales y remotos.
-5. Confirmar que home y catálogo sólo muestran `Clásico Verde`, `Premium Negro` y `Combo Dúo Perfecto`.
-6. Enviar una postulación válida en `trabaja-con-nosotros`.
+2. Verificar hero, benefits, comparison, pricing, testimonials, wholesale, FAQ, Instagram y sticky bar.
+3. Verificar navegación y CTAs hacia `/catalogo`, `/checkout`, `/mayoristas`, `/trabaja-con-nosotros`, `/cuenta` y `/panel-vendedor`.
+4. Confirmar que `/storefront-v2` y `/storefront-v2-premium` redirigen a `/`.
+5. Probar assets locales y remotos.
+6. Confirmar que home y catálogo sólo muestran `Clásico Verde`, `Premium Negro` y `Combo Dúo Perfecto`.
+7. Enviar una postulación válida en `trabaja-con-nosotros`.
 
 ### Riesgos vigilados
 

@@ -45,33 +45,38 @@ Además, el proyecto ya avanzó más allá del backlog MVP original en estos fre
 - seller panel ampliado con foco comercial real
 - dashboards operativos por rol en admin
 - reglas de comisión con prioridad, elegibilidad y ajustes de payout
-- primer rediseño funcional del storefront y del backoffice
+- home oficial montada sobre `storefront-v2-premium` con base visual inspirada en `Preline/Coffee Shop`
+- principales superficies públicas alineadas al lenguaje herbal actual
+- rediseño funcional del storefront y del backoffice
 - login productivo separado del shell admin y previews públicas retiradas
+- normalización de resolución del API en cliente y release contra entorno productivo compartido
+
+## Frente visual entregado de Fase 2
+
+### F2-001 Base visual pública `Preline`
+
+Estado actual:
+
+- la home `/` ya funciona sobre `storefront-v2-premium`
+- la composición activa toma como referencia la plantilla `Coffee Shop` de `Preline`
+- el mensaje comercial se concentra en `Clásico Verde`, `Premium Negro` y `Combo Dúo Perfecto`
+- las rutas preview públicas quedaron retiradas y redirigen a `/`
+
+Pendientes derivados:
+
+- homologar superficies públicas secundarias al mismo baseline
+- cerrar un pase UX final sin reabrir una migración base
 
 ## Frente activo de Fase 2
 
-### F2-001 Migración de home/storefront a base `Preline`
-
-Resultado esperado:
-
-- migrar la home actual a una composición inspirada en la plantilla `Coffee Shop` de `Preline`
-- adaptar hero, carrusel de productos en tendencia y banners promocionales a la oferta real de inhaladores
-- mantener compatibilidad con `shadcn/ui`, `Tailwind` y los tokens de Huelegood
-- generar un brief UI/UX actualizado antes de cerrar la implementación
-
-Alcance funcional:
-
-- hero con mensaje de `frescura herbal en tu bolsillo`
-- selección curada de `Clásico Verde`, `Premium Negro` y `Combo Dúo Perfecto`
-- banners promocionales orientados a campañas reales de Huelegood
-- narrativa de uso en trayectos, viajes y altura
+### F2-002 Automatización comercial y reporting
 
 Criterios de aceptación:
 
-- navegación intacta en todas las rutas públicas activas
-- copy SEO optimizado con `inhaladores herbales` y `frescura`
-- rendimiento estable y sin degradación visible
-- ningún bloque menciona categorías fuera del catálogo real
+- automatización de campañas menos manual y más segmentada
+- reportes útiles para pedidos, pagos, comisiones y conversión
+- capacidad de leer desempeño comercial sin depender de inspección manual por módulo
+- continuidad del lenguaje visual ya aceptado, sin reabrir la home oficial como experimento
 
 ## Prioridad crítica
 

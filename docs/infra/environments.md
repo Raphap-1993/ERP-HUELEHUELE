@@ -24,9 +24,9 @@ Si solo existe un VPS:
 | `APP_NAME` | nombre lógico del servicio |
 | `APP_RELEASE_SHA` | versión o commit desplegado |
 | `APP_BASE_DIR` | directorio base del release en el VPS |
-| `APP_URL` | URL pública del storefront |
-| `ADMIN_URL` | URL pública del admin |
-| `API_URL` | URL pública de la API |
+| `NEXT_PUBLIC_APP_URL` | URL pública del storefront |
+| `NEXT_PUBLIC_ADMIN_URL` | URL pública del admin |
+| `NEXT_PUBLIC_API_URL` | URL pública de la API |
 | `LOG_LEVEL` | nivel de logging |
 
 ## Base de datos y cache
@@ -84,6 +84,19 @@ Si solo existe un VPS:
 
 No definir `PORT` como variable global en `.env.production`. En este monolito modular cada proceso recibe su puerto por `PM2` usando `WEB_PORT`, `ADMIN_PORT` y `API_PORT`.
 
+Compatibilidad de despliegue:
+
+- `scripts/release-production.sh` acepta `APP_URL`, `ADMIN_URL` y `API_URL` como aliases y los normaliza a `NEXT_PUBLIC_*` antes de construir.
+- `scripts/release-production.sh` también acepta `ADMIN_LOGIN_*`, `SELLER_LOGIN_*`, `PAYMENTS_LOGIN_*` y `CUSTOMER_LOGIN_*` como aliases legados y los normaliza a `BOOTSTRAP_*`.
+- El código de `auth` consume `BOOTSTRAP_*` como convención preferida.
+- `AUTH_BOOTSTRAP_DEFAULT_USERS` no está consumida por `apps/api/src/modules/auth/auth.service.ts`; hoy es una variable muerta y conviene eliminarla o reemplazarla por `BOOTSTRAP_*`.
+
+Ubicación efectiva en producción actual:
+
+- en el VPS activo, la fuente operativa de entorno vive en `/home/huelehuele/apps/huelegood.com/shared/.env.production`
+- `scripts/release-production.sh` intenta primero `.env.production` dentro del repo y luego `../shared/.env.production`
+- `PM2` debe recargarse con `--update-env` para que las variables nuevas entren realmente al proceso
+
 ## Operación y backups
 
 | Variable | Uso |
@@ -124,21 +137,22 @@ No definir `PORT` como variable global en `.env.production`. En este monolito mo
 - Openpay productivo
 - base `huelegood` productiva
 - logs, backups y uploads con retención formal
+- puertos operativos actuales: `3000` para `web`, `3005` para `admin`, `4000` para `api`
 
 ## Variables mínimas por aplicación
 
 ### web
 
-- `APP_URL`
-- `API_URL`
+- `NEXT_PUBLIC_APP_URL`
+- `NEXT_PUBLIC_API_URL`
 - `OPENPAY_PUBLIC_KEY` si el frontend participa en tokenización
 - `WEB_MAINTENANCE_MODE`
 - `WEB_MAINTENANCE_BYPASS_TOKEN` si se necesita preview privada
 
 ### admin
 
-- `ADMIN_URL`
-- `API_URL`
+- `NEXT_PUBLIC_ADMIN_URL`
+- `NEXT_PUBLIC_API_URL`
 
 ### api
 

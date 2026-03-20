@@ -27,14 +27,17 @@ Al `20 de marzo de 2026`, la base funcional del proyecto ya existe en el reposit
 - [x] seller panel ampliado con métricas, comisiones, payouts y acceso dedicado en web
 - [x] dashboards operativos por rol para foco ejecutivo, pagos, ventas y marketing
 - [x] reglas de comisión más flexibles con prioridad, elegibilidad, bonos, deducciones y payout neto
-- [x] primer rediseño funcional del storefront y del backoffice para separar experiencia pública y shell operativo
+- [x] home oficial `/` migrada a una composición basada en `storefront-v2-premium`, con lenguaje visual inspirado en `Preline/Coffee Shop`
+- [x] principales superficies públicas alineadas al lenguaje herbal actual de Huele Huele
+- [x] rediseño funcional del backoffice para separar experiencia pública y shell operativo
 - [x] login productivo del admin separado del shell y bootstrap de accesos por variables de entorno
 - [x] rutas preview públicas retiradas; `/storefront-v2` y `/storefront-v2-premium` redirigen a `/`
 - [x] modo mantenimiento del storefront para cambios sensibles en producción
+- [x] normalización operativa del release y de la resolución del API en cliente para `web` y `admin`
 
 ### Pendiente inmediato
 
-- [ ] migración de la home actual a una composición basada en `Preline` adaptada a Huelegood
+- [ ] homologación visual fina de superficies secundarias al baseline actual (`catalogo`, `checkout`, `cuenta`, `panel-vendedor`, `configuracion`)
 - [ ] automatización de campañas más rica y menos manual
 - [ ] segmentación comercial más profunda
 - [ ] mejores reportes de pedidos, pagos, comisiones y conversión
@@ -69,7 +72,8 @@ Mejorar eficiencia operativa, visibilidad comercial y capacidad de crecimiento s
 - [x] seller panel ampliado
 - [x] dashboards operativos por rol
 - [x] reglas de comisión más flexibles
-- [ ] migración de home/storefront a base visual `Preline` con brief UI/UX actualizado
+- [x] migración base de home/storefront a lenguaje visual `Preline` con la home oficial publicada en `/`
+- [ ] homologación visual completa de rutas públicas y administrativas secundarias sobre ese baseline
 - [ ] mayor automatización de campañas
 - [ ] segmentación más rica
 - [ ] reglas avanzadas de promociones
@@ -80,13 +84,15 @@ Mejorar eficiencia operativa, visibilidad comercial y capacidad de crecimiento s
 ### Lectura PM del estado de Fase 2
 
 - Fase 2 ya fue abierta y tiene entregables funcionales reales en producción.
-- Lo ya construido cubre seller panel, dashboards por rol y reglas flexibles de comisión.
-- El frente pendiente ya no es "arrancar Fase 2", sino cerrar la migración visual del storefront, automatización comercial, reporting y una capa UX final de nivel premium productivo.
+- Lo ya construido cubre seller panel, dashboards por rol, reglas flexibles de comisión y una base visual pública activa para la home oficial.
+- El frente pendiente ya no es "migrar la home", sino homologar superficies secundarias, automatización comercial, reporting y una capa UX final consistente de nivel productivo.
 
-### Criterios de aceptación para la migración storefront a `Preline`
+### Criterios de aceptación para la homologación visual sobre la base `Preline`
 
-- navegación pública intacta hacia `/`, `/catalogo`, `/checkout`, `/mayoristas`, `/trabaja-con-nosotros` y `/cuenta`
+- navegación pública intacta hacia `/`, `/catalogo`, `/checkout`, `/mayoristas`, `/trabaja-con-nosotros`, `/cuenta` y `/panel-vendedor`
+- la home oficial mantiene la composición actual basada en `storefront-v2-premium`
 - hero, carrusel de productos en tendencia y banners promocionales adaptados sólo a `Clásico Verde`, `Premium Negro` y `Combo Dúo Perfecto`
+- las páginas públicas secundarias y el acceso admin respetan el mismo sistema de color, espaciado y jerarquía visual
 - rendimiento equivalente o mejor que la home previa, sin degradar el `Core Web Vitals` base
 - copy SEO alineado a palabras clave como `inhaladores herbales`, `frescura herbal`, `portabilidad`, `viajes` y `altura`
 - brief UI/UX actualizado y anexado al frente activo antes de cerrar implementación

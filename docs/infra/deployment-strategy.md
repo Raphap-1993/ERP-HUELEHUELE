@@ -18,9 +18,9 @@ Huelegood se despliega como cuatro procesos de aplicación supervisados por PM2 
 | Dominio | Destino | Puerto local sugerido |
 | --- | --- | --- |
 | `huelegood.com` | Next.js web | `3000` |
-| `admin.huelegood.com` | Next.js admin | `3001` |
+| `admin.huelegood.com` | Next.js admin | `3005` |
 | `api.huelegood.com` | NestJS API | `4000` |
-| sin dominio público | worker BullMQ | `4100` lógico o sin puerto expuesto |
+| sin dominio público | worker BullMQ | sin puerto expuesto |
 
 Notas:
 
@@ -37,6 +37,15 @@ Notas:
 - `scripts/smoke-check.mjs`: verificación post-deploy
 - `ops/nginx/*.conf`: snippets de reverse proxy para Hestia/Nginx
 
+En el VPS actual, el archivo de entorno efectivo vive fuera del repo en:
+
+- `/home/huelehuele/apps/huelegood.com/shared/.env.production`
+
+El script de release soporta ambas ubicaciones:
+
+- `.env.production` dentro del repo
+- `../shared/.env.production` como origen compartido de producción
+
 ## Flujo de despliegue recomendado
 
 1. Actualizar código desde Git y preparar `.env.production`.
@@ -44,6 +53,12 @@ Notas:
 3. Si la release incluye cambios de esquema, activar `HUELEGOOD_RUN_DB_PUSH=1` antes de lanzar el script.
 4. Validar `pm2 status`, logs y smoke checks.
 5. Ejecutar `npm run deploy:backup` o dejarlo programado por `cron`.
+
+Notas operativas:
+
+- la convención canónica de URLs públicas es `NEXT_PUBLIC_*`
+- la convención canónica de accesos bootstrap es `BOOTSTRAP_*`
+- el release todavía acepta aliases legados (`APP_URL`, `ADMIN_LOGIN_*`, etc.) para no romper despliegues previos, pero no deben seguir produciéndose nuevos entornos con esa convención
 
 ## Base de datos
 

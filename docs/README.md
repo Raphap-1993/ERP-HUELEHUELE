@@ -41,7 +41,11 @@ Como base funcional, el proyecto ya cubre:
 - reglas de comisión más flexibles con elegibilidad, prioridad y ajustes de payout
 - despliegue productivo estable sobre VPS con `PM2`, `Hestia` y `Nginx`
 - modo mantenimiento del storefront para cambios sensibles en producción
-- primer rediseño funcional de storefront y backoffice, con login admin separado del shell operativo
+- baseline visual pública activa sobre `storefront-v2-premium`, inspirada en `Preline/Coffee Shop`, ya publicada en `/`
+- principales superficies públicas alineadas al lenguaje herbal actual de Huele Huele
+- login admin separado del shell operativo y acceso real por `AdminAuthGate`
+- resolución del API normalizada en `web` y `admin` para producción, sin depender de `localhost`
+- release script alineado con `.env.production` local o `shared/.env.production` en el VPS
 
 Como insumo funcional, se asume que la v1 de Huelegood ya comunica:
 
@@ -59,7 +63,7 @@ Como insumo funcional, se asume que la v1 de Huelegood ya comunica:
 - No modelar multi-tenant interno para Huelegood.
 - Reutilizar la base de datos PostgreSQL ya disponible en el VPS del proyecto.
 - Adoptar arquitectura de monolito modular, no microservicios puros.
-- Mantener una capa visual compartida basada en `shadcn/ui` y `Tailwind CSS`.
+- Mantener una capa visual compartida basada en `Tailwind CSS`, usando `shadcn/ui` donde aporta valor y `Preline` como acelerador de layout en la web pública.
 
 ## Stack objetivo
 
@@ -69,6 +73,7 @@ Como insumo funcional, se asume que la v1 de Huelegood ya comunica:
 - `PostgreSQL`
 - `Redis` + `BullMQ`
 - `Prisma ORM`
+- `Preline` como librería de layout en storefront público
 - `PM2`
 - `Hestia + Nginx`
 
