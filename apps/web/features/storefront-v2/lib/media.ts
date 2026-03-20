@@ -1,7 +1,7 @@
 import type { ImageLoaderProps } from "next/image";
 import { brandArt, productArtBySlug } from "../../../components/public-brand-art";
 
-const storefrontMediaHosts = ["cdn.huelegood.com", "images.huelegood.com"] as const;
+const storefrontMediaHosts = ["cdn.huelegood.com", "images.huelegood.com", "media.huelegood.com"] as const;
 const storefrontMediaHostSet = new Set<string>(storefrontMediaHosts);
 
 function isAbsoluteUrl(value: string) {

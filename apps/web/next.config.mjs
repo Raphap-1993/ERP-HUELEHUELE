@@ -12,6 +12,10 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "images.huelegood.com"
+      },
+      {
+        protocol: "https",
+        hostname: "media.huelegood.com"
       }
     ],
     formats: ["image/avif", "image/webp"]
