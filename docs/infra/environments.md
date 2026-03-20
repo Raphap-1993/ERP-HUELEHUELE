@@ -95,6 +95,8 @@ No definir `PORT` como variable global en `.env.production`. En este monolito mo
 | `API_HEALTH_URL` | endpoint de smoke check para liveness |
 | `API_READINESS_URL` | endpoint de smoke check para readiness |
 | `API_OPERATIONAL_URL` | endpoint de smoke check para salud operativa |
+| `WEB_MAINTENANCE_MODE` | activa una pantalla pública de mantenimiento en `web` sin tocar `admin` ni `api` |
+| `WEB_MAINTENANCE_BYPASS_TOKEN` | token opcional para permitir revisión privada del storefront durante mantenimiento |
 
 ## Reglas de manejo de secretos
 
@@ -130,6 +132,8 @@ No definir `PORT` como variable global en `.env.production`. En este monolito mo
 - `APP_URL`
 - `API_URL`
 - `OPENPAY_PUBLIC_KEY` si el frontend participa en tokenización
+- `WEB_MAINTENANCE_MODE`
+- `WEB_MAINTENANCE_BYPASS_TOKEN` si se necesita preview privada
 
 ### admin
 

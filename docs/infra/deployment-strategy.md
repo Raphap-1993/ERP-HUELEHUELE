@@ -87,6 +87,19 @@ Notas:
 
 - `GET /health` con payload JSON simple y `release`
 
+## Modo mantenimiento para storefront
+
+- La web pública soporta un modo mantenimiento controlado por `WEB_MAINTENANCE_MODE=true`.
+- Cuando está activo, cualquier ruta pública del storefront se reescribe a una pantalla estática propia.
+- No afecta:
+  - `GET /health`
+  - assets de `/_next/`
+  - assets públicos como `/brand/*`
+  - `admin`
+  - `api`
+- Si se define `WEB_MAINTENANCE_BYPASS_TOKEN`, un reviewer puede entrar al storefront real con `?maintenance_bypass=<token>`.
+- El bypass se guarda en cookie segura para revisar varias páginas sin desactivar el mantenimiento global.
+
 ## Logs
 
 - PM2: logs por proceso
