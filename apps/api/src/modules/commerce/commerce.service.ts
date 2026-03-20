@@ -1,10 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import {
   type AdminOrderDetail,
-  featuredProducts,
   type CheckoutActionSummary,
-  type CheckoutQuoteInput,
   type CheckoutQuoteItemSummary,
+  type CheckoutQuoteInput,
   type CheckoutQuoteSummary,
   type CheckoutRequestInput,
   ManualPaymentRequestStatus,
@@ -14,27 +13,7 @@ import {
 import { actionResponse, wrapResponse } from "../../common/response";
 import { CommissionsService } from "../commissions/commissions.service";
 import { OrdersService } from "../orders/orders.service";
-
-interface CatalogProductLookup {
-  slug: string;
-  name: string;
-  sku: string;
-  price: number;
-  categorySlug: string;
-}
-
-const productMap = new Map<string, CatalogProductLookup>(
-  featuredProducts.map((product) => [
-    product.slug,
-    {
-      slug: product.slug,
-      name: product.name,
-      sku: product.sku,
-      price: product.price,
-      categorySlug: product.categorySlug
-    }
-  ])
-);
+import { ProductsService } from "../products/products.service";
 
 function normalizeCode(value?: string) {
   return value?.trim().toUpperCase() || undefined;
@@ -48,17 +27,18 @@ function roundCurrency(value: number) {
 export class CommerceService {
   constructor(
     private readonly ordersService: OrdersService,
-    private readonly commissionsService: CommissionsService
+    private readonly commissionsService: CommissionsService,
+    private readonly productsService: ProductsService
   ) {}
 
-  quote(body: CheckoutQuoteInput) {
-    return wrapResponse<CheckoutQuoteSummary>(this.buildQuote(body), {
+  async quote(body: CheckoutQuoteInput) {
+    return wrapResponse<CheckoutQuoteSummary>(await this.buildQuote(body), {
       calculatedAt: new Date().toISOString()
     });
   }
 
-  createOpenpayCheckout(body: CheckoutRequestInput) {
-    const quote = this.buildQuote(body);
+  async createOpenpayCheckout(body: CheckoutRequestInput) {
+    const quote = await this.buildQuote(body);
     const orderNumber = this.ordersService.reserveOrderNumber();
     const providerReference = `OP-${orderNumber}`;
     const nextStep = "Redirige al checkout del proveedor para autorizar el cobro.";
@@ -81,8 +61,8 @@ export class CommerceService {
     };
   }
 
-  createManualCheckout(body: CheckoutRequestInput) {
-    const quote = this.buildQuote(body);
+  async createManualCheckout(body: CheckoutRequestInput) {
+    const quote = await this.buildQuote(body);
     const orderNumber = this.ordersService.reserveOrderNumber();
     const providerReference = `MP-${orderNumber}`;
     const nextStep = "Solicita al cliente subir el comprobante y espera validación operativa.";
@@ -105,33 +85,12 @@ export class CommerceService {
     };
   }
 
-  private buildQuote(body: CheckoutQuoteInput | CheckoutRequestInput): CheckoutQuoteSummary {
+  private async buildQuote(body: CheckoutQuoteInput | CheckoutRequestInput): Promise<CheckoutQuoteSummary> {
     if (!body.items?.length) {
       throw new BadRequestException("Debes incluir al menos un producto en el checkout.");
     }
 
-    const items = body.items.map((item) => {
-      const product = productMap.get(item.slug);
-      if (!product) {
-        throw new NotFoundException(`Producto no encontrado: ${item.slug}`);
-      }
-
-      const quantity = Number(item.quantity);
-      if (!Number.isFinite(quantity) || quantity <= 0) {
-        throw new BadRequestException(`Cantidad inválida para ${item.slug}.`);
-      }
-
-      const lineTotal = roundCurrency(product.price * quantity);
-
-      return {
-        slug: product.slug,
-        name: product.name,
-        sku: product.sku,
-        quantity,
-        unitPrice: product.price,
-        lineTotal
-      } satisfies CheckoutQuoteItemSummary;
-    });
+    const { items, currencyCode } = await this.productsService.resolveCheckoutItems(body.items);
 
     const subtotal = roundCurrency(items.reduce((sum, item) => sum + item.lineTotal, 0));
     const vendorCode = normalizeCode(body.vendorCode);
@@ -148,7 +107,7 @@ export class CommerceService {
       discount,
       shipping,
       grandTotal,
-      currencyCode: "MXN",
+      currencyCode,
       vendorCode,
       couponCode,
       paymentMethod,

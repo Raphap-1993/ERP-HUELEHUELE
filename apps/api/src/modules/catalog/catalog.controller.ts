@@ -30,8 +30,8 @@ export class CatalogController {
   }
 
   @Get("products/:slug")
-  getProduct(@Param("slug") slug: string) {
-    const product = this.catalogService.findProductBySlug(slug);
+  async getProduct(@Param("slug") slug: string) {
+    const product = await this.catalogService.findProductBySlug(slug);
 
     if (!product) {
       throw new NotFoundException(`Producto no encontrado: ${slug}`);

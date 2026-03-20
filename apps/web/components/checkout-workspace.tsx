@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import {
-  featuredProducts,
   type AuthSessionSummary,
   type CheckoutItemInput,
   type CheckoutQuoteSummary,
@@ -17,6 +17,12 @@ import {
   fetchCheckoutQuote,
   fetchSession
 } from "../lib/api";
+import {
+  cloudflareImageLoader,
+  isRemoteStorefrontMediaUrl,
+  resolveStorefrontMediaSrc,
+  storefrontProductArtBySlug
+} from "../features/storefront-v2/lib/media";
 import {
   addStoredCartItem,
   clearStoredCart,
@@ -54,20 +60,22 @@ function splitName(name: string) {
   };
 }
 
-function buildFallbackProducts(products: CatalogProduct[]) {
-  return products.length > 0 ? products : featuredProducts;
+function resolveCheckoutProductImage(product?: CatalogProduct) {
+  const fallback = storefrontProductArtBySlug[product?.slug ?? "clasico-verde"] ?? storefrontProductArtBySlug["clasico-verde"];
+  const src = resolveStorefrontMediaSrc(product?.imageUrl ?? fallback);
+
+  return {
+    src,
+    remote: isRemoteStorefrontMediaUrl(src),
+    alt: product?.imageAlt ?? product?.name ?? "Producto Huele Huele"
+  };
 }
 
 export function CheckoutWorkspace() {
   const searchParams = useSearchParams();
   const checkoutRequestIdRef = useRef<string | null>(null);
-  const [products, setProducts] = useState<CatalogProduct[]>(featuredProducts);
-  const [items, setItems] = useState<CheckoutItemInput[]>([
-    {
-      slug: searchParams.get("producto") || featuredProducts[0].slug,
-      quantity: 1
-    }
-  ]);
+  const [products, setProducts] = useState<CatalogProduct[]>([]);
+  const [items, setItems] = useState<CheckoutItemInput[]>([]);
   const [session, setSession] = useState<AuthSessionSummary | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("openpay");
   const [vendorCode, setVendorCode] = useState("");
@@ -119,6 +127,8 @@ export function CheckoutWorkspace() {
     return items.filter((item) => item.slug.trim().length > 0 && item.quantity > 0);
   }, [items]);
 
+  const firstCatalogSlug = products[0]?.slug ?? searchParams.get("producto") ?? "";
+
   useEffect(() => {
     let active = true;
 
@@ -155,11 +165,11 @@ export function CheckoutWorkspace() {
       try {
         const response = await fetchCatalogSummary();
         if (active) {
-          setProducts(buildFallbackProducts(response.data.products));
+          setProducts(response.data.products ?? []);
         }
       } catch {
         if (active) {
-          setProducts(featuredProducts);
+          setProducts([]);
         }
       }
     }
@@ -176,6 +186,23 @@ export function CheckoutWorkspace() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (items.length > 0) {
+      return;
+    }
+
+    if (products.length === 0) {
+      return;
+    }
+
+    const preferredSlug = searchParams.get("producto");
+    const fallbackSlug = preferredSlug && products.some((product) => product.slug === preferredSlug) ? preferredSlug : firstCatalogSlug;
+
+    if (fallbackSlug) {
+      setItems([{ slug: fallbackSlug, quantity: 1 }]);
+    }
+  }, [firstCatalogSlug, items.length, products, searchParams]);
 
   useEffect(() => {
     checkoutRequestIdRef.current = null;
@@ -245,7 +272,7 @@ export function CheckoutWorkspace() {
   }, [activeItems, couponCode, paymentMethod, vendorCode]);
 
   const resolvedProducts = useMemo(() => {
-    return products.length > 0 ? products : featuredProducts;
+    return products;
   }, [products]);
 
   const availableToAdd = useMemo(() => {
@@ -323,7 +350,7 @@ export function CheckoutWorkspace() {
     discount: 0,
     shipping: 0,
     grandTotal: 0,
-    currencyCode: "MXN",
+    currencyCode: "PEN",
     paymentMethod,
     estimatedPoints: 0
   };
@@ -421,10 +448,24 @@ export function CheckoutWorkspace() {
                     <p className="text-sm text-[#6b7280]">No hay productos. Agrega uno arriba.</p>
                   ) : activeItems.map((item) => {
                     const product = resolvedProducts.find((p) => p.slug === item.slug);
+                    const image = resolveCheckoutProductImage(product);
                     return (
                       <div key={item.slug} className="flex items-center gap-4 rounded-[13px] border border-[rgba(26,58,46,0.08)] bg-[#f4f4f0] p-4">
-                        <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-[10px] bg-[#d8f3dc] text-xl">
-                          {item.slug.includes("negro") ? "🖤" : (item.slug.includes("combo") || item.slug.includes("pack")) ? "✨" : "🌿"}
+                        <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-[10px] bg-[#d8f3dc]">
+                          {image.src ? (
+                            <Image
+                              fill
+                              src={image.src}
+                              loader={image.remote ? cloudflareImageLoader : undefined}
+                              alt={image.alt}
+                              sizes="48px"
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-xl">
+                              {item.slug.includes("negro") ? "🖤" : (item.slug.includes("combo") || item.slug.includes("pack")) ? "✨" : "🌿"}
+                            </div>
+                          )}
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-[13px] font-semibold text-[#1a3a2e]">{product?.name ?? item.slug}</p>
@@ -600,10 +641,24 @@ export function CheckoutWorkspace() {
                     <p className="text-sm text-[#6b7280]">Sin productos seleccionados.</p>
                   ) : activeItems.map((item) => {
                     const product = resolvedProducts.find((p) => p.slug === item.slug);
+                    const image = resolveCheckoutProductImage(product);
                     return (
                       <div key={item.slug} className="flex items-center gap-3.5">
-                        <div className="flex h-[52px] w-[52px] flex-shrink-0 items-center justify-center rounded-[12px] bg-[#f4f4f0] text-2xl">
-                          {item.slug.includes("negro") ? "🖤" : (item.slug.includes("combo") || item.slug.includes("pack")) ? "✨" : "🌿"}
+                        <div className="relative h-[52px] w-[52px] flex-shrink-0 overflow-hidden rounded-[12px] bg-[#f4f4f0]">
+                          {image.src ? (
+                            <Image
+                              fill
+                              src={image.src}
+                              loader={image.remote ? cloudflareImageLoader : undefined}
+                              alt={image.alt}
+                              sizes="52px"
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-2xl">
+                              {item.slug.includes("negro") ? "🖤" : (item.slug.includes("combo") || item.slug.includes("pack")) ? "✨" : "🌿"}
+                            </div>
+                          )}
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-[13px] font-semibold text-[#1a3a2e]">{product?.name ?? item.slug}</p>

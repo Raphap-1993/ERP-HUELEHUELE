@@ -549,6 +549,7 @@ export interface CommissionRuleInput {
 }
 
 export interface CatalogCategorySummary {
+  id?: string;
   slug: string;
   name: string;
   description: string;
@@ -558,11 +559,109 @@ export interface CatalogCategorySummary {
 export interface CatalogSummaryResponse {
   products: CatalogProduct[];
   categories: CatalogCategorySummary[];
+  currencyCode: string;
   filters: {
     search?: string;
     category?: string;
     featuredOnly?: boolean;
   };
+}
+
+export type ProductStatusValue = "draft" | "active" | "inactive" | "archived";
+export type ProductVariantStatusValue = "active" | "inactive" | "out_of_stock";
+
+export interface ProductVariantSummary {
+  id: string;
+  sku: string;
+  name: string;
+  price: number;
+  compareAtPrice?: number;
+  stockOnHand: number;
+  status: ProductVariantStatusValue;
+}
+
+export interface ProductImageSummary {
+  id: string;
+  url: string;
+  altText?: string;
+  sortOrder: number;
+  isPrimary: boolean;
+  variantId?: string;
+}
+
+export interface ProductCategorySummary {
+  id: string;
+  slug: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  productCount: number;
+}
+
+export interface ProductAdminSummary {
+  id: string;
+  name: string;
+  slug: string;
+  shortDescription?: string;
+  categoryId?: string;
+  categorySlug?: string;
+  categoryName?: string;
+  status: ProductStatusValue;
+  isFeatured: boolean;
+  price: number;
+  compareAtPrice?: number;
+  sku: string;
+  currencyCode: string;
+  primaryImageUrl?: string;
+  updatedAt: string;
+}
+
+export interface ProductAdminDetail extends ProductAdminSummary {
+  longDescription?: string;
+  variants: ProductVariantSummary[];
+  images: ProductImageSummary[];
+}
+
+export interface ProductVariantInput {
+  id?: string;
+  sku: string;
+  name: string;
+  price: number;
+  compareAtPrice?: number;
+  stockOnHand: number;
+  status: ProductVariantStatusValue;
+}
+
+export interface ProductUpsertInput {
+  categoryId?: string;
+  name: string;
+  slug: string;
+  shortDescription?: string;
+  longDescription?: string;
+  status: ProductStatusValue;
+  isFeatured: boolean;
+  variants: ProductVariantInput[];
+}
+
+export interface ProductImageUploadInput {
+  altText?: string;
+  isPrimary?: boolean;
+  sortOrder?: number;
+  variantId?: string;
+}
+
+export interface MediaAssetSummary {
+  objectKey: string;
+  url: string;
+  contentType: string;
+  width?: number;
+  height?: number;
+  sizeBytes: number;
+}
+
+export interface ProductImageUploadSummary {
+  image: ProductImageSummary;
+  media: MediaAssetSummary;
 }
 
 export interface CheckoutItemInput {
@@ -595,6 +694,7 @@ export interface CheckoutQuoteItemSummary {
   quantity: number;
   unitPrice: number;
   lineTotal: number;
+  imageUrl?: string;
 }
 
 export interface CheckoutQuoteSummary {

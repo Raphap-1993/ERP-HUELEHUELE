@@ -37,6 +37,12 @@ import type {
   NotificationLogSummary,
   NotificationSummary,
   AdminManualPaymentRequestSummary,
+  ProductAdminDetail,
+  ProductAdminSummary,
+  ProductCategorySummary,
+  ProductImageUploadInput,
+  ProductImageUploadSummary,
+  ProductUpsertInput,
   ObservabilityOverviewEnvelope,
   ObservabilityOverviewSummary,
   AdminOrderDetail,
@@ -102,6 +108,35 @@ async function requestJson<T>(path: string, init: RequestInit = {}) {
       ...init,
       headers: {
         "Content-Type": "application/json",
+        ...(sessionHeaders ?? {}),
+        ...(init.headers ?? {})
+      }
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "No pudimos conectar con el API.";
+    throw new Error(`No pudimos conectar con el API (${url}). ${message}`);
+  }
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message = payload?.message ?? payload?.error ?? `HTTP ${response.status}`;
+    throw new Error(Array.isArray(message) ? message.join(", ") : String(message));
+  }
+
+  return payload as T;
+}
+
+async function requestFormData<T>(path: string, formData: FormData, init: RequestInit = {}) {
+  const url = `${getApiBaseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
+  const sessionHeaders = getSessionHeaders();
+  let response: Response;
+
+  try {
+    response = await fetch(url, {
+      ...init,
+      method: init.method ?? "POST",
+      body: formData,
+      headers: {
         ...(sessionHeaders ?? {}),
         ...(init.headers ?? {})
       }
@@ -350,6 +385,64 @@ export async function fetchAuditOverview() {
   return requestJson<AuditOverviewEnvelope>("/admin/audit", {
     cache: "no-store"
   });
+}
+
+export async function fetchAdminProducts() {
+  return requestJson<AdminProductsEnvelope>("/admin/products");
+}
+
+export async function fetchAdminProduct(id: string) {
+  return requestJson<AdminProductEnvelope>(`/admin/products/${encodeURIComponent(id)}`);
+}
+
+export async function fetchAdminProductCategories() {
+  return requestJson<AdminProductCategoriesEnvelope>("/admin/products/categories");
+}
+
+export async function createAdminProduct(body: ProductUpsertInput) {
+  return requestJson<AdminProductActionEnvelope>("/admin/products", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function updateAdminProduct(id: string, body: ProductUpsertInput) {
+  return requestJson<AdminProductActionEnvelope>(`/admin/products/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function uploadAdminProductImage(
+  id: string,
+  body: ProductImageUploadInput & { file: File }
+) {
+  const formData = new FormData();
+  formData.append("file", body.file);
+  if (body.altText) {
+    formData.append("altText", body.altText);
+  }
+  if (body.isPrimary !== undefined) {
+    formData.append("isPrimary", String(body.isPrimary));
+  }
+  if (body.sortOrder !== undefined) {
+    formData.append("sortOrder", String(body.sortOrder));
+  }
+  if (body.variantId) {
+    formData.append("variantId", body.variantId);
+  }
+
+  return requestFormData<ProductImageUploadEnvelope>(
+    `/admin/products/${encodeURIComponent(id)}/images`,
+    formData
+  );
+}
+
+export async function deleteAdminProductImage(productId: string, imageId: string) {
+  return requestJson<{ status: string; message: string; referenceId?: string }>(
+    `/admin/products/${encodeURIComponent(productId)}/images/${encodeURIComponent(imageId)}`,
+    { method: "DELETE" }
+  );
 }
 
 export async function fetchAuditLogs() {
@@ -685,4 +778,31 @@ export type CommissionRuleActionEnvelope = {
   status: string;
   message: string;
   referenceId?: string;
+};
+
+export type AdminProductsEnvelope = {
+  data: ProductAdminSummary[];
+  meta?: Record<string, unknown>;
+};
+
+export type AdminProductEnvelope = {
+  data: ProductAdminDetail;
+  meta?: Record<string, unknown>;
+};
+
+export type AdminProductCategoriesEnvelope = {
+  data: ProductCategorySummary[];
+  meta?: Record<string, unknown>;
+};
+
+export type AdminProductActionEnvelope = {
+  status: string;
+  message: string;
+  referenceId?: string;
+  product?: ProductAdminDetail;
+};
+
+export type ProductImageUploadEnvelope = {
+  data: ProductImageUploadSummary;
+  meta?: Record<string, unknown>;
 };

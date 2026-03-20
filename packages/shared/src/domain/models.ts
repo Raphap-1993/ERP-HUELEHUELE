@@ -51,6 +51,8 @@ export interface CatalogProduct {
   tone: "emerald" | "graphite" | "amber";
   benefits: string[];
   sku: string;
+  imageUrl?: string;
+  imageAlt?: string;
 }
 
 export interface PromoBanner {

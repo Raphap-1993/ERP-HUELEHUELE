@@ -19,6 +19,7 @@ export const adminAccessRoles = {
   payments: [RoleCode.SuperAdmin, RoleCode.Admin, RoleCode.OperadorPagos],
   vendors: [RoleCode.SuperAdmin, RoleCode.Admin, RoleCode.Ventas, RoleCode.SellerManager],
   commissions: [RoleCode.SuperAdmin, RoleCode.Admin, RoleCode.Ventas, RoleCode.SellerManager],
+  products: [RoleCode.SuperAdmin, RoleCode.Admin, RoleCode.Marketing, RoleCode.Ventas],
   cms: [RoleCode.SuperAdmin, RoleCode.Admin, RoleCode.Marketing],
   wholesale: [RoleCode.SuperAdmin, RoleCode.Admin, RoleCode.Ventas, RoleCode.Marketing],
   loyalty: [RoleCode.SuperAdmin, RoleCode.Admin, RoleCode.Marketing, RoleCode.Ventas],
