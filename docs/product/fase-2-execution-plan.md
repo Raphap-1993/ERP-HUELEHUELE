@@ -1,0 +1,225 @@
+# Plan Operativo de Fase 2
+
+## Objetivo
+
+Traducir la Fase 2 actual de Huelegood a un frente ejecutable, secuenciado y transferible a `Linear` sin perder alineación con el roadmap homologado.
+
+## Decisión de priorización
+
+Al `20 de marzo de 2026`, la Fase 2 ya no necesita abrir una nueva migración visual de la home. Esa base ya existe en producción. La prioridad inmediata pasa a ser:
+
+1. `automatización comercial`
+2. `reporting operativo y comercial`
+3. `homologación visual fina de superficies secundarias` como frente complementario, no como bloqueo del frente activo
+
+## Frente activo
+
+### F2-002 Automatización comercial y reporting
+
+Resultado esperado:
+
+- campañas menos manuales y más accionables
+- segmentos más útiles para operación comercial real
+- lectura clara de pedidos, pagos, comisiones y conversión sin inspección manual por módulo
+- entregables suficientemente cerrados para convertirse en vistas, exports y rutinas operativas dentro del admin
+
+## Alcance
+
+### Dentro de alcance
+
+- modelo más rico de segmentos comerciales
+- automatización básica de campañas sobre triggers y condiciones operativas
+- reportes de pedidos, pagos, comisiones, campañas y conversión
+- exports CSV operativos
+- criterios de QA y trazabilidad para los nuevos flujos
+- documentación y handoff operativo para que el equipo no dependa de memoria implícita
+
+### Fuera de alcance
+
+- reabrir la home oficial `/` como experimento visual
+- rehacer checkout, auth o contratos base del circuito transaccional
+- introducir microservicios o pipelines analíticos externos
+- reemplazar la base actual de `module_snapshots`, `Prisma`, `BullMQ` o `PM2`
+
+## Épicas sugeridas para Linear
+
+### Epic A. F2-002 Automatización comercial y reporting
+
+Dueño sugerido:
+
+- `product-manager` para alcance y priorización
+- `tech-lead` para secuencia
+- `backend-lead` y `data-agent` para contratos y persistencia
+- `frontend-lead` para superficies admin
+- `qa-lead` para cierre
+
+### Epic B. F2-VIS Homologación visual fina
+
+Dueño sugerido:
+
+- `ui-ux-agent` para brief y consistencia
+- `frontend-lead` para implementación
+- `qa-lead` para revisión cross-device
+
+Nota:
+
+- `Epic B` no bloquea `Epic A`, pero debe correr en paralelo cuando el frente activo no requiera cambios de backend en el mismo tramo.
+
+## Tickets ejecutables
+
+### Bloque 1. Fundaciones de automatización comercial
+
+| ID | Título | Agente líder sugerido | Módulos tocados | Resultado esperado |
+| --- | --- | --- | --- | --- |
+| `F2-002-01` | Definir taxonomía de eventos comerciales | `system-analyst` + `product-manager` | `orders`, `payments`, `commissions`, `marketing`, `notifications`, docs | Lista única de eventos que alimentan campañas y reporting, con nombre, trigger, payload mínimo y reglas de uso |
+| `F2-002-02` | Expandir el modelo de segmentos comerciales | `data-agent` + `backend-lead` | `marketing`, `customers`, `orders`, `loyalty` | Segmentos basados en compra reciente, recompra, valor, canal, vendedor, mayorista y estado de fidelización |
+| `F2-002-03` | Definir contratos de reporting y vistas agregadas | `software-architect` + `backend-lead` | `core`, `marketing`, `orders`, `payments`, `commissions` | Endpoints y agregados consistentes para reporting operativo y comercial |
+
+### Bloque 2. Automatización de campañas
+
+| ID | Título | Agente líder sugerido | Módulos tocados | Resultado esperado |
+| --- | --- | --- | --- | --- |
+| `F2-002-04` | Motor de reglas de campañas automáticas | `backend-lead` | `marketing`, `notifications`, `worker`, `BullMQ` | Reglas tipo trigger + condición + acción para campañas simples, sin depender de ejecución manual |
+| `F2-002-05` | Corridas programadas y reintentos de campañas | `backend-lead` + `devops-agent` | `marketing`, `worker`, `observability` | Jobs trazables para campañas programadas, con estado, retry e instrumentación |
+| `F2-002-06` | Workspace admin para automatizaciones | `frontend-lead` + `ui-ux-agent` | `apps/admin/app/marketing`, `crm`, componentes admin | Vista clara para crear, activar, pausar y revisar automatizaciones sin ambigüedad operativa |
+
+### Bloque 3. Reporting y lectura comercial
+
+| ID | Título | Agente líder sugerido | Módulos tocados | Resultado esperado |
+| --- | --- | --- | --- | --- |
+| `F2-002-07` | Reporte de pedidos, pagos y conversión | `backend-lead` + `data-agent` | `core`, `orders`, `payments` | Resumen por periodo con embudo básico: visita comercial útil, pedido, pago aprobado y conversión |
+| `F2-002-08` | Reporte de comisiones y rendimiento vendedor | `backend-lead` + `frontend-lead` | `commissions`, `vendors`, `seller panel`, admin | Lectura de comisiones pendientes, pagables, pagadas y desempeño por vendedor |
+| `F2-002-09` | Exports CSV operativos | `backend-lead` + `qa-lead` | `orders`, `payments`, `commissions`, `marketing` | Descarga de CSV útiles para operación y conciliación sin depender de copiar tablas |
+| `F2-002-10` | Dashboard comercial consolidado por rol | `frontend-lead` | `dashboard`, `crm`, `marketing`, `comisiones` | Dashboards por rol con foco comercial, no sólo operacional |
+
+### Bloque 4. Cierre de calidad y handoff
+
+| ID | Título | Agente líder sugerido | Módulos tocados | Resultado esperado |
+| --- | --- | --- | --- | --- |
+| `F2-002-11` | QA funcional y regresión del frente comercial | `qa-lead` | web, admin, api, worker | Matriz de pruebas con escenarios felices, edge cases y regresión sobre campañas, reportes y exports |
+| `F2-002-12` | Documentación operativa y cierre de frente | `documentation-agent` + `tech-lead` | `docs/product`, `docs/flows`, `docs/api`, `docs/infra` | Documentación alineada a lo implementado, sin dejar comportamiento crítico implícito |
+
+## Frente complementario
+
+### F2-VIS Homologación visual fina
+
+Este frente existe porque el roadmap ya lo marca como pendiente inmediato, pero no debe desordenar el bloque activo.
+
+Tickets sugeridos:
+
+| ID | Título | Agente líder sugerido | Superficies | Resultado esperado |
+| --- | --- | --- | --- | --- |
+| `F2-VIS-01` | Brief UX final para superficies secundarias | `ui-ux-agent` + `product-manager` | `catalogo`, `checkout`, `cuenta`, `panel-vendedor`, `configuracion` | Brief aprobado con reglas de espaciado, jerarquía y patrones por superficie |
+| `F2-VIS-02` | Homologación de rutas públicas secundarias | `frontend-lead` | `catalogo`, `checkout`, `cuenta`, `panel-vendedor` | Consistencia visual real con la home actual sin romper flujos |
+| `F2-VIS-03` | Homologación fina del backoffice secundario | `frontend-lead` | `configuracion`, `crm`, `marketing`, módulos administrativos secundarios | Backoffice consistente con el dashboard ya aceptado, sin superficies rotas o desalineadas |
+| `F2-VIS-04` | QA visual cross-device | `qa-lead` | web y admin | Revisión desktop/mobile y cierre de desbordes, contraste y spacing |
+
+## Secuencia recomendada
+
+### Ola 1
+
+- `F2-002-01`
+- `F2-002-02`
+- `F2-002-03`
+
+Objetivo:
+
+- cerrar taxonomía, segmentos y contratos antes de abrir UI nueva o automatizaciones que luego cambien dos veces
+
+### Ola 2
+
+- `F2-002-04`
+- `F2-002-05`
+- `F2-002-06`
+
+Objetivo:
+
+- llevar campañas desde una lógica semi-manual a una base automatizable y observable
+
+### Ola 3
+
+- `F2-002-07`
+- `F2-002-08`
+- `F2-002-09`
+- `F2-002-10`
+
+Objetivo:
+
+- convertir datos dispersos en lectura comercial real para operación y toma de decisión
+
+### Ola 4
+
+- `F2-002-11`
+- `F2-002-12`
+- `F2-VIS-01`
+- `F2-VIS-02`
+- `F2-VIS-03`
+- `F2-VIS-04`
+
+Objetivo:
+
+- cerrar calidad, documentación y consistencia visual sin mezclar ese trabajo con los cambios estructurales de backend
+
+## Dependencias críticas
+
+- `F2-002-04` depende de `F2-002-01` y `F2-002-02`
+- `F2-002-05` depende de `F2-002-04`
+- `F2-002-06` depende de que `F2-002-04` tenga contrato estable
+- `F2-002-07` y `F2-002-08` dependen de `F2-002-03`
+- `F2-002-09` depende de `F2-002-07` y `F2-002-08`
+- `F2-002-10` depende de `F2-002-07` y `F2-002-08`
+- `F2-VIS-*` debe evitar pisar componentes que estén siendo reescritos por `F2-002-06` o `F2-002-10`
+
+## Definición de terminado
+
+La Fase 2 no debe considerarse cerrada si solo existen vistas nuevas. Se considera cerrada cuando:
+
+- campañas pueden dispararse por condiciones reales sin intervención manual constante
+- segmentos nuevos tienen definición explícita y trazable
+- existe lectura útil de pedidos, pagos, comisiones y conversión por periodo
+- exports operativos resuelven conciliación y seguimiento sin trabajo manual repetitivo
+- QA cubre happy path y regresión del nuevo frente
+- la documentación queda sincronizada con implementación real
+- superficies secundarias se ven como parte del mismo producto y no como piezas aisladas
+
+## Riesgos y controles
+
+### Riesgo
+
+- convertir campañas en una capa demasiado compleja para el estado actual del monolito
+
+Control:
+
+- comenzar con reglas simples y triggers explícitos
+
+### Riesgo
+
+- abrir reporting ambiguo sin contrato de métricas único
+
+Control:
+
+- cerrar primero taxonomía y definiciones de métricas
+
+### Riesgo
+
+- mezclar rediseño visual con cambios estructurales y frenar la entrega
+
+Control:
+
+- separar `F2-002` y `F2-VIS` como frentes coordinados, no como una sola bolsa de trabajo
+
+## Uso recomendado en Linear
+
+Estructura sugerida:
+
+1. Crear la épica `F2-002 Automatización comercial y reporting`
+2. Crear la épica `F2-VIS Homologación visual fina`
+3. Cargar cada ticket con su mismo ID
+4. Etiquetar por disciplina: `product`, `backend`, `frontend`, `data`, `qa`, `docs`, `ux`
+5. Relacionar dependencias entre tickets antes de asignar responsables
+
+## Siguiente decisión recomendada
+
+Abrir primero `F2-002-01`, `F2-002-02` y `F2-002-03`.
+
+Ese bloque fija lenguaje, datos y contratos. Sin eso, cualquier automatización o dashboard nuevo vuelve a nacer ambiguo.

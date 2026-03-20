@@ -94,6 +94,7 @@ Como insumo funcional, se asume que la v1 de Huelegood ya comunica:
 - [scope.md](./product/scope.md)
 - [roadmap.md](./product/roadmap.md)
 - [backlog-mvp.md](./product/backlog-mvp.md)
+- [fase-2-execution-plan.md](./product/fase-2-execution-plan.md)
 - [roles-and-permissions.md](./product/roles-and-permissions.md)
 
 ### Flujos

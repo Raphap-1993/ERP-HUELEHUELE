@@ -78,6 +78,10 @@ Criterios de aceptación:
 - capacidad de leer desempeño comercial sin depender de inspección manual por módulo
 - continuidad del lenguaje visual ya aceptado, sin reabrir la home oficial como experimento
 
+Plan operativo detallado:
+
+- ver [fase-2-execution-plan.md](./fase-2-execution-plan.md) para épicas, tickets, dependencias y definición de terminado
+
 ## Prioridad crítica
 
 | ID | Ítem | Resultado esperado |

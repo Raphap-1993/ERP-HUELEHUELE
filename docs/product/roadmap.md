@@ -86,6 +86,7 @@ Mejorar eficiencia operativa, visibilidad comercial y capacidad de crecimiento s
 - Fase 2 ya fue abierta y tiene entregables funcionales reales en producción.
 - Lo ya construido cubre seller panel, dashboards por rol, reglas flexibles de comisión y una base visual pública activa para la home oficial.
 - El frente pendiente ya no es "migrar la home", sino homologar superficies secundarias, automatización comercial, reporting y una capa UX final consistente de nivel productivo.
+- El plan operativo aterrizado para ejecutar este frente vive en [fase-2-execution-plan.md](./fase-2-execution-plan.md).
 
 ### Criterios de aceptación para la homologación visual sobre la base `Preline`
 
