@@ -19,23 +19,52 @@ import type {
   WholesaleLeadSummary
 } from "@huelegood/shared";
 
+const localApiBaseUrl = "http://localhost:4000/api/v1";
+
 function normalizeBaseUrl(value: string | undefined) {
-  return value?.replace(/\/$/, "") || "http://localhost:4000/api/v1";
+  const normalized = value?.replace(/\/$/, "");
+  return normalized || undefined;
+}
+
+function inferHostedApiBaseUrl() {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+
+  const { protocol, hostname } = window.location;
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return undefined;
+  }
+
+  const hostParts = hostname.split(".");
+  if (hostParts.length < 2) {
+    return undefined;
+  }
+
+  const rootDomain = hostParts.slice(-2).join(".");
+  return `${protocol}//api.${rootDomain}/api/v1`;
 }
 
 export function getApiBaseUrl() {
-  return normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL);
+  return normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL) ?? inferHostedApiBaseUrl() ?? localApiBaseUrl;
 }
 
 async function requestJson<T>(path: string, init: RequestInit = {}) {
   const url = `${getApiBaseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
-  const response = await fetch(url, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init.headers ?? {})
-    }
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(url, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...(init.headers ?? {})
+      }
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "No pudimos conectar con el API.";
+    throw new Error(`No pudimos conectar con el API (${url}). ${message}`);
+  }
 
   const payload = await response.json().catch(() => null);
   if (!response.ok) {

@@ -6,12 +6,21 @@ cd "$ROOT_DIR"
 
 incoming_release_sha="${APP_RELEASE_SHA:-}"
 
-if [[ -f ".env.production" ]]; then
-  set -a
-  # shellcheck disable=SC1091
-  source ".env.production"
-  set +a
-fi
+env_candidates=(
+  ".env.production"
+  "../shared/.env.production"
+)
+
+for env_file in "${env_candidates[@]}"; do
+  if [[ -f "$env_file" ]]; then
+    echo "[release] loading environment from $env_file"
+    set -a
+    # shellcheck disable=SC1090
+    source "$env_file"
+    set +a
+    break
+  fi
+done
 
 if [[ -n "$incoming_release_sha" ]]; then
   export APP_RELEASE_SHA="$incoming_release_sha"
