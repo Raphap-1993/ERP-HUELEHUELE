@@ -402,7 +402,7 @@ export function CheckoutWorkspace() {
                     <div key={item.slug} className="rounded-3xl border border-black/10 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
-                          <p className="font-semibold text-[#132016]">{product?.name ?? item.slug}</p>
+                          <p className="font-semibold text-[#1a3a2e]">{product?.name ?? item.slug}</p>
                           <p className="text-sm text-black/55">{product?.sku ?? "Referencia del producto"}</p>
                         </div>
                         <Badge tone="neutral">{product?.categorySlug ?? "productos"}</Badge>
@@ -414,7 +414,7 @@ export function CheckoutWorkspace() {
                           value={item.quantity}
                           onChange={(event) => updateItem(item.slug, Number(event.target.value))}
                         />
-                        <div className="text-sm font-semibold text-[#132016]">
+                        <div className="text-sm font-semibold text-[#1a3a2e]">
                           ${(product?.price ?? 0) * item.quantity}
                         </div>
                         <Button type="button" variant="secondary" onClick={() => removeItem(item.slug)}>
@@ -428,7 +428,7 @@ export function CheckoutWorkspace() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-[2.3rem] border-black/8 bg-[linear-gradient(180deg,#ffffff_0%,#f2f6ee_100%)]">
+          <Card className="rounded-[2.3rem] border-black/8 bg-[linear-gradient(180deg,#ffffff_0%,#faf8f3_100%)]">
             <CardHeader>
               <CardTitle>Datos del cliente y envío</CardTitle>
               <CardDescription>Completa los datos necesarios para entregar tu pedido correctamente.</CardDescription>
@@ -551,7 +551,7 @@ export function CheckoutWorkspace() {
               {paymentMethod === "manual" ? (
                 <div className="space-y-4 rounded-3xl border border-black/10 bg-black/[0.02] p-4">
                   <div className="space-y-1">
-                    <p className="text-sm font-semibold text-[#132016]">Comprobante manual</p>
+                    <p className="text-sm font-semibold text-[#1a3a2e]">Comprobante manual</p>
                     <p className="text-xs text-black/55">
                       Comparte una referencia clara para identificar tu pago y agilizar la validación.
                     </p>
@@ -597,7 +597,7 @@ export function CheckoutWorkspace() {
 
         <div className="space-y-6">
           <div className="sticky top-24 space-y-6">
-            <Card className="rounded-[2.3rem] border-black/8 bg-[linear-gradient(180deg,#ffffff_0%,#f2f6ee_100%)]">
+            <Card className="rounded-[2.3rem] border-black/8 bg-[linear-gradient(180deg,#ffffff_0%,#faf8f3_100%)]">
               <CardHeader>
                 <CardTitle>Resumen</CardTitle>
                 <CardDescription>{quoteLoading ? "Calculando totales..." : "Totales actualizados al momento de tu compra."}</CardDescription>
@@ -637,13 +637,13 @@ export function CheckoutWorkspace() {
                   <CardDescription>Resumen de tu compra y siguientes pasos.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="rounded-3xl bg-[#132016] px-5 py-4 text-white">
+                  <div className="rounded-3xl bg-[#1a3a2e] px-5 py-4 text-white">
                     <p className="text-xs uppercase tracking-[0.22em] text-white/45">Estado</p>
                     <p className="mt-2 text-xl font-semibold">{result.message}</p>
                     <p className="text-sm text-white/70">Referencia: {result.referenceId}</p>
                   </div>
                   {result.order ? (
-                    <div className="space-y-2 rounded-3xl border border-black/10 p-4 text-sm text-[#132016]">
+                    <div className="space-y-2 rounded-3xl border border-black/10 p-4 text-sm text-[#1a3a2e]">
                       <p>
                         <strong>Pedido:</strong> {result.order.orderNumber}
                       </p>

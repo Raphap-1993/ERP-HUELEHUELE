@@ -92,7 +92,7 @@ export function VendorApplicationForm({
   }
 
   return (
-    <Card className={cn("rounded-[2.4rem] border-black/8 bg-[linear-gradient(180deg,#ffffff_0%,#f5f7f0_100%)]", className)}>
+    <Card className={cn("rounded-[2.4rem] border-black/8 bg-[linear-gradient(180deg,#ffffff_0%,#faf8f3_100%)]", className)}>
       <CardHeader>
         <CardTitle>Postulación</CardTitle>
         <CardDescription>Cuéntanos quién eres, desde dónde venderías y por qué conectas con la marca.</CardDescription>
@@ -135,7 +135,7 @@ export function VendorApplicationForm({
             <div
               className={cn(
                 "rounded-[1.4rem] border px-4 py-3 text-sm leading-6",
-                feedback.tone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-[#e5b8aa] bg-[#fff5f1] text-[#7a2d1d]"
+                feedback.tone === "success" ? "border-[#d8f3dc] bg-[#f0faf4] text-[#1a3a2e]" : "border-[#e5b8aa] bg-[#fff5f1] text-[#7a2d1d]"
               )}
               role="status"
               aria-live="polite"
