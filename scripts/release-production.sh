@@ -22,6 +22,36 @@ for env_file in "${env_candidates[@]}"; do
   fi
 done
 
+set_default_env() {
+  local name="$1"
+  local value="$2"
+
+  if [[ -z "${!name:-}" ]]; then
+    export "$name=$value"
+  fi
+}
+
+set_default_env NEXT_PUBLIC_APP_URL "${NEXT_PUBLIC_APP_URL:-${APP_URL:-https://huelegood.com}}"
+set_default_env NEXT_PUBLIC_ADMIN_URL "${NEXT_PUBLIC_ADMIN_URL:-${ADMIN_URL:-https://admin.huelegood.com}}"
+set_default_env NEXT_PUBLIC_API_URL "${NEXT_PUBLIC_API_URL:-${API_URL:-https://api.huelegood.com/api/v1}}"
+
+set_default_env BOOTSTRAP_ADMIN_NAME "${BOOTSTRAP_ADMIN_NAME:-${ADMIN_LOGIN_NAME:-Admin Huelegood}}"
+set_default_env BOOTSTRAP_ADMIN_EMAIL "${BOOTSTRAP_ADMIN_EMAIL:-${ADMIN_LOGIN_EMAIL:-admin@huelegood.com}}"
+set_default_env BOOTSTRAP_ADMIN_PASSWORD "${BOOTSTRAP_ADMIN_PASSWORD:-${ADMIN_LOGIN_PASSWORD:-replace-me}}"
+
+set_default_env BOOTSTRAP_PAYMENTS_NAME "${BOOTSTRAP_PAYMENTS_NAME:-${PAYMENTS_LOGIN_NAME:-Operador de Pagos}}"
+set_default_env BOOTSTRAP_PAYMENTS_EMAIL "${BOOTSTRAP_PAYMENTS_EMAIL:-${PAYMENTS_LOGIN_EMAIL:-pagos@huelegood.com}}"
+set_default_env BOOTSTRAP_PAYMENTS_PASSWORD "${BOOTSTRAP_PAYMENTS_PASSWORD:-${PAYMENTS_LOGIN_PASSWORD:-replace-me}}"
+
+set_default_env BOOTSTRAP_SELLER_NAME "${BOOTSTRAP_SELLER_NAME:-${SELLER_LOGIN_NAME:-Mónica Herrera}}"
+set_default_env BOOTSTRAP_SELLER_EMAIL "${BOOTSTRAP_SELLER_EMAIL:-${SELLER_LOGIN_EMAIL:-monica@seller.com}}"
+set_default_env BOOTSTRAP_SELLER_PASSWORD "${BOOTSTRAP_SELLER_PASSWORD:-${SELLER_LOGIN_PASSWORD:-replace-me}}"
+set_default_env BOOTSTRAP_SELLER_VENDOR_CODE "${BOOTSTRAP_SELLER_VENDOR_CODE:-${SELLER_VENDOR_CODE:-VEND-014}}"
+
+set_default_env BOOTSTRAP_CUSTOMER_NAME "${BOOTSTRAP_CUSTOMER_NAME:-${CUSTOMER_LOGIN_NAME:-Cliente Huelegood}}"
+set_default_env BOOTSTRAP_CUSTOMER_EMAIL "${BOOTSTRAP_CUSTOMER_EMAIL:-${CUSTOMER_LOGIN_EMAIL:-cliente@huelegood.com}}"
+set_default_env BOOTSTRAP_CUSTOMER_PASSWORD "${BOOTSTRAP_CUSTOMER_PASSWORD:-${CUSTOMER_LOGIN_PASSWORD:-replace-me}}"
+
 if [[ -n "$incoming_release_sha" ]]; then
   export APP_RELEASE_SHA="$incoming_release_sha"
 fi
