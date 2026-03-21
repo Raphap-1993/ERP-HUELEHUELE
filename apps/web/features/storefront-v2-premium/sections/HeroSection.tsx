@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export function HeroSection({ heroProductImageUrl }: { heroProductImageUrl?: string }) {
   return (
-    <section className="relative overflow-hidden bg-[#faf8f3] py-20 md:py-28">
+    <section className="relative overflow-hidden bg-[#faf8f3] pt-8 pb-20 md:pt-14 md:pb-28">
       {/* Background gradients */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute right-0 top-0 h-[500px] w-[500px] rounded-full bg-[radial-gradient(circle,rgba(82,183,136,0.15)_0%,transparent_70%)]" />

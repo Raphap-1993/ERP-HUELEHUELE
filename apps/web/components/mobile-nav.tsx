@@ -63,7 +63,7 @@ export function MobileNav({ links, brandName, ctaHref = "/catalogo" }: MobileNav
         aria-label={`Menú de ${brandName}`}
         aria-modal="true"
         className={[
-          "fixed inset-y-0 right-0 z-50 flex w-72 flex-col bg-white shadow-2xl",
+          "fixed inset-y-0 right-0 z-50 flex w-72 flex-col bg-white shadow-2xl md:hidden",
           "transition-transform duration-300 ease-in-out",
           open ? "translate-x-0" : "translate-x-full",
         ].join(" ")}

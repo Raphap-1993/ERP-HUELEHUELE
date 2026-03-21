@@ -172,9 +172,7 @@ function PricingCard({
       </ul>
 
       <Link
-        href="https://www.instagram.com/huele.good/"
-        target="_blank"
-        rel="noreferrer"
+        href={`/checkout?producto=${product.slug}`}
         className={`block w-full rounded-full py-4 text-center text-sm font-semibold text-white transition hover:-translate-y-0.5 ${
           style.featured
             ? "bg-gradient-to-r from-[#2d6a4f] to-[#52b788] hover:shadow-[0_8px_30px_rgba(45,106,79,0.35)]"
