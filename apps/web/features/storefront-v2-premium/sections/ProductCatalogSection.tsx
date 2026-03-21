@@ -34,7 +34,7 @@ export function ProductCatalogSection({
         action={{ label: "Ver los tres formatos", href: "/catalogo" }}
       />
 
-      <div className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
+      <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-[1.08fr_0.92fr]">
         {classicGreen ? (
           <article className="overflow-hidden rounded-[2.5rem] border border-[#162117]/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(247,241,232,0.96)_100%)] shadow-[0_24px_70px_rgba(22,33,23,0.08)]">
             <div className="grid h-full lg:grid-cols-[0.98fr_1.02fr]">

@@ -11,7 +11,7 @@ export function FaqSection({
   callout: PremiumCallout;
 }) {
   return (
-    <section className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr]">
+    <section className="grid gap-6 lg:grid-cols-2 xl:grid-cols-[1.02fr_0.98fr]">
       <StorefrontV2PremiumPanel tone="light" className="space-y-6">
         <StorefrontV2PremiumSectionHeading
           eyebrow="Preguntas frecuentes"

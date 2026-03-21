@@ -351,6 +351,41 @@ export class CmsService implements OnModuleInit {
     };
   }
 
+  async uploadHeroProductImage(file: { buffer: Buffer; mimetype?: string; originalname?: string } | undefined) {
+    if (!file?.buffer) {
+      throw new BadRequestException("Debes adjuntar una imagen hero válida.");
+    }
+
+    const upload = await this.mediaService.uploadImage(file, {
+      kind: "hero",
+      slug: this.siteSettingData.brandName || "huelegood"
+    });
+
+    const previousHeroImage = this.siteSettingData.heroProductImageUrl;
+    this.siteSettingData = {
+      ...this.siteSettingData,
+      heroProductImageUrl: upload.url
+    };
+
+    this.recordAdminAction("cms.site_settings.hero_image_updated", "site_setting", "global", "La imagen hero quedó actualizada.", {
+      hasHeroProductImage: true
+    });
+    void this.persistState();
+
+    if (previousHeroImage && previousHeroImage !== upload.url) {
+      try {
+        await this.mediaService.deleteByPublicUrl(previousHeroImage);
+      } catch {
+        // Non-blocking cleanup.
+      }
+    }
+
+    return {
+      ...actionResponse("ok", "Imagen hero actualizada correctamente."),
+      siteSetting: { ...this.siteSettingData }
+    };
+  }
+
   updateHeroCopy(body: CmsHeroCopyInput) {
     const eyebrow = normalizeText(body.eyebrow);
     const title = normalizeText(body.title);

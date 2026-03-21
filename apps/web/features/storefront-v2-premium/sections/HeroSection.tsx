@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-export function HeroSection() {
+export function HeroSection({ heroProductImageUrl }: { heroProductImageUrl?: string }) {
   return (
     <section className="relative overflow-hidden bg-[#faf8f3] py-20 md:py-28">
       {/* Background gradients */}
@@ -78,7 +78,7 @@ export function HeroSection() {
             {/* Product image */}
             <div className="overflow-hidden rounded-3xl shadow-[0_20px_60px_rgba(26,58,46,0.12)]">
               <Image
-                src="/brand/product-classic-green.svg"
+                src={heroProductImageUrl ?? "/brand/product-classic-green.svg"}
                 alt="Huele Huele inhalador herbal Premium — vista del producto"
                 width={560}
                 height={560}

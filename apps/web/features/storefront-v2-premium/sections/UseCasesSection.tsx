@@ -43,7 +43,7 @@ export function UseCasesSection({ items }: { items: PremiumUseCase[] }) {
             tone={index === 1 ? "dark" : "light"}
             className="overflow-hidden p-0"
           >
-            <div className={`grid gap-0 ${index % 2 === 0 ? "xl:grid-cols-[1.06fr_0.94fr]" : "xl:grid-cols-[0.94fr_1.06fr]"}`}>
+            <div className={`grid gap-0 lg:grid-cols-2 ${index % 2 === 0 ? "xl:grid-cols-[1.06fr_0.94fr]" : "xl:grid-cols-[0.94fr_1.06fr]"}`}>
               <div className={index % 2 === 0 ? "xl:order-1" : "xl:order-2"}>
                 <StorefrontV2PremiumMedia
                   src={resolveUseCaseImage(item.image)}

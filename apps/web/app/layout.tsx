@@ -4,6 +4,7 @@ import { Cormorant_Garamond, Manrope } from "next/font/google";
 import { siteSetting as fallbackSetting, webNavigation, type NavigationItem } from "@huelegood/shared";
 import "./globals.css";
 import { PrelineScript } from "../components/preline-script";
+import { MobileNav } from "../components/mobile-nav";
 import { fetchCmsSiteSettings } from "../lib/api";
 
 const bodyFont = Manrope({
@@ -77,13 +78,13 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                       <img
                         src={headerLogoUrl}
                         alt={settings.brandName}
-                        className="h-8 w-auto max-w-[180px] object-contain"
+                        className="h-10 w-auto max-w-[216px] object-contain"
                       />
                       <span className="sr-only">{settings.brandName}</span>
                     </>
                   ) : (
                     <>
-                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1a3a2e] text-sm">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1a3a2e] text-sm">
                         🦜
                       </span>
                       <span className="font-serif text-base font-bold text-[#1a3a2e]">
@@ -104,10 +105,13 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                   ))}
                 </nav>
 
+                {/* Mobile nav */}
+                <MobileNav links={links} brandName={settings.brandName} />
+
                 {/* CTA */}
                 <Link
                   href="/catalogo"
-                  className="shrink-0 rounded-full bg-[#1a3a2e] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2d6a4f]"
+                  className="hidden shrink-0 rounded-full bg-[#1a3a2e] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2d6a4f] md:inline-flex"
                 >
                   Comprar ahora
                 </Link>
@@ -129,10 +133,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                       <img
                         src={headerLogoUrl}
                         alt={settings.brandName}
-                        className="h-8 w-auto max-w-[180px] object-contain"
+                        className="h-10 w-auto max-w-[216px] object-contain"
                       />
                     ) : (
-                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15 text-sm">🦜</span>
+                      <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/15 text-sm">🦜</span>
                     )}
                     <span className="font-serif text-base font-bold">{settings.brandName}</span>
                   </div>

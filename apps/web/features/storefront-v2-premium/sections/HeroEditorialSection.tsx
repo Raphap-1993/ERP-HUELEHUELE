@@ -5,7 +5,7 @@ import { storefrontV2PremiumMedia } from "../lib/media";
 
 export function HeroEditorialSection({ hero, preview = false }: { hero: PremiumHeroContent; preview?: boolean }) {
   return (
-    <section className="grid gap-6 xl:grid-cols-[1.06fr_0.94fr]">
+    <section className="grid gap-6 lg:grid-cols-2 xl:grid-cols-[1.06fr_0.94fr]">
       <div className="rounded-[2.6rem] border border-[#162117]/8 bg-[linear-gradient(180deg,rgba(255,253,249,0.98)_0%,rgba(246,240,230,0.96)_100%)] px-7 py-8 shadow-[0_20px_55px_rgba(22,33,23,0.06)] md:px-10 md:py-10">
         <div className="space-y-8">
           <div className="space-y-5">

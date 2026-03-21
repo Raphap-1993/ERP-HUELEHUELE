@@ -10,7 +10,7 @@ export function VendorCalloutSection({
   callout: StorefrontV2PremiumContent["vendorCallout"];
 }) {
   return (
-    <section className="grid gap-6 xl:grid-cols-[1.04fr_0.96fr]">
+    <section className="grid gap-6 lg:grid-cols-2 xl:grid-cols-[1.04fr_0.96fr]">
       <StorefrontV2PremiumPanel tone="dark" className="flex flex-col justify-between gap-6">
         <div className="space-y-4">
           <p className="text-[11px] uppercase tracking-[0.28em] text-white/42">{callout.label}</p>

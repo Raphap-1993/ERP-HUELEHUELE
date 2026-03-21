@@ -26,7 +26,7 @@ import {
   type SiteSetting,
   type WebNavigationGroup
 } from "@huelegood/shared";
-import { fetchCmsOverview, updateCmsHeroCopy, updateCmsNavigation, updateCmsSiteSettings, uploadCmsHeaderLogo } from "../lib/api";
+import { fetchCmsOverview, updateCmsHeroCopy, updateCmsNavigation, updateCmsSiteSettings, uploadCmsHeaderLogo, uploadCmsHeroProductImage } from "../lib/api";
 
 function formatDate(value?: string) {
   if (!value) {
@@ -105,6 +105,8 @@ export function SettingsWorkspace() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoUploading, setLogoUploading] = useState(false);
+  const [heroImageFile, setHeroImageFile] = useState<File | null>(null);
+  const [heroImageUploading, setHeroImageUploading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -211,6 +213,21 @@ export function SettingsWorkspace() {
       setError(actionError instanceof Error ? actionError.message : "No pudimos actualizar la navegación.");
     } finally {
       setSavingSection(null);
+    }
+  }
+
+  async function handleUploadHeroImage() {
+    if (!heroImageFile) return;
+    setHeroImageUploading(true);
+    setError(null);
+    try {
+      await uploadCmsHeroProductImage(heroImageFile);
+      setHeroImageFile(null);
+      refresh();
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "No pudimos subir la imagen hero.");
+    } finally {
+      setHeroImageUploading(false);
     }
   }
 
@@ -393,6 +410,41 @@ export function SettingsWorkspace() {
               <Button onClick={handleSaveHeroCopy} disabled={savingSection === "hero"}>
                 {savingSection === "hero" ? "Guardando..." : "Guardar hero"}
               </Button>
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42">
+                Imagen del producto hero
+              </label>
+              {siteForm.heroProductImageUrl ? (
+                <div className="rounded-[1.2rem] border border-black/8 bg-[#f7f8f4] p-3">
+                  <p className="mb-2 text-[11px] uppercase tracking-[0.24em] text-black/40">Imagen actual</p>
+                  <img
+                    src={siteForm.heroProductImageUrl}
+                    alt="Imagen hero actual"
+                    className="max-h-32 rounded-xl object-contain"
+                  />
+                </div>
+              ) : null}
+              <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={(event) => setHeroImageFile(event.target.files?.[0] ?? null)}
+                  disabled={heroImageUploading}
+                  className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm outline-none"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleUploadHeroImage}
+                  disabled={heroImageUploading || !heroImageFile}
+                >
+                  {heroImageUploading ? "Subiendo..." : "Subir imagen hero"}
+                </Button>
+              </div>
+              <p className="text-xs leading-5 text-black/55">
+                PNG, JPG o WebP. Reemplaza la imagen del producto en la sección hero del inicio.
+              </p>
             </div>
           </CardContent>
         </Card>

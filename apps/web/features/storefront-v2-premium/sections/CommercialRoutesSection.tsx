@@ -19,7 +19,7 @@ export function CommercialRoutesSection({
         description="Así la compra directa sigue limpia para consumidor final, mientras que mayoristas y vendedores encuentran una ruta más precisa."
       />
 
-      <div className="grid gap-5 xl:grid-cols-2">
+      <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-2">
         <StorefrontV2PremiumPanel tone="muted" className="overflow-hidden p-0">
           <StorefrontV2PremiumMedia
             src={storefrontV2PremiumMedia.wholesale}

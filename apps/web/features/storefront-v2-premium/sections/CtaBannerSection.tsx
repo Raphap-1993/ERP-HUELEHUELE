@@ -4,7 +4,7 @@ import type { PremiumCtaBanner } from "../content";
 export function CtaBannerSection({ banner }: { banner: PremiumCtaBanner }) {
   return (
     <section className="overflow-hidden rounded-[2.8rem] border border-[#162117]/8 bg-[linear-gradient(140deg,#162117_0%,#2c392d_48%,#61714f_100%)] px-7 py-8 text-white shadow-[0_34px_110px_rgba(22,33,23,0.24)] md:px-10 md:py-10">
-      <div className="grid gap-6 xl:grid-cols-[1.04fr_0.96fr]">
+      <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-[1.04fr_0.96fr]">
         <div className="space-y-5">
           <p className="text-[11px] uppercase tracking-[0.3em] text-white/42">{banner.eyebrow}</p>
           <h2 className="max-w-4xl text-3xl font-semibold leading-[0.94] tracking-[-0.045em] text-white md:text-[3.7rem]">{banner.title}</h2>

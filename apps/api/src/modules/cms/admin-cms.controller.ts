@@ -49,6 +49,20 @@ export class AdminCmsController {
     return this.cmsService.uploadSiteLogo(file);
   }
 
+  @Post("site-settings/hero-image")
+  @UseInterceptors(
+    FileInterceptor("file", {
+      storage: memoryStorage(),
+      limits: {
+        fileSize: 10 * 1024 * 1024,
+        files: 1
+      }
+    })
+  )
+  uploadHeroProductImage(@UploadedFile() file: { buffer: Buffer; mimetype?: string; originalname?: string } | undefined) {
+    return this.cmsService.uploadHeroProductImage(file);
+  }
+
   @Get("hero-copy")
   getHeroCopy() {
     return this.cmsService.getHeroCopy();

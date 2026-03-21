@@ -7,15 +7,20 @@ import { WholesaleB2BSection } from "../sections/WholesaleB2BSection";
 import { FaqAccordionSection } from "../sections/FaqAccordionSection";
 import { InstagramSection } from "../sections/InstagramSection";
 import { StickyBarClient } from "../components/StickyBarClient";
+import { fetchCmsSiteSettings } from "../../../lib/api";
 
-export function StorefrontV2PremiumExperience({
+export async function StorefrontV2PremiumExperience({
   preview = false
 }: {
   preview?: boolean;
 }) {
+  const heroProductImageUrl = await fetchCmsSiteSettings()
+    .then((r) => r.data.heroProductImageUrl ?? undefined)
+    .catch(() => undefined);
+
   return (
     <>
-      <HeroSection />
+      <HeroSection heroProductImageUrl={heroProductImageUrl} />
       <BenefitsSection />
       <ComparisonSection />
       <PricingSection />

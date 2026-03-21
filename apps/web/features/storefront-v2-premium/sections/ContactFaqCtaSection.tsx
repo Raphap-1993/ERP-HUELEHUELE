@@ -34,7 +34,7 @@ export function ContactFaqCtaSection({
         description="Si ya sabes cuál elegir, pasas directo. Si no, te ayudamos a decidir entre Clásico Verde, Premium Negro y Combo Dúo Perfecto."
       />
 
-      <div className="grid gap-5 xl:grid-cols-[0.9fr_1.12fr_0.88fr]">
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-[0.9fr_1.12fr_0.88fr]">
         <StorefrontV2PremiumPanel tone="muted" className="flex flex-col justify-between gap-6">
           <div className="space-y-4">
             <p className="text-[11px] uppercase tracking-[0.3em] text-[#667064]">{callout.label}</p>

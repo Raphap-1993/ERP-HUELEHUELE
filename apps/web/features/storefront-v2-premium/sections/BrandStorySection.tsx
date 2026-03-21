@@ -11,7 +11,7 @@ export function BrandStorySection({
   cards: PremiumStoryCard[];
 }) {
   return (
-    <section className="grid gap-6 xl:grid-cols-[1fr_0.98fr]">
+    <section className="grid gap-6 lg:grid-cols-2 xl:grid-cols-[1fr_0.98fr]">
       <StorefrontV2PremiumPanel tone="muted" className="space-y-7">
         <div className="space-y-3">
           <p className="text-[11px] uppercase tracking-[0.3em] text-[#667064]">Historia de marca</p>

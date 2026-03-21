@@ -20,7 +20,7 @@ export function WholesaleSection({
         description="El canal mayorista no compite con la compra directa: se presenta como una ruta paralela con criterios claros, beneficios y continuidad comercial."
       />
 
-      <div className="grid gap-6 xl:grid-cols-[0.94fr_1.06fr]">
+      <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-[0.94fr_1.06fr]">
         <StorefrontV2PremiumMedia
           src={storefrontV2PremiumMedia.wholesale}
           alt="Bloque comercial para canal mayorista Huele Huele"

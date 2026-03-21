@@ -39,7 +39,7 @@ function CheckCell({ value, highlight = false }: { value: string; highlight?: bo
 
 export function ComparisonSection() {
   return (
-    <section className="bg-[#1a3a2e] py-24">
+    <section className="bg-[#1a3a2e] py-16 md:py-24">
       <div className="mx-auto max-w-[1120px] px-4 md:px-6">
         {/* Heading */}
         <div className="mb-14">
@@ -55,13 +55,14 @@ export function ComparisonSection() {
         </div>
 
         {/* Table */}
-        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+        <div className="overflow-x-auto rounded-2xl">
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 min-w-[540px]">
           {/* Header */}
           <div className="grid grid-cols-[2fr_1.5fr_1fr_1fr] bg-white/8 px-6 py-4 text-xs font-semibold uppercase tracking-widest">
             <span className="text-white/40">Característica</span>
             <span className="text-[#52b788]">✦ Huele Huele</span>
-            <span className="text-white/40 hidden sm:block">Pomadas / Vicks</span>
-            <span className="text-white/40 hidden sm:block">Vapes</span>
+            <span className="text-white/40">Pomadas / Vicks</span>
+            <span className="text-white/40">Vapes</span>
           </div>
 
           {ROWS.map((row, i) => (
@@ -71,10 +72,11 @@ export function ComparisonSection() {
             >
               <span className="font-medium text-white/80">{row.feature}</span>
               <CheckCell value={row.huele} highlight />
-              <span className="hidden text-center text-white/40 sm:block">{row.pomada}</span>
-              <span className="hidden text-center text-white/40 sm:block">{row.vape}</span>
+              <span className="text-center text-white/40">{row.pomada}</span>
+              <span className="text-center text-white/40">{row.vape}</span>
             </div>
           ))}
+        </div>
         </div>
       </div>
     </section>
