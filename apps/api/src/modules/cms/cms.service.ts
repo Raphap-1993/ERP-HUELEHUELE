@@ -60,7 +60,7 @@ function normalizeOptionalAssetUrl(value?: string) {
     return normalized;
   }
 
-  throw new BadRequestException("El logo del menú debe ser una ruta local o una URL pública válida.");
+  throw new BadRequestException("La imagen debe ser una ruta local o una URL pública válida.");
 }
 
 function normalizeSlug(value: string) {
@@ -289,6 +289,7 @@ export class CmsService implements OnModuleInit {
     const supportEmail = normalizeText(body.supportEmail);
     const whatsapp = normalizeText(body.whatsapp);
     const headerLogoUrl = normalizeOptionalAssetUrl(body.headerLogoUrl);
+    const heroProductImageUrl = normalizeOptionalAssetUrl(body.heroProductImageUrl);
 
     if (!brandName || !tagline || !supportEmail || !whatsapp) {
       throw new BadRequestException("Marca, tagline, soporte y WhatsApp son obligatorios.");
@@ -299,13 +300,15 @@ export class CmsService implements OnModuleInit {
       tagline,
       supportEmail,
       whatsapp,
-      headerLogoUrl
+      headerLogoUrl,
+      heroProductImageUrl
     };
 
     this.recordAdminAction("cms.site_settings.updated", "site_setting", "global", "La configuración base del storefront quedó actualizada.", {
       brandName: this.siteSettingData.brandName,
       supportEmail: this.siteSettingData.supportEmail,
-      hasHeaderLogo: Boolean(this.siteSettingData.headerLogoUrl)
+      hasHeaderLogo: Boolean(this.siteSettingData.headerLogoUrl),
+      hasHeroProductImage: Boolean(this.siteSettingData.heroProductImageUrl)
     });
     void this.persistState();
 

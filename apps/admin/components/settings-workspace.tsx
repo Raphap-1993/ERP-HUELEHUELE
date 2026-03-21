@@ -81,7 +81,8 @@ function normalizeSiteSetting(value: SiteSetting): CmsSiteSettingsInput {
     tagline: value.tagline,
     supportEmail: value.supportEmail,
     whatsapp: value.whatsapp,
-    headerLogoUrl: value.headerLogoUrl
+    headerLogoUrl: value.headerLogoUrl,
+    heroProductImageUrl: value.heroProductImageUrl
   };
 }
 
@@ -221,7 +222,10 @@ export function SettingsWorkspace() {
     setHeroImageUploading(true);
     setError(null);
     try {
-      await uploadCmsHeroProductImage(heroImageFile);
+      const response = await uploadCmsHeroProductImage(heroImageFile);
+      if (response.siteSetting) {
+        setSiteForm(response.siteSetting);
+      }
       setHeroImageFile(null);
       refresh();
     } catch (uploadError) {
@@ -316,6 +320,20 @@ export function SettingsWorkspace() {
               </div>
               <p className="text-xs leading-5 text-black/55">
                 Si defines una imagen, la cabecera pública reemplaza el texto de marca. Si lo dejas vacío, vuelve al nombre en texto.
+              </p>
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="site-hero-image">
+                Imagen del hero
+              </label>
+              <Input
+                id="site-hero-image"
+                placeholder="https://... o /brand/hero.jpg"
+                value={siteForm.heroProductImageUrl ?? ""}
+                onChange={(event) => setSiteForm({ ...siteForm, heroProductImageUrl: event.target.value || undefined })}
+              />
+              <p className="text-xs leading-5 text-black/55">
+                Define aquí la imagen principal del home. También puedes subir una nueva desde el bloque de hero y luego guardar.
               </p>
             </div>
             <div className="space-y-2">
