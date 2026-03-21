@@ -5,6 +5,7 @@ import { siteSetting as fallbackSetting, webNavigation, type NavigationItem } fr
 import "./globals.css";
 import { PrelineScript } from "../components/preline-script";
 import { MobileNav } from "../components/mobile-nav";
+import { LoadingScreen } from "../components/loading-screen";
 import { fetchCmsSiteSettings } from "../lib/api";
 
 const bodyFont = Manrope({
@@ -61,10 +62,12 @@ async function resolveRuntimeSettings() {
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const settings = await resolveRuntimeSettings();
   const headerLogoUrl = settings.headerLogoUrl?.trim();
+  const loadingImageUrl = settings.loadingImageUrl?.trim() || undefined;
 
   return (
     <html lang="es">
       <body className={`${bodyFont.variable} ${displayFont.variable} antialiased`} suppressHydrationWarning>
+        <LoadingScreen imageUrl={loadingImageUrl} />
         <div className="flex min-h-screen flex-col overflow-x-clip bg-white">
 
           {/* ── Header ──────────────────────────────────── */}

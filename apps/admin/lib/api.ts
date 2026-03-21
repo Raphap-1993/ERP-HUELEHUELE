@@ -307,6 +307,12 @@ export async function uploadCmsHeroProductImage(file: File) {
   return requestFormData<CmsActionEnvelope>("/admin/cms/site-settings/hero-image", formData);
 }
 
+export async function uploadCmsLoadingImage(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return requestFormData<CmsActionEnvelope>("/admin/cms/site-settings/loading-image", formData);
+}
+
 export async function updateCmsHeroCopy(body: CmsHeroCopyInput) {
   return requestJson<CmsActionEnvelope>("/admin/cms/hero-copy", {
     method: "PATCH",

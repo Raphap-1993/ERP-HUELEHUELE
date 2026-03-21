@@ -150,6 +150,7 @@ export interface SiteSetting {
   whatsapp: string;
   headerLogoUrl?: string;
   heroProductImageUrl?: string;
+  loadingImageUrl?: string;
 }
 
 export type AuditSeverity = "info" | "warning" | "error" | "critical";

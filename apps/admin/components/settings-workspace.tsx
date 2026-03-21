@@ -26,7 +26,7 @@ import {
   type SiteSetting,
   type WebNavigationGroup
 } from "@huelegood/shared";
-import { fetchCmsOverview, updateCmsHeroCopy, updateCmsNavigation, updateCmsSiteSettings, uploadCmsHeaderLogo, uploadCmsHeroProductImage } from "../lib/api";
+import { fetchCmsOverview, updateCmsHeroCopy, updateCmsNavigation, updateCmsSiteSettings, uploadCmsHeaderLogo, uploadCmsHeroProductImage, uploadCmsLoadingImage } from "../lib/api";
 
 function formatDate(value?: string) {
   if (!value) {
@@ -108,6 +108,8 @@ export function SettingsWorkspace() {
   const [logoUploading, setLogoUploading] = useState(false);
   const [heroImageFile, setHeroImageFile] = useState<File | null>(null);
   const [heroImageUploading, setHeroImageUploading] = useState(false);
+  const [loadingImageFile, setLoadingImageFile] = useState<File | null>(null);
+  const [loadingImageUploading, setLoadingImageUploading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -235,6 +237,21 @@ export function SettingsWorkspace() {
     }
   }
 
+  async function handleUploadLoadingImage() {
+    if (!loadingImageFile) return;
+    setLoadingImageUploading(true);
+    setError(null);
+    try {
+      await uploadCmsLoadingImage(loadingImageFile);
+      setLoadingImageFile(null);
+      refresh();
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "No pudimos subir la imagen de loading.");
+    } finally {
+      setLoadingImageUploading(false);
+    }
+  }
+
   async function handleUploadLogo() {
     if (!logoFile) {
       return;
@@ -334,6 +351,41 @@ export function SettingsWorkspace() {
               />
               <p className="text-xs leading-5 text-black/55">
                 Define aquí la imagen principal del home. También puedes subir una nueva desde el bloque de hero y luego guardar.
+              </p>
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42">
+                Imagen de loading
+              </label>
+              {siteForm.loadingImageUrl ? (
+                <div className="rounded-[1.2rem] border border-black/8 bg-[#f7f8f4] p-3">
+                  <p className="mb-2 text-[11px] uppercase tracking-[0.24em] text-black/40">Imagen actual</p>
+                  <img
+                    src={siteForm.loadingImageUrl}
+                    alt="Loading screen actual"
+                    className="h-[60px] w-[60px] rounded-xl object-contain"
+                  />
+                </div>
+              ) : null}
+              <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                <input
+                  type="file"
+                  accept="image/webp,image/png,image/jpeg"
+                  onChange={(event) => setLoadingImageFile(event.target.files?.[0] ?? null)}
+                  disabled={loadingImageUploading}
+                  className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm outline-none"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleUploadLoadingImage}
+                  disabled={loadingImageUploading || !loadingImageFile}
+                >
+                  {loadingImageUploading ? "Subiendo..." : "Subir loading"}
+                </Button>
+              </div>
+              <p className="text-xs leading-5 text-black/55">
+                WebP, PNG o JPG. Se muestra centrado a 150 × 150 px al cargar la web pública.
               </p>
             </div>
             <div className="space-y-2">
