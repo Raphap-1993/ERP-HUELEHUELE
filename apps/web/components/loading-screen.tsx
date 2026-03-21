@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 interface LoadingScreenProps {
@@ -8,35 +9,21 @@ interface LoadingScreenProps {
 
 export function LoadingScreen({ imageUrl }: LoadingScreenProps) {
   const [phase, setPhase] = useState<"enter" | "visible" | "exit" | "done">("enter");
+  const pathname = usePathname();
 
+  // Trigger 1-second overlay on every route change (including initial mount)
   useEffect(() => {
-    // Fase entrada: imagen aparece y crece desde 150px
+    setPhase("enter");
     const enterTimer = setTimeout(() => setPhase("visible"), 50);
-
-    // Fase salida: overlay desaparece después de que la página carga
-    function startExit() {
-      setPhase("exit");
-      setTimeout(() => setPhase("done"), 600);
-    }
-
-    if (document.readyState === "complete") {
-      const exitTimer = setTimeout(startExit, 800);
-      return () => {
-        clearTimeout(enterTimer);
-        clearTimeout(exitTimer);
-      };
-    }
-
-    window.addEventListener("load", startExit, { once: true });
-    // Fallback: si load no dispara en 3s, salir igual
-    const fallbackTimer = setTimeout(startExit, 3000);
+    const exitTimer = setTimeout(() => setPhase("exit"), 1000);
+    const doneTimer = setTimeout(() => setPhase("done"), 1600);
 
     return () => {
       clearTimeout(enterTimer);
-      clearTimeout(fallbackTimer);
-      window.removeEventListener("load", startExit);
+      clearTimeout(exitTimer);
+      clearTimeout(doneTimer);
     };
-  }, []);
+  }, [pathname]);
 
   if (phase === "done" || !imageUrl) return null;
 

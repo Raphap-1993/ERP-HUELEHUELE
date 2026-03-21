@@ -1,6 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { NavigationItem } from "@huelegood/shared";
 
 function isExternal(item: NavigationItem) {
@@ -15,6 +16,20 @@ interface MobileNavProps {
 
 export function MobileNav({ links, brandName, ctaHref = "/catalogo" }: MobileNavProps) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Close on route change
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  // Body scroll lock while open
+  useEffect(() => {
+    document.body.style.overflow = open ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
 
   function close() {
     setOpen(false);
@@ -22,53 +37,62 @@ export function MobileNav({ links, brandName, ctaHref = "/catalogo" }: MobileNav
 
   return (
     <>
-      {/* Hamburger button — visible only on mobile */}
+      {/* Hamburger / Close toggle — visible only on mobile */}
       <button
         type="button"
-        aria-label="Abrir menú"
+        aria-label={open ? "Cerrar menú" : "Abrir menú"}
         aria-expanded={open}
-        onClick={() => setOpen(true)}
+        onClick={() => setOpen((v) => !v)}
         className="md:hidden flex h-9 w-9 items-center justify-center rounded-xl text-[#1a3a2e] transition hover:bg-[#d8f3dc]"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="22"
-          height="22"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <line x1="3" y1="6" x2="21" y2="6" />
-          <line x1="3" y1="12" x2="21" y2="12" />
-          <line x1="3" y1="18" x2="21" y2="18" />
-        </svg>
+        {open ? (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        ) : (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        )}
       </button>
 
-      {/* Backdrop */}
-      {open && (
-        <div
-          role="presentation"
-          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
-          onClick={close}
-        />
-      )}
-
-      {/* Drawer panel */}
+      {/* Full-screen overlay menu */}
       <div
         role="dialog"
         aria-label={`Menú de ${brandName}`}
         aria-modal="true"
         className={[
-          "fixed inset-y-0 right-0 z-50 flex w-72 flex-col bg-white shadow-2xl md:hidden",
-          "transition-transform duration-300 ease-in-out",
-          open ? "translate-x-0" : "translate-x-full",
+          "fixed inset-0 z-[200] flex flex-col bg-white md:hidden",
+          "transition-opacity duration-300 ease-in-out",
+          open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
         ].join(" ")}
       >
-        {/* Drawer header */}
+        {/* Header */}
         <div className="flex items-center justify-between border-b border-black/6 px-5 py-4">
           <span className="font-serif text-base font-bold text-[#1a3a2e]">{brandName}</span>
           <button
@@ -105,7 +129,7 @@ export function MobileNav({ links, brandName, ctaHref = "/catalogo" }: MobileNav
                 target="_blank"
                 rel="noreferrer"
                 onClick={close}
-                className="rounded-xl px-4 py-3 text-sm font-medium text-[#1a3a2e] transition hover:bg-[#d8f3dc]"
+                className="rounded-xl px-4 py-4 text-base font-medium text-[#1a3a2e] transition hover:bg-[#d8f3dc]"
               >
                 {item.label}
               </a>
@@ -114,7 +138,7 @@ export function MobileNav({ links, brandName, ctaHref = "/catalogo" }: MobileNav
                 key={`mobile-${item.href}-${item.label}`}
                 href={item.href}
                 onClick={close}
-                className="rounded-xl px-4 py-3 text-sm font-medium text-[#1a3a2e] transition hover:bg-[#d8f3dc]"
+                className="rounded-xl px-4 py-4 text-base font-medium text-[#1a3a2e] transition hover:bg-[#d8f3dc]"
               >
                 {item.label}
               </Link>
@@ -127,7 +151,7 @@ export function MobileNav({ links, brandName, ctaHref = "/catalogo" }: MobileNav
           <Link
             href={ctaHref}
             onClick={close}
-            className="block w-full rounded-full bg-[#1a3a2e] px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-[#2d6a4f]"
+            className="block w-full rounded-full bg-[#1a3a2e] px-5 py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[#2d6a4f]"
           >
             Comprar ahora
           </Link>
