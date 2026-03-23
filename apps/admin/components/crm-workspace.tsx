@@ -177,7 +177,7 @@ export function CrmWorkspace() {
         ))}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+      <div className="space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>Lectura CRM</CardTitle>

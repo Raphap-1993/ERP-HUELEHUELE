@@ -287,7 +287,7 @@ export function SettingsWorkspace() {
         ))}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[0.96fr_1.04fr]">
+      <div className="space-y-6">
         <Card className="rounded-[1.75rem] border-black/8 shadow-[0_14px_42px_rgba(18,34,20,0.05)]">
           <CardHeader>
             <CardTitle>Identidad y contacto</CardTitle>

@@ -10,10 +10,15 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   MetricCard,
   Input,
   SectionHeader,
-  Separator,
   StatusBadge,
   Textarea
 } from "@huelegood/ui";
@@ -147,6 +152,7 @@ export function PaymentsWorkspace() {
   const [payments, setPayments] = useState<AdminPaymentSummary[]>([]);
   const [manualRequests, setManualRequests] = useState<AdminManualPaymentRequestSummary[]>([]);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
   const [reviewer, setReviewer] = useState("operador_pagos");
   const [reviewNotes, setReviewNotes] = useState("Revisión operativa.");
   const [loading, setLoading] = useState(true);
@@ -291,7 +297,7 @@ export function PaymentsWorkspace() {
           type="button"
           variant="ghost"
           className="h-auto px-0 py-0 font-semibold"
-          onClick={() => setSelectedRequestId(request.id)}
+          onClick={() => { setSelectedRequestId(request.id); setModalOpen(true); }}
         >
           {request.id}
         </Button>,
@@ -393,46 +399,37 @@ export function PaymentsWorkspace() {
       {error ? <p className="text-sm text-rose-700">{error}</p> : null}
       {feedback ? <p className="text-sm text-emerald-700">{feedback}</p> : null}
 
-      <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
-        <Card className="h-full">
-          <CardHeader>
-            <CardTitle>Cola manual prioritaria</CardTitle>
-            <CardDescription>Solicitudes ordenadas para aprobar, rechazar o dejar documentadas.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
+      <Card>
+        <CardHeader>
+          <CardTitle>Cola manual prioritaria</CardTitle>
+          <CardDescription>Solicitudes ordenadas para aprobar, rechazar o dejar documentadas.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {priorityRequests.length ? (
               priorityRequests.map((request) => {
                 const priority = manualPriorityLabel(request);
-                const isSelected = request.id === selectedRequestId;
 
                 return (
                   <button
                     key={request.id}
                     type="button"
-                    onClick={() => setSelectedRequestId(request.id)}
-                    className={`w-full rounded-[1.5rem] border p-4 text-left transition ${
-                      isSelected
-                        ? "border-[#132016]/20 bg-[#132016] text-white shadow-soft"
-                        : "border-black/10 bg-black/[0.02] text-[#132016] hover:border-black/15 hover:bg-black/[0.035]"
-                    }`}
+                    onClick={() => { setSelectedRequestId(request.id); setModalOpen(true); }}
+                    className="w-full rounded-[1.5rem] border border-black/10 bg-black/[0.02] p-4 text-left text-[#132016] transition hover:border-black/15 hover:bg-black/[0.035]"
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="space-y-1">
                         <div className="text-sm font-semibold">{request.id}</div>
-                        <div className={isSelected ? "text-sm text-white/78" : "text-sm text-black/58"}>
+                        <div className="text-sm text-black/58">
                           {request.orderNumber} · {request.customerName}
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        <Badge tone={priority.tone} className={isSelected ? "!bg-white/14 !text-white" : ""}>
-                          {priority.label}
-                        </Badge>
-                        <Badge tone="neutral" className={isSelected ? "!bg-white/14 !text-white" : ""}>
-                          {formatCurrency(request.amount)}
-                        </Badge>
+                        <Badge tone={priority.tone}>{priority.label}</Badge>
+                        <Badge tone="neutral">{formatCurrency(request.amount)}</Badge>
                       </div>
                     </div>
-                    <div className={`mt-4 grid gap-2 text-sm md:grid-cols-2 ${isSelected ? "text-white/82" : "text-black/62"}`}>
+                    <div className="mt-4 grid gap-2 text-sm text-black/62 md:grid-cols-2">
                       <div>Estado: {manualLabel(request.status)}</div>
                       <div>Enviado: {formatDateTime(request.submittedAt)}</div>
                       <div>Comprobante: {request.evidenceReference ?? "Sin referencia"}</div>
@@ -442,26 +439,53 @@ export function PaymentsWorkspace() {
                 );
               })
             ) : (
-              <EmptySurface
-                title="Sin cola manual"
-                description="Cuando llegue un comprobante o cambie de estado, aparecerá aquí por prioridad."
-              />
+              <div className="col-span-full rounded-[1.5rem] border border-dashed border-black/15 bg-black/[0.015] p-6 text-sm leading-6 text-black/55">
+                Cuando llegue un comprobante o cambie de estado, aparecerá aquí por prioridad.
+              </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </CardContent>
+      </Card>
 
-        <Card className="h-full">
-          <CardHeader>
-            <CardTitle>Decisión operativa</CardTitle>
-            <CardDescription>
+      <AdminDataTable
+        title="Pagos registrados"
+        description="Estado completo de cobros, manuales y señal de notificación."
+        headers={["Pedido", "Cliente", "Estado", "Importe", "Manual", "Notificación", "Actualizado"]}
+        rows={paymentsRows}
+      />
+
+      <AdminDataTable
+        title="Solicitudes manuales"
+        description="Trazabilidad completa de comprobantes y decisión operativa."
+        headers={["Solicitud", "Pedido", "Cliente", "Estado", "Comprobante", "Revisión"]}
+        rows={manualRequestsRows}
+      />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Radar de conciliación</CardTitle>
+          <CardDescription>Señales reales para entender si el flujo está sano o se está acumulando trabajo manual.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <SummaryTile label="Ingresaron a cola" value={String(submittedCount)} />
+          <SummaryTile label="En revisión" value={String(underReviewCount)} />
+          <SummaryTile label="Notificación entregada" value={String(deliveredNotifications)} />
+          <SummaryTile label="Pagos confirmados" value={String(payments.filter((payment) => payment.status === "paid").length)} />
+        </CardContent>
+      </Card>
+
+      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} size="lg">
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
               {selectedRequest
-                ? `${selectedRequest.id} · ${selectedRequest.orderNumber} · ${selectedRequest.customerName}`
-                : "Selecciona una solicitud de la cola para revisar el comprobante."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
+                ? `${selectedRequest.id} · ${selectedRequest.orderNumber}`
+                : "Decisión operativa"}
+            </DialogTitle>
+          </DialogHeader>
+          <DialogBody>
             {selectedRequest ? (
-              <>
+              <div className="space-y-5">
                 <div className="rounded-[1.75rem] border border-black/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(245,243,237,0.94)_100%)] p-5">
                   <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="space-y-2">
@@ -501,55 +525,26 @@ export function PaymentsWorkspace() {
                     <Textarea value={reviewNotes} onChange={(event) => setReviewNotes(event.target.value)} placeholder="Motivo de aprobación o rechazo" />
                   </div>
                 </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <Button type="button" onClick={() => void handleDecision("approve")} disabled={actionLoading}>
-                    Aprobar
-                  </Button>
-                  <Button type="button" variant="danger" onClick={() => void handleDecision("reject")} disabled={actionLoading}>
-                    Rechazar
-                  </Button>
-                </div>
-              </>
+              </div>
             ) : (
-              <EmptySurface
-                title="Sin solicitud seleccionada"
-                description="Elige un comprobante de la cola para aprobarlo, rechazarlo o documentarlo."
-              />
+              <p className="text-sm text-black/55">Selecciona una solicitud para revisar el comprobante.</p>
             )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[1fr_0.95fr]">
-        <AdminDataTable
-          title="Pagos registrados"
-          description="Estado completo de cobros, manuales y señal de notificación."
-          headers={["Pedido", "Cliente", "Estado", "Importe", "Manual", "Notificación", "Actualizado"]}
-          rows={paymentsRows}
-        />
-
-        <div className="grid gap-6">
-          <AdminDataTable
-            title="Solicitudes manuales"
-            description="Trazabilidad completa de comprobantes y decisión operativa."
-            headers={["Solicitud", "Pedido", "Cliente", "Estado", "Comprobante", "Revisión"]}
-            rows={manualRequestsRows}
-          />
-          <Card>
-            <CardHeader>
-              <CardTitle>Radar de conciliación</CardTitle>
-              <CardDescription>Señales reales para entender si el flujo está sano o se está acumulando trabajo manual.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3 md:grid-cols-2">
-              <SummaryTile label="Ingresaron a cola" value={String(submittedCount)} />
-              <SummaryTile label="En revisión" value={String(underReviewCount)} />
-              <SummaryTile label="Notificación entregada" value={String(deliveredNotifications)} />
-              <SummaryTile label="Pagos confirmados" value={String(payments.filter((payment) => payment.status === "paid").length)} />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+          </DialogBody>
+          <DialogFooter>
+            {selectedRequest ? (
+              <>
+                <Button type="button" onClick={() => void handleDecision("approve")} disabled={actionLoading}>
+                  Aprobar
+                </Button>
+                <Button type="button" variant="danger" onClick={() => void handleDecision("reject")} disabled={actionLoading}>
+                  Rechazar
+                </Button>
+              </>
+            ) : null}
+            <Button variant="secondary" onClick={() => setModalOpen(false)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -602,24 +597,3 @@ function SummaryTile({
   );
 }
 
-function EmptySurface({
-  title,
-  description
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <Card className="h-full">
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="rounded-[1.5rem] border border-dashed border-black/15 bg-black/[0.015] p-6 text-sm leading-6 text-black/55">
-          Esta superficie se completa automáticamente cuando aparezca actividad operativa relevante.
-        </div>
-      </CardContent>
-    </Card>
-  );
-}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { AdminDataTable, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, MetricCard, SectionHeader, Separator, StatusBadge, TimelinePedido } from "@huelegood/ui";
+import { AdminDataTable, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle, MetricCard, SectionHeader, Separator, StatusBadge, TimelinePedido } from "@huelegood/ui";
 import type { AdminOrderDetail, AdminOrderSummary, OrderStatus, PaymentStatus, ManualPaymentRequestStatus } from "@huelegood/shared";
 import { fetchOrder, fetchOrders } from "../lib/api";
 
@@ -148,6 +148,8 @@ export function OrdersWorkspace() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"detalle" | "timeline">("detalle");
 
   useEffect(() => {
     let active = true;
@@ -301,7 +303,7 @@ export function OrdersWorkspace() {
             type="button"
             variant="ghost"
             className="h-auto px-0 py-0 text-left font-semibold"
-            onClick={() => setSelectedOrderNumber(order.orderNumber)}
+            onClick={() => { setSelectedOrderNumber(order.orderNumber); setActiveTab("detalle"); setModalOpen(true); }}
           >
             {order.orderNumber}
           </Button>
@@ -367,44 +369,35 @@ export function OrdersWorkspace() {
         ))}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <Card className="h-full">
-          <CardHeader>
-            <CardTitle>Cola prioritaria</CardTitle>
-            <CardDescription>{error ?? "Los pedidos más urgentes para decisión o seguimiento inmediato."}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
+      <Card>
+        <CardHeader>
+          <CardTitle>Cola prioritaria</CardTitle>
+          <CardDescription>{error ?? "Los pedidos más urgentes para decisión o seguimiento inmediato."}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {priorityOrders.length ? (
               priorityOrders.map((order) => {
                 const priority = orderPriorityLabel(order);
-                const isSelected = order.orderNumber === selectedOrderNumber;
 
                 return (
                   <button
                     key={order.orderNumber}
                     type="button"
-                    onClick={() => setSelectedOrderNumber(order.orderNumber)}
-                    className={`w-full rounded-[1.5rem] border p-4 text-left transition ${
-                      isSelected
-                        ? "border-[#132016]/20 bg-[#132016] text-white shadow-soft"
-                        : "border-black/10 bg-black/[0.02] text-[#132016] hover:border-black/15 hover:bg-black/[0.035]"
-                    }`}
+                    onClick={() => { setSelectedOrderNumber(order.orderNumber); setActiveTab("detalle"); setModalOpen(true); }}
+                    className="w-full rounded-[1.5rem] border border-black/10 bg-black/[0.02] p-4 text-left text-[#132016] transition hover:border-black/15 hover:bg-black/[0.035]"
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="space-y-1">
                         <div className="text-sm font-semibold">{order.orderNumber}</div>
-                        <div className={isSelected ? "text-sm text-white/78" : "text-sm text-black/58"}>{order.customerName}</div>
+                        <div className="text-sm text-black/58">{order.customerName}</div>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        <Badge tone={priority.tone} className={isSelected ? "!bg-white/14 !text-white" : ""}>
-                          {priority.label}
-                        </Badge>
-                        <Badge tone="neutral" className={isSelected ? "!bg-white/14 !text-white" : ""}>
-                          {formatCurrency(order.total)}
-                        </Badge>
+                        <Badge tone={priority.tone}>{priority.label}</Badge>
+                        <Badge tone="neutral">{formatCurrency(order.total)}</Badge>
                       </div>
                     </div>
-                    <div className={`mt-4 grid gap-2 text-sm md:grid-cols-2 ${isSelected ? "text-white/82" : "text-black/62"}`}>
+                    <div className="mt-4 grid gap-2 text-sm text-black/62 md:grid-cols-2">
                       <div>Estado: {orderStatusLabel(order.orderStatus)}</div>
                       <div>Pago: {paymentStatusLabel(order.paymentStatus)}</div>
                       <div>Método: {order.paymentMethod === "manual" ? "Pago manual" : "Openpay"}</div>
@@ -414,28 +407,49 @@ export function OrdersWorkspace() {
                 );
               })
             ) : (
-              <EmptySurface
-                title="Sin pedidos visibles"
-                description="Cuando entren nuevas órdenes o cambien de estado, aparecerán aquí por prioridad."
-              />
+              <div className="col-span-full rounded-[1.5rem] border border-dashed border-black/15 bg-black/[0.015] p-6 text-sm leading-6 text-black/55">
+                Cuando entren nuevas órdenes o cambien de estado, aparecerán aquí por prioridad.
+              </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </CardContent>
+      </Card>
 
-        <Card className="h-full">
-          <CardHeader>
-            <CardTitle>Pedido seleccionado</CardTitle>
-            <CardDescription>
-              {detailLoading
-                ? "Cargando detalle..."
-                : selectedSummary
-                  ? `${selectedSummary.orderNumber} · ${selectedSummary.customerName}`
-                  : "Selecciona un pedido de la cola para ver su detalle completo."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            {selectedOrder ? (
-              <>
+      <AdminDataTable
+        title="Cola completa"
+        description="Listado completo para búsqueda rápida y navegación entre órdenes visibles."
+        headers={["Pedido", "Cliente", "Total", "Estado", "Pago", "Vendedor", "Actualizado"]}
+        rows={allOrdersRows}
+      />
+
+      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} size="xl">
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {detailLoading ? "Cargando..." : selectedSummary ? `${selectedSummary.orderNumber} · ${selectedSummary.customerName}` : "Detalle del pedido"}
+            </DialogTitle>
+            <div className="mt-3 flex gap-1 border-b border-black/10">
+              {(["detalle", "timeline"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  className={`rounded-t-xl px-4 py-2 text-sm font-medium transition ${
+                    activeTab === tab
+                      ? "border-b-2 border-[#132016] text-[#132016]"
+                      : "text-black/50 hover:text-black/70"
+                  }`}
+                >
+                  {tab === "detalle" ? "Detalle" : `Timeline${selectedOrder?.statusHistory.length ? ` (${selectedOrder.statusHistory.length})` : ""}`}
+                </button>
+              ))}
+            </div>
+          </DialogHeader>
+          <DialogBody>
+            {detailLoading ? (
+              <p className="text-sm text-black/55">Cargando detalle del pedido...</p>
+            ) : selectedOrder && activeTab === "detalle" ? (
+              <div className="space-y-5">
                 <div className="rounded-[1.75rem] border border-black/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(245,243,237,0.94)_100%)] p-5">
                   <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="space-y-2">
@@ -537,33 +551,18 @@ export function OrdersWorkspace() {
                     )}
                   </div>
                 ) : null}
-              </>
+              </div>
+            ) : selectedOrder && activeTab === "timeline" ? (
+              <TimelinePedido items={selectedOrder.statusHistory} />
             ) : (
-              <EmptySurface
-                title="Sin pedido seleccionado"
-                description="Selecciona un pedido de la cola para abrir el resumen financiero, cliente, envío y traza."
-              />
+              <p className="text-sm text-black/55">Selecciona un pedido para ver su detalle.</p>
             )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
-        <AdminDataTable
-          title="Cola completa"
-          description="Listado completo para búsqueda rápida y navegación entre órdenes visibles."
-          headers={["Pedido", "Cliente", "Total", "Estado", "Pago", "Vendedor", "Actualizado"]}
-          rows={allOrdersRows}
-        />
-        {selectedOrder ? (
-          <TimelinePedido items={selectedOrder.statusHistory} />
-        ) : (
-          <EmptySurface
-            title="Sin trazabilidad visible"
-            description="El timeline aparecerá aquí cuando selecciones un pedido con historial de cambios."
-          />
-        )}
-      </div>
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setModalOpen(false)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -616,24 +615,3 @@ function SummaryTile({
   );
 }
 
-function EmptySurface({
-  title,
-  description
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <Card className="h-full">
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="rounded-[1.5rem] border border-dashed border-black/15 bg-black/[0.015] p-6 text-sm leading-6 text-black/55">
-          Esta superficie se completa automáticamente cuando exista actividad operativa relevante.
-        </div>
-      </CardContent>
-    </Card>
-  );
-}

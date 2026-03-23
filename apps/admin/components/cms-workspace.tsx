@@ -9,6 +9,12 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Input,
   MetricCard,
   SectionHeader,
@@ -235,6 +241,7 @@ export function CmsWorkspace() {
   const [testimonialQuote, setTestimonialQuote] = useState("Huelegood me permite vender y operar con claridad.");
   const [testimonialRating, setTestimonialRating] = useState("5");
   const [testimonialStatus, setTestimonialStatus] = useState<"active" | "inactive">("active");
+  const [pageModalOpen, setPageModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -315,6 +322,7 @@ export function CmsWorkspace() {
         }
       });
       refresh();
+      setPageModalOpen(false);
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : "No pudimos guardar la página.");
     } finally {
@@ -447,6 +455,7 @@ export function CmsWorkspace() {
     setSeoKeywords(page.seoMeta.keywords.join(", "));
     setSeoCanonicalPath(page.seoMeta.canonicalPath ?? "");
     setSeoRobots(page.seoMeta.robots);
+    setPageModalOpen(true);
   }
 
   return (
@@ -459,116 +468,123 @@ export function CmsWorkspace() {
         ))}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Editor de página</CardTitle>
-          <CardDescription>Actualiza una página, sus bloques y sus metadatos SEO en un solo flujo.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-[#132016]" htmlFor="page-slug">
-              Slug
-            </label>
-            <Input id="page-slug" value={pageSlug} onChange={(event) => setPageSlug(event.target.value)} placeholder="home" />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-[#132016]" htmlFor="page-status">
-              Estado
-            </label>
-            <select
-              id="page-status"
-              className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none focus:border-black/25"
-              value={pageStatus}
-              onChange={(event) => setPageStatus(event.target.value as CmsPage["status"])}
-            >
-              <option value="draft">Borrador</option>
-              <option value="published">Publicado</option>
-              <option value="archived">Archivado</option>
-            </select>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-[#132016]" htmlFor="page-title">
-              Título
-            </label>
-            <Input id="page-title" value={pageTitle} onChange={(event) => setPageTitle(event.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-[#132016]" htmlFor="page-description">
-              Descripción
-            </label>
-            <Input id="page-description" value={pageDescription} onChange={(event) => setPageDescription(event.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-[#132016]" htmlFor="seo-title">
-              SEO title
-            </label>
-            <Input id="seo-title" value={seoTitle} onChange={(event) => setSeoTitle(event.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-[#132016]" htmlFor="seo-canonical">
-              Canonical
-            </label>
-            <Input id="seo-canonical" value={seoCanonicalPath} onChange={(event) => setSeoCanonicalPath(event.target.value)} />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <label className="text-sm font-medium text-[#132016]" htmlFor="seo-description">
-              SEO description
-            </label>
-            <Textarea id="seo-description" value={seoDescription} onChange={(event) => setSeoDescription(event.target.value)} />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <label className="text-sm font-medium text-[#132016]" htmlFor="seo-keywords">
-              Keywords
-            </label>
-            <Input
-              id="seo-keywords"
-              value={seoKeywords}
-              onChange={(event) => setSeoKeywords(event.target.value)}
-              placeholder="huelegood, storefront, seller-first"
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-[#132016]" htmlFor="seo-robots">
-              Robots
-            </label>
-            <select
-              id="seo-robots"
-              className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none focus:border-black/25"
-              value={seoRobots}
-              onChange={(event) => setSeoRobots(event.target.value as "index,follow" | "noindex,nofollow")}
-            >
-              <option value="index,follow">Index, follow</option>
-              <option value="noindex,nofollow">No index, nofollow</option>
-            </select>
-          </div>
-          <div className="md:col-span-2 space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-[#132016]" htmlFor="page-blocks-json">
-                Bloques JSON
-              </label>
-              <span className="text-xs text-black/45">Se guardan con la estructura de bloque del CMS.</span>
+      <div className="flex justify-end">
+        <Button onClick={() => setPageModalOpen(true)}>Nueva página</Button>
+      </div>
+
+      <Dialog open={pageModalOpen} onClose={() => setPageModalOpen(false)} size="xl">
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editor de página</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <div id="page-form" className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[#132016]" htmlFor="page-slug">
+                  Slug
+                </label>
+                <Input id="page-slug" value={pageSlug} onChange={(event) => setPageSlug(event.target.value)} placeholder="home" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[#132016]" htmlFor="page-status">
+                  Estado
+                </label>
+                <select
+                  id="page-status"
+                  className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none focus:border-black/25"
+                  value={pageStatus}
+                  onChange={(event) => setPageStatus(event.target.value as CmsPage["status"])}
+                >
+                  <option value="draft">Borrador</option>
+                  <option value="published">Publicado</option>
+                  <option value="archived">Archivado</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[#132016]" htmlFor="page-title">
+                  Título
+                </label>
+                <Input id="page-title" value={pageTitle} onChange={(event) => setPageTitle(event.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[#132016]" htmlFor="page-description">
+                  Descripción
+                </label>
+                <Input id="page-description" value={pageDescription} onChange={(event) => setPageDescription(event.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[#132016]" htmlFor="seo-title">
+                  SEO title
+                </label>
+                <Input id="seo-title" value={seoTitle} onChange={(event) => setSeoTitle(event.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[#132016]" htmlFor="seo-canonical">
+                  Canonical
+                </label>
+                <Input id="seo-canonical" value={seoCanonicalPath} onChange={(event) => setSeoCanonicalPath(event.target.value)} />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-medium text-[#132016]" htmlFor="seo-description">
+                  SEO description
+                </label>
+                <Textarea id="seo-description" value={seoDescription} onChange={(event) => setSeoDescription(event.target.value)} />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-medium text-[#132016]" htmlFor="seo-keywords">
+                  Keywords
+                </label>
+                <Input
+                  id="seo-keywords"
+                  value={seoKeywords}
+                  onChange={(event) => setSeoKeywords(event.target.value)}
+                  placeholder="huelegood, storefront, seller-first"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[#132016]" htmlFor="seo-robots">
+                  Robots
+                </label>
+                <select
+                  id="seo-robots"
+                  className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none focus:border-black/25"
+                  value={seoRobots}
+                  onChange={(event) => setSeoRobots(event.target.value as "index,follow" | "noindex,nofollow")}
+                >
+                  <option value="index,follow">Index, follow</option>
+                  <option value="noindex,nofollow">No index, nofollow</option>
+                </select>
+              </div>
+              <div className="md:col-span-2 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-[#132016]" htmlFor="page-blocks-json">
+                    Bloques JSON
+                  </label>
+                  <span className="text-xs text-black/45">Se guardan con la estructura de bloque del CMS.</span>
+                </div>
+                <Textarea
+                  id="page-blocks-json"
+                  value={pageBlocksJson}
+                  onChange={(event) => setPageBlocksJson(event.target.value)}
+                  className="min-h-44 font-mono text-xs"
+                />
+              </div>
             </div>
-            <Textarea
-              id="page-blocks-json"
-              value={pageBlocksJson}
-              onChange={(event) => setPageBlocksJson(event.target.value)}
-              className="min-h-44 font-mono text-xs"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <Button onClick={handleSavePage} disabled={actionLoading}>
+          </DialogBody>
+          <DialogFooter>
+            <Button onClick={() => void handleSavePage()} disabled={actionLoading}>
               {actionLoading ? "Guardando..." : "Guardar página"}
             </Button>
-          </div>
-        </CardContent>
-      </Card>
+            <Button variant="secondary" onClick={() => setPageModalOpen(false)}>Cancelar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Nuevo banner</CardTitle>
-            <CardDescription>Promociones y CTAs editables para la home y las campañas.</CardDescription>
-          </CardHeader>
+      <Card>
+        <CardHeader>
+          <CardTitle>Nuevo banner</CardTitle>
+          <CardDescription>Promociones y CTAs editables para la home y las campañas.</CardDescription>
+        </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <label className="text-sm font-medium text-[#132016]" htmlFor="banner-title">
@@ -637,7 +653,7 @@ export function CmsWorkspace() {
           </CardContent>
         </Card>
 
-        <Card>
+      <Card>
           <CardHeader>
             <CardTitle>Nueva FAQ</CardTitle>
             <CardDescription>Preguntas frecuentes visibles en storefront y soporte.</CardDescription>
@@ -682,7 +698,6 @@ export function CmsWorkspace() {
             </div>
           </CardContent>
         </Card>
-      </div>
 
       <Card>
         <CardHeader>

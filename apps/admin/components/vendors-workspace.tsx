@@ -193,7 +193,7 @@ export function VendorsWorkspace() {
           <CardTitle>Revisión comercial</CardTitle>
           <CardDescription>Aprobar o rechazar postulaciones con un criterio común y trazable.</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-[0.8fr_1.2fr]">
+        <CardContent className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-[#132016]" htmlFor="vendor-reviewer">

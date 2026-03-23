@@ -10,6 +10,13 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Input,
   MetricCard,
   SectionHeader,
@@ -282,6 +289,8 @@ export function ProductsWorkspace() {
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"ficha" | "imagenes">("ficha");
 
   useEffect(() => {
     let active = true;
@@ -464,6 +473,12 @@ export function ProductsWorkspace() {
     setImageForm(createInitialImageForm());
     setError(null);
     setFeedback(null);
+    setActiveTab("ficha");
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    setModalOpen(false);
   }
 
   async function refreshCatalog() {
@@ -489,6 +504,8 @@ export function ProductsWorkspace() {
   async function handleSelectProduct(productId: string) {
     setIsCreating(false);
     setSelectedProductId(productId);
+    setActiveTab("ficha");
+    setModalOpen(true);
   }
 
   function handleAddVariant() {
@@ -690,72 +707,90 @@ export function ProductsWorkspace() {
         </div>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.25fr]">
-        <Card>
-          <CardHeader className="space-y-3">
+      <Card>
+        <CardHeader className="space-y-3">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <CardTitle>Listado</CardTitle>
+              <CardDescription>Selecciona una referencia para editarla o crea una nueva.</CardDescription>
+            </div>
+            <Button type="button" size="sm" onClick={resetToCreate}>
+              Nuevo producto
+            </Button>
+          </div>
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Buscar por nombre, slug o categoría"
+          />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-2 text-xs text-black/45">
+            <Badge tone="info">{visibleProducts.length} resultados</Badge>
+            <span>Se muestra el catálogo administrable actual.</span>
+          </div>
+
+          <AdminDataTable
+            title="Productos"
+            description={loading ? "Cargando catálogo..." : "Lista administrable de productos."}
+            headers={["Producto", "Categoría", "Estado", "Precio", "Actualizado", "Acción"]}
+            rows={tableRows}
+          />
+
+          <div className="grid gap-3 md:grid-cols-2">
+            {categories.map((category) => (
+              <div key={category.id} className="rounded-[1.25rem] border border-black/8 bg-[#fafaf7] px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="font-medium text-[#132016]">{category.name}</div>
+                    <div className="text-xs text-black/45">{category.slug}</div>
+                  </div>
+                  <Badge tone={category.isActive ? "success" : "neutral"}>{category.productCount}</Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog open={modalOpen} onClose={closeModal} size="xl">
+        <DialogContent>
+          <DialogHeader>
             <div className="flex items-center justify-between gap-4">
               <div>
-                <CardTitle>Listado</CardTitle>
-                <CardDescription>Selecciona una referencia para editarla o crea una nueva.</CardDescription>
+                <DialogTitle>{selectedTitle}</DialogTitle>
+                <DialogDescription>
+                  {isCreating
+                    ? "Define la ficha base y guarda para habilitar la carga de imágenes."
+                    : selectedProduct
+                      ? "Edita la ficha, variantes y media del producto."
+                      : "Cargando producto..."}
+                </DialogDescription>
               </div>
-              <Button type="button" size="sm" onClick={resetToCreate}>
-                Nuevo producto
-              </Button>
+              {detailLoading ? <Badge tone="info">Cargando...</Badge> : null}
             </div>
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar por nombre, slug o categoría"
-            />
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-2 text-xs text-black/45">
-              <Badge tone="info">{visibleProducts.length} resultados</Badge>
-              <span>Se muestra el catálogo administrable actual.</span>
+            <div className="mt-4 flex gap-1">
+              <button
+                type="button"
+                onClick={() => setActiveTab("ficha")}
+                className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${activeTab === "ficha" ? "bg-[#132016] text-white" : "text-black/55 hover:text-[#132016]"}`}
+              >
+                Ficha del producto
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("imagenes")}
+                disabled={isCreating || !selectedProduct}
+                className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors disabled:opacity-35 ${activeTab === "imagenes" ? "bg-[#132016] text-white" : "text-black/55 hover:text-[#132016]"}`}
+              >
+                Imágenes {selectedProduct ? `(${selectedProduct.images.length})` : ""}
+              </button>
             </div>
+          </DialogHeader>
 
-            <AdminDataTable
-              title="Productos"
-              description={loading ? "Cargando catálogo..." : "Lista administrable de productos."}
-              headers={["Producto", "Categoría", "Estado", "Precio", "Actualizado", "Acción"]}
-              rows={tableRows}
-            />
-
-            <div className="grid gap-3 md:grid-cols-2">
-              {categories.map((category) => (
-                <div key={category.id} className="rounded-[1.25rem] border border-black/8 bg-[#fafaf7] px-4 py-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="font-medium text-[#132016]">{category.name}</div>
-                      <div className="text-xs text-black/45">{category.slug}</div>
-                    </div>
-                    <Badge tone={category.isActive ? "success" : "neutral"}>{category.productCount}</Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="space-y-6">
-          <Card>
-            <CardHeader className="space-y-2">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <CardTitle>{selectedTitle}</CardTitle>
-                  <CardDescription>
-                    {isCreating
-                      ? "Define la ficha base y guarda para habilitar la carga de imágenes."
-                      : selectedProduct
-                        ? "Edita la ficha, variantes y media del producto."
-                        : "Selecciona un producto del listado."}
-                  </CardDescription>
-                </div>
-                {detailLoading ? <Badge tone="info">Cargando detalle...</Badge> : null}
-              </div>
-            </CardHeader>
-            <CardContent>
-              <form className="space-y-6" onSubmit={(event) => void handleSave(event)}>
+          <DialogBody>
+            {activeTab === "ficha" && (
+              <form id="product-form" className="space-y-6" onSubmit={(event) => void handleSave(event)}>
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="space-y-1.5">
                     <span className="text-sm font-medium text-[#132016]">Nombre</span>
@@ -955,123 +990,89 @@ export function ProductsWorkspace() {
                   </div>
                 </div>
 
+              </form>
+            )}
+
+            {activeTab === "imagenes" && (
+              <div className="space-y-5">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="space-y-1.5">
+                    <span className="text-sm font-medium text-[#132016]">Archivo</span>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(event) =>
+                        setImageForm((current) => ({
+                          ...current,
+                          file: event.target.files?.[0] ?? null
+                        }))
+                      }
+                    />
+                    <p className="text-xs text-black/45">Sube JPG, PNG o WebP optimizado para storefront.</p>
+                  </label>
+                  <label className="space-y-1.5">
+                    <span className="text-sm font-medium text-[#132016]">Texto alternativo</span>
+                    <Input
+                      value={imageForm.altText}
+                      onChange={(event) => setImageForm((current) => ({ ...current, altText: event.target.value }))}
+                      placeholder="Imagen del producto"
+                    />
+                  </label>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  <label className="space-y-1.5">
+                    <span className="text-sm font-medium text-[#132016]">Orden</span>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={imageForm.sortOrder}
+                      onChange={(event) => setImageForm((current) => ({ ...current, sortOrder: event.target.value }))}
+                    />
+                  </label>
+                  <label className="space-y-1.5">
+                    <span className="text-sm font-medium text-[#132016]">Variante</span>
+                    <select
+                      value={imageForm.variantId}
+                      onChange={(event) => setImageForm((current) => ({ ...current, variantId: event.target.value }))}
+                      className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none transition focus:border-black/25"
+                    >
+                      <option value="">Sin variante</option>
+                      {imageVariants.map((variant) => (
+                        <option key={variant.id} value={variant.id}>
+                          {variant.name} ({variant.sku})
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex items-center gap-3 rounded-[1.25rem] border border-black/8 bg-[#fafaf7] px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={imageForm.isPrimary}
+                      onChange={(event) => setImageForm((current) => ({ ...current, isPrimary: event.target.checked }))}
+                      className="h-4 w-4 rounded border-black/20 text-[#2d6a4f]"
+                    />
+                    <div>
+                      <div className="font-medium text-[#132016]">Principal</div>
+                      <div className="text-xs text-black/50">Reemplaza la imagen principal del producto.</div>
+                    </div>
+                  </label>
+                </div>
+
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="text-sm text-black/55">
-                    {isCreating ? "Guardar creará el producto y habilitará la subida de imágenes." : "Los cambios se aplican al producto seleccionado."}
+                    Las imágenes se publican sobre el bucket R2 ya configurado en producción.
                   </div>
-                  <div className="flex flex-wrap gap-3">
-                    {isCreating ? (
-                      <Button type="button" variant="secondary" onClick={() => setIsCreating(false)} disabled={!products.length}>
-                        Volver al listado
-                      </Button>
-                    ) : null}
-                    <Button type="submit" disabled={saving}>
-                      {saving ? "Guardando..." : "Guardar cambios"}
-                    </Button>
-                  </div>
+                  <Button type="button" onClick={() => void handleUploadImage()} disabled={!imageForm.file || uploading}>
+                    {uploading ? "Subiendo..." : "Subir imagen"}
+                  </Button>
                 </div>
-              </form>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardHeader className="space-y-2">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <CardTitle>Imágenes</CardTitle>
-                  <CardDescription>
-                    {selectedProduct
-                      ? "Carga imágenes a R2 y asígnalas al producto actual."
-                      : "Selecciona o crea un producto para gestionar media."}
-                  </CardDescription>
-                </div>
-                {selectedProduct ? <Badge tone="info">{selectedProduct.images.length} adjuntos</Badge> : null}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="space-y-1.5">
-                  <span className="text-sm font-medium text-[#132016]">Archivo</span>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={(event) =>
-                      setImageForm((current) => ({
-                        ...current,
-                        file: event.target.files?.[0] ?? null
-                      }))
-                    }
-                  />
-                  <p className="text-xs text-black/45">Sube JPG, PNG o WebP optimizado para storefront.</p>
-                </label>
-                <label className="space-y-1.5">
-                  <span className="text-sm font-medium text-[#132016]">Texto alternativo</span>
-                  <Input
-                    value={imageForm.altText}
-                    onChange={(event) => setImageForm((current) => ({ ...current, altText: event.target.value }))}
-                    placeholder="Imagen del producto"
-                  />
-                </label>
-              </div>
+                <Separator />
 
-              <div className="grid gap-4 md:grid-cols-3">
-                <label className="space-y-1.5">
-                  <span className="text-sm font-medium text-[#132016]">Orden</span>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={imageForm.sortOrder}
-                    onChange={(event) => setImageForm((current) => ({ ...current, sortOrder: event.target.value }))}
-                  />
-                </label>
-                <label className="space-y-1.5">
-                  <span className="text-sm font-medium text-[#132016]">Variante</span>
-                  <select
-                    value={imageForm.variantId}
-                    onChange={(event) => setImageForm((current) => ({ ...current, variantId: event.target.value }))}
-                    className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none transition focus:border-black/25"
-                    disabled={!selectedProduct}
-                  >
-                    <option value="">Sin variante</option>
-                    {imageVariants.map((variant) => (
-                      <option key={variant.id} value={variant.id}>
-                        {variant.name} ({variant.sku})
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="flex items-center gap-3 rounded-[1.25rem] border border-black/8 bg-[#fafaf7] px-4 py-3">
-                  <input
-                    type="checkbox"
-                    checked={imageForm.isPrimary}
-                    onChange={(event) => setImageForm((current) => ({ ...current, isPrimary: event.target.checked }))}
-                    className="h-4 w-4 rounded border-black/20 text-[#2d6a4f]"
-                    disabled={!selectedProduct}
-                  />
-                  <div>
-                    <div className="font-medium text-[#132016]">Principal</div>
-                    <div className="text-xs text-black/50">Reemplaza la imagen principal del producto.</div>
-                  </div>
-                </label>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="text-sm text-black/55">
-                  {selectedProduct
-                    ? "Las imágenes se publican sobre el bucket R2 ya configurado en producción."
-                    : "Primero guarda el producto para habilitar la carga."}
-                </div>
-                <Button type="button" onClick={() => void handleUploadImage()} disabled={!selectedProduct || !imageForm.file || uploading}>
-                  {uploading ? "Subiendo..." : "Subir imagen"}
-                </Button>
-              </div>
-
-              <Separator />
-
-              {selectedProduct ? (
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {selectedProduct.images.map((image) => (
+                  {selectedProduct?.images.map((image) => (
                     <div key={image.id} className="overflow-hidden rounded-[1.25rem] border border-black/8 bg-[#fafaf7]">
                       <div className="aspect-[4/3] bg-black/5">
                         <img src={image.url} alt={image.altText ?? selectedProduct.name} className="h-full w-full object-cover" />
@@ -1097,21 +1098,31 @@ export function ProductsWorkspace() {
                     </div>
                   ))}
 
-                  {!selectedProduct.images.length ? (
+                  {!selectedProduct?.images.length ? (
                     <div className="rounded-[1.25rem] border border-dashed border-black/10 bg-[#fafaf7] p-6 text-sm text-black/55">
                       Este producto todavía no tiene imágenes.
                     </div>
                   ) : null}
                 </div>
-              ) : (
-                <div className="rounded-[1.25rem] border border-dashed border-black/10 bg-[#fafaf7] p-6 text-sm text-black/55">
-                  Guarda un producto para empezar a subir imágenes.
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+              </div>
+            )}
+          </DialogBody>
+
+          {activeTab === "ficha" && (
+            <DialogFooter>
+              <div className="flex-1 text-sm text-black/55">
+                {isCreating ? "Guardar creará el producto y habilitará la carga de imágenes." : "Los cambios se aplican al producto seleccionado."}
+              </div>
+              <Button type="button" variant="secondary" onClick={closeModal}>
+                Cancelar
+              </Button>
+              <Button type="submit" form="product-form" disabled={saving}>
+                {saving ? "Guardando..." : "Guardar cambios"}
+              </Button>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
