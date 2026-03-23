@@ -294,8 +294,7 @@ export function LoyaltyWorkspace() {
         ))}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr]">
-        <Card>
+      <Card>
           <CardHeader>
             <CardTitle>Asignación de puntos</CardTitle>
             <CardDescription>Registra acumulación manual o derivada de pedidos confirmados.</CardDescription>
@@ -461,7 +460,6 @@ export function LoyaltyWorkspace() {
             </div>
           </CardContent>
         </Card>
-      </div>
 
       <AdminDataTable
         title="Cuentas loyalty"

@@ -188,8 +188,7 @@ export function ObservabilityWorkspace() {
         ))}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <AdminDataTable
+      <AdminDataTable
           title="Requests recientes"
           description={`Promedio ${overview.requests.averageDurationMs} ms · p95 ${overview.requests.p95DurationMs} ms · última actividad ${formatDate(overview.requests.lastRequestAt)}.`}
           headers={["Método", "Ruta", "Estado", "Duración", "Actor", "Fecha"]}
@@ -237,10 +236,8 @@ export function ObservabilityWorkspace() {
             ))}
           </CardContent>
         </Card>
-      </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr]">
-        <AdminDataTable
+      <AdminDataTable
           title="Rutas con mayor actividad"
           description="Top routes por volumen dentro de la ventana observada."
           headers={["Ruta", "Requests", "Avg", "P95", "4xx", "5xx", "Última"]}
@@ -279,7 +276,6 @@ export function ObservabilityWorkspace() {
             formatDate(event.occurredAt)
           ])}
         />
-      </div>
     </div>
   );
 }

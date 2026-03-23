@@ -550,13 +550,13 @@ export function DashboardWorkspace() {
       {overview?.focus === "payments" ? (
         <>
           <DashboardSection eyebrow="Prioridad" title="Resolución inmediata" description="Lo primero es destrabar cobro, revisión manual y conciliación.">
-            <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
+            <div className="grid gap-6 xl:grid-cols-2">
               <ReviewDrawer title="Revisión manual" items={reviewItems} />
               {latestOrder ? <CardSnapshot order={latestOrder} /> : <EmptyDashboardCard title="Sin pedido destacado" description="Todavía no hay un pedido reciente para mostrar en detalle." />}
             </div>
           </DashboardSection>
           <DashboardSection eyebrow="Seguimiento" title="Cola de cobro" description="Pagos y pedidos con impacto directo en conciliación.">
-            <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+            <div className="grid gap-6 xl:grid-cols-2">
               <AdminDataTable
                 title="Cola de pagos"
                 description="Cobros que requieren seguimiento."
@@ -580,7 +580,7 @@ export function DashboardWorkspace() {
       {overview?.focus === "sales" ? (
         <>
           <DashboardSection eyebrow="Pipeline comercial" title="Ventas, comisión y red de vendedores" description="Primero rendimiento vendedor, luego comisiones y finalmente liquidaciones.">
-            <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+            <div className="grid gap-6 xl:grid-cols-2">
               <CommissionTable rows={commissionRows.slice(0, 6) as CommissionRow[]} />
               <AdminDataTable
                 title="Vendedores activos"
@@ -649,13 +649,13 @@ export function DashboardWorkspace() {
       {overview?.focus === "executive" ? (
         <>
           <DashboardSection eyebrow="Atención inmediata" title="Operación transversal" description="Lo primero es revisar cobros pendientes, pedido reciente y señales del frente comercial.">
-            <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
+            <div className="grid gap-6 xl:grid-cols-2">
               <ReviewDrawer title="Revisión de pagos" items={reviewItems} />
               {latestOrder ? <CardSnapshot order={latestOrder} /> : <EmptyDashboardCard title="Sin pedido destacado" description="Todavía no hay un pedido reciente para mostrar en detalle." />}
             </div>
           </DashboardSection>
           <DashboardSection eyebrow="Pedidos" title="Últimos movimientos" description="Pedidos recientes y timeline del pedido más representativo.">
-            <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+            <div className="grid gap-6 xl:grid-cols-2">
               <AdminDataTable
                 title="Pedidos recientes"
                 description="Vista transversal de la operación."
@@ -666,7 +666,7 @@ export function DashboardWorkspace() {
             </div>
           </DashboardSection>
           <DashboardSection eyebrow="Frente comercial" title="Comisiones, campañas y leads" description="Resumen ejecutivo del frente seller y del pipeline comercial.">
-            <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+            <div className="grid gap-6 xl:grid-cols-2">
               <CommissionTable rows={commissionRows.slice(0, 6) as CommissionRow[]} />
               <div className="grid gap-6">
                 <AdminDataTable

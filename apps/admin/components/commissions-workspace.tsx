@@ -540,7 +540,7 @@ export function CommissionsWorkspace() {
             </div>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-[1fr_1fr_auto]">
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <label className="text-sm font-medium text-[#132016]" htmlFor="rule-description">
                 Descripción
@@ -563,11 +563,11 @@ export function CommissionsWorkspace() {
                 placeholder="Observaciones operativas."
               />
             </div>
-            <div className="flex items-end">
-              <Button onClick={handleSaveRule} disabled={actionLoading}>
-                {editingRuleId ? "Actualizar regla" : "Crear regla"}
-              </Button>
-            </div>
+          </div>
+          <div>
+            <Button onClick={handleSaveRule} disabled={actionLoading}>
+              {editingRuleId ? "Actualizar regla" : "Crear regla"}
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -697,7 +697,7 @@ export function CommissionsWorkspace() {
           <CardTitle>Conciliación</CardTitle>
           <CardDescription>La liquidación pagada cierra comisiones y actualiza el snapshot del vendedor.</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_auto]">
+        <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="space-y-2">
             <label className="text-sm font-medium text-[#132016]" htmlFor="settlement-reviewer">
               Revisor

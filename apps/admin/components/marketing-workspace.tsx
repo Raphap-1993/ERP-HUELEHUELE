@@ -9,6 +9,12 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Input,
   MetricCard,
   SectionHeader,
@@ -94,6 +100,7 @@ export function MarketingWorkspace() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [campaignModalOpen, setCampaignModalOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -228,6 +235,7 @@ export function MarketingWorkspace() {
       setGoal("Impulsar recompra, seguimiento y activación comercial");
       setScheduledAt("");
       refresh();
+      setCampaignModalOpen(false);
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : "No pudimos crear la campaña.");
     } finally {
@@ -248,137 +256,126 @@ export function MarketingWorkspace() {
         ))}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Nueva campaña</CardTitle>
-            <CardDescription>Define segmento, plantilla, canal y objetivo antes de lanzar.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-medium text-[#132016]" htmlFor="campaign-name">
-                Nombre
-              </label>
-              <Input
-                id="campaign-name"
-                value={campaignName}
-                onChange={(event) => setCampaignName(event.target.value)}
-                placeholder="Ej. Reset de abril"
-              />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-medium text-[#132016]" htmlFor="campaign-goal">
-                Objetivo
-              </label>
-              <Textarea
-                id="campaign-goal"
-                value={goal}
-                onChange={(event) => setGoal(event.target.value)}
-                placeholder="Describe el resultado comercial esperado"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[#132016]" htmlFor="campaign-segment">
-                Segmento
-              </label>
-              <select
-                id="campaign-segment"
-                className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none focus:border-black/25"
-                value={selectedSegmentId}
-                onChange={(event) => setSelectedSegmentId(event.target.value)}
-              >
-                {segments.map((segment) => (
-                  <option key={segment.id} value={segment.id}>
-                    {segment.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[#132016]" htmlFor="campaign-template">
-                Plantilla
-              </label>
-              <select
-                id="campaign-template"
-                className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none focus:border-black/25"
-                value={selectedTemplateId}
-                onChange={(event) => setSelectedTemplateId(event.target.value)}
-              >
-                {templates.map((template) => (
-                  <option key={template.id} value={template.id}>
-                    {template.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[#132016]" htmlFor="campaign-channel">
-                Canal
-              </label>
-              <select
-                id="campaign-channel"
-                className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none focus:border-black/25"
-                value={channel}
-                onChange={(event) => setChannel(event.target.value as MarketingCampaignInput["channel"])}
-              >
-                <option value="email">Email</option>
-                <option value="sms">SMS</option>
-                <option value="whatsapp">WhatsApp</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[#132016]" htmlFor="campaign-schedule">
-                Programación
-              </label>
-              <Input
-                id="campaign-schedule"
-                type="datetime-local"
-                value={scheduledAt}
-                onChange={(event) => setScheduledAt(event.target.value)}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Button onClick={handleCreateCampaign} disabled={submitting}>
-                {submitting ? "Guardando..." : "Crear campaña"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Contexto CRM</CardTitle>
-            <CardDescription>La campaña se apoya en un segmento y una plantilla concretos.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm text-black/65">
-            {selectedSegment ? (
-              <div className="rounded-3xl border border-black/10 bg-black/[0.02] p-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-black/45">Segmento</p>
-                <p className="mt-2 font-semibold text-[#132016]">{selectedSegment.name}</p>
-                <p className="mt-1">{selectedSegment.definition}</p>
-                <p className="mt-2 text-black/55">Audiencia: {selectedSegment.audienceSize}</p>
-              </div>
-            ) : null}
-            {selectedTemplate ? (
-              <div className="rounded-3xl border border-black/10 bg-black/[0.02] p-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-black/45">Plantilla</p>
-                <p className="mt-2 font-semibold text-[#132016]">{selectedTemplate.name}</p>
-                <p className="mt-1">{selectedTemplate.subject}</p>
-                <p className="mt-2 text-black/55">
-                  Canal: {selectedTemplate.channel} · Estado: {selectedTemplate.status}
-                </p>
-              </div>
-            ) : null}
-            <div className="rounded-3xl border border-black/10 bg-[#132016] p-4 text-white">
-              <p className="text-xs uppercase tracking-[0.18em] text-white/55">Regla operativa</p>
-              <p className="mt-2 text-sm leading-6 text-white/82">
-                La campaña se registra primero en CRM, queda trazada por evento y luego se ejecuta de forma
-                manual o programada según el estado definido.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex justify-end">
+        <Button onClick={() => setCampaignModalOpen(true)}>Nueva campaña</Button>
       </div>
+
+      <Dialog open={campaignModalOpen} onClose={() => setCampaignModalOpen(false)} size="lg">
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nueva campaña</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-medium text-[#132016]" htmlFor="campaign-name">
+                  Nombre
+                </label>
+                <Input
+                  id="campaign-name"
+                  value={campaignName}
+                  onChange={(event) => setCampaignName(event.target.value)}
+                  placeholder="Ej. Reset de abril"
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-medium text-[#132016]" htmlFor="campaign-goal">
+                  Objetivo
+                </label>
+                <Textarea
+                  id="campaign-goal"
+                  value={goal}
+                  onChange={(event) => setGoal(event.target.value)}
+                  placeholder="Describe el resultado comercial esperado"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[#132016]" htmlFor="campaign-segment">
+                  Segmento
+                </label>
+                <select
+                  id="campaign-segment"
+                  className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none focus:border-black/25"
+                  value={selectedSegmentId}
+                  onChange={(event) => setSelectedSegmentId(event.target.value)}
+                >
+                  {segments.map((segment) => (
+                    <option key={segment.id} value={segment.id}>
+                      {segment.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[#132016]" htmlFor="campaign-template">
+                  Plantilla
+                </label>
+                <select
+                  id="campaign-template"
+                  className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none focus:border-black/25"
+                  value={selectedTemplateId}
+                  onChange={(event) => setSelectedTemplateId(event.target.value)}
+                >
+                  {templates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[#132016]" htmlFor="campaign-channel">
+                  Canal
+                </label>
+                <select
+                  id="campaign-channel"
+                  className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none focus:border-black/25"
+                  value={channel}
+                  onChange={(event) => setChannel(event.target.value as MarketingCampaignInput["channel"])}
+                >
+                  <option value="email">Email</option>
+                  <option value="sms">SMS</option>
+                  <option value="whatsapp">WhatsApp</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[#132016]" htmlFor="campaign-schedule">
+                  Programación
+                </label>
+                <Input
+                  id="campaign-schedule"
+                  type="datetime-local"
+                  value={scheduledAt}
+                  onChange={(event) => setScheduledAt(event.target.value)}
+                />
+              </div>
+              {(selectedSegment || selectedTemplate) ? (
+                <div className="md:col-span-2 space-y-3">
+                  {selectedSegment ? (
+                    <div className="rounded-2xl border border-black/10 bg-black/[0.02] p-3 text-sm text-black/65">
+                      <p className="text-xs uppercase tracking-[0.18em] text-black/45">Segmento</p>
+                      <p className="mt-1 font-semibold text-[#132016]">{selectedSegment.name}</p>
+                      <p className="text-black/55">Audiencia: {selectedSegment.audienceSize}</p>
+                    </div>
+                  ) : null}
+                  {selectedTemplate ? (
+                    <div className="rounded-2xl border border-black/10 bg-black/[0.02] p-3 text-sm text-black/65">
+                      <p className="text-xs uppercase tracking-[0.18em] text-black/45">Plantilla</p>
+                      <p className="mt-1 font-semibold text-[#132016]">{selectedTemplate.name} · {selectedTemplate.subject}</p>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            <Button onClick={() => void handleCreateCampaign()} disabled={submitting}>
+              {submitting ? "Guardando..." : "Crear campaña"}
+            </Button>
+            <Button variant="secondary" onClick={() => setCampaignModalOpen(false)}>Cancelar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AdminDataTable
         title="Campañas"

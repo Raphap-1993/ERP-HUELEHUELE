@@ -9,6 +9,12 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Input,
   MetricCard,
   SectionHeader,
@@ -93,6 +99,7 @@ export function WholesaleWorkspace() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [quoteModalOpen, setQuoteModalOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -222,6 +229,7 @@ export function WholesaleWorkspace() {
         notes: quoteNotes.trim() || undefined
       });
       refresh();
+      setQuoteModalOpen(false);
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : "No pudimos crear la cotización.");
     } finally {
@@ -247,7 +255,7 @@ export function WholesaleWorkspace() {
           <CardTitle>Gestión de leads</CardTitle>
           <CardDescription>Actualiza el estado comercial sin salir del panel.</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-[0.85fr_1.15fr]">
+        <CardContent className="space-y-4">
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-[#132016]" htmlFor="wholesale-reviewer">
@@ -324,109 +332,94 @@ export function WholesaleWorkspace() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Nueva cotización</CardTitle>
-            <CardDescription>Preparación manual con un monto de referencia y estado inicial.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-[1.1fr_0.7fr]">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[#132016]" htmlFor="wholesale-lead">
-                Lead
-              </label>
-              <select
-                id="wholesale-lead"
-                className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none focus:border-black/25"
-                value={selectedLeadId}
-                onChange={(event) => setSelectedLeadId(event.target.value)}
-              >
-                {leads.map((lead) => (
-                  <option key={lead.id} value={lead.id}>
-                    {lead.company} · {lead.contact}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[#132016]" htmlFor="wholesale-amount">
-                Monto
-              </label>
-              <Input
-                id="wholesale-amount"
-                type="number"
-                min="1"
-                step="1"
-                value={quoteAmount}
-                onChange={(event) => setQuoteAmount(event.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[#132016]" htmlFor="wholesale-status">
-                Estado
-              </label>
-              <select
-                id="wholesale-status"
-                className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none focus:border-black/25"
-                value={quoteStatus}
-                onChange={(event) => setQuoteStatus(event.target.value as WholesaleQuoteStatus)}
-              >
-                <option value={WholesaleQuoteStatus.Draft}>Borrador</option>
-                <option value={WholesaleQuoteStatus.Sent}>Enviada</option>
-                <option value={WholesaleQuoteStatus.Accepted}>Aceptada</option>
-                <option value={WholesaleQuoteStatus.Rejected}>Rechazada</option>
-                <option value={WholesaleQuoteStatus.Expired}>Expirada</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[#132016]" htmlFor="wholesale-quote-notes">
-                Notas
-              </label>
-              <Textarea
-                id="wholesale-quote-notes"
-                value={quoteNotes}
-                onChange={(event) => setQuoteNotes(event.target.value)}
-                placeholder="Notas comerciales"
-              />
-            </div>
-            <div className="flex items-end">
-              <Button onClick={handleCreateQuote} disabled={actionLoading || !selectedLeadId}>
-                Crear cotización
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Detalle rápido</CardTitle>
-            <CardDescription>Contexto del lead seleccionado para no perder el hilo comercial.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-black/65">
-            {selectedLead ? (
-              <>
-                <p>
-                  <span className="font-medium text-[#132016]">Empresa:</span> {selectedLead.company}
-                </p>
-                <p>
-                  <span className="font-medium text-[#132016]">Contacto:</span> {selectedLead.contact}
-                </p>
-                <p>
-                  <span className="font-medium text-[#132016]">Ciudad:</span> {selectedLead.city}
-                </p>
-                <p>
-                  <span className="font-medium text-[#132016]">Estado:</span> {selectedLead.status}
-                </p>
-                <p>
-                  <span className="font-medium text-[#132016]">Cotizaciones:</span> {selectedLead.quoteCount}
-                </p>
-              </>
-            ) : (
-              <p>No hay un lead seleccionado.</p>
-            )}
-          </CardContent>
-        </Card>
+      <div className="flex justify-end">
+        <Button onClick={() => setQuoteModalOpen(true)} disabled={!selectedLeadId && !leads.length}>
+          Nueva cotización
+        </Button>
       </div>
+
+      <Dialog open={quoteModalOpen} onClose={() => setQuoteModalOpen(false)} size="md">
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nueva cotización</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[#132016]" htmlFor="wholesale-lead">
+                  Lead
+                </label>
+                <select
+                  id="wholesale-lead"
+                  className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none focus:border-black/25"
+                  value={selectedLeadId}
+                  onChange={(event) => setSelectedLeadId(event.target.value)}
+                >
+                  {leads.map((lead) => (
+                    <option key={lead.id} value={lead.id}>
+                      {lead.company} · {lead.contact}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[#132016]" htmlFor="wholesale-amount">
+                  Monto
+                </label>
+                <Input
+                  id="wholesale-amount"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={quoteAmount}
+                  onChange={(event) => setQuoteAmount(event.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[#132016]" htmlFor="wholesale-status">
+                  Estado
+                </label>
+                <select
+                  id="wholesale-status"
+                  className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none focus:border-black/25"
+                  value={quoteStatus}
+                  onChange={(event) => setQuoteStatus(event.target.value as WholesaleQuoteStatus)}
+                >
+                  <option value={WholesaleQuoteStatus.Draft}>Borrador</option>
+                  <option value={WholesaleQuoteStatus.Sent}>Enviada</option>
+                  <option value={WholesaleQuoteStatus.Accepted}>Aceptada</option>
+                  <option value={WholesaleQuoteStatus.Rejected}>Rechazada</option>
+                  <option value={WholesaleQuoteStatus.Expired}>Expirada</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[#132016]" htmlFor="wholesale-quote-notes">
+                  Notas
+                </label>
+                <Textarea
+                  id="wholesale-quote-notes"
+                  value={quoteNotes}
+                  onChange={(event) => setQuoteNotes(event.target.value)}
+                  placeholder="Notas comerciales"
+                />
+              </div>
+              {selectedLead ? (
+                <div className="md:col-span-2 rounded-[1.5rem] border border-black/10 bg-black/[0.02] p-4 text-sm text-black/65">
+                  <p className="text-xs uppercase tracking-[0.2em] text-black/40">Lead seleccionado</p>
+                  <p className="mt-2 font-semibold text-[#132016]">{selectedLead.company} · {selectedLead.contact}</p>
+                  <p className="text-black/55">{selectedLead.city} · {selectedLead.status} · {selectedLead.quoteCount} cotizaciones</p>
+                </div>
+              ) : null}
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            <Button onClick={() => void handleCreateQuote()} disabled={actionLoading || !selectedLeadId}>
+              {actionLoading ? "Guardando..." : "Crear cotización"}
+            </Button>
+            <Button variant="secondary" onClick={() => setQuoteModalOpen(false)}>Cancelar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AdminDataTable
         title="Leads mayoristas"

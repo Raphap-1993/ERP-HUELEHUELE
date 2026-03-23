@@ -76,7 +76,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <div className="mx-auto min-h-screen w-full max-w-[1520px] px-4 py-5 lg:px-6 lg:py-6">
+      <div className="mx-auto min-h-screen w-full max-w-[1520px] overflow-x-hidden px-4 py-5 lg:px-6 lg:py-6">
         <div className="grid items-start gap-6 lg:grid-cols-[272px_minmax(0,1fr)] xl:grid-cols-[288px_minmax(0,1fr)]">
           <AdminSidebar variant="desktop" />
           <main className="min-w-0 space-y-6">
