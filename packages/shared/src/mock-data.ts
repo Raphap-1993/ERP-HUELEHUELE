@@ -259,8 +259,8 @@ export const cmsTestimonials: CmsTestimonial[] = [
 
 export const adminMetrics: AdminMetric[] = [
   { label: "Pedidos hoy", value: "128", detail: "12 en revisión de pago", trend: "+18%" },
-  { label: "Ventas brutas", value: "$48,900", detail: "7 días", trend: "+12%" },
-  { label: "Comisiones pagables", value: "$9,240", detail: "Pendientes de liquidación", trend: "+6%" },
+  { label: "Ventas brutas", value: "S/ 48,900", detail: "7 días", trend: "+12%" },
+  { label: "Comisiones pagables", value: "S/ 9,240", detail: "Pendientes de liquidación", trend: "+6%" },
   { label: "Vendedores activos", value: "34", detail: "Seller-first operativo", trend: "+4%" }
 ];
 

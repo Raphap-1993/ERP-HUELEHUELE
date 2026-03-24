@@ -7,9 +7,9 @@ import { fetchSellerPanelOverview, fetchSession } from "../lib/api";
 import { clearStoredSessionToken, readStoredSessionToken } from "../lib/session";
 
 function formatCurrency(value: number) {
-  return new Intl.NumberFormat("es-MX", {
+  return new Intl.NumberFormat("es-PE", {
     style: "currency",
-    currency: "MXN",
+    currency: "PEN",
     maximumFractionDigits: 0
   }).format(value);
 }

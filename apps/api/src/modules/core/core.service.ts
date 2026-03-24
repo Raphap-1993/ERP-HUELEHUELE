@@ -26,9 +26,9 @@ import { VendorsService } from "../vendors/vendors.service";
 import { WholesaleService } from "../wholesale/wholesale.service";
 
 function formatCurrency(value: number) {
-  return new Intl.NumberFormat("es-MX", {
+  return new Intl.NumberFormat("es-PE", {
     style: "currency",
-    currency: "MXN",
+    currency: "PEN",
     maximumFractionDigits: 0
   }).format(value);
 }

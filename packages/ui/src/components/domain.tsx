@@ -45,6 +45,14 @@ import {
   TableRow
 } from "./primitives";
 
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("es-PE", {
+    style: "currency",
+    currency: "PEN",
+    maximumFractionDigits: 0
+  }).format(value);
+}
+
 export function HeroSection({ copy = heroCopy }: { copy?: HeroCopy }) {
   return (
     <section className="relative overflow-hidden rounded-[2rem] border border-black/10 bg-[radial-gradient(circle_at_top_right,_rgba(17,24,39,0.08),_transparent_35%),linear-gradient(180deg,#ffffff_0%,#f7f6f2_100%)] px-6 py-10 shadow-soft md:px-10 md:py-14">
@@ -99,7 +107,7 @@ export function HeroSection({ copy = heroCopy }: { copy?: HeroCopy }) {
                 {featuredProducts.map((product) => (
                   <div key={product.id} className="flex items-center justify-between gap-3 rounded-2xl bg-white/8 px-3 py-2">
                     <span>{product.name}</span>
-                    <span className="font-semibold text-white">${product.price}</span>
+                    <span className="font-semibold text-white">{formatCurrency(product.price)}</span>
                   </div>
                 ))}
               </div>
@@ -148,9 +156,9 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
             <CardDescription>{product.tagline}</CardDescription>
           </div>
           <div className="text-right">
-            <div className="text-2xl font-semibold text-[#132016]">${product.price}</div>
+            <div className="text-2xl font-semibold text-[#132016]">{formatCurrency(product.price)}</div>
             {product.compareAtPrice ? (
-              <div className="text-sm text-black/40 line-through">${product.compareAtPrice}</div>
+              <div className="text-sm text-black/40 line-through">{formatCurrency(product.compareAtPrice)}</div>
             ) : null}
           </div>
         </div>
@@ -250,7 +258,7 @@ function Row({
   return (
     <div className={cn("flex items-center justify-between text-sm", strong && "text-base font-semibold")}>
       <span className={muted ? "text-black/55" : "text-[#132016]"}>{label}</span>
-      <span className={muted ? "text-black/55" : "text-[#132016]"}>${value}</span>
+      <span className={muted ? "text-black/55" : "text-[#132016]"}>{formatCurrency(value)}</span>
     </div>
   );
 }
@@ -343,7 +351,7 @@ export function ReviewDrawer({
               </Badge>
             </div>
             <div className="mt-3 grid gap-2 text-sm text-black/65">
-              <p>Importe: ${item.amount}</p>
+              <p>Importe: {formatCurrency(item.amount)}</p>
               <p>Proveedor: {item.provider}</p>
               <p>Evidencia: {item.evidence}</p>
               <p>Enviado: {item.submittedAt}</p>
@@ -408,8 +416,8 @@ export function CommissionTable({ rows = commissionRows }: { rows?: CommissionRo
               <TableRow key={row.code}>
                 <TableCell>{row.vendor}</TableCell>
                 <TableCell>{row.code}</TableCell>
-                <TableCell>${row.totalSales}</TableCell>
-                <TableCell>${row.commission}</TableCell>
+                <TableCell>{formatCurrency(row.totalSales)}</TableCell>
+                <TableCell>{formatCurrency(row.commission)}</TableCell>
                 <TableCell>
                   <StatusBadge
                     label={row.status}

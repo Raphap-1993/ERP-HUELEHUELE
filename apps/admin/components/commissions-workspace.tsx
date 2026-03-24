@@ -37,9 +37,9 @@ import {
 } from "../lib/api";
 
 function formatCurrency(value?: number) {
-  return new Intl.NumberFormat("es-MX", {
+  return new Intl.NumberFormat("es-PE", {
     style: "currency",
-    currency: "MXN",
+    currency: "PEN",
     maximumFractionDigits: 0
   }).format(value ?? 0);
 }

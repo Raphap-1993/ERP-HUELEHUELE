@@ -928,7 +928,7 @@ export class LoyaltyService implements OnModuleInit {
       {
         id: "rule-001",
         name: "Punto base por compra",
-        description: "1 punto por cada 50 MXN pagados en pedidos confirmados.",
+        description: "1 punto por cada 50 S/ pagados en pedidos confirmados.",
         trigger: "Pedido pagado",
         pointsPerUnit: 1,
         status: "active",
