@@ -33,6 +33,16 @@ function formatPrice(value: number, currencyCode = "PEN") {
   }
 }
 
+function resolveCheckoutHref(product: CatalogProduct) {
+  const variantId = product.defaultVariantId;
+
+  if (!variantId) {
+    return `/checkout?producto=${encodeURIComponent(product.slug)}`;
+  }
+
+  return `/checkout?producto=${encodeURIComponent(product.slug)}&variantId=${encodeURIComponent(variantId)}`;
+}
+
 export function EditorialMedia({
   src,
   alt,

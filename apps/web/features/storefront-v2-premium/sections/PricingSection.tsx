@@ -94,6 +94,16 @@ function resolveFeaturedCopy(product: CatalogProduct) {
   };
 }
 
+function resolveCheckoutHref(product: CatalogProduct) {
+  const variantId = product.defaultVariantId;
+
+  if (!variantId) {
+    return `/checkout?producto=${encodeURIComponent(product.slug)}`;
+  }
+
+  return `/checkout?producto=${encodeURIComponent(product.slug)}&variantId=${encodeURIComponent(variantId)}`;
+}
+
 function PricingCard({
   product,
   currencyCode
@@ -172,7 +182,7 @@ function PricingCard({
       </ul>
 
       <Link
-        href={`/checkout?producto=${product.slug}`}
+        href={resolveCheckoutHref(product)}
         className={`block w-full rounded-full py-4 text-center text-sm font-semibold text-white transition hover:-translate-y-0.5 ${
           style.featured
             ? "bg-gradient-to-r from-[#2d6a4f] to-[#52b788] hover:shadow-[0_8px_30px_rgba(45,106,79,0.35)]"

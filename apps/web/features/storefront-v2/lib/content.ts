@@ -12,7 +12,7 @@ import {
   type HeroCopy,
   type PromoBanner
 } from "@huelegood/shared";
-import { fetchCmsSnapshot } from "../../../lib/api";
+import { fetchCatalogSummary, fetchCmsSnapshot } from "../../../lib/api";
 
 export interface StorefrontV2Metric {
   label: string;
@@ -84,6 +84,15 @@ async function loadStorefrontCms() {
   }
 }
 
+async function loadStorefrontCatalog() {
+  try {
+    const response = await fetchCatalogSummary();
+    return response.data.products ?? [];
+  } catch {
+    return [];
+  }
+}
+
 function mapBanner(banner: CmsBanner): PromoBanner {
   return {
     title: banner.title,
@@ -114,12 +123,13 @@ function mapTestimonial(testimonial: CmsTestimonial): StorefrontV2Testimonial {
 
 export async function loadStorefrontV2Content(): Promise<StorefrontV2Content> {
   const cms = await loadStorefrontCms();
+  const catalogProducts = await loadStorefrontCatalog();
   const hero = cms?.heroCopy ?? heroCopy;
   const banners = cms?.banners.filter((banner) => banner.status === "active").map(mapBanner) ?? promoBanners;
   const faqs = cms?.faqs.filter((faq) => faq.status === "active").map(mapFaq) ?? faqItems;
   const testimonials =
     cms?.testimonials.filter((testimonial) => testimonial.status === "active").map(mapTestimonial) ?? cmsTestimonials.map(mapTestimonial);
-  const products = featuredProducts;
+  const products = catalogProducts.length > 0 ? catalogProducts : featuredProducts;
 
   return {
     hero,
@@ -127,7 +137,7 @@ export async function loadStorefrontV2Content(): Promise<StorefrontV2Content> {
       {
         label: "Selección",
         value: `${products.length} formatos`,
-        detail: "Catálogo corto, curado y alineado con el estado real del proyecto."
+        detail: catalogProducts.length > 0 ? "Catálogo persistido desde la base de datos." : "Catálogo corto, curado y alineado con el estado real del proyecto."
       },
       {
         label: "Sensación",
@@ -217,7 +227,7 @@ export async function loadStorefrontV2Content(): Promise<StorefrontV2Content> {
       {
         label: "Formatos activos",
         value: `${products.length}`,
-        detail: "Basado en `featuredProducts` de `@huelegood/shared`."
+        detail: catalogProducts.length > 0 ? "Basado en catálogo persistido." : "Basado en `featuredProducts` de `@huelegood/shared`."
       },
       {
         label: "Momentos clave",

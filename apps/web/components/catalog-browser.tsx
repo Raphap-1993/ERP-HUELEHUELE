@@ -101,6 +101,16 @@ function resolveProductImage(product: CatalogProduct) {
   };
 }
 
+function resolveCheckoutHref(product: CatalogProduct) {
+  const variantId = product.defaultVariantId;
+
+  if (!variantId) {
+    return `/checkout?producto=${encodeURIComponent(product.slug)}`;
+  }
+
+  return `/checkout?producto=${encodeURIComponent(product.slug)}&variantId=${encodeURIComponent(variantId)}`;
+}
+
 export function CatalogBrowser() {
   const [activeFilter, setActiveFilter] = useState("todos");
   const [catalog, setCatalog] = useState<CatalogSummaryResponse | null>(null);
@@ -264,7 +274,7 @@ export function CatalogBrowser() {
                         ) : null}
                       </div>
                       <Link
-                        href={`/checkout?producto=${product.slug}`}
+                        href={resolveCheckoutHref(product)}
                         className={`rounded-full px-4 py-2.5 text-sm font-semibold text-white transition ${style.btnClass}`}
                       >
                         {style.btnLabel}
@@ -340,7 +350,7 @@ export function CatalogBrowser() {
                       <div className="mt-0.5 text-xs text-[#6b7280]">{style.priceNote}</div>
                     </div>
                     <Link
-                      href={`/checkout?producto=${product.slug}`}
+                      href={resolveCheckoutHref(product)}
                       className={`rounded-full px-4 py-2.5 text-sm font-semibold text-white transition ${style.btnClass}`}
                     >
                       {style.btnLabel}

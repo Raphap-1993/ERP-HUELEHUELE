@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import type { CatalogProduct } from "@huelegood/shared";
 import { Badge, Button, cn } from "@huelegood/ui";
 import type { PremiumProductHighlight } from "../content";
@@ -108,13 +109,17 @@ export function ProductCatalogSection({
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="text-sm leading-6 text-black/48">Clásico Verde como entrada limpia a la marca.</p>
                   <div className="flex items-center gap-3">
-                    <a
+                    <Link
                       href={`/producto/${classicGreen.slug}`}
                       className="text-xs font-semibold uppercase tracking-[0.22em] text-[#2d6a4f] hover:text-[#162117]"
                     >
                       Ver detalle
-                    </a>
-                    <Button href={`/checkout?producto=${classicGreen.slug}`}>Comprar</Button>
+                    </Link>
+                    <Button
+                      href={`/checkout?producto=${encodeURIComponent(classicGreen.slug)}${classicGreen.defaultVariantId ? `&variantId=${encodeURIComponent(classicGreen.defaultVariantId)}` : ""}`}
+                    >
+                      Comprar
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -188,13 +193,17 @@ export function ProductCatalogSection({
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <p className="text-sm leading-6 text-black/48">Compra directa desde la referencia que ya tienes en mente.</p>
                         <div className="flex items-center gap-3">
-                          <a
+                          <Link
                             href={`/producto/${product.slug}`}
                             className="text-xs font-semibold uppercase tracking-[0.22em] text-[#2d6a4f] hover:text-[#162117]"
                           >
                             Ver detalle
-                          </a>
-                          <Button href={`/checkout?producto=${product.slug}`}>Comprar</Button>
+                          </Link>
+                          <Button
+                            href={`/checkout?producto=${encodeURIComponent(product.slug)}${product.defaultVariantId ? `&variantId=${encodeURIComponent(product.defaultVariantId)}` : ""}`}
+                          >
+                            Comprar
+                          </Button>
                         </div>
                       </div>
                     </div>
