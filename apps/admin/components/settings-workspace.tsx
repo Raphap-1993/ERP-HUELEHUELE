@@ -82,7 +82,8 @@ function normalizeSiteSetting(value: SiteSetting): CmsSiteSettingsInput {
     supportEmail: value.supportEmail,
     whatsapp: value.whatsapp,
     headerLogoUrl: value.headerLogoUrl,
-    heroProductImageUrl: value.heroProductImageUrl
+    heroProductImageUrl: value.heroProductImageUrl,
+    loadingImageUrl: value.loadingImageUrl
   };
 }
 
@@ -242,7 +243,10 @@ export function SettingsWorkspace() {
     setLoadingImageUploading(true);
     setError(null);
     try {
-      await uploadCmsLoadingImage(loadingImageFile);
+      const response = await uploadCmsLoadingImage(loadingImageFile);
+      if (response.siteSetting) {
+        setSiteForm(response.siteSetting);
+      }
       setLoadingImageFile(null);
       refresh();
     } catch (uploadError) {

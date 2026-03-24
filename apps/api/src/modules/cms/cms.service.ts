@@ -290,6 +290,7 @@ export class CmsService implements OnModuleInit {
     const whatsapp = normalizeText(body.whatsapp);
     const headerLogoUrl = normalizeOptionalAssetUrl(body.headerLogoUrl);
     const heroProductImageUrl = normalizeOptionalAssetUrl(body.heroProductImageUrl);
+    const loadingImageUrl = normalizeOptionalAssetUrl(body.loadingImageUrl);
 
     if (!brandName || !tagline || !supportEmail || !whatsapp) {
       throw new BadRequestException("Marca, tagline, soporte y WhatsApp son obligatorios.");
@@ -301,14 +302,16 @@ export class CmsService implements OnModuleInit {
       supportEmail,
       whatsapp,
       headerLogoUrl,
-      heroProductImageUrl
+      heroProductImageUrl,
+      loadingImageUrl
     };
 
     this.recordAdminAction("cms.site_settings.updated", "site_setting", "global", "La configuración base del storefront quedó actualizada.", {
       brandName: this.siteSettingData.brandName,
       supportEmail: this.siteSettingData.supportEmail,
       hasHeaderLogo: Boolean(this.siteSettingData.headerLogoUrl),
-      hasHeroProductImage: Boolean(this.siteSettingData.heroProductImageUrl)
+      hasHeroProductImage: Boolean(this.siteSettingData.heroProductImageUrl),
+      hasLoadingImage: Boolean(this.siteSettingData.loadingImageUrl)
     });
     void this.persistState();
 
