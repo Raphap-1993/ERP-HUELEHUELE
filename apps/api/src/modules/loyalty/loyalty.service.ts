@@ -41,8 +41,20 @@ interface LoyaltySnapshot {
   rules: LoyaltyRuleRecord[];
 }
 
+const demoLoyaltyAccountIds = new Set(["acc-laura-mendoza", "acc-carlos-gomez", "acc-sofia-rivera"]);
+
+const demoLoyaltyMovementIds = new Set(["lm-001", "lm-002", "lm-003", "lm-004"]);
+
+const demoLoyaltyRedemptionIds = new Set(["red-001", "red-002"]);
+
+const demoLoyaltyRuleIds = new Set(["rule-001", "rule-002", "rule-003"]);
+
 function nowIso() {
   return new Date().toISOString();
+}
+
+function isProductionRuntime() {
+  return process.env.NODE_ENV === "production";
 }
 
 function normalizeText(value?: string) {
@@ -115,13 +127,21 @@ export class LoyaltyService implements OnModuleInit {
     private readonly notificationsService: NotificationsService,
     private readonly moduleStateService: ModuleStateService
   ) {
-    this.seedData();
+    if (!isProductionRuntime()) {
+      this.seedData();
+    }
   }
 
   async onModuleInit() {
     const snapshot = await this.moduleStateService.load<LoyaltySnapshot>("loyalty");
     if (snapshot) {
-      this.restoreSnapshot(snapshot);
+      const { snapshot: sanitizedSnapshot, changed } = isProductionRuntime()
+        ? this.sanitizeSnapshot(snapshot)
+        : { snapshot, changed: false };
+      this.restoreSnapshot(sanitizedSnapshot);
+      if (changed) {
+        await this.persistState();
+      }
     } else {
       await this.persistState();
     }
@@ -1007,6 +1027,64 @@ export class LoyaltyService implements OnModuleInit {
     this.movementSequence = Math.max(movementSequence + 1, 1);
     this.redemptionSequence = Math.max(redemptionSequence + 1, 1);
     this.ruleSequence = Math.max(ruleSequence + 1, 1);
+  }
+
+  private sanitizeSnapshot(snapshot: LoyaltySnapshot) {
+    let changed = false;
+
+    const accounts: LoyaltyAccountRecord[] = [];
+    for (const account of snapshot.accounts ?? []) {
+      if (demoLoyaltyAccountIds.has(account.id)) {
+        changed = true;
+        continue;
+      }
+
+      accounts.push({ ...account });
+    }
+
+    const allowedCustomers = new Set(accounts.map((account) => account.customer.trim().toLowerCase()));
+
+    const movements: LoyaltyMovementRecord[] = [];
+    for (const movement of snapshot.movements ?? []) {
+      const customerKey = movement.customer.trim().toLowerCase();
+      if (demoLoyaltyMovementIds.has(movement.id) || !allowedCustomers.has(customerKey)) {
+        changed = true;
+        continue;
+      }
+
+      movements.push({ ...movement });
+    }
+
+    const redemptions: LoyaltyRedemptionRecord[] = [];
+    for (const redemption of snapshot.redemptions ?? []) {
+      const customerKey = redemption.customer.trim().toLowerCase();
+      if (demoLoyaltyRedemptionIds.has(redemption.id) || !allowedCustomers.has(customerKey)) {
+        changed = true;
+        continue;
+      }
+
+      redemptions.push({ ...redemption });
+    }
+
+    const rules: LoyaltyRuleRecord[] = [];
+    for (const rule of snapshot.rules ?? []) {
+      if (demoLoyaltyRuleIds.has(rule.id)) {
+        changed = true;
+        continue;
+      }
+
+      rules.push({ ...rule });
+    }
+
+    return {
+      snapshot: {
+        accounts,
+        movements,
+        redemptions,
+        rules
+      },
+      changed
+    };
   }
 
   private async persistState() {

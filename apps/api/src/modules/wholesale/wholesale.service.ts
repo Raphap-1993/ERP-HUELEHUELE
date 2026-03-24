@@ -112,6 +112,10 @@ function quoteHistory(status: WholesaleQuoteStatus, actor: string, note: string,
   };
 }
 
+const demoWholesaleLeadIds = new Set(["wl-001", "wl-002"]);
+
+const demoWholesaleQuoteIds = new Set(["wq-001", "wq-002"]);
+
 @Injectable()
 export class WholesaleService implements OnModuleInit {
   private readonly leads = new Map<string, WholesaleLeadRecord>();
@@ -122,21 +126,30 @@ export class WholesaleService implements OnModuleInit {
 
   private quoteSequence = 3;
 
+  private readonly productionMode = process.env.NODE_ENV === "production";
+
   constructor(
     private readonly auditService: AuditService,
     private readonly marketingService: MarketingService,
     private readonly moduleStateService: ModuleStateService
   ) {
-    this.seedData();
+    if (!this.productionMode) {
+      this.seedData();
+    }
   }
 
   async onModuleInit() {
     const snapshot = await this.moduleStateService.load<WholesaleSnapshot>("wholesale");
     if (snapshot) {
-      this.restoreSnapshot(snapshot);
-    } else {
-      await this.persistState();
+      const normalizedSnapshot = this.productionMode ? this.cleanProductionSnapshot(snapshot) : { snapshot, changed: false };
+      this.restoreSnapshot(normalizedSnapshot.snapshot);
+      if (normalizedSnapshot.changed) {
+        await this.persistState();
+      }
+      return;
     }
+
+    await this.persistState();
   }
 
   listLeads() {
@@ -599,6 +612,40 @@ export class WholesaleService implements OnModuleInit {
         this.quoteSequence = Math.max(this.quoteSequence, numeric + 1);
       }
     }
+  }
+
+  private cleanProductionSnapshot(snapshot: WholesaleSnapshot) {
+    const originalLeads = snapshot.leads ?? [];
+    const originalQuotes = snapshot.quotes ?? [];
+
+    const leads = originalLeads.filter((lead) => !demoWholesaleLeadIds.has(lead.id));
+    const keptLeadIds = new Set(leads.map((lead) => lead.id));
+    const quotes = originalQuotes.filter((quote) => !demoWholesaleQuoteIds.has(quote.id) && keptLeadIds.has(quote.leadId));
+    const keptQuoteIds = new Set(quotes.map((quote) => quote.id));
+
+    let changed = leads.length !== originalLeads.length || quotes.length !== originalQuotes.length;
+    const normalizedLeads = leads.map((lead) => {
+      const originalQuoteIds = lead.quoteIds ?? [];
+      const quoteIds = originalQuoteIds.filter((quoteId) => keptQuoteIds.has(quoteId));
+      if (quoteIds.length !== originalQuoteIds.length || quoteIds.length !== lead.quoteCount) {
+        changed = true;
+        return {
+          ...lead,
+          quoteIds,
+          quoteCount: quoteIds.length
+        };
+      }
+
+      return lead;
+    });
+
+    return {
+      snapshot: {
+        leads: normalizedLeads,
+        quotes
+      },
+      changed
+    };
   }
 
   private restoreSnapshot(snapshot: WholesaleSnapshot) {

@@ -208,6 +208,12 @@ function manualRequestResolutionLabel(status: ManualPaymentRequestStatus) {
   return status;
 }
 
+function isProductionRuntime() {
+  return process.env.NODE_ENV === "production";
+}
+
+const demoOrderNumbers = new Set(["HG-10040", "HG-10041", "HG-10042"]);
+
 @Injectable()
 export class OrdersService implements OnModuleInit {
   private readonly orders = new Map<string, AdminOrderDetail>();
@@ -223,13 +229,19 @@ export class OrdersService implements OnModuleInit {
     private readonly observabilityService: ObservabilityService,
     private readonly moduleStateService: ModuleStateService
   ) {
-    this.seedInitialOrders();
+    if (!isProductionRuntime()) {
+      this.seedInitialOrders();
+    }
   }
 
   async onModuleInit() {
     const snapshot = await this.moduleStateService.load<OrdersSnapshot>("orders");
     if (snapshot) {
-      this.restoreSnapshot(snapshot);
+      const sanitizedSnapshot = this.sanitizeSnapshot(snapshot);
+      this.restoreSnapshot(sanitizedSnapshot ?? snapshot);
+      if (sanitizedSnapshot) {
+        await this.persistState();
+      }
     } else {
       await this.persistState();
     }
@@ -1156,6 +1168,38 @@ export class OrdersService implements OnModuleInit {
     for (const [clientRequestId, record] of Object.entries(snapshot.idempotencyIndex ?? {})) {
       this.idempotencyIndex.set(clientRequestId, record);
     }
+  }
+
+  private sanitizeSnapshot(snapshot: OrdersSnapshot) {
+    if (!isProductionRuntime()) {
+      return undefined;
+    }
+
+    const orders = (snapshot.orders ?? []).filter((order) => !demoOrderNumbers.has(order.orderNumber));
+    const validOrderNumbers = new Set(orders.map((order) => order.orderNumber));
+    const idempotencyIndex = Object.fromEntries(
+      Object.entries(snapshot.idempotencyIndex ?? {}).filter(([, record]) => validOrderNumbers.has(record.orderNumber))
+    );
+
+    const hasOrderChanges = orders.length !== (snapshot.orders ?? []).length;
+    const hasIdempotencyChanges = Object.keys(idempotencyIndex).length !== Object.keys(snapshot.idempotencyIndex ?? {}).length;
+
+    if (!hasOrderChanges && !hasIdempotencyChanges) {
+      return undefined;
+    }
+
+    return {
+      orders: orders.map((order) => ({
+        ...order,
+        customer: { ...order.customer },
+        address: { ...order.address },
+        items: order.items.map((item) => ({ ...item })),
+        statusHistory: order.statusHistory.map((entry) => ({ ...entry })),
+        payment: { ...order.payment },
+        manualRequest: order.manualRequest ? { ...order.manualRequest } : undefined
+      })),
+      idempotencyIndex
+    };
   }
 
   private async persistState() {

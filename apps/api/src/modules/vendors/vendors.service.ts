@@ -57,6 +57,12 @@ interface VendorsSnapshot {
   vendors: VendorRecord[];
 }
 
+const demoVendorApplicationIds = new Set(["va-001", "va-002"]);
+
+const demoVendorIds = new Set(["ven-007", "ven-014", "ven-021"]);
+
+const demoVendorCodes = new Set(["VEND-007", "VEND-014", "VEND-021"]);
+
 const applicationStatusLabel: Record<VendorApplicationStatus, string> = {
   [VendorApplicationStatus.Submitted]: "Postulación recibida",
   [VendorApplicationStatus.Screening]: "En screening",
@@ -73,6 +79,10 @@ const vendorStatusLabel: Record<VendorStatus, string> = {
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function isProductionRuntime() {
+  return process.env.NODE_ENV === "production";
 }
 
 function normalizeEmail(value?: string) {
@@ -124,15 +134,23 @@ export class VendorsService implements OnModuleInit {
     private readonly auditService: AuditService,
     private readonly moduleStateService: ModuleStateService
   ) {
-    this.seedApplications();
-    this.seedVendors();
+    if (!isProductionRuntime()) {
+      this.seedApplications();
+      this.seedVendors();
+    }
     this.syncApplicationLinks();
   }
 
   async onModuleInit() {
     const snapshot = await this.moduleStateService.load<VendorsSnapshot>("vendors");
     if (snapshot) {
-      this.restoreSnapshot(snapshot);
+      const { snapshot: sanitizedSnapshot, changed } = isProductionRuntime()
+        ? this.sanitizeSnapshot(snapshot)
+        : { snapshot, changed: false };
+      this.restoreSnapshot(sanitizedSnapshot);
+      if (changed) {
+        await this.persistState();
+      }
     } else {
       await this.persistState();
     }
@@ -423,6 +441,58 @@ export class VendorsService implements OnModuleInit {
         application.vendorId = vendor.id;
       }
     }
+  }
+
+  private sanitizeSnapshot(snapshot: VendorsSnapshot) {
+    let changed = false;
+
+    const applications: VendorApplicationRecord[] = [];
+    for (const application of snapshot.applications ?? []) {
+      if (demoVendorApplicationIds.has(application.id)) {
+        changed = true;
+        continue;
+      }
+
+      applications.push({
+        ...application,
+        statusHistory: application.statusHistory.map((entry) => ({ ...entry }))
+      });
+    }
+
+    const allowedApplicationIds = new Set(applications.map((application) => application.id));
+    const vendors: VendorRecord[] = [];
+
+    for (const vendor of snapshot.vendors ?? []) {
+      if (demoVendorIds.has(vendor.id) || demoVendorCodes.has(vendor.code)) {
+        changed = true;
+        continue;
+      }
+
+      const applicationIds = vendor.applicationIds.filter((applicationId) => allowedApplicationIds.has(applicationId));
+      if (applicationIds.length !== vendor.applicationIds.length) {
+        changed = true;
+      }
+
+      const applicationsCount = applicationIds.length;
+      if (applicationsCount !== vendor.applicationsCount) {
+        changed = true;
+      }
+
+      vendors.push({
+        ...vendor,
+        applicationIds,
+        applicationsCount,
+        statusHistory: vendor.statusHistory.map((entry) => ({ ...entry }))
+      });
+    }
+
+    return {
+      snapshot: {
+        applications,
+        vendors
+      },
+      changed
+    };
   }
 
   private seedApplications() {

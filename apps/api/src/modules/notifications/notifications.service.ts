@@ -20,8 +20,16 @@ interface NotificationsSnapshot {
   logs: NotificationLogSummary[];
 }
 
+const demoNotificationIds = new Set(["ntf-001", "ntf-002", "ntf-003"]);
+
+const demoNotificationLogIds = new Set(["nlog-001", "nlog-002", "nlog-003"]);
+
 function nowIso() {
   return new Date().toISOString();
+}
+
+function isProductionRuntime() {
+  return process.env.NODE_ENV === "production";
 }
 
 function normalizeText(value?: string) {
@@ -71,16 +79,13 @@ export class NotificationsService implements OnModuleInit {
     private readonly bullMqService: BullMqService,
     private readonly observabilityService: ObservabilityService
   ) {
-    this.seedData();
+    if (!isProductionRuntime()) {
+      this.seedData();
+    }
   }
 
   async onModuleInit() {
-    const snapshot = await this.moduleStateService.load<NotificationsSnapshot>("notifications");
-    if (snapshot) {
-      this.restoreSnapshot(snapshot);
-    } else {
-      await this.persistState();
-    }
+    await this.loadSnapshotState();
 
     if (process.env.HUELEGOOD_DISABLE_NOTIFICATION_REQUEUE === "1") {
       return;
@@ -320,10 +325,7 @@ export class NotificationsService implements OnModuleInit {
   }
 
   private async refreshState() {
-    const snapshot = await this.moduleStateService.load<NotificationsSnapshot>("notifications");
-    if (snapshot) {
-      this.restoreSnapshot(snapshot);
-    }
+    await this.loadSnapshotState();
   }
 
   private async persistState() {
@@ -340,6 +342,44 @@ export class NotificationsService implements OnModuleInit {
     this.syncSequences();
   }
 
+  private sanitizeSnapshot(snapshot: NotificationsSnapshot) {
+    let changed = false;
+
+    const notifications: NotificationRecord[] = [];
+    for (const notification of snapshot.notifications ?? []) {
+      if (demoNotificationIds.has(notification.id)) {
+        changed = true;
+        continue;
+      }
+
+      notifications.push({ ...notification });
+    }
+
+    const allowedNotificationIds = new Set(notifications.map((notification) => notification.id));
+    const logs: NotificationLogSummary[] = [];
+    for (const log of snapshot.logs ?? []) {
+      if (demoNotificationLogIds.has(log.id)) {
+        changed = true;
+        continue;
+      }
+
+      if (log.notificationId && !allowedNotificationIds.has(log.notificationId)) {
+        changed = true;
+        continue;
+      }
+
+      logs.push({ ...log });
+    }
+
+    return {
+      snapshot: {
+        notifications,
+        logs
+      },
+      changed
+    };
+  }
+
   private syncSequences() {
     const notificationSequence = Array.from(this.notifications.values()).reduce((max, notification) => {
       const numeric = Number(notification.id.replace(/[^\d]/g, ""));
@@ -351,6 +391,22 @@ export class NotificationsService implements OnModuleInit {
     }, 0);
     this.notificationSequence = Math.max(notificationSequence + 1, 1);
     this.logSequence = Math.max(logSequence + 1, 1);
+  }
+
+  private async loadSnapshotState() {
+    const snapshot = await this.moduleStateService.load<NotificationsSnapshot>("notifications");
+    if (snapshot) {
+      const { snapshot: sanitizedSnapshot, changed } = isProductionRuntime()
+        ? this.sanitizeSnapshot(snapshot)
+        : { snapshot, changed: false };
+      this.restoreSnapshot(sanitizedSnapshot);
+      if (changed) {
+        await this.persistState();
+      }
+      return;
+    }
+
+    await this.persistState();
   }
 
   private buildSnapshot(): NotificationsSnapshot {

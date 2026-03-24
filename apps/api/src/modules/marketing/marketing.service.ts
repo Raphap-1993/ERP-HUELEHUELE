@@ -78,6 +78,18 @@ function describeCampaignState(campaign: MarketingCampaignRecord) {
   return `${campaign.segmentName} · ${campaign.templateName} · ${campaign.channel}`;
 }
 
+const demoMarketingSegmentIds = new Set(["seg-recientes", "seg-mayoristas", "seg-vendedores"]);
+
+const demoMarketingTemplateIds = new Set(["tpl-reset", "tpl-wholesale", "tpl-recovery"]);
+
+const demoMarketingCampaignIds = new Set(["cmp-001", "cmp-002"]);
+
+const demoMarketingEventIds = new Set(["evt-001", "evt-002", "evt-003"]);
+
+const demoWholesaleLeadIds = new Set(["wl-001", "wl-002"]);
+
+const demoWholesaleQuoteIds = new Set(["wq-001", "wq-002"]);
+
 @Injectable()
 export class MarketingService implements OnModuleInit {
   private readonly segments = new Map<string, MarketingSegmentRecord>();
@@ -92,20 +104,29 @@ export class MarketingService implements OnModuleInit {
 
   private eventSequence = 5;
 
+  private readonly productionMode = process.env.NODE_ENV === "production";
+
   constructor(
     private readonly auditService: AuditService,
     private readonly moduleStateService: ModuleStateService
   ) {
-    this.seedData();
+    if (!this.productionMode) {
+      this.seedData();
+    }
   }
 
   async onModuleInit() {
     const snapshot = await this.moduleStateService.load<MarketingSnapshot>("marketing");
     if (snapshot) {
-      this.restoreSnapshot(snapshot);
-    } else {
-      await this.persistState();
+      const normalizedSnapshot = this.productionMode ? this.cleanProductionSnapshot(snapshot) : { snapshot, changed: false };
+      this.restoreSnapshot(normalizedSnapshot.snapshot);
+      if (normalizedSnapshot.changed) {
+        await this.persistState();
+      }
+      return;
     }
+
+    await this.persistState();
   }
 
   listCampaigns() {
@@ -509,6 +530,60 @@ export class MarketingService implements OnModuleInit {
       return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
     }, 0);
     this.eventSequence = Math.max(this.eventSequence, eventSequence + 1);
+  }
+
+  private cleanProductionSnapshot(snapshot: MarketingSnapshot) {
+    const originalSegments = snapshot.segments ?? [];
+    const originalTemplates = snapshot.templates ?? [];
+    const originalCampaigns = snapshot.campaigns ?? [];
+    const originalEvents = snapshot.events ?? [];
+
+    const segments = originalSegments.filter((segment) => !demoMarketingSegmentIds.has(segment.id));
+    const templates = originalTemplates.filter((template) => !demoMarketingTemplateIds.has(template.id));
+    const keptSegmentIds = new Set(segments.map((segment) => segment.id));
+    const keptTemplateIds = new Set(templates.map((template) => template.id));
+    const campaigns = originalCampaigns.filter(
+      (campaign) =>
+        !demoMarketingCampaignIds.has(campaign.id) &&
+        keptSegmentIds.has(campaign.segmentId) &&
+        keptTemplateIds.has(campaign.templateId)
+    );
+    const keptCampaignIds = new Set(campaigns.map((campaign) => campaign.id));
+    const events = originalEvents.filter((event) => this.shouldKeepProductionEvent(event, keptCampaignIds));
+
+    return {
+      snapshot: {
+        segments,
+        templates,
+        campaigns,
+        events
+      },
+      changed:
+        segments.length !== originalSegments.length ||
+        templates.length !== originalTemplates.length ||
+        campaigns.length !== originalCampaigns.length ||
+        events.length !== originalEvents.length
+    };
+  }
+
+  private shouldKeepProductionEvent(event: MarketingEventRecord, campaignIds: Set<string>) {
+    if (demoMarketingEventIds.has(event.id)) {
+      return false;
+    }
+
+    if (event.relatedType === "campaign" && event.relatedId && !campaignIds.has(event.relatedId)) {
+      return false;
+    }
+
+    if (event.relatedType === "wholesale_lead" && event.relatedId && demoWholesaleLeadIds.has(event.relatedId)) {
+      return false;
+    }
+
+    if (event.relatedType === "wholesale_quote" && event.relatedId && demoWholesaleQuoteIds.has(event.relatedId)) {
+      return false;
+    }
+
+    return true;
   }
 
   private restoreSnapshot(snapshot: MarketingSnapshot) {

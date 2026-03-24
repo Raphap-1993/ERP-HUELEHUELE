@@ -211,6 +211,12 @@ function summarizeCommissionStatuses(commissions: CommissionRecord[]) {
   };
 }
 
+function isProductionRuntime() {
+  return process.env.NODE_ENV === "production";
+}
+
+const demoOrderNumbers = new Set(["HG-10040", "HG-10041", "HG-10042"]);
+
 @Injectable()
 export class CommissionsService implements OnModuleInit {
   private readonly rules = new Map<string, CommissionRuleRecord>();
@@ -226,16 +232,22 @@ export class CommissionsService implements OnModuleInit {
     private readonly moduleStateService: ModuleStateService,
     private readonly bullMqService: BullMqService
   ) {
-    this.seedRules();
+    if (!isProductionRuntime()) {
+      this.seedRules();
+    }
   }
 
   async onModuleInit() {
     const snapshot = await this.moduleStateService.load<CommissionsSnapshot>("commissions");
     if (snapshot) {
-      this.restoreSnapshot(snapshot);
+      const sanitizedSnapshot = this.sanitizeSnapshot(snapshot);
+      this.restoreSnapshot(sanitizedSnapshot ?? snapshot);
+      if (sanitizedSnapshot) {
+        await this.persistState();
+      }
     }
 
-    const changed = this.ensureOperationalRules();
+    const changed = !isProductionRuntime() && this.ensureOperationalRules();
     if (!snapshot || changed) {
       await this.persistState();
     }
@@ -679,6 +691,10 @@ export class CommissionsService implements OnModuleInit {
 
     const vendor = this.vendorsService.findVendorByCode(vendorCode);
     const rule = this.resolveRule(order, vendor);
+    if (!rule) {
+      return;
+    }
+
     const existing = this.commissions.get(commissionId);
     const period = periodFromIso(order.createdAt);
     const existingPayout = existing?.payoutId ? this.payouts.get(existing.payoutId) : undefined;
@@ -746,17 +762,25 @@ export class CommissionsService implements OnModuleInit {
     });
   }
 
-  private resolveRule(order: AdminOrderSummary, vendor: ReturnType<VendorsService["findVendorByCode"]>) {
+  private resolveRule(order: AdminOrderSummary, vendor: ReturnType<VendorsService["findVendorByCode"]>): CommissionRuleRecord | undefined {
     const activeRules = Array.from(this.rules.values())
       .filter((rule) => rule.status === "active")
       .sort((left, right) => left.priority - right.priority);
 
     if (!activeRules.length) {
+      if (isProductionRuntime()) {
+        return undefined;
+      }
+
       throw new BadRequestException("No hay reglas de comisión activas.");
     }
 
     const matchedRule = activeRules.find((rule) => this.ruleMatches(rule, order, vendor));
     if (!matchedRule) {
+      if (isProductionRuntime()) {
+        return undefined;
+      }
+
       throw new BadRequestException("No encontramos una regla de comisión aplicable para ese pedido.");
     }
 
@@ -900,8 +924,16 @@ export class CommissionsService implements OnModuleInit {
   }
 
   private reconcilePayouts() {
+    const now = nowIso();
+    const payoutsToDelete: string[] = [];
+
     for (const payout of this.payouts.values()) {
       const commissions = this.sortedCommissionRecords().filter((commission) => commission.payoutId === payout.id);
+      if (!commissions.length) {
+        payoutsToDelete.push(payout.id);
+        continue;
+      }
+
       payout.vendorName = commissions[0]?.vendorName ?? payout.vendorName;
       payout.vendorCode = commissions[0]?.vendorCode ?? payout.vendorCode;
       payout.vendorId = commissions[0]?.vendorId ?? payout.vendorId;
@@ -911,7 +943,11 @@ export class CommissionsService implements OnModuleInit {
       payout.bonusAmount = normalizeAmount(payout.bonusAmount);
       payout.deductionAmount = normalizeAmount(payout.deductionAmount);
       payout.netAmount = roundCurrency(payout.grossAmount + payout.bonusAmount - payout.deductionAmount);
-      payout.updatedAt = nowIso();
+      payout.updatedAt = now;
+    }
+
+    for (const payoutId of payoutsToDelete) {
+      this.payouts.delete(payoutId);
     }
   }
 
@@ -1050,6 +1086,86 @@ export class CommissionsService implements OnModuleInit {
 
   private commissionId(orderNumber: string) {
     return `com-${orderNumber.trim().toLowerCase()}`;
+  }
+
+  private sanitizeSnapshot(snapshot: CommissionsSnapshot) {
+    if (!isProductionRuntime()) {
+      return undefined;
+    }
+
+    const demoRuleIds = new Set(this.defaultRules().map((rule) => rule.id));
+    const rules = (snapshot.rules ?? []).filter((rule) => !demoRuleIds.has(rule.id));
+    const commissions = (snapshot.commissions ?? []).filter(
+      (commission) => !demoRuleIds.has(commission.ruleId) && !demoOrderNumbers.has(commission.orderNumber)
+    );
+    const commissionIds = new Set(commissions.map((commission) => commission.id));
+    const now = nowIso();
+    let payoutsChanged = false;
+    const payouts: CommissionPayoutRecord[] = [];
+
+    for (const payout of snapshot.payouts ?? []) {
+      const relatedCommissions = (payout.commissionIds ?? []).filter((commissionId) => commissionIds.has(commissionId));
+      if (!relatedCommissions.length) {
+        payoutsChanged = true;
+        continue;
+      }
+
+      const commissionRecords = relatedCommissions
+        .map((commissionId) => commissions.find((commission) => commission.id === commissionId))
+        .filter((commission): commission is CommissionRecord => Boolean(commission));
+      if (!commissionRecords.length) {
+        payoutsChanged = true;
+        continue;
+      }
+
+      const grossAmount = roundCurrency(commissionRecords.reduce((sum, commission) => sum + commission.commissionAmount, 0));
+      const bonusAmount = normalizeAmount(payout.bonusAmount);
+      const deductionAmount = normalizeAmount(payout.deductionAmount);
+      const netAmount = roundCurrency(grossAmount + bonusAmount - deductionAmount);
+      const firstCommission = commissionRecords[0]!;
+      const changed =
+        relatedCommissions.length !== (payout.commissionIds ?? []).length ||
+        payout.grossAmount !== grossAmount ||
+        payout.netAmount !== netAmount ||
+        payout.vendorCode !== firstCommission.vendorCode ||
+        payout.vendorName !== firstCommission.vendorName ||
+        payout.vendorId !== firstCommission.vendorId ||
+        payout.period !== firstCommission.period;
+      payoutsChanged = payoutsChanged || changed;
+
+      payouts.push({
+        ...payout,
+        vendorName: firstCommission.vendorName,
+        vendorCode: firstCommission.vendorCode,
+        vendorId: firstCommission.vendorId,
+        period: firstCommission.period,
+        commissionIds: [...relatedCommissions],
+        grossAmount,
+        bonusAmount,
+        deductionAmount,
+        netAmount,
+        updatedAt: changed ? now : payout.updatedAt,
+        statusHistory: payout.statusHistory.map((entry) => ({ ...entry }))
+      });
+    }
+
+    const hasChanges =
+      rules.length !== (snapshot.rules ?? []).length ||
+      commissions.length !== (snapshot.commissions ?? []).length ||
+      payoutsChanged;
+
+    if (!hasChanges) {
+      return undefined;
+    }
+
+    return {
+      rules: rules.map((rule) => ({ ...rule })),
+      commissions: commissions.map((commission) => ({
+        ...commission,
+        statusHistory: commission.statusHistory.map((entry) => ({ ...entry }))
+      })),
+      payouts
+    };
   }
 
   private buildRuleRecord(body: CommissionRuleInput, updatedAt: string, id?: string, createdAt?: string): CommissionRuleRecord {
