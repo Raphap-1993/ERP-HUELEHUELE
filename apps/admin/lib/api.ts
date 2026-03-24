@@ -50,6 +50,7 @@ import type {
   AdminPaymentSummary,
   ManualReviewActionInput,
   OperationalHealthSummary,
+  SiteSetting,
   WholesaleLeadInput,
   WholesaleLeadStatusInput,
   WholesaleLeadSummary,
@@ -286,6 +287,17 @@ export async function fetchCampaignEvents() {
 
 export async function fetchCmsOverview() {
   return requestJson<CmsSnapshotEnvelope>("/admin/cms");
+}
+
+export type CmsSiteSettingsEnvelope = {
+  data: SiteSetting;
+  meta?: Record<string, unknown>;
+};
+
+export async function fetchCmsSiteSettings() {
+  return requestJson<CmsSiteSettingsEnvelope>("/store/site-settings", {
+    cache: "no-store"
+  });
 }
 
 export async function updateCmsSiteSettings(body: CmsSiteSettingsInput) {

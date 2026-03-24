@@ -6,7 +6,7 @@ import { useAdminSession } from "./admin-session-provider";
 import { AdminSidebar } from "./admin-sidebar";
 import { AdminTopbar } from "./admin-topbar";
 
-export function AdminShell({ children }: { children: ReactNode }) {
+export function AdminShell({ children, loadingImageUrl }: { children: ReactNode; loadingImageUrl?: string }) {
   const pathname = usePathname();
   const { session, loading } = useAdminSession();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -56,10 +56,18 @@ export function AdminShell({ children }: { children: ReactNode }) {
     return (
       <div className="min-h-screen bg-[#f4f6f5] px-4 py-10">
         <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-xl items-center justify-center">
-          <div className="w-full rounded-[2rem] border border-black/8 bg-white px-8 py-10 text-center shadow-[0_18px_54px_rgba(26,58,46,0.06)]">
-            <p className="text-xs uppercase tracking-[0.28em] text-black/40">Huelegood Admin</p>
-            <h1 className="mt-4 text-2xl font-semibold tracking-tight text-[#1a3a2e]">Verificando acceso</h1>
-            <p className="mt-3 text-sm leading-6 text-black/58">Estamos confirmando tu sesión para cargar el panel operativo.</p>
+          <div className="flex w-full flex-col items-center justify-center gap-4 rounded-[2rem] border border-black/8 bg-white px-8 py-10 shadow-[0_18px_54px_rgba(26,58,46,0.06)]">
+            {loadingImageUrl ? (
+              <div className="flex h-[180px] w-[180px] items-center justify-center rounded-[1.5rem] bg-[#faf8f3] p-4">
+                <img src={loadingImageUrl} alt="" className="h-full w-full object-contain" />
+              </div>
+            ) : (
+              <>
+                <p className="text-xs uppercase tracking-[0.28em] text-black/40">Huelegood Admin</p>
+                <h1 className="text-2xl font-semibold tracking-tight text-[#1a3a2e]">Verificando acceso</h1>
+                <p className="text-sm leading-6 text-black/58">Estamos confirmando tu sesión para cargar el panel operativo.</p>
+              </>
+            )}
           </div>
         </div>
       </div>
