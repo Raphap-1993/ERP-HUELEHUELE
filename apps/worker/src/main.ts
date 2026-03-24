@@ -78,10 +78,11 @@ async function processManualPaymentReview(
     reviewer: job.data.reviewer,
     notes: job.data.notes
   };
-  const result =
+  const result = await (
     job.data.decision === "approve"
       ? paymentsService.approveManualRequest(job.data.manualRequestId, payload)
-      : paymentsService.rejectManualRequest(job.data.manualRequestId, payload);
+      : paymentsService.rejectManualRequest(job.data.manualRequestId, payload)
+  );
 
   writeWorkerLog("info", "payments.manual_review.processed", {
     manualRequestId: job.data.manualRequestId,
