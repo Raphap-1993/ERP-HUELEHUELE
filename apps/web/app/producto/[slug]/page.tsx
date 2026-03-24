@@ -3,8 +3,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { fetchProductBySlug } from "../../../lib/api";
 import {
-  cloudflareImageLoader,
-  isRemoteStorefrontMediaUrl,
   resolveStorefrontMediaSrc,
   storefrontProductArtBySlug
 } from "../../../features/storefront-v2/lib/media";
@@ -27,11 +25,7 @@ function formatPrice(value: number, currencyCode: string) {
 
 function resolveProductImageSrc(slug: string, src?: string) {
   const fallback = storefrontProductArtBySlug[slug] ?? storefrontProductArtBySlug["clasico-verde"];
-  const resolved = resolveStorefrontMediaSrc(src ?? fallback);
-  return {
-    src: resolved,
-    remote: isRemoteStorefrontMediaUrl(resolved)
-  };
+  return resolveStorefrontMediaSrc(src ?? fallback);
 }
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -104,8 +98,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             <div className="relative aspect-[4/3.6] overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_20px_60px_rgba(26,58,46,0.10)]">
               <Image
                 fill
-                src={primary.src}
-                loader={primary.remote ? cloudflareImageLoader : undefined}
+                src={primary}
                 alt={primaryAlt}
                 sizes="(min-width: 1024px) 46vw, 100vw"
                 className="object-cover"
@@ -124,8 +117,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                     >
                       <Image
                         fill
-                        src={resolved.src}
-                        loader={resolved.remote ? cloudflareImageLoader : undefined}
+                        src={resolved}
                         alt={image.altText ?? product.name}
                         sizes="160px"
                         className="object-cover"

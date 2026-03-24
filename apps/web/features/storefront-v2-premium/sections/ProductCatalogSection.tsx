@@ -5,8 +5,6 @@ import { Badge, Button, cn } from "@huelegood/ui";
 import type { PremiumProductHighlight } from "../content";
 import { StorefrontV2PremiumSectionHeading } from "../components/storefront-v2-premium-section";
 import {
-  cloudflareImageLoader,
-  isRemoteStorefrontMediaUrl,
   resolveStorefrontMediaSrc,
   storefrontV2PremiumMedia,
   storefrontV2PremiumProductArtBySlug
@@ -58,7 +56,6 @@ export function ProductCatalogSection({
                   fill
                   alt={classicGreen.name}
                   src={resolveStorefrontMediaSrc(storefrontV2PremiumProductArtBySlug[classicGreen.slug] ?? storefrontV2PremiumMedia.hero)}
-                  loader={isRemoteStorefrontMediaUrl(resolveStorefrontMediaSrc(storefrontV2PremiumProductArtBySlug[classicGreen.slug] ?? storefrontV2PremiumMedia.hero)) ? cloudflareImageLoader : undefined}
                   sizes="(min-width: 1280px) 38vw, 100vw"
                   className="object-cover p-9"
                 />
@@ -134,7 +131,6 @@ export function ProductCatalogSection({
               const tone = premiumProductToneClasses(product.tone);
               const highlight = highlightBySlug(highlights, product.slug);
               const resolvedArt = resolveStorefrontMediaSrc(storefrontV2PremiumProductArtBySlug[product.slug] ?? storefrontV2PremiumMedia.hero);
-              const remote = isRemoteStorefrontMediaUrl(resolvedArt);
 
               return (
                 <article
@@ -147,7 +143,6 @@ export function ProductCatalogSection({
                       fill
                       alt={product.name}
                       src={resolvedArt}
-                      loader={remote ? cloudflareImageLoader : undefined}
                       sizes="(min-width: 1280px) 22vw, 100vw"
                       className="object-cover p-7"
                     />

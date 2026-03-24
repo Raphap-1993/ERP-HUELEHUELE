@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { Badge, Button, cn } from "@huelegood/ui";
 import type { CatalogProduct } from "@huelegood/shared";
-import { cloudflareImageLoader, isRemoteStorefrontMediaUrl, resolveStorefrontMediaSrc, storefrontProductArtBySlug, storefrontV2Media } from "../lib/media";
+import { resolveStorefrontMediaSrc, storefrontProductArtBySlug, storefrontV2Media } from "../lib/media";
 import { productToneClasses } from "../tokens/storefront-tokens";
 import { StorefrontV2SectionHeading } from "../components/storefront-v2-section";
 
@@ -49,7 +49,6 @@ export function ProductHighlightGrid({
           const tone = productToneClasses(product.tone);
           const art = storefrontProductArtBySlug[product.slug] ?? storefrontV2Media.hero;
           const resolvedArt = resolveStorefrontMediaSrc(art);
-          const isRemote = isRemoteStorefrontMediaUrl(resolvedArt);
           const currencyCode = "PEN";
           const price = formatPrice(product.price, currencyCode);
           const compareAtPrice =
@@ -68,7 +67,6 @@ export function ProductHighlightGrid({
                   fill
                   alt={product.name}
                   src={resolvedArt}
-                  loader={isRemote ? cloudflareImageLoader : undefined}
                   sizes="(min-width: 1280px) 28vw, (min-width: 768px) 42vw, 100vw"
                   className="object-cover p-7"
                 />

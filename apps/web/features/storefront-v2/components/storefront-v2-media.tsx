@@ -1,7 +1,7 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
 import { cn } from "@huelegood/ui";
-import { cloudflareImageLoader, isRemoteStorefrontMediaUrl, resolveStorefrontMediaSrc } from "../lib/media";
+import { resolveStorefrontMediaSrc } from "../lib/media";
 
 export function StorefrontV2Media({
   src,
@@ -23,7 +23,6 @@ export function StorefrontV2Media({
   quality?: number;
 }) {
   const resolvedSrc = resolveStorefrontMediaSrc(src);
-  const isRemote = isRemoteStorefrontMediaUrl(resolvedSrc);
 
   return (
     <div
@@ -40,7 +39,6 @@ export function StorefrontV2Media({
         src={resolvedSrc}
         priority={priority}
         quality={quality}
-        loader={isRemote ? cloudflareImageLoader : undefined}
         sizes={sizes ?? "(min-width: 1280px) 42vw, (min-width: 768px) 50vw, 100vw"}
         className={cn("object-cover transition duration-700 group-hover:scale-[1.03]", imageClassName)}
       />
