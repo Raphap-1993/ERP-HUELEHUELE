@@ -92,6 +92,7 @@ type CatalogQueryInput = {
 };
 
 const CATALOG_CURRENCY_CODE = "PEN";
+const COMBO_CATEGORY_SLUG = "bundles";
 const productStatuses = new Set<ProductStatusValue>(["draft", "active", "inactive", "archived"]);
 const variantStatuses = new Set<ProductVariantStatusValue>(["active", "inactive", "out_of_stock"]);
 
@@ -300,8 +301,11 @@ export class ProductsService {
       categories.map((category) => ({
         id: category.id,
         slug: category.slug,
-        name: category.name,
-        description: category.description ?? undefined,
+        name: category.slug === COMBO_CATEGORY_SLUG ? "Combos" : category.name,
+        description:
+          category.slug === COMBO_CATEGORY_SLUG
+            ? "Combos, packs y promociones activas."
+            : category.description ?? undefined,
         isActive: category.isActive,
         productCount: category._count.products
       })),
@@ -772,9 +776,9 @@ export class ProductsService {
 
       grouped.set(product.categorySlug, {
         slug: product.categorySlug,
-        name: product.categorySlug === "bundles" ? "Bundles" : "Productos",
+        name: product.categorySlug === COMBO_CATEGORY_SLUG ? "Combos" : "Productos",
         description:
-          product.categorySlug === "bundles"
+          product.categorySlug === COMBO_CATEGORY_SLUG
             ? "Combos, ofertas y promociones activas."
             : "Referencias principales para venta directa.",
         productCount: 1
@@ -801,7 +805,7 @@ export class ProductsService {
     }
 
     if (!Array.isArray(body.bundleComponents)) {
-      throw new BadRequestException("Los componentes del bundle deben enviarse como una lista.");
+      throw new BadRequestException("Los componentes del combo deben enviarse como una lista.");
     }
 
     const categoryId = normalizeText(body.categoryId);
@@ -847,7 +851,7 @@ export class ProductsService {
       }
 
       if (productId && componentProductId === productId) {
-        throw new BadRequestException("El bundle no puede incluir el producto principal como componente.");
+        throw new BadRequestException("El combo no puede incluir el producto principal como componente.");
       }
 
       const quantity = Math.trunc(coerceNumber(component.quantity, `quantity:${componentProductId}`));
@@ -880,7 +884,7 @@ export class ProductsService {
 
     if (duplicateBundleComponent) {
       throw new BadRequestException(
-        `El componente ${duplicateBundleComponent.productId} está repetido en el bundle.`
+        `El componente ${duplicateBundleComponent.productId} está repetido en el combo.`
       );
     }
 

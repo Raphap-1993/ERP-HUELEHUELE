@@ -77,6 +77,7 @@ type ProductFormState = {
 
 const PRODUCT_STATUSES: ProductStatusValue[] = ["draft", "active", "inactive", "archived"];
 const VARIANT_STATUSES: ProductVariantStatusValue[] = ["active", "inactive", "out_of_stock"];
+const COMBO_CATEGORY_SLUG = "bundles";
 
 function formatCurrency(value: number, currencyCode = "PEN") {
   return new Intl.NumberFormat("es-PE", {
@@ -144,6 +145,18 @@ function variantStatusTone(status: ProductVariantStatusValue): "neutral" | "succ
   }
 
   return "neutral";
+}
+
+function displayCategoryName(category?: { slug?: string; name?: string | null } | null) {
+  if (category?.slug === COMBO_CATEGORY_SLUG) {
+    return "Combos";
+  }
+
+  return category?.name ?? "Sin categoría";
+}
+
+function displayCategorySlug(categorySlug?: string) {
+  return categorySlug === COMBO_CATEGORY_SLUG ? "combos" : categorySlug ?? "productos";
 }
 
 function slugify(value: string) {
@@ -503,6 +516,9 @@ export function ProductsWorkspace() {
     () => categories.find((category) => category.id === form.categoryId) ?? null,
     [categories, form.categoryId]
   );
+  const isComboProduct = selectedCategory?.slug === COMBO_CATEGORY_SLUG || form.bundleComponents.length > 0;
+  const hasMultipleVariants = form.variants.length > 1;
+  const primaryVariant = form.variants[0] ?? createVariantDraft();
 
   const componentProductOptions = useMemo(
     () => products.filter((product) => product.id !== selectedProductId),
@@ -916,8 +932,10 @@ export function ProductsWorkspace() {
           </div>
         </div>,
         <div key={`${product.id}-category`} className="text-sm text-black/70">
-          <div className="font-medium text-[#132016]">{product.categoryName ?? "Sin categoría"}</div>
-          <div className="text-xs text-black/45">{product.categorySlug ?? "productos"}</div>
+          <div className="font-medium text-[#132016]">
+            {displayCategoryName({ slug: product.categorySlug, name: product.categoryName })}
+          </div>
+          <div className="text-xs text-black/45">{displayCategorySlug(product.categorySlug)}</div>
         </div>,
         <StatusBadge key={`${product.id}-status`} label={statusLabel(product.status)} tone={statusTone(product.status)} />,
         <div key={`${product.id}-price`} className="text-sm font-semibold text-[#132016]">
@@ -945,7 +963,7 @@ export function ProductsWorkspace() {
     <div className="space-y-6 pb-10">
       <SectionHeader
         title="Productos"
-        description="Gestiona catálogo, variantes e imágenes desde el backoffice con subida directa a R2."
+        description="Gestiona productos, combos e imágenes desde el backoffice con subida directa a R2."
       />
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -1001,8 +1019,8 @@ export function ProductsWorkspace() {
               <div key={category.id} className="rounded-[1.25rem] border border-black/8 bg-[#fafaf7] px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <div className="font-medium text-[#132016]">{category.name}</div>
-                    <div className="text-xs text-black/45">{category.slug}</div>
+                    <div className="font-medium text-[#132016]">{displayCategoryName(category)}</div>
+                    <div className="text-xs text-black/45">{displayCategorySlug(category.slug)}</div>
                   </div>
                   <Badge tone={category.isActive ? "success" : "neutral"}>{category.productCount}</Badge>
                 </div>
@@ -1022,7 +1040,7 @@ export function ProductsWorkspace() {
                   {isCreating
                     ? "Define la ficha base y guarda para habilitar la carga de imágenes."
                     : selectedProduct
-                      ? "Edita la ficha, variantes y media del producto."
+                      ? "Edita la ficha comercial, los combos y la media del producto."
                       : "Cargando producto..."}
                 </DialogDescription>
               </div>
@@ -1086,12 +1104,14 @@ export function ProductsWorkspace() {
                       <option value="">Sin categoría</option>
                       {categories.map((category) => (
                         <option key={category.id} value={category.id}>
-                          {category.name}
+                          {displayCategoryName(category)}
                         </option>
                       ))}
                     </select>
                     {selectedCategory ? (
-                      <p className="text-xs text-black/45">Categoría activa: {selectedCategory.name}</p>
+                      <p className="text-xs text-black/45">
+                        Categoría activa: {displayCategoryName(selectedCategory)}
+                      </p>
                     ) : null}
                   </label>
                   <label className="space-y-1.5">
@@ -1149,123 +1169,214 @@ export function ProductsWorkspace() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <div className="font-semibold text-[#132016]">Variantes</div>
-                      <div className="text-sm text-black/55">Necesitamos al menos una variante para poder guardar.</div>
-                    </div>
-                    <Button type="button" variant="secondary" size="sm" onClick={handleAddVariant}>
-                      Añadir variante
-                    </Button>
-                  </div>
-
-                  <div className="space-y-4">
-                    {form.variants.map((variant, index) => (
-                      <div key={variant.id ?? `${variant.sku || "draft"}-${index}`} className="rounded-[1.25rem] border border-black/8 bg-[#fafaf7] p-4">
-                        <div className="mb-4 flex items-center justify-between gap-4">
-                          <div className="flex items-center gap-2">
-                            <Badge tone="info">Variante {index + 1}</Badge>
-                            <StatusBadge label={variantStatusLabel(variant.status)} tone={variantStatusTone(variant.status)} />
-                          </div>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => handleRemoveVariant(index)}
-                            disabled={form.variants.length === 1}
-                          >
-                            Quitar
-                          </Button>
-                        </div>
-
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <label className="space-y-1.5">
-                            <span className="text-sm font-medium text-[#132016]">SKU</span>
-                            <Input
-                              value={variant.sku}
-                              onChange={(event) => updateVariant(index, "sku", event.target.value)}
-                              placeholder="HUELE-NEGRO-01"
-                            />
-                          </label>
-                          <label className="space-y-1.5">
-                            <span className="text-sm font-medium text-[#132016]">Nombre</span>
-                            <Input
-                              value={variant.name}
-                              onChange={(event) => updateVariant(index, "name", event.target.value)}
-                              placeholder="Principal"
-                            />
-                          </label>
-                        </div>
-
-                        <div className="mt-4 grid gap-4 md:grid-cols-4">
-                          <label className="space-y-1.5">
-                            <span className="text-sm font-medium text-[#132016]">Precio</span>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={variant.price}
-                              onChange={(event) => updateVariant(index, "price", event.target.value)}
-                            />
-                          </label>
-                          <label className="space-y-1.5">
-                            <span className="text-sm font-medium text-[#132016]">Precio comparativo</span>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={variant.compareAtPrice}
-                              onChange={(event) => updateVariant(index, "compareAtPrice", event.target.value)}
-                              placeholder="Opcional"
-                            />
-                          </label>
-                          <label className="space-y-1.5">
-                            <span className="text-sm font-medium text-[#132016]">Stock</span>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="1"
-                              value={variant.stockOnHand}
-                              onChange={(event) => updateVariant(index, "stockOnHand", event.target.value)}
-                            />
-                          </label>
-                          <label className="space-y-1.5">
-                            <span className="text-sm font-medium text-[#132016]">Estado</span>
-                            <select
-                              value={variant.status}
-                              onChange={(event) =>
-                                updateVariant(index, "status", event.target.value as ProductVariantStatusValue)
-                              }
-                              className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none transition focus:border-black/25"
-                            >
-                              {VARIANT_STATUSES.map((status) => (
-                                <option key={status} value={status}>
-                                  {variantStatusLabel(status)}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                        </div>
+                      <div className="font-semibold text-[#132016]">
+                        {hasMultipleVariants ? "Opciones de venta" : "Presentación comercial"}
                       </div>
-                    ))}
+                      <div className="text-sm text-black/55">
+                        {hasMultipleVariants
+                          ? "Cada opción define su SKU, precio, stock y estado."
+                          : "Aquí defines el SKU, precio, stock y estado del producto sin exponer variantes técnicas."}
+                      </div>
+                    </div>
+                    {hasMultipleVariants ? (
+                      <Button type="button" variant="secondary" size="sm" onClick={handleAddVariant}>
+                        Añadir opción
+                      </Button>
+                    ) : null}
                   </div>
+
+                  {hasMultipleVariants ? (
+                    <div className="space-y-4">
+                      {form.variants.map((variant, index) => (
+                        <div key={variant.id ?? `${variant.sku || "draft"}-${index}`} className="rounded-[1.25rem] border border-black/8 bg-[#fafaf7] p-4">
+                          <div className="mb-4 flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-2">
+                              <Badge tone="info">Opción {index + 1}</Badge>
+                              <StatusBadge label={variantStatusLabel(variant.status)} tone={variantStatusTone(variant.status)} />
+                            </div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => handleRemoveVariant(index)}
+                              disabled={form.variants.length === 1}
+                            >
+                              Quitar
+                            </Button>
+                          </div>
+
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <label className="space-y-1.5">
+                              <span className="text-sm font-medium text-[#132016]">SKU</span>
+                              <Input
+                                value={variant.sku}
+                                onChange={(event) => updateVariant(index, "sku", event.target.value)}
+                                placeholder="HUELE-NEGRO-01"
+                              />
+                            </label>
+                            <label className="space-y-1.5">
+                              <span className="text-sm font-medium text-[#132016]">Nombre visible</span>
+                              <Input
+                                value={variant.name}
+                                onChange={(event) => updateVariant(index, "name", event.target.value)}
+                                placeholder="Presentación principal"
+                              />
+                            </label>
+                          </div>
+
+                          <div className="mt-4 grid gap-4 md:grid-cols-4">
+                            <label className="space-y-1.5">
+                              <span className="text-sm font-medium text-[#132016]">Precio</span>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={variant.price}
+                                onChange={(event) => updateVariant(index, "price", event.target.value)}
+                              />
+                            </label>
+                            <label className="space-y-1.5">
+                              <span className="text-sm font-medium text-[#132016]">Precio comparativo</span>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={variant.compareAtPrice}
+                                onChange={(event) => updateVariant(index, "compareAtPrice", event.target.value)}
+                                placeholder="Opcional"
+                              />
+                            </label>
+                            <label className="space-y-1.5">
+                              <span className="text-sm font-medium text-[#132016]">Stock</span>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={variant.stockOnHand}
+                                onChange={(event) => updateVariant(index, "stockOnHand", event.target.value)}
+                              />
+                            </label>
+                            <label className="space-y-1.5">
+                              <span className="text-sm font-medium text-[#132016]">Estado</span>
+                              <select
+                                value={variant.status}
+                                onChange={(event) =>
+                                  updateVariant(index, "status", event.target.value as ProductVariantStatusValue)
+                                }
+                                className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none transition focus:border-black/25"
+                              >
+                                {VARIANT_STATUSES.map((status) => (
+                                  <option key={status} value={status}>
+                                    {variantStatusLabel(status)}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-[1.25rem] border border-black/8 bg-[#fafaf7] p-4">
+                      <div className="mb-4 flex items-center gap-2">
+                        <Badge tone="info">Única presentación</Badge>
+                        <StatusBadge
+                          label={variantStatusLabel(primaryVariant.status)}
+                          tone={variantStatusTone(primaryVariant.status)}
+                        />
+                      </div>
+
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <label className="space-y-1.5">
+                          <span className="text-sm font-medium text-[#132016]">SKU</span>
+                          <Input
+                            value={primaryVariant.sku}
+                            onChange={(event) => updateVariant(0, "sku", event.target.value)}
+                            placeholder="HUELE-NEGRO-01"
+                          />
+                        </label>
+                        <label className="space-y-1.5">
+                          <span className="text-sm font-medium text-[#132016]">Nombre interno</span>
+                          <Input
+                            value={primaryVariant.name}
+                            onChange={(event) => updateVariant(0, "name", event.target.value)}
+                            placeholder="Presentación principal"
+                          />
+                        </label>
+                      </div>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-4">
+                        <label className="space-y-1.5">
+                          <span className="text-sm font-medium text-[#132016]">Precio</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={primaryVariant.price}
+                            onChange={(event) => updateVariant(0, "price", event.target.value)}
+                          />
+                        </label>
+                        <label className="space-y-1.5">
+                          <span className="text-sm font-medium text-[#132016]">Precio comparativo</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={primaryVariant.compareAtPrice}
+                            onChange={(event) => updateVariant(0, "compareAtPrice", event.target.value)}
+                            placeholder="Opcional"
+                          />
+                        </label>
+                        <label className="space-y-1.5">
+                          <span className="text-sm font-medium text-[#132016]">Stock</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={primaryVariant.stockOnHand}
+                            onChange={(event) => updateVariant(0, "stockOnHand", event.target.value)}
+                          />
+                        </label>
+                        <label className="space-y-1.5">
+                          <span className="text-sm font-medium text-[#132016]">Estado</span>
+                          <select
+                            value={primaryVariant.status}
+                            onChange={(event) =>
+                              updateVariant(0, "status", event.target.value as ProductVariantStatusValue)
+                            }
+                            className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none transition focus:border-black/25"
+                          >
+                            {VARIANT_STATUSES.map((status) => (
+                              <option key={status} value={status}>
+                                {variantStatusLabel(status)}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                <Separator />
+                {isComboProduct ? (
+                  <>
+                    <Separator />
 
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <div className="font-semibold text-[#132016]">Componentes del bundle</div>
-                      <div className="text-sm text-black/55">
-                        Úsalo para combos. La variante se elige por nombre y SKU, y se autoselecciona cuando hay una sola activa.
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <div className="font-semibold text-[#132016]">Componentes del combo</div>
+                          <div className="text-sm text-black/55">
+                            Define qué productos base se descuentan cuando vendes este combo.
+                          </div>
+                        </div>
+                        <Button type="button" variant="secondary" size="sm" onClick={handleAddBundleComponent}>
+                          Añadir componente
+                        </Button>
                       </div>
-                    </div>
-                    <Button type="button" variant="secondary" size="sm" onClick={handleAddBundleComponent}>
-                      Añadir componente
-                    </Button>
-                  </div>
 
-                  <div className="space-y-4">
-                    {form.bundleComponents.map((component, index) => {
+                      <div className="space-y-4">
+                        {form.bundleComponents.map((component, index) => {
                       const selectedComponentProduct = productById.get(component.productId) ?? null;
                       const selectedComponentProductDetail = component.productId
                         ? bundleComponentProducts[component.productId] ?? null
@@ -1315,17 +1426,17 @@ export function ProductsWorkspace() {
                             </label>
 
                             <label className="space-y-1.5">
-                              <span className="text-sm font-medium text-[#132016]">Variante</span>
+                              <span className="text-sm font-medium text-[#132016]">Presentación del producto</span>
                               {selectedComponentProduct ? (
                                 bundleComponentProductErrors[component.productId] ? (
                                   <div className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-black/55">
-                                    No pudimos cargar las variantes de este producto.
+                                    No pudimos cargar las presentaciones de este producto.
                                   </div>
                                 ) : selectedComponentProductDetail ? (
                                   activeComponentVariants.length === 1 ? (
                                     <div className="rounded-2xl border border-black/10 bg-white px-4 py-3">
                                       <div className="flex items-center gap-2">
-                                        <Badge tone="success">Variante activa</Badge>
+                                        <Badge tone="success">Presentación activa</Badge>
                                         <span className="text-sm font-medium text-[#132016]">
                                           {selectedComponentVariant
                                             ? bundleVariantLabel(selectedComponentVariant)
@@ -1341,7 +1452,7 @@ export function ProductsWorkspace() {
                                       }
                                       className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none transition focus:border-black/25"
                                     >
-                                      <option value="">Selecciona una variante</option>
+                                      <option value="">Selecciona una presentación</option>
                                       {activeComponentVariants.map((variant) => (
                                         <option key={variant.id} value={variant.id}>
                                           {bundleVariantLabel(variant)}
@@ -1350,20 +1461,22 @@ export function ProductsWorkspace() {
                                     </select>
                                   ) : (
                                     <div className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-black/55">
-                                      Este producto no tiene variantes activas.
+                                      Este producto no tiene presentaciones activas.
                                     </div>
                                   )
                                 ) : (
                                   <div className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-black/55">
-                                    Cargando variantes del producto seleccionado.
+                                    Cargando presentaciones del producto seleccionado.
                                   </div>
                                 )
                               ) : (
                                 <div className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-black/55">
-                                  Selecciona un producto para elegir su variante.
+                                  Selecciona un producto para elegir su presentación.
                                 </div>
                               )}
-                              <p className="text-xs text-black/45">Aquí eliges la variante por nombre y SKU.</p>
+                              <p className="text-xs text-black/45">
+                                Aquí eliges la presentación por nombre y SKU. Si solo existe una activa, se toma sola.
+                              </p>
                             </label>
 
                             <label className="space-y-1.5">
@@ -1386,23 +1499,25 @@ export function ProductsWorkspace() {
                                   activeComponentVariants.length === 1 ? (
                                     ` · ${bundleVariantLabel(activeComponentVariants[0])}`
                                   ) : activeComponentVariants.length > 1 ? (
-                                    ` · ${activeComponentVariants.length} variantes activas`
+                                    ` · ${activeComponentVariants.length} presentaciones activas`
                                   ) : (
-                                    " · Sin variantes activas"
+                                    " · Sin presentaciones activas"
                                   )
                                 ) : (
-                                  " · Cargando variantes"
+                                  " · Cargando presentaciones"
                                 )}
                               </span>
                             ) : (
-                              <span>Selecciona un producto para resolver automáticamente la variante.</span>
+                              <span>Selecciona un producto para resolver automáticamente la presentación.</span>
                             )}
                           </div>
                         </div>
                       );
-                    })}
-                  </div>
-                </div>
+                        })}
+                      </div>
+                    </div>
+                  </>
+                ) : null}
 
               </form>
             )}
@@ -1446,19 +1561,25 @@ export function ProductsWorkspace() {
                     />
                   </label>
                   <label className="space-y-1.5">
-                    <span className="text-sm font-medium text-[#132016]">Variante</span>
-                    <select
-                      value={imageForm.variantId}
-                      onChange={(event) => setImageForm((current) => ({ ...current, variantId: event.target.value }))}
-                      className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none transition focus:border-black/25"
-                    >
-                      <option value="">Sin variante</option>
-                      {imageVariants.map((variant) => (
-                        <option key={variant.id} value={variant.id}>
-                          {variant.name} ({variant.sku})
-                        </option>
-                      ))}
-                    </select>
+                    <span className="text-sm font-medium text-[#132016]">Presentación</span>
+                    {imageVariants.length > 1 ? (
+                      <select
+                        value={imageForm.variantId}
+                        onChange={(event) => setImageForm((current) => ({ ...current, variantId: event.target.value }))}
+                        className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none transition focus:border-black/25"
+                      >
+                        <option value="">Sin presentación específica</option>
+                        {imageVariants.map((variant) => (
+                          <option key={variant.id} value={variant.id}>
+                            {variant.name} ({variant.sku})
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-black/55">
+                        La imagen se aplicará a la presentación principal.
+                      </div>
+                    )}
                   </label>
                   <label className="flex items-center gap-3 rounded-[1.25rem] border border-black/8 bg-[#fafaf7] px-4 py-3">
                     <input
@@ -1502,7 +1623,7 @@ export function ProductsWorkspace() {
                         <div className="flex items-center justify-between gap-3">
                           <div className="text-xs text-black/50">
                             Orden {image.sortOrder}
-                            {image.variantId ? ` · Variante ${image.variantId}` : ""}
+                            {image.variantId ? " · Presentación vinculada" : ""}
                           </div>
                           <Button type="button" size="sm" variant="danger" onClick={() => void handleDeleteImage(image)} disabled={uploading}>
                             Eliminar
