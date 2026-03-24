@@ -8,12 +8,14 @@ import {
   type CheckoutItemInput,
   type CheckoutQuoteSummary,
   type CheckoutRequestInput,
-  type CatalogProduct
+  type CatalogProduct,
+  type SiteSetting
 } from "@huelegood/shared";
 import {
   createManualCheckout,
   createOpenpayCheckout,
   fetchCatalogSummary,
+  fetchCmsSiteSettings,
   fetchCheckoutQuote,
   fetchSession
 } from "../lib/api";
@@ -77,6 +79,7 @@ export function CheckoutWorkspace() {
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [items, setItems] = useState<CheckoutItemInput[]>([]);
   const [session, setSession] = useState<AuthSessionSummary | null>(null);
+  const [siteSettings, setSiteSettings] = useState<SiteSetting | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("openpay");
   const [vendorCode, setVendorCode] = useState("");
   const [couponCode, setCouponCode] = useState("");
@@ -174,8 +177,22 @@ export function CheckoutWorkspace() {
       }
     }
 
+    async function loadSiteSettings() {
+      try {
+        const response = await fetchCmsSiteSettings();
+        if (active) {
+          setSiteSettings(response.data ?? null);
+        }
+      } catch {
+        if (active) {
+          setSiteSettings(null);
+        }
+      }
+    }
+
     void loadSession();
     void loadCatalog();
+    void loadSiteSettings();
 
     const storedCart = readStoredCart();
     if (storedCart.length > 0) {
@@ -361,6 +378,33 @@ export function CheckoutWorkspace() {
     paymentMethod,
     estimatedPoints: 0
   };
+
+  const shippingNote = useMemo(() => {
+    if (!siteSettings) {
+      return "El costo de envío se calcula según el total de tu pedido.";
+    }
+
+    const threshold = Number.isFinite(siteSettings.freeShippingThreshold) ? siteSettings.freeShippingThreshold : 0;
+    const flatRate = Number.isFinite(siteSettings.shippingFlatRate) ? siteSettings.shippingFlatRate : 0;
+
+    if (threshold > 0 && flatRate > 0) {
+      if (summary.shipping <= 0) {
+        return `Tu pedido ya califica para envío gratis desde S/ ${threshold.toFixed(2)}.`;
+      }
+
+      return `Envío gratis desde S/ ${threshold.toFixed(2)}. Tarifa base S/ ${flatRate.toFixed(2)}.`;
+    }
+
+    if (threshold > 0) {
+      return `Envío gratis desde S/ ${threshold.toFixed(2)}.`;
+    }
+
+    if (flatRate > 0) {
+      return `Tarifa base de envío: S/ ${flatRate.toFixed(2)}.`;
+    }
+
+    return "El costo de envío se calcula según el total de tu pedido.";
+  }, [siteSettings, summary.shipping]);
 
   return (
     <div className="mx-auto max-w-[1120px] px-6 py-12">
@@ -694,6 +738,7 @@ export function CheckoutWorkspace() {
                     <span>Envío</span>
                     <strong className="text-[#1c1c1c]">S/ {summary.shipping.toFixed(2)}</strong>
                   </div>
+                  <p className="text-[11px] leading-5 text-[#8b8b8b]">{shippingNote}</p>
                 </div>
                 <div className="h-px bg-[rgba(26,58,46,0.08)]" />
                 <div className="mt-4 flex justify-between font-bold text-[#1a3a2e]">

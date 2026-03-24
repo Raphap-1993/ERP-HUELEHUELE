@@ -103,8 +103,8 @@ export const storefrontV2PremiumContent: StorefrontV2PremiumContent = {
       href: "/catalogo"
     },
     secondaryCta: {
-      label: "Comprar Clásico Verde",
-      href: "/checkout?producto=clasico-verde"
+      label: "Ver Clásico Verde",
+      href: "/producto/clasico-verde"
     },
     metrics: [
       {
@@ -330,15 +330,15 @@ export const storefrontV2PremiumContent: StorefrontV2PremiumContent = {
       "Compra directo si ya sabes cuál va contigo. Si quieres revisar las tres referencias, vuelve al catálogo y compara sin prisa.",
     primaryCta: {
       label: "Clásico Verde",
-      href: "/checkout?producto=clasico-verde"
+      href: "/producto/clasico-verde"
     },
     secondaryCta: {
       label: "Premium Negro",
-      href: "/checkout?producto=premium-negro"
+      href: "/producto/premium-negro"
     },
     tertiaryCta: {
       label: "Combo Dúo Perfecto",
-      href: "/checkout?producto=combo-duo-perfecto"
+      href: "/producto/combo-duo-perfecto"
     }
   }
 };

@@ -34,7 +34,7 @@ const CARD_STYLE_BY_SLUG: Record<string, CatalogCardStyle> = {
     tags: ["Diario", "Viaje", "Oficina", "Frescura"],
     priceNote: "+ recarga incluida",
     btnClass: "bg-[#2d6a4f] hover:bg-[#1a3a2e]",
-    btnLabel: "Lo quiero"
+    btnLabel: "Comprar"
   },
   "premium-negro": {
     badgeStyle: "bg-[#1c1c1c] text-white",
@@ -44,7 +44,7 @@ const CARD_STYLE_BY_SLUG: Record<string, CatalogCardStyle> = {
     tags: ["Gym", "Altitud", "Noche", "Foco"],
     priceNote: "+ recarga incluida",
     btnClass: "bg-[#1c1c1c] hover:bg-black",
-    btnLabel: "Lo quiero"
+    btnLabel: "Comprar"
   },
   "combo-duo-perfecto": {
     badgeStyle: "bg-[#c9a84c] text-[#1a3a2e]",
@@ -86,7 +86,7 @@ function resolveCardStyle(product: CatalogProduct): CatalogCardStyle {
     desc: product.description,
     tags: product.benefits.slice(0, 4),
     btnClass: "bg-[#2d6a4f] hover:bg-[#1a3a2e]",
-    btnLabel: "Lo quiero"
+    btnLabel: "Comprar"
   };
 }
 

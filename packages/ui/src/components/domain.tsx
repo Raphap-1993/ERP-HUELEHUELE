@@ -173,8 +173,8 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
       </CardContent>
       <CardFooter className="flex items-center justify-between">
         <span className="text-xs uppercase tracking-[0.18em] text-black/45">{product.sku}</span>
-        <Button href={`/checkout?producto=${product.slug}`} size="sm">
-          Agregar
+        <Button href={`/producto/${product.slug}`} size="sm">
+          Ver detalle
         </Button>
       </CardFooter>
     </Card>

@@ -542,7 +542,7 @@ export function AccountWorkspace() {
                     <div className="mb-2.5 text-4xl">{item.emoji}</div>
                     <p className="text-[13px] font-semibold text-[#1a3a2e]">{item.name}</p>
                     <p className="mb-3 mt-1 font-serif text-[16px] font-bold text-[#1a3a2e]">{item.price}</p>
-                    <a href={`/checkout?producto=${item.slug}`} className="block w-full rounded-[9px] bg-[#2d6a4f] py-2 text-[12px] font-semibold text-white transition hover:bg-[#1a3a2e]">Lo quiero</a>
+                    <a href={`/producto/${item.slug}`} className="block w-full rounded-[9px] bg-[#2d6a4f] py-2 text-[12px] font-semibold text-white transition hover:bg-[#1a3a2e]">Ver detalle</a>
                   </div>
                 ))}
               </div>
