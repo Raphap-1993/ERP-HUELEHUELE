@@ -51,11 +51,29 @@ type AdminProductRecord = Prisma.ProductGetPayload<{
   };
 }>;
 
-type CatalogProductRecord = Prisma.ProductGetPayload<{
+type CatalogProductSummaryRecord = Prisma.ProductGetPayload<{
   include: {
     category: true;
     variants: true;
     images: true;
+  };
+}>;
+
+type CatalogProductDetailRecord = Prisma.ProductGetPayload<{
+  include: {
+    category: true;
+    variants: true;
+    images: true;
+    bundleComponents: {
+      include: {
+        componentProduct: {
+          include: {
+            variants: true;
+          };
+        };
+        componentVariant: true;
+      };
+    };
   };
 }>;
 
@@ -609,7 +627,18 @@ export class ProductsService {
       include: {
         category: true,
         variants: true,
-        images: true
+        images: true,
+        bundleComponents: {
+          include: {
+            componentProduct: {
+              include: {
+                variants: true
+              }
+            },
+            componentVariant: true
+          },
+          orderBy: [{ sortOrder: "asc" }]
+        }
       }
     });
 
@@ -1057,7 +1086,7 @@ export class ProductsService {
     };
   }
 
-  private mapCatalogProductSummary(product: CatalogProductRecord): CatalogProduct | null {
+  private mapCatalogProductSummary(product: CatalogProductSummaryRecord): CatalogProduct | null {
     const variant = selectDefaultVariant(product.variants);
     if (!variant) {
       return null;
@@ -1084,12 +1113,14 @@ export class ProductsService {
       tone: merchandising.tone,
       benefits: merchandising.benefits,
       sku: variant.sku,
+      defaultVariantId: variant.id,
+      currencyCode: CATALOG_CURRENCY_CODE,
       imageUrl: primaryImage?.url,
       imageAlt: primaryImage?.altText ?? `${product.name} - imagen del producto`
     };
   }
 
-  private mapCatalogProductDetail(product: CatalogProductRecord): CatalogProduct | null {
+  private mapCatalogProductDetail(product: CatalogProductDetailRecord): CatalogProduct | null {
     const summary = this.mapCatalogProductSummary(product);
     if (!summary) {
       return null;
@@ -1121,7 +1152,8 @@ export class ProductsService {
       defaultVariantId: summary.defaultVariantId ?? selectDefaultVariant(product.variants)?.id,
       currencyCode: CATALOG_CURRENCY_CODE,
       variants,
-      images
+      images,
+      bundleComponents: sortBundleComponents(product.bundleComponents).map(mapBundleComponent)
     };
   }
 

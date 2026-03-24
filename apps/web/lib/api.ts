@@ -81,15 +81,21 @@ export function getSessionHeaders(token?: string): HeadersInit | undefined {
 }
 
 export async function fetchCatalogSummary() {
-  return requestJson<CatalogSummaryResponseEnvelope>("/store/catalog");
+  return requestJson<CatalogSummaryResponseEnvelope>("/store/catalog", {
+    cache: "no-store"
+  });
 }
 
 export async function fetchCatalogProducts() {
-  return requestJson<CatalogProductsEnvelope>("/store/products");
+  return requestJson<CatalogProductsEnvelope>("/store/products", {
+    cache: "no-store"
+  });
 }
 
 export async function fetchProductBySlug(slug: string) {
-  return requestJson<CatalogProductEnvelope>(`/store/products/${slug}`);
+  return requestJson<CatalogProductEnvelope>(`/store/products/${slug}`, {
+    cache: "no-store"
+  });
 }
 
 export async function fetchCheckoutQuote(body: CheckoutQuoteInput) {

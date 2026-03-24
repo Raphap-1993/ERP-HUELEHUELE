@@ -9,6 +9,9 @@ import {
   storefrontProductArtBySlug
 } from "../../../features/storefront-v2/lib/media";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function formatPrice(value: number, currencyCode: string) {
   try {
     return new Intl.NumberFormat("es-PE", {
@@ -64,6 +67,14 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const variants = (product.variants ?? []).filter((variant) => variant.status === "active");
   const hasMultipleVariants = variants.length > 1;
+  const resolvedDefaultVariantId =
+    variants.find((variant) => variant.id === product.defaultVariantId)?.id ??
+    variants[0]?.id ??
+    product.defaultVariantId;
+  const checkoutHref = resolvedDefaultVariantId
+    ? `/checkout?producto=${encodeURIComponent(product.slug)}&variantId=${encodeURIComponent(resolvedDefaultVariantId)}`
+    : `/checkout?producto=${encodeURIComponent(product.slug)}`;
+  const bundleComponents = product.bundleComponents ?? [];
 
   return (
     <main className="bg-[#faf8f3] py-10">
@@ -75,13 +86,13 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             </Link>
             <span>/</span>
             <Link href="/catalogo" className="hover:text-[#1a3a2e]">
-              Catalogo
+              Catálogo
             </Link>
             <span>/</span>
             <span className="text-[#1a3a2e]">{product.name}</span>
           </div>
           <Link
-            href={`/checkout?producto=${encodeURIComponent(product.slug)}`}
+            href={checkoutHref}
             className="rounded-full bg-[#2d6a4f] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1a3a2e]"
           >
             Comprar ahora
@@ -164,7 +175,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
-                  href={`/checkout?producto=${encodeURIComponent(product.slug)}`}
+                  href={checkoutHref}
                   className="rounded-full bg-[#2d6a4f] px-7 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#1a3a2e]"
                 >
                   Comprar ahora
@@ -173,10 +184,36 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                   href="/catalogo"
                   className="rounded-full border-2 border-[rgba(45,106,79,0.25)] px-7 py-3 text-sm font-semibold text-[#1a3a2e] transition hover:bg-[#d8f3dc]"
                 >
-                  Ver catalogo
+                  Ver catálogo
                 </Link>
               </div>
             </div>
+
+            {bundleComponents.length > 0 ? (
+              <div className="rounded-3xl border border-black/10 bg-white p-6 shadow-sm">
+                <h2 className="font-serif text-xl font-bold text-[#1a3a2e]">Incluye</h2>
+                <p className="mt-1 text-sm text-[#6b7280]">
+                  Este combo descuenta stock de los productos componentes al momento de la compra.
+                </p>
+                <div className="mt-5 space-y-3">
+                  {bundleComponents.map((component) => (
+                    <div
+                      key={component.id}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-black/10 bg-[#faf8f3] px-4 py-3"
+                    >
+                      <div>
+                        <div className="text-sm font-semibold text-[#1a3a2e]">
+                          {component.productName}
+                          {component.variantName ? <span className="text-[#6b7280]"> · {component.variantName}</span> : null}
+                        </div>
+                        <div className="text-xs text-[#6b7280]">{component.productSlug}</div>
+                      </div>
+                      <div className="text-sm font-bold text-[#1a3a2e]">x{component.quantity}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             {hasMultipleVariants ? (
               <div className="rounded-3xl border border-black/10 bg-white p-6 shadow-sm">
