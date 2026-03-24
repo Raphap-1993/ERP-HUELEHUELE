@@ -17,6 +17,19 @@ function productDescriptor(product: CatalogProduct) {
   return "Uso diario";
 }
 
+function formatPrice(value: number, currencyCode = "PEN") {
+  try {
+    return new Intl.NumberFormat("es-PE", {
+      style: "currency",
+      currency: currencyCode,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value);
+  } catch {
+    return `S/ ${value.toFixed(2)}`;
+  }
+}
+
 export function ProductHighlightGrid({
   products
 }: {
@@ -27,7 +40,7 @@ export function ProductHighlightGrid({
       <StorefrontV2SectionHeading
         eyebrow="Selección curada"
         title="El catálogo se siente más premium cuando cada ficha hace menos, pero mejor."
-        description="Reutilizamos `featuredProducts` como fuente actual y solo reordenamos la presentación para elevar percepción y conversión."
+        description="Precios formateados igual que el catálogo y salida directa a checkout con opción de ver detalle."
         action={{ label: "Ver catálogo completo", href: "/catalogo" }}
       />
 
@@ -37,6 +50,12 @@ export function ProductHighlightGrid({
           const art = storefrontProductArtBySlug[product.slug] ?? storefrontV2Media.hero;
           const resolvedArt = resolveStorefrontMediaSrc(art);
           const isRemote = isRemoteStorefrontMediaUrl(resolvedArt);
+          const currencyCode = "PEN";
+          const price = formatPrice(product.price, currencyCode);
+          const compareAtPrice =
+            product.compareAtPrice && product.compareAtPrice > product.price
+              ? formatPrice(product.compareAtPrice, currencyCode)
+              : null;
 
           return (
             <article
@@ -69,8 +88,8 @@ export function ProductHighlightGrid({
                       <h3 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-[#17211a]">{product.name}</h3>
                     </div>
                     <div className="text-right text-[#17211a]">
-                      <div className="text-[1.95rem] font-semibold tracking-tight">${product.price}</div>
-                      {product.compareAtPrice ? <div className="text-sm text-black/34 line-through">${product.compareAtPrice}</div> : null}
+                      <div className="text-[1.95rem] font-semibold tracking-tight">{price}</div>
+                      {compareAtPrice ? <div className="text-sm text-black/34 line-through">{compareAtPrice}</div> : null}
                     </div>
                   </div>
                   <p className="text-sm font-medium text-black/58">{product.tagline}</p>
@@ -90,7 +109,17 @@ export function ProductHighlightGrid({
 
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-xs uppercase tracking-[0.18em] text-black/36">{product.sku}</span>
-                  <Button href={`/checkout?producto=${product.slug}`}>Comprar</Button>
+                  <div className="flex items-center gap-2">
+                    <Button href={`/producto/${product.slug}`} variant="secondary" size="sm">
+                      Detalles
+                    </Button>
+                    <Button
+                      href={`/checkout?producto=${encodeURIComponent(product.slug)}${product.defaultVariantId ? `&variantId=${encodeURIComponent(product.defaultVariantId)}` : ""}`}
+                      size="sm"
+                    >
+                      Comprar
+                    </Button>
+                  </div>
                 </div>
               </div>
             </article>

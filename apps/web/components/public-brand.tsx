@@ -129,7 +129,10 @@ export function EditorialProductGrid({ products }: { products: CatalogProduct[] 
                 ))}
               </div>
               <div className="flex items-center justify-end gap-3">
-                <Button href={`/checkout?producto=${product.slug}`} size="sm">
+                <Button href={`/producto/${product.slug}`} variant="secondary" size="sm">
+                  Ver detalles
+                </Button>
+                <Button href={resolveCheckoutHref(product)} size="sm">
                   Comprar ahora
                 </Button>
               </div>
