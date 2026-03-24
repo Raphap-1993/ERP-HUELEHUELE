@@ -35,6 +35,8 @@ import type {
   AdminActionSummary,
   AuditLogSummary,
   AuditOverviewSummary,
+  BundleComponentInput,
+  BundleComponentSummary,
   HealthDependencySummary,
   ObservabilityEventSummary,
   ObservabilityOverviewSummary,
@@ -611,6 +613,7 @@ export interface ProductAdminSummary {
   price: number;
   compareAtPrice?: number;
   sku: string;
+  defaultVariantId?: string;
   currencyCode: string;
   primaryImageUrl?: string;
   updatedAt: string;
@@ -619,6 +622,7 @@ export interface ProductAdminSummary {
 export interface ProductAdminDetail extends ProductAdminSummary {
   longDescription?: string;
   variants: ProductVariantSummary[];
+  bundleComponents: ProductBundleComponentSummary[];
   images: ProductImageSummary[];
 }
 
@@ -632,6 +636,10 @@ export interface ProductVariantInput {
   status: ProductVariantStatusValue;
 }
 
+export interface ProductBundleComponentInput extends BundleComponentInput {}
+
+export interface ProductBundleComponentSummary extends BundleComponentSummary {}
+
 export interface ProductUpsertInput {
   categoryId?: string;
   name: string;
@@ -641,6 +649,7 @@ export interface ProductUpsertInput {
   status: ProductStatusValue;
   isFeatured: boolean;
   variants: ProductVariantInput[];
+  bundleComponents: ProductBundleComponentInput[];
 }
 
 export interface ProductImageUploadInput {
@@ -667,6 +676,14 @@ export interface ProductImageUploadSummary {
 export interface CheckoutItemInput {
   slug: string;
   quantity: number;
+  variantId?: string;
+}
+
+export interface InventoryAllocationSummary {
+  variantId: string;
+  sku: string;
+  name: string;
+  quantity: number;
 }
 
 export interface CheckoutCustomerInput {
@@ -691,10 +708,12 @@ export interface CheckoutQuoteItemSummary {
   slug: string;
   name: string;
   sku: string;
+  variantId?: string;
   quantity: number;
   unitPrice: number;
   lineTotal: number;
   imageUrl?: string;
+  inventoryAllocations?: InventoryAllocationSummary[];
 }
 
 export interface CheckoutQuoteSummary {
@@ -749,9 +768,11 @@ export interface OrderItemSummary {
   slug: string;
   name: string;
   sku: string;
+  variantId?: string;
   quantity: number;
   unitPrice: number;
   lineTotal: number;
+  inventoryAllocations?: InventoryAllocationSummary[];
 }
 
 export interface OrderCustomerSummary {

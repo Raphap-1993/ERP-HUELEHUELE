@@ -15,11 +15,13 @@ import {
   type CheckoutCustomerInput,
   type CheckoutQuoteSummary,
   type CheckoutRequestInput,
+  type InventoryAllocationSummary,
   type OrderItemSummary,
   type OrderStatusHistorySummary
 } from "@huelegood/shared";
 import { wrapResponse } from "../../common/response";
 import { AuditService } from "../audit/audit.service";
+import { InventoryService } from "../inventory/inventory.service";
 import { LoyaltyService } from "../loyalty/loyalty.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ObservabilityService } from "../observability/observability.service";
@@ -119,14 +121,27 @@ function normalizeAddress(address: CheckoutAddressInput) {
   };
 }
 
+function cloneInventoryAllocations(allocations?: InventoryAllocationSummary[]) {
+  return allocations?.map((allocation) => ({ ...allocation }));
+}
+
 function buildOrderItems(items: CheckoutQuoteSummary["items"]): OrderItemSummary[] {
   return items.map((item) => ({
     slug: item.slug,
     name: item.name,
     sku: item.sku,
+    variantId: item.variantId,
     quantity: item.quantity,
     unitPrice: item.unitPrice,
-    lineTotal: item.lineTotal
+    lineTotal: item.lineTotal,
+    inventoryAllocations: cloneInventoryAllocations(item.inventoryAllocations)
+  }));
+}
+
+function cloneOrderItems(items: OrderItemSummary[]) {
+  return items.map((item) => ({
+    ...item,
+    inventoryAllocations: cloneInventoryAllocations(item.inventoryAllocations)
   }));
 }
 
@@ -136,11 +151,18 @@ function normalizeQuoteItems(items: CheckoutQuoteSummary["items"]) {
       slug: item.slug.trim(),
       name: item.name.trim(),
       sku: item.sku.trim(),
+      variantId: item.variantId?.trim() || undefined,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
-      lineTotal: item.lineTotal
+      lineTotal: item.lineTotal,
+      inventoryAllocations: cloneInventoryAllocations(item.inventoryAllocations)
     }))
-    .sort((left, right) => left.slug.localeCompare(right.slug) || left.quantity - right.quantity);
+    .sort(
+      (left, right) =>
+        left.slug.localeCompare(right.slug) ||
+        (left.variantId ?? "").localeCompare(right.variantId ?? "") ||
+        left.quantity - right.quantity
+    );
 }
 
 function normalizeCheckoutRequest(input: CreateCheckoutOrderInput) {
@@ -181,9 +203,15 @@ function normalizeCheckoutRequest(input: CreateCheckoutOrderInput) {
       items: request.items
         .map((item) => ({
           slug: item.slug.trim(),
-          quantity: item.quantity
+          quantity: item.quantity,
+          variantId: item.variantId?.trim() || null
         }))
-        .sort((left, right) => left.slug.localeCompare(right.slug) || left.quantity - right.quantity)
+        .sort(
+          (left, right) =>
+            left.slug.localeCompare(right.slug) ||
+            (left.variantId ?? "").localeCompare(right.variantId ?? "") ||
+            left.quantity - right.quantity
+        )
     }
   };
 }
@@ -224,6 +252,7 @@ export class OrdersService implements OnModuleInit {
 
   constructor(
     private readonly auditService: AuditService,
+    private readonly inventoryService: InventoryService,
     private readonly loyaltyService: LoyaltyService,
     private readonly notificationsService: NotificationsService,
     private readonly observabilityService: ObservabilityService,
@@ -245,6 +274,18 @@ export class OrdersService implements OnModuleInit {
     } else {
       await this.persistState();
     }
+
+    await this.hydrateLegacyOrders();
+    await this.persistState();
+    await this.inventoryService.rebuildFromOrders(
+      this.sortedOrders().map((order) => ({
+        orderNumber: order.orderNumber,
+        orderStatus: order.orderStatus,
+        items: order.items,
+        createdAt: order.createdAt,
+        occurredAt: order.updatedAt
+      }))
+    );
   }
 
   reserveOrderNumber() {
@@ -252,7 +293,7 @@ export class OrdersService implements OnModuleInit {
     return `HG-${this.orderSequence}`;
   }
 
-  createCheckoutOrder(input: CreateCheckoutOrderInput) {
+  async createCheckoutOrder(input: CreateCheckoutOrderInput) {
     const orderNumber = input.orderNumber.trim().toUpperCase();
     if (this.orders.has(orderNumber)) {
       throw new BadRequestException(`Ya existe un pedido con el número ${orderNumber}.`);
@@ -356,6 +397,14 @@ export class OrdersService implements OnModuleInit {
       updatedAt: createdAt
     };
 
+    await this.inventoryService.syncOrder({
+      orderNumber,
+      orderStatus: order.orderStatus,
+      items: order.items,
+      occurredAt: createdAt,
+      note: "Reserva generada al crear el checkout."
+    });
+
     this.orders.set(orderNumber, order);
     if (clientRequestId) {
       this.idempotencyIndex.set(clientRequestId, {
@@ -428,7 +477,7 @@ export class OrdersService implements OnModuleInit {
       relatedId: orderNumber
     });
 
-    void this.persistState();
+    await this.persistState();
 
     return order;
   }
@@ -495,7 +544,7 @@ export class OrdersService implements OnModuleInit {
     });
   }
 
-  approveManualRequest(id: string, reviewer?: string, notes?: string) {
+  async approveManualRequest(id: string, reviewer?: string, notes?: string) {
     const order = this.findOrderByManualRequestId(id);
     const now = new Date().toISOString();
     const reviewerName = normalizeText(reviewer) ?? "operador";
@@ -518,7 +567,7 @@ export class OrdersService implements OnModuleInit {
 
     this.ensureManualRequestReviewable(order, manualRequest);
 
-    this.applyManualDecision(order, {
+    await this.applyManualDecision(order, {
       status: ManualPaymentRequestStatus.Approved,
       orderStatus: OrderStatus.Paid,
       paymentStatus: PaymentStatus.Paid,
@@ -536,7 +585,7 @@ export class OrdersService implements OnModuleInit {
     };
   }
 
-  rejectManualRequest(id: string, reviewer?: string, notes?: string) {
+  async rejectManualRequest(id: string, reviewer?: string, notes?: string) {
     const order = this.findOrderByManualRequestId(id);
     const now = new Date().toISOString();
     const reviewerName = normalizeText(reviewer) ?? "operador";
@@ -559,7 +608,7 @@ export class OrdersService implements OnModuleInit {
 
     this.ensureManualRequestReviewable(order, manualRequest);
 
-    this.applyManualDecision(order, {
+    await this.applyManualDecision(order, {
       status: ManualPaymentRequestStatus.Rejected,
       orderStatus: OrderStatus.Cancelled,
       paymentStatus: PaymentStatus.Failed,
@@ -577,7 +626,7 @@ export class OrdersService implements OnModuleInit {
     };
   }
 
-  private applyManualDecision(
+  private async applyManualDecision(
     order: AdminOrderDetail,
     input: {
       status: ManualPaymentRequestStatus.Approved | ManualPaymentRequestStatus.Rejected;
@@ -621,6 +670,14 @@ export class OrdersService implements OnModuleInit {
         input.occurredAt
       )
     ];
+
+    await this.inventoryService.syncOrder({
+      orderNumber: order.orderNumber,
+      orderStatus: order.orderStatus,
+      items: order.items,
+      occurredAt: input.occurredAt,
+      note: input.status === ManualPaymentRequestStatus.Approved ? "Inventario confirmado por aprobación manual." : "Inventario liberado por rechazo manual."
+    });
 
     if (input.status === ManualPaymentRequestStatus.Approved) {
       this.loyaltyService.settleOrderPoints(order.orderNumber, input.reviewer);
@@ -701,7 +758,7 @@ export class OrdersService implements OnModuleInit {
       );
     }
 
-    void this.persistState();
+    await this.persistState();
   }
 
   private buildInitialHistory(input: {
@@ -730,6 +787,12 @@ export class OrdersService implements OnModuleInit {
     }
 
     return history;
+  }
+
+  private async hydrateLegacyOrders() {
+    for (const order of this.orders.values()) {
+      order.items = await this.inventoryService.hydrateOrderItems(order.items);
+    }
   }
 
   private buildPaymentSummary(input: {
@@ -1193,7 +1256,7 @@ export class OrdersService implements OnModuleInit {
         ...order,
         customer: { ...order.customer },
         address: { ...order.address },
-        items: order.items.map((item) => ({ ...item })),
+        items: cloneOrderItems(order.items),
         statusHistory: order.statusHistory.map((entry) => ({ ...entry })),
         payment: { ...order.payment },
         manualRequest: order.manualRequest ? { ...order.manualRequest } : undefined
@@ -1212,7 +1275,7 @@ export class OrdersService implements OnModuleInit {
         ...order,
         customer: { ...order.customer },
         address: { ...order.address },
-        items: order.items.map((item) => ({ ...item })),
+        items: cloneOrderItems(order.items),
         statusHistory: order.statusHistory.map((entry) => ({ ...entry })),
         payment: { ...order.payment },
         manualRequest: order.manualRequest ? { ...order.manualRequest } : undefined

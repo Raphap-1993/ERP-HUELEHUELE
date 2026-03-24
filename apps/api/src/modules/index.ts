@@ -18,3 +18,4 @@ export * from "./auth/auth.module";
 export * from "./customers/customers.module";
 export * from "./commerce/commerce.module";
 export * from "./orders/orders.module";
+export * from "./inventory/inventory.module";

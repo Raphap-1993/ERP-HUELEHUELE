@@ -55,6 +55,13 @@ type VariantDraft = {
   status: ProductVariantStatusValue;
 };
 
+type BundleComponentDraft = {
+  id?: string;
+  productId: string;
+  variantId: string;
+  quantity: string;
+};
+
 type ProductFormState = {
   categoryId: string;
   name: string;
@@ -64,6 +71,7 @@ type ProductFormState = {
   status: ProductStatusValue;
   isFeatured: boolean;
   variants: VariantDraft[];
+  bundleComponents: BundleComponentDraft[];
 };
 
 const PRODUCT_STATUSES: ProductStatusValue[] = ["draft", "active", "inactive", "archived"];
@@ -157,6 +165,15 @@ function createVariantDraft(seed?: Partial<VariantDraft>): VariantDraft {
   };
 }
 
+function createBundleComponentDraft(seed?: Partial<BundleComponentDraft>): BundleComponentDraft {
+  return {
+    id: seed?.id,
+    productId: seed?.productId ?? "",
+    variantId: seed?.variantId ?? "",
+    quantity: seed?.quantity ?? "1"
+  };
+}
+
 function createEmptyForm(): ProductFormState {
   return {
     categoryId: "",
@@ -166,7 +183,8 @@ function createEmptyForm(): ProductFormState {
     longDescription: "",
     status: "draft",
     isFeatured: false,
-    variants: [createVariantDraft()]
+    variants: [createVariantDraft()],
+    bundleComponents: []
   };
 }
 
@@ -193,11 +211,21 @@ function fromProductDetail(product: ProductAdminDetail): ProductFormState {
         : createVariantDraft({
             name: index === 0 ? "Variante principal" : `Variante ${index + 1}`
           })
-    )
+    ),
+    bundleComponents: product.bundleComponents.length
+      ? product.bundleComponents.map((component) =>
+          createBundleComponentDraft({
+            id: component.id,
+            productId: component.productId,
+            variantId: component.variantId ?? "",
+            quantity: String(component.quantity)
+          })
+        )
+      : []
   };
 }
 
-function buildProductPayload(form: ProductFormState): ProductUpsertInput {
+function buildProductPayload(form: ProductFormState, products: ProductAdminSummary[]): ProductUpsertInput {
   const name = form.name.trim();
   const slug = slugify(form.slug || form.name);
 
@@ -245,6 +273,38 @@ function buildProductPayload(form: ProductFormState): ProductUpsertInput {
     };
   });
 
+  const productById = new Map(products.map((product) => [product.id, product]));
+  const bundleComponentKeys = new Set<string>();
+  const bundleComponents = form.bundleComponents.map((component, index) => {
+    const productId = component.productId.trim();
+    if (!productId) {
+      throw new Error(`El componente ${index + 1} necesita un producto.`);
+    }
+
+    const quantity = Number(component.quantity);
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      throw new Error(`El componente ${index + 1} tiene una cantidad inválida.`);
+    }
+
+    const product = productById.get(productId);
+    if (!product) {
+      throw new Error(`El producto componente ${productId} no existe en el catálogo cargado.`);
+    }
+
+    const variantId = component.variantId.trim() || product.defaultVariantId || "";
+    const dedupeKey = `${productId}:${variantId}`;
+    if (bundleComponentKeys.has(dedupeKey)) {
+      throw new Error(`El componente ${product.name} está repetido en el bundle.`);
+    }
+    bundleComponentKeys.add(dedupeKey);
+
+    return {
+      productId,
+      variantId: variantId || undefined,
+      quantity: Math.trunc(quantity)
+    };
+  });
+
   return {
     categoryId: form.categoryId.trim() || undefined,
     name,
@@ -253,7 +313,8 @@ function buildProductPayload(form: ProductFormState): ProductUpsertInput {
     longDescription: form.longDescription.trim() || undefined,
     status: form.status,
     isFeatured: form.isFeatured,
-    variants
+    variants,
+    bundleComponents
   };
 }
 
@@ -426,6 +487,16 @@ export function ProductsWorkspace() {
     [categories, form.categoryId]
   );
 
+  const componentProductOptions = useMemo(
+    () => products.filter((product) => product.id !== selectedProductId),
+    [products, selectedProductId]
+  );
+
+  const productById = useMemo(
+    () => new Map(products.map((product) => [product.id, product])),
+    [products]
+  );
+
   const metrics = useMemo(() => {
     const activeProducts = products.filter((product) => product.status === "active").length;
     const featuredProducts = products.filter((product) => product.isFeatured).length;
@@ -539,6 +610,59 @@ export function ProductsWorkspace() {
     }));
   }
 
+  function handleAddBundleComponent() {
+    setForm((current) => ({
+      ...current,
+      bundleComponents: [
+        ...current.bundleComponents,
+        createBundleComponentDraft({
+          productId: componentProductOptions[0]?.id ?? "",
+          variantId: componentProductOptions[0]?.defaultVariantId ?? ""
+        })
+      ]
+    }));
+  }
+
+  function handleRemoveBundleComponent(index: number) {
+    setForm((current) => {
+      const nextBundleComponents = current.bundleComponents.filter((_, currentIndex) => currentIndex !== index);
+      return {
+        ...current,
+        bundleComponents: nextBundleComponents
+      };
+    });
+  }
+
+  function updateBundleComponent(index: number, field: keyof BundleComponentDraft, value: string) {
+    setForm((current) => ({
+      ...current,
+      bundleComponents: current.bundleComponents.map((component, currentIndex) =>
+        currentIndex === index
+          ? {
+              ...component,
+              [field]: value
+            }
+          : component
+      )
+    }));
+  }
+
+  function handleBundleComponentProductChange(index: number, productId: string) {
+    const product = productById.get(productId);
+    setForm((current) => ({
+      ...current,
+      bundleComponents: current.bundleComponents.map((component, currentIndex) =>
+        currentIndex === index
+          ? {
+              ...component,
+              productId,
+              variantId: product?.defaultVariantId || ""
+            }
+          : component
+      )
+    }));
+  }
+
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
@@ -546,7 +670,7 @@ export function ProductsWorkspace() {
     setFeedback(null);
 
     try {
-      const payload = buildProductPayload(form);
+      const payload = buildProductPayload(form, products);
       const response = isCreating || !selectedProductId
         ? await createAdminProduct(payload)
         : await updateAdminProduct(selectedProductId, payload);
@@ -987,6 +1111,106 @@ export function ProductsWorkspace() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <div className="font-semibold text-[#132016]">Componentes del bundle</div>
+                      <div className="text-sm text-black/55">
+                        Úsalo para combos. Si dejas la variante vacía, se resolverá la principal del producto.
+                      </div>
+                    </div>
+                    <Button type="button" variant="secondary" size="sm" onClick={handleAddBundleComponent}>
+                      Añadir componente
+                    </Button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {form.bundleComponents.map((component, index) => {
+                      const selectedComponentProduct = productById.get(component.productId) ?? null;
+
+                      return (
+                        <div
+                          key={component.id ?? `${component.productId || "draft"}-${index}`}
+                          className="rounded-[1.25rem] border border-black/8 bg-[#fafaf7] p-4"
+                        >
+                          <div className="mb-4 flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-2">
+                              <Badge tone="info">Componente {index + 1}</Badge>
+                              {selectedComponentProduct ? (
+                                <StatusBadge label={selectedComponentProduct.name} tone="neutral" />
+                              ) : null}
+                            </div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => handleRemoveBundleComponent(index)}
+                            >
+                              Quitar
+                            </Button>
+                          </div>
+
+                          <div className="grid gap-4 md:grid-cols-3">
+                            <label className="space-y-1.5">
+                              <span className="text-sm font-medium text-[#132016]">Producto</span>
+                              <select
+                                value={component.productId}
+                                onChange={(event) => handleBundleComponentProductChange(index, event.target.value)}
+                                className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none transition focus:border-black/25"
+                              >
+                                <option value="">Selecciona un producto</option>
+                                {componentProductOptions.map((product) => (
+                                  <option key={product.id} value={product.id}>
+                                    {product.name} ({product.sku})
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+
+                            <label className="space-y-1.5">
+                              <span className="text-sm font-medium text-[#132016]">Variante ID</span>
+                              <Input
+                                value={component.variantId}
+                                onChange={(event) => updateBundleComponent(index, "variantId", event.target.value)}
+                                placeholder={selectedComponentProduct?.defaultVariantId ?? "Opcional"}
+                              />
+                              <p className="text-xs text-black/45">
+                                Si lo dejas vacío, el backend usará la variante principal disponible.
+                              </p>
+                            </label>
+
+                            <label className="space-y-1.5">
+                              <span className="text-sm font-medium text-[#132016]">Cantidad</span>
+                              <Input
+                                type="number"
+                                min="1"
+                                step="1"
+                                value={component.quantity}
+                                onChange={(event) => updateBundleComponent(index, "quantity", event.target.value)}
+                              />
+                            </label>
+                          </div>
+
+                          <div className="mt-3 text-xs text-black/50">
+                            {selectedComponentProduct ? (
+                              <span>
+                                Seleccionado: {selectedComponentProduct.name}
+                                {selectedComponentProduct.defaultVariantId
+                                  ? ` · Variante principal ${selectedComponentProduct.defaultVariantId}`
+                                  : ""}
+                              </span>
+                            ) : (
+                              <span>Selecciona un producto para resolver automáticamente la variante.</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 

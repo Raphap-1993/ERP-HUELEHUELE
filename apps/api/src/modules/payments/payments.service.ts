@@ -55,14 +55,14 @@ export class PaymentsService {
     return this.rejectManualRequest(id, body);
   }
 
-  approveManualRequest(id: string, body: ManualReviewActionInput) {
-    const result = this.ordersService.approveManualRequest(id, body.reviewer, body.notes);
+  async approveManualRequest(id: string, body: ManualReviewActionInput) {
+    const result = await this.ordersService.approveManualRequest(id, body.reviewer, body.notes);
     this.commissionsService.syncFromOrders("manual_review_approved");
     return result;
   }
 
-  rejectManualRequest(id: string, body: ManualReviewActionInput) {
-    const result = this.ordersService.rejectManualRequest(id, body.reviewer, body.notes);
+  async rejectManualRequest(id: string, body: ManualReviewActionInput) {
+    const result = await this.ordersService.rejectManualRequest(id, body.reviewer, body.notes);
     this.commissionsService.syncFromOrders("manual_review_rejected");
     return result;
   }

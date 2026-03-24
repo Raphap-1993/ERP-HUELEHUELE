@@ -531,6 +531,8 @@ model Product {
   updatedAt       DateTime       @updatedAt
   category        Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   variants        ProductVariant[]
+  bundleComponents ProductBundleComponent[] @relation("ProductBundleComponents")
+  bundleComponentUses ProductBundleComponent[] @relation("BundleComponentProduct")
   images          ProductImage[]
 
   @@map("products")
@@ -549,6 +551,7 @@ model ProductVariant {
   updatedAt       DateTime           @updatedAt
   product         Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
   images          ProductImage[]
+  bundleComponentUses ProductBundleComponent[] @relation("BundleComponentVariant")
   inventoryMovements InventoryMovement[]
   cartItems       CartItem[]
   orderItems      OrderItem[]
@@ -571,6 +574,24 @@ model ProductImage {
   variant     ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
 
   @@map("product_images")
+}
+
+model ProductBundleComponent {
+  id                 String        @id @default(uuid()) @db.Uuid
+  productId          String        @db.Uuid
+  componentProductId  String        @db.Uuid
+  componentVariantId  String?       @db.Uuid
+  quantity           Int
+  sortOrder          Int           @default(0)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  product            Product       @relation("ProductBundleComponents", fields: [productId], references: [id], onDelete: Cascade)
+  componentProduct   Product       @relation("BundleComponentProduct", fields: [componentProductId], references: [id], onDelete: Cascade)
+  componentVariant   ProductVariant? @relation("BundleComponentVariant", fields: [componentVariantId], references: [id], onDelete: Cascade)
+
+  @@index([productId, sortOrder])
+  @@index([componentProductId])
+  @@map("product_bundle_components")
 }
 
 model InventoryMovement {

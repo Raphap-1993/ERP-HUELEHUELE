@@ -42,7 +42,7 @@ export class CommerceService {
     const orderNumber = this.ordersService.reserveOrderNumber();
     const providerReference = `OP-${orderNumber}`;
     const nextStep = "Redirige al checkout del proveedor para autorizar el cobro.";
-    const order = this.ordersService.createCheckoutOrder({
+    const order = await this.ordersService.createCheckoutOrder({
       orderNumber,
       quote,
       request: body,
@@ -66,7 +66,7 @@ export class CommerceService {
     const orderNumber = this.ordersService.reserveOrderNumber();
     const providerReference = `MP-${orderNumber}`;
     const nextStep = "Solicita al cliente subir el comprobante y espera validación operativa.";
-    const order = this.ordersService.createCheckoutOrder({
+    const order = await this.ordersService.createCheckoutOrder({
       orderNumber,
       quote,
       request: body,

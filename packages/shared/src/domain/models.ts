@@ -55,6 +55,22 @@ export interface CatalogProduct {
   imageAlt?: string;
 }
 
+export interface BundleComponentInput {
+  productId: string;
+  variantId?: string;
+  quantity: number;
+}
+
+export interface BundleComponentSummary extends BundleComponentInput {
+  id: string;
+  sortOrder: number;
+  productName: string;
+  productSlug: string;
+  productSku: string;
+  variantName?: string;
+  variantSku?: string;
+}
+
 export interface PromoBanner {
   title: string;
   description: string;

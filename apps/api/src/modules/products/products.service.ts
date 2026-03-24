@@ -1,4 +1,9 @@
-import { Prisma, type ProductImage, type ProductVariant } from "@prisma/client";
+import {
+  Prisma,
+  type ProductBundleComponent,
+  type ProductImage,
+  type ProductVariant
+} from "@prisma/client";
 import {
   BadRequestException,
   ConflictException,
@@ -10,10 +15,12 @@ import {
   type CatalogProduct,
   type CatalogSummaryResponse,
   type CheckoutItemInput,
+  type InventoryAllocationSummary,
   type CheckoutQuoteItemSummary,
   type ProductAdminDetail,
   type ProductAdminSummary,
   type ProductCategorySummary,
+  type ProductBundleComponentSummary,
   type ProductImageSummary,
   type ProductImageUploadInput,
   type ProductImageUploadSummary,
@@ -26,7 +33,25 @@ import { actionResponse, wrapResponse } from "../../common/response";
 import { PrismaService } from "../../prisma/prisma.service";
 import { MediaService } from "../media/media.service";
 
-type ProductRecord = Prisma.ProductGetPayload<{
+type AdminProductRecord = Prisma.ProductGetPayload<{
+  include: {
+    category: true;
+    variants: true;
+    images: true;
+    bundleComponents: {
+      include: {
+        componentProduct: {
+          include: {
+            variants: true;
+          };
+        };
+        componentVariant: true;
+      };
+    };
+  };
+}>;
+
+type CatalogProductRecord = Prisma.ProductGetPayload<{
   include: {
     category: true;
     variants: true;
@@ -34,19 +59,36 @@ type ProductRecord = Prisma.ProductGetPayload<{
   };
 }>;
 
+type CheckoutProductRecord = Prisma.ProductGetPayload<{
+  include: {
+    category: true;
+    variants: true;
+    images: true;
+    bundleComponents: {
+      include: {
+        componentProduct: {
+          include: {
+            category: true;
+            variants: true;
+            images: true;
+          };
+        };
+        componentVariant: true;
+      };
+    };
+  };
+}>;
+
+type ComponentProductRecord = Prisma.ProductGetPayload<{
+  include: {
+    variants: true;
+  };
+}>;
+
 type CatalogQueryInput = {
   search?: string;
   category?: string;
   featuredOnly?: boolean;
-};
-
-type CheckoutProductLookup = {
-  slug: string;
-  name: string;
-  sku: string;
-  price: number;
-  categorySlug: string;
-  imageUrl?: string;
 };
 
 const CATALOG_CURRENCY_CODE = "PEN";
@@ -89,6 +131,11 @@ function toNumber(value?: Prisma.Decimal | null) {
 function normalizeText(value?: string) {
   const normalized = value?.trim();
   return normalized ? normalized : undefined;
+}
+
+function normalizeVariantId(value?: string) {
+  const normalized = normalizeText(value);
+  return normalized ? normalized.toLowerCase() : undefined;
 }
 
 function normalizeSlug(value: string) {
@@ -155,6 +202,38 @@ function sortImages(images: ProductImage[]) {
   });
 }
 
+function sortBundleComponents<T extends { sortOrder: number; createdAt: Date }>(components: T[]) {
+  return components.slice().sort((left, right) => {
+    if (left.sortOrder !== right.sortOrder) {
+      return left.sortOrder - right.sortOrder;
+    }
+
+    return left.createdAt.getTime() - right.createdAt.getTime();
+  });
+}
+
+function resolveBundleAllocations(product: CheckoutProductRecord, quantity: number) {
+  const allocations: InventoryAllocationSummary[] = [];
+
+  for (const component of sortBundleComponents(product.bundleComponents)) {
+    const componentProduct = component.componentProduct;
+    const componentVariant = component.componentVariant ?? selectDefaultVariant(componentProduct.variants);
+
+    if (!componentVariant || componentVariant.status !== "active") {
+      throw new BadRequestException(`El bundle ${product.slug} depende de un componente sin variante activa.`);
+    }
+
+    allocations.push({
+      variantId: componentVariant.id,
+      sku: componentVariant.sku,
+      name: componentVariant.name,
+      quantity: component.quantity * quantity
+    });
+  }
+
+  return allocations;
+}
+
 function mapVariant(variant: ProductVariant): ProductVariantSummary {
   return {
     id: variant.id,
@@ -175,6 +254,26 @@ function mapImage(image: ProductImage): ProductImageSummary {
     sortOrder: image.sortOrder,
     isPrimary: image.isPrimary,
     variantId: image.variantId ?? undefined
+  };
+}
+
+function mapBundleComponent(component: ProductBundleComponent & {
+  componentProduct: ComponentProductRecord;
+  componentVariant?: ProductVariant | null;
+}): ProductBundleComponentSummary {
+  const resolvedVariant = component.componentVariant ?? selectDefaultVariant(component.componentProduct.variants);
+
+  return {
+    id: component.id,
+    productId: component.componentProductId,
+    variantId: resolvedVariant?.id,
+    quantity: component.quantity,
+    sortOrder: component.sortOrder,
+    productName: component.componentProduct.name,
+    productSlug: component.componentProduct.slug,
+    productSku: resolvedVariant?.sku ?? "SIN-SKU",
+    variantName: resolvedVariant?.name,
+    variantSku: resolvedVariant?.sku
   };
 }
 
@@ -215,7 +314,17 @@ export class ProductsService {
       include: {
         category: true,
         variants: true,
-        images: true
+        images: true,
+        bundleComponents: {
+          include: {
+            componentProduct: {
+              include: {
+                variants: true
+              }
+            },
+            componentVariant: true
+          }
+        }
       },
       orderBy: [{ isFeatured: "desc" }, { updatedAt: "desc" }]
     });
@@ -233,7 +342,17 @@ export class ProductsService {
       include: {
         category: true,
         variants: true,
-        images: true
+        images: true,
+        bundleComponents: {
+          include: {
+            componentProduct: {
+              include: {
+                variants: true
+              }
+            },
+            componentVariant: true
+          }
+        }
       }
     });
 
@@ -258,13 +377,24 @@ export class ProductsService {
         });
 
         await this.syncVariants(tx, created.id, input.variants, []);
+        await this.syncBundleComponents(tx, created.id, input.bundleComponents);
 
         return tx.product.findUniqueOrThrow({
           where: { id: created.id },
           include: {
             category: true,
             variants: true,
-            images: true
+            images: true,
+            bundleComponents: {
+              include: {
+                componentProduct: {
+                  include: {
+                    variants: true
+                  }
+                },
+                componentVariant: true
+              }
+            }
           }
         });
       });
@@ -308,13 +438,24 @@ export class ProductsService {
         });
 
         await this.syncVariants(tx, id, input.variants, existing.variants);
+        await this.syncBundleComponents(tx, id, input.bundleComponents);
 
         return tx.product.findUniqueOrThrow({
           where: { id },
           include: {
             category: true,
             variants: true,
-            images: true
+            images: true,
+            bundleComponents: {
+              include: {
+                componentProduct: {
+                  include: {
+                    variants: true
+                  }
+                },
+                componentVariant: true
+              }
+            }
           }
         });
       });
@@ -485,29 +626,30 @@ export class ProductsService {
       include: {
         category: true,
         variants: true,
-        images: true
+        images: true,
+        bundleComponents: {
+          include: {
+            componentProduct: {
+              include: {
+                category: true,
+                variants: true,
+                images: true
+              }
+            },
+            componentVariant: true
+          },
+          orderBy: [{ sortOrder: "asc" }]
+        }
       }
     });
 
-    const productMap = new Map<string, CheckoutProductLookup>();
+    const productMap = new Map<string, CheckoutProductRecord>();
     for (const record of records) {
       if (record.status !== "active") {
         continue;
       }
 
-      const defaultVariant = selectDefaultVariant(record.variants);
-      if (!defaultVariant || defaultVariant.status !== "active") {
-        continue;
-      }
-
-      productMap.set(record.slug, {
-        slug: record.slug,
-        name: record.name,
-        sku: defaultVariant.sku,
-        price: Number(defaultVariant.price),
-        categorySlug: record.category?.slug ?? "productos",
-        imageUrl: sortImages(record.images)[0]?.url
-      });
+      productMap.set(record.slug, record as CheckoutProductRecord);
     }
 
     const resolvedItems = items.map((item) => {
@@ -516,21 +658,46 @@ export class ProductsService {
         throw new NotFoundException(`Producto no encontrado: ${item.slug}`);
       }
 
-      const quantity = Number(item.quantity);
+      const requestedVariantId = normalizeVariantId(item.variantId);
+      const variant =
+        requestedVariantId == null
+          ? selectDefaultVariant(product.variants)
+          : product.variants.find((candidate) => candidate.id === requestedVariantId);
+
+      if (!variant || variant.status !== "active") {
+        throw new BadRequestException(`La variante indicada para ${item.slug} no está disponible.`);
+      }
+
+      const quantity = Math.trunc(Number(item.quantity));
       if (!Number.isFinite(quantity) || quantity <= 0) {
         throw new BadRequestException(`Cantidad inválida para ${item.slug}.`);
       }
 
-      const lineTotal = Math.round(product.price * quantity * 100) / 100;
+      const inventoryAllocations =
+        product.bundleComponents.length > 0
+          ? resolveBundleAllocations(product, quantity)
+          : [
+              {
+                variantId: variant.id,
+                sku: variant.sku,
+                name: variant.name,
+                quantity
+              }
+            ];
+
+      const unitPrice = Number(variant.price);
+      const lineTotal = Math.round(unitPrice * quantity * 100) / 100;
 
       return {
         slug: product.slug,
         name: product.name,
-        sku: product.sku,
+        sku: variant.sku,
+        variantId: variant.id,
         quantity,
-        unitPrice: product.price,
+        unitPrice,
         lineTotal,
-        imageUrl: product.imageUrl
+        imageUrl: sortImages(product.images)[0]?.url,
+        inventoryAllocations
       } satisfies CheckoutQuoteItemSummary;
     });
 
@@ -633,6 +800,10 @@ export class ProductsService {
       throw new BadRequestException("Debes registrar al menos una variante.");
     }
 
+    if (!Array.isArray(body.bundleComponents)) {
+      throw new BadRequestException("Los componentes del bundle deben enviarse como una lista.");
+    }
+
     const categoryId = normalizeText(body.categoryId);
     if (categoryId) {
       const category = await this.prisma.category.findUnique({
@@ -669,6 +840,28 @@ export class ProductsService {
       };
     });
 
+    const bundleComponentsInput = body.bundleComponents.map((component, index) => {
+      const componentProductId = normalizeText(component.productId);
+      if (!componentProductId) {
+        throw new BadRequestException(`El componente ${index + 1} necesita un producto base.`);
+      }
+
+      if (productId && componentProductId === productId) {
+        throw new BadRequestException("El bundle no puede incluir el producto principal como componente.");
+      }
+
+      const quantity = Math.trunc(coerceNumber(component.quantity, `quantity:${componentProductId}`));
+      if (quantity <= 0) {
+        throw new BadRequestException(`La cantidad del componente ${componentProductId} debe ser mayor a cero.`);
+      }
+
+      return {
+        productId: componentProductId,
+        variantId: normalizeText(component.variantId),
+        quantity
+      };
+    });
+
     const duplicateSku = variants.find(
       (variant, index) => variants.findIndex((candidate) => candidate.sku === variant.sku) !== index
     );
@@ -676,6 +869,58 @@ export class ProductsService {
     if (duplicateSku) {
       throw new BadRequestException(`SKU duplicado en la misma solicitud: ${duplicateSku.sku}.`);
     }
+
+    const duplicateBundleComponent = bundleComponentsInput.find(
+      (component, index) =>
+        bundleComponentsInput.findIndex(
+          (candidate) =>
+            candidate.productId === component.productId && candidate.variantId === component.variantId
+        ) !== index
+    );
+
+    if (duplicateBundleComponent) {
+      throw new BadRequestException(
+        `El componente ${duplicateBundleComponent.productId} está repetido en el bundle.`
+      );
+    }
+
+    const componentProductIds = Array.from(
+      new Set(bundleComponentsInput.map((component) => component.productId))
+    );
+    const componentProducts = await this.prisma.product.findMany({
+      where: {
+        id: {
+          in: componentProductIds
+        }
+      },
+      include: {
+        variants: true
+      }
+    });
+    const componentProductMap = new Map(componentProducts.map((record) => [record.id, record]));
+
+    const bundleComponents = bundleComponentsInput.map((component) => {
+      const record = componentProductMap.get(component.productId);
+      if (!record) {
+        throw new BadRequestException(`No existe el producto componente ${component.productId}.`);
+      }
+
+      const resolvedVariant = component.variantId
+        ? record.variants.find((variant) => variant.id === component.variantId)
+        : selectDefaultVariant(record.variants);
+
+      if (!resolvedVariant) {
+        throw new BadRequestException(
+          `El producto componente ${record.slug} no tiene variantes disponibles.`
+        );
+      }
+
+      return {
+        productId: record.id,
+        variantId: resolvedVariant.id,
+        quantity: component.quantity
+      };
+    });
 
     const existingSlug = await this.prisma.product.findUnique({
       where: { slug }
@@ -703,7 +948,8 @@ export class ProductsService {
       longDescription: normalizeText(body.longDescription),
       status: body.status,
       isFeatured: Boolean(body.isFeatured),
-      variants
+      variants,
+      bundleComponents
     };
   }
 
@@ -749,7 +995,31 @@ export class ProductsService {
     }
   }
 
-  private mapAdminSummary(product: ProductRecord): ProductAdminSummary {
+  private async syncBundleComponents(
+    tx: Prisma.TransactionClient,
+    productId: string,
+    bundleComponents: Awaited<ReturnType<ProductsService["normalizeUpsertInput"]>>["bundleComponents"]
+  ) {
+    await tx.productBundleComponent.deleteMany({
+      where: { productId }
+    });
+
+    if (!bundleComponents.length) {
+      return;
+    }
+
+    await tx.productBundleComponent.createMany({
+      data: bundleComponents.map((component, index) => ({
+        productId,
+        componentProductId: component.productId,
+        componentVariantId: component.variantId,
+        quantity: component.quantity,
+        sortOrder: index
+      }))
+    });
+  }
+
+  private mapAdminSummary(product: AdminProductRecord): ProductAdminSummary {
     const defaultVariant = selectDefaultVariant(product.variants);
     const primaryImage = sortImages(product.images)[0];
 
@@ -766,22 +1036,24 @@ export class ProductsService {
       price: defaultVariant ? Number(defaultVariant.price) : 0,
       compareAtPrice: defaultVariant ? toNumber(defaultVariant.compareAtPrice) : undefined,
       sku: defaultVariant?.sku ?? "SIN-SKU",
+      defaultVariantId: defaultVariant?.id,
       currencyCode: CATALOG_CURRENCY_CODE,
       primaryImageUrl: primaryImage?.url,
       updatedAt: product.updatedAt.toISOString()
     };
   }
 
-  private mapAdminDetail(product: ProductRecord): ProductAdminDetail {
+  private mapAdminDetail(product: AdminProductRecord): ProductAdminDetail {
     return {
       ...this.mapAdminSummary(product),
       longDescription: product.longDescription ?? undefined,
       variants: product.variants.map(mapVariant),
+      bundleComponents: sortBundleComponents(product.bundleComponents).map(mapBundleComponent),
       images: sortImages(product.images).map(mapImage)
     };
   }
 
-  private mapCatalogProduct(product: ProductRecord): CatalogProduct | null {
+  private mapCatalogProduct(product: CatalogProductRecord): CatalogProduct | null {
     const variant = selectDefaultVariant(product.variants);
     if (!variant) {
       return null;

@@ -106,9 +106,15 @@ async function main() {
       categorySlug: "bundles",
       sku: "HG-CDP-001",
       price: new Prisma.Decimal(449),
-      compareAtPrice: new Prisma.Decimal(549)
+      compareAtPrice: new Prisma.Decimal(549),
+      bundleComponents: [
+        { productSlug: "clasico-verde", quantity: 1 },
+        { productSlug: "premium-negro", quantity: 1 }
+      ]
     }
   ];
+
+  const seededProducts = new Map<string, { id: string }>();
 
   for (const product of products) {
     const category = await prisma.category.findUnique({
@@ -159,6 +165,55 @@ async function main() {
         stockOnHand: 120,
         status: "active"
       }
+    });
+
+    seededProducts.set(product.slug, { id: record.id });
+  }
+
+  for (const product of products) {
+    const bundleComponents = product.bundleComponents ?? [];
+    if (!bundleComponents.length) {
+      continue;
+    }
+
+    const bundleProduct = seededProducts.get(product.slug);
+    if (!bundleProduct) {
+      continue;
+    }
+
+    await prisma.productBundleComponent.deleteMany({
+      where: { productId: bundleProduct.id }
+    });
+
+    await prisma.productBundleComponent.createMany({
+      data: await Promise.all(
+        bundleComponents.map(async (component, index) => {
+          const componentProduct = await prisma.product.findUnique({
+            where: { slug: component.productSlug }
+          });
+
+          if (!componentProduct) {
+            throw new Error(`No existe el producto componente ${component.productSlug}.`);
+          }
+
+          const componentVariant = await prisma.productVariant.findFirst({
+            where: { productId: componentProduct.id },
+            orderBy: [{ status: "asc" }, { createdAt: "asc" }]
+          });
+
+          if (!componentVariant) {
+            throw new Error(`No existe una variante para el componente ${component.productSlug}.`);
+          }
+
+          return {
+            productId: bundleProduct.id,
+            componentProductId: componentProduct.id,
+            componentVariantId: componentVariant.id,
+            quantity: component.quantity,
+            sortOrder: index
+          };
+        })
+      )
     });
   }
 
