@@ -181,6 +181,13 @@ function PricingCard({
       >
         {style.cta}
       </Link>
+
+      <Link
+        href={`/producto/${product.slug}`}
+        className="mt-3 block text-center text-xs font-semibold uppercase tracking-[0.22em] text-[#2d6a4f] transition hover:text-[#1a3a2e]"
+      >
+        Ver detalle
+      </Link>
     </div>
   );
 }

@@ -20,6 +20,19 @@ function toneFrame(tone?: CatalogProduct["tone"]) {
   return "from-[#e5eedb] via-[#f6f7f1] to-[#dce4d1]";
 }
 
+function formatPrice(value: number, currencyCode = "PEN") {
+  try {
+    return new Intl.NumberFormat("es-PE", {
+      style: "currency",
+      currency: currencyCode,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value);
+  } catch {
+    return `S/ ${value.toFixed(2)}`;
+  }
+}
+
 export function EditorialMedia({
   src,
   alt,
@@ -62,6 +75,12 @@ export function EditorialProductGrid({ products }: { products: CatalogProduct[] 
     <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
       {products.map((product) => {
         const art = productArtBySlug[product.slug] ?? brandArt.hero;
+        const currencyCode = product.currencyCode ?? "PEN";
+        const price = formatPrice(product.price, currencyCode);
+        const compareAtPrice =
+          product.compareAtPrice && product.compareAtPrice > product.price
+            ? formatPrice(product.compareAtPrice, currencyCode)
+            : null;
 
         return (
           <Card
@@ -94,9 +113,9 @@ export function EditorialProductGrid({ products }: { products: CatalogProduct[] 
                     <CardDescription className="text-sm leading-6 text-black/56">{product.tagline}</CardDescription>
                   </div>
                   <div className="text-right text-[#132016]">
-                    <div className="text-[1.8rem] font-semibold tracking-[-0.04em]">${product.price}</div>
-                    {product.compareAtPrice ? (
-                      <div className="text-sm text-black/35 line-through">${product.compareAtPrice}</div>
+                    <div className="text-[1.8rem] font-semibold tracking-[-0.04em]">{price}</div>
+                    {compareAtPrice ? (
+                      <div className="text-sm text-black/35 line-through">{compareAtPrice}</div>
                     ) : null}
                   </div>
                 </div>

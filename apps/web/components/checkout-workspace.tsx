@@ -197,10 +197,17 @@ export function CheckoutWorkspace() {
     }
 
     const preferredSlug = searchParams.get("producto");
+    const preferredVariantId = searchParams.get("variantId") ?? searchParams.get("variante");
     const fallbackSlug = preferredSlug && products.some((product) => product.slug === preferredSlug) ? preferredSlug : firstCatalogSlug;
 
     if (fallbackSlug) {
-      setItems([{ slug: fallbackSlug, quantity: 1 }]);
+      setItems([
+        {
+          slug: fallbackSlug,
+          quantity: 1,
+          variantId: preferredVariantId?.trim() || undefined
+        }
+      ]);
     }
   }, [firstCatalogSlug, items.length, products, searchParams]);
 

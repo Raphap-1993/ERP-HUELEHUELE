@@ -617,7 +617,7 @@ export class ProductsService {
       return null;
     }
 
-    return this.mapCatalogProduct(product);
+    return this.mapCatalogProductDetail(product);
   }
 
   async resolveCheckoutItems(items: CheckoutItemInput[]) {
@@ -726,7 +726,7 @@ export class ProductsService {
     });
 
     return products
-      .map((product) => this.mapCatalogProduct(product))
+      .map((product) => this.mapCatalogProductSummary(product))
       .filter((product): product is CatalogProduct => Boolean(product))
       .filter((product) => {
         if (query.featuredOnly && !product.badge) {
@@ -1057,7 +1057,7 @@ export class ProductsService {
     };
   }
 
-  private mapCatalogProduct(product: CatalogProductRecord): CatalogProduct | null {
+  private mapCatalogProductSummary(product: CatalogProductRecord): CatalogProduct | null {
     const variant = selectDefaultVariant(product.variants);
     if (!variant) {
       return null;
@@ -1086,6 +1086,42 @@ export class ProductsService {
       sku: variant.sku,
       imageUrl: primaryImage?.url,
       imageAlt: primaryImage?.altText ?? `${product.name} - imagen del producto`
+    };
+  }
+
+  private mapCatalogProductDetail(product: CatalogProductRecord): CatalogProduct | null {
+    const summary = this.mapCatalogProductSummary(product);
+    if (!summary) {
+      return null;
+    }
+
+    const variants = product.variants
+      .slice()
+      .sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime())
+      .map((variant) => ({
+        id: variant.id,
+        sku: variant.sku,
+        name: variant.name,
+        price: Number(variant.price),
+        compareAtPrice: toNumber(variant.compareAtPrice),
+        status: variant.status
+      }));
+
+    const images = sortImages(product.images).map((image) => ({
+      id: image.id,
+      url: image.url,
+      altText: image.altText ?? undefined,
+      sortOrder: image.sortOrder,
+      isPrimary: image.isPrimary,
+      variantId: image.variantId ?? undefined
+    }));
+
+    return {
+      ...summary,
+      defaultVariantId: summary.defaultVariantId ?? selectDefaultVariant(product.variants)?.id,
+      currencyCode: CATALOG_CURRENCY_CODE,
+      variants,
+      images
     };
   }
 

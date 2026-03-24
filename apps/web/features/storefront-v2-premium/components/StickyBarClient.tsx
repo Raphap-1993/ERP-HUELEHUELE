@@ -2,15 +2,53 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { fetchCatalogSummary } from "../../../lib/api";
+
+function formatPrice(value: number, currencyCode: string) {
+  try {
+    return new Intl.NumberFormat("es-PE", {
+      style: "currency",
+      currency: currencyCode,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value);
+  } catch {
+    return `S/ ${value.toFixed(2)}`;
+  }
+}
 
 export function StickyBarClient() {
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [comboPriceLabel, setComboPriceLabel] = useState<string | null>(null);
 
   useEffect(() => {
     const handler = () => setVisible(window.scrollY > 600);
     window.addEventListener("scroll", handler, { passive: true });
     return () => window.removeEventListener("scroll", handler);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function loadPrice() {
+      try {
+        const response = await fetchCatalogSummary();
+        const currencyCode = response.data.currencyCode || "PEN";
+        const combo = (response.data.products ?? []).find((product) => product.slug === "combo-duo-perfecto");
+        if (active && combo) {
+          setComboPriceLabel(formatPrice(combo.price, currencyCode));
+        }
+      } catch {
+        if (active) {
+          setComboPriceLabel(null);
+        }
+      }
+    }
+
+    void loadPrice();
+    return () => {
+      active = false;
+    };
   }, []);
 
   if (dismissed) return null;
@@ -24,7 +62,7 @@ export function StickyBarClient() {
     >
       <p className="text-sm font-medium text-white/90">
         <strong className="text-white">🔥 Oferta limitada:</strong> Combo Dúo Perfecto (Verde + Negro) a solo{" "}
-        <strong className="text-white">S/ 79.90</strong> — Envío rápido a todo el Perú
+        <strong className="text-white">{comboPriceLabel ?? "S/ 79.90"}</strong> — Envío rápido a todo el Perú
       </p>
       <div className="flex flex-shrink-0 items-center gap-2">
         <Link

@@ -71,6 +71,7 @@ export interface CatalogProduct {
     isPrimary: boolean;
     variantId?: string;
   }[];
+  bundleComponents?: BundleComponentSummary[];
 }
 
 export interface BundleComponentInput {

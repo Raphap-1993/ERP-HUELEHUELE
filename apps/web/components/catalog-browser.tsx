@@ -232,7 +232,9 @@ export function CatalogBrowser() {
                   <div className="flex flex-col justify-between bg-white p-6">
                     <div>
                       <h3 className="mb-2 font-serif text-xl font-black leading-snug text-[#1a3a2e]">
-                        {product.name}
+                        <Link href={`/producto/${product.slug}`} className="hover:underline">
+                          {product.name}
+                        </Link>
                       </h3>
                       <p className="mb-4 text-sm leading-6 text-[#6b7280]">
                         {style.desc || product.description}
@@ -268,6 +270,15 @@ export function CatalogBrowser() {
                         {style.btnLabel}
                       </Link>
                     </div>
+
+                    <div className="mt-3">
+                      <Link
+                        href={`/producto/${product.slug}`}
+                        className="text-xs font-semibold uppercase tracking-[0.22em] text-[#2d6a4f] transition hover:text-[#1a3a2e]"
+                      >
+                        Ver detalle
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -298,7 +309,9 @@ export function CatalogBrowser() {
 
                 <div className="flex flex-1 flex-col p-5">
                   <h3 className="mb-2 font-serif text-lg font-black leading-snug text-[#1a3a2e]">
-                    {product.name}
+                    <Link href={`/producto/${product.slug}`} className="hover:underline">
+                      {product.name}
+                    </Link>
                   </h3>
                   <p className="mb-4 flex-1 text-sm leading-6 text-[#6b7280]">
                     {style.desc || product.description}
@@ -331,6 +344,15 @@ export function CatalogBrowser() {
                       className={`rounded-full px-4 py-2.5 text-sm font-semibold text-white transition ${style.btnClass}`}
                     >
                       {style.btnLabel}
+                    </Link>
+                  </div>
+
+                  <div className="mt-3">
+                    <Link
+                      href={`/producto/${product.slug}`}
+                      className="text-xs font-semibold uppercase tracking-[0.22em] text-[#2d6a4f] transition hover:text-[#1a3a2e]"
+                    >
+                      Ver detalle
                     </Link>
                   </div>
                 </div>

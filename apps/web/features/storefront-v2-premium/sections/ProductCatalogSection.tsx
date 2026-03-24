@@ -16,6 +16,19 @@ function highlightBySlug(highlights: PremiumProductHighlight[], slug: string) {
   return highlights.find((item) => item.slug === slug);
 }
 
+function formatPrice(value: number, currencyCode = "PEN") {
+  try {
+    return new Intl.NumberFormat("es-PE", {
+      style: "currency",
+      currency: currencyCode,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value);
+  } catch {
+    return `S/ ${value.toFixed(2)}`;
+  }
+}
+
 export function ProductCatalogSection({
   products,
   highlights
@@ -66,8 +79,14 @@ export function ProductCatalogSection({
                       <h3 className="text-[2.25rem] font-semibold tracking-[-0.04em] text-[#162117] md:text-[2.8rem]">{classicGreen.name}</h3>
                     </div>
                     <div className="text-right text-[#162117]">
-                      <div className="text-[2.35rem] font-semibold tracking-tight">${classicGreen.price}</div>
-                      {classicGreen.compareAtPrice ? <div className="text-sm text-black/34 line-through">${classicGreen.compareAtPrice}</div> : null}
+                      <div className="text-[2.35rem] font-semibold tracking-tight">
+                        {formatPrice(classicGreen.price, classicGreen.currencyCode ?? "PEN")}
+                      </div>
+                      {classicGreen.compareAtPrice ? (
+                        <div className="text-sm text-black/34 line-through">
+                          {formatPrice(classicGreen.compareAtPrice, classicGreen.currencyCode ?? "PEN")}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
 
@@ -88,7 +107,15 @@ export function ProductCatalogSection({
 
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="text-sm leading-6 text-black/48">Clásico Verde como entrada limpia a la marca.</p>
-                  <Button href={`/checkout?producto=${classicGreen.slug}`}>Comprar</Button>
+                  <div className="flex items-center gap-3">
+                    <a
+                      href={`/producto/${classicGreen.slug}`}
+                      className="text-xs font-semibold uppercase tracking-[0.22em] text-[#2d6a4f] hover:text-[#162117]"
+                    >
+                      Ver detalle
+                    </a>
+                    <Button href={`/checkout?producto=${classicGreen.slug}`}>Comprar</Button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -132,8 +159,14 @@ export function ProductCatalogSection({
                           <h3 className="text-[1.8rem] font-semibold tracking-[-0.04em] text-[#162117]">{product.name}</h3>
                         </div>
                         <div className="text-right text-[#162117]">
-                          <div className="text-[1.95rem] font-semibold tracking-tight">${product.price}</div>
-                          {product.compareAtPrice ? <div className="text-sm text-black/34 line-through">${product.compareAtPrice}</div> : null}
+                          <div className="text-[1.95rem] font-semibold tracking-tight">
+                            {formatPrice(product.price, product.currencyCode ?? "PEN")}
+                          </div>
+                          {product.compareAtPrice ? (
+                            <div className="text-sm text-black/34 line-through">
+                              {formatPrice(product.compareAtPrice, product.currencyCode ?? "PEN")}
+                            </div>
+                          ) : null}
                         </div>
                       </div>
 
@@ -154,7 +187,15 @@ export function ProductCatalogSection({
 
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <p className="text-sm leading-6 text-black/48">Compra directa desde la referencia que ya tienes en mente.</p>
-                        <Button href={`/checkout?producto=${product.slug}`}>Comprar</Button>
+                        <div className="flex items-center gap-3">
+                          <a
+                            href={`/producto/${product.slug}`}
+                            className="text-xs font-semibold uppercase tracking-[0.22em] text-[#2d6a4f] hover:text-[#162117]"
+                          >
+                            Ver detalle
+                          </a>
+                          <Button href={`/checkout?producto=${product.slug}`}>Comprar</Button>
+                        </div>
                       </div>
                     </div>
                   </div>
