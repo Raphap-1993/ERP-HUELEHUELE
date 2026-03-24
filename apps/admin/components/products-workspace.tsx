@@ -33,6 +33,7 @@ import type {
   ProductStatusValue,
   ProductUpsertInput,
   ProductVariantInput,
+  ProductVariantSummary,
   ProductVariantStatusValue
 } from "@huelegood/shared";
 import {
@@ -172,6 +173,19 @@ function createBundleComponentDraft(seed?: Partial<BundleComponentDraft>): Bundl
     variantId: seed?.variantId ?? "",
     quantity: seed?.quantity ?? "1"
   };
+}
+
+function bundleVariantLabel(variant: ProductVariantSummary) {
+  return `${variant.name} · ${variant.sku}`;
+}
+
+function getActiveBundleVariants(product?: ProductAdminDetail | null) {
+  return product?.variants.filter((variant) => variant.status === "active") ?? [];
+}
+
+function getPreferredBundleVariantId(product?: ProductAdminDetail | null) {
+  const activeVariants = getActiveBundleVariants(product);
+  return activeVariants.length === 1 ? activeVariants[0]?.id ?? "" : "";
 }
 
 function createEmptyForm(): ProductFormState {
@@ -337,6 +351,9 @@ function createInitialImageForm(): {
 export function ProductsWorkspace() {
   const [products, setProducts] = useState<ProductAdminSummary[]>([]);
   const [categories, setCategories] = useState<ProductCategorySummary[]>([]);
+  const [bundleComponentProducts, setBundleComponentProducts] = useState<Record<string, ProductAdminDetail>>({});
+  const [bundleComponentProductLoading, setBundleComponentProductLoading] = useState<Record<string, boolean>>({});
+  const [bundleComponentProductErrors, setBundleComponentProductErrors] = useState<Record<string, string>>({});
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<ProductAdminDetail | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -536,6 +553,112 @@ export function ProductsWorkspace() {
     status: variant.status
   }));
 
+  useEffect(() => {
+    const productIds = Array.from(
+      new Set(
+        form.bundleComponents
+          .map((component) => component.productId.trim())
+          .filter(Boolean)
+      )
+    );
+    const missingProductIds = productIds.filter(
+      (productId) =>
+        !bundleComponentProducts[productId] &&
+        !bundleComponentProductLoading[productId] &&
+        !bundleComponentProductErrors[productId]
+    );
+
+    if (!missingProductIds.length) {
+      return;
+    }
+
+    let active = true;
+
+    missingProductIds.forEach((productId) => {
+      setBundleComponentProductLoading((current) =>
+        current[productId] ? current : { ...current, [productId]: true }
+      );
+
+      void fetchAdminProduct(productId)
+        .then((response) => {
+          if (!active) {
+            return;
+          }
+
+          setBundleComponentProductErrors((current) => {
+            if (!current[productId]) {
+              return current;
+            }
+
+            const next = { ...current };
+            delete next[productId];
+            return next;
+          });
+          setBundleComponentProducts((current) => ({ ...current, [productId]: response.data }));
+        })
+        .catch((fetchError) => {
+          if (!active) {
+            return;
+          }
+
+          setBundleComponentProductErrors((current) => ({
+            ...current,
+            [productId]: fetchError instanceof Error ? fetchError.message : "No pudimos cargar las variantes."
+          }));
+        })
+        .finally(() => {
+          if (!active) {
+            return;
+          }
+
+          setBundleComponentProductLoading((current) => {
+            if (!current[productId]) {
+              return current;
+            }
+
+            const next = { ...current };
+            delete next[productId];
+            return next;
+          });
+        });
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [bundleComponentProductLoading, bundleComponentProducts, form.bundleComponents]);
+
+  useEffect(() => {
+    setForm((current) => {
+      let changed = false;
+
+      const nextBundleComponents = current.bundleComponents.map((component) => {
+        const productId = component.productId.trim();
+        if (!productId) {
+          return component;
+        }
+
+        const product = bundleComponentProducts[productId];
+        if (!product) {
+          return component;
+        }
+
+        const preferredVariantId = getPreferredBundleVariantId(product);
+        if (preferredVariantId && component.variantId !== preferredVariantId) {
+          changed = true;
+          return {
+            ...component,
+            variantId: preferredVariantId
+          };
+        }
+
+        return component;
+      });
+
+      return changed ? { ...current, bundleComponents: nextBundleComponents } : current;
+    });
+  }, [bundleComponentProducts]);
+
   function resetToCreate() {
     setIsCreating(true);
     setSelectedProductId(null);
@@ -611,13 +734,16 @@ export function ProductsWorkspace() {
   }
 
   function handleAddBundleComponent() {
+    const defaultProductId = componentProductOptions[0]?.id ?? "";
+    const defaultProduct = defaultProductId ? bundleComponentProducts[defaultProductId] ?? null : null;
+
     setForm((current) => ({
       ...current,
       bundleComponents: [
         ...current.bundleComponents,
         createBundleComponentDraft({
-          productId: componentProductOptions[0]?.id ?? "",
-          variantId: componentProductOptions[0]?.defaultVariantId ?? ""
+          productId: defaultProductId,
+          variantId: getPreferredBundleVariantId(defaultProduct)
         })
       ]
     }));
@@ -648,7 +774,16 @@ export function ProductsWorkspace() {
   }
 
   function handleBundleComponentProductChange(index: number, productId: string) {
-    const product = productById.get(productId);
+    const product = bundleComponentProducts[productId] ?? null;
+    setBundleComponentProductErrors((current) => {
+      if (!current[productId]) {
+        return current;
+      }
+
+      const next = { ...current };
+      delete next[productId];
+      return next;
+    });
     setForm((current) => ({
       ...current,
       bundleComponents: current.bundleComponents.map((component, currentIndex) =>
@@ -656,7 +791,7 @@ export function ProductsWorkspace() {
           ? {
               ...component,
               productId,
-              variantId: product?.defaultVariantId || ""
+              variantId: getPreferredBundleVariantId(product)
             }
           : component
       )
@@ -1121,7 +1256,7 @@ export function ProductsWorkspace() {
                     <div>
                       <div className="font-semibold text-[#132016]">Componentes del bundle</div>
                       <div className="text-sm text-black/55">
-                        Úsalo para combos. Si dejas la variante vacía, se resolverá la principal del producto.
+                        Úsalo para combos. La variante se elige por nombre y SKU, y se autoselecciona cuando hay una sola activa.
                       </div>
                     </div>
                     <Button type="button" variant="secondary" size="sm" onClick={handleAddBundleComponent}>
@@ -1132,6 +1267,13 @@ export function ProductsWorkspace() {
                   <div className="space-y-4">
                     {form.bundleComponents.map((component, index) => {
                       const selectedComponentProduct = productById.get(component.productId) ?? null;
+                      const selectedComponentProductDetail = component.productId
+                        ? bundleComponentProducts[component.productId] ?? null
+                        : null;
+                      const activeComponentVariants = getActiveBundleVariants(selectedComponentProductDetail);
+                      const selectedComponentVariant = selectedComponentProductDetail?.variants.find(
+                        (variant) => variant.id === component.variantId
+                      );
 
                       return (
                         <div
@@ -1173,15 +1315,55 @@ export function ProductsWorkspace() {
                             </label>
 
                             <label className="space-y-1.5">
-                              <span className="text-sm font-medium text-[#132016]">Variante ID</span>
-                              <Input
-                                value={component.variantId}
-                                onChange={(event) => updateBundleComponent(index, "variantId", event.target.value)}
-                                placeholder={selectedComponentProduct?.defaultVariantId ?? "Opcional"}
-                              />
-                              <p className="text-xs text-black/45">
-                                Si lo dejas vacío, el backend usará la variante principal disponible.
-                              </p>
+                              <span className="text-sm font-medium text-[#132016]">Variante</span>
+                              {selectedComponentProduct ? (
+                                bundleComponentProductErrors[component.productId] ? (
+                                  <div className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-black/55">
+                                    No pudimos cargar las variantes de este producto.
+                                  </div>
+                                ) : selectedComponentProductDetail ? (
+                                  activeComponentVariants.length === 1 ? (
+                                    <div className="rounded-2xl border border-black/10 bg-white px-4 py-3">
+                                      <div className="flex items-center gap-2">
+                                        <Badge tone="success">Variante activa</Badge>
+                                        <span className="text-sm font-medium text-[#132016]">
+                                          {selectedComponentVariant
+                                            ? bundleVariantLabel(selectedComponentVariant)
+                                            : bundleVariantLabel(activeComponentVariants[0])}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ) : activeComponentVariants.length > 1 ? (
+                                    <select
+                                      value={component.variantId}
+                                      onChange={(event) =>
+                                        updateBundleComponent(index, "variantId", event.target.value)
+                                      }
+                                      className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none transition focus:border-black/25"
+                                    >
+                                      <option value="">Selecciona una variante</option>
+                                      {activeComponentVariants.map((variant) => (
+                                        <option key={variant.id} value={variant.id}>
+                                          {bundleVariantLabel(variant)}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    <div className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-black/55">
+                                      Este producto no tiene variantes activas.
+                                    </div>
+                                  )
+                                ) : (
+                                  <div className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-black/55">
+                                    Cargando variantes del producto seleccionado.
+                                  </div>
+                                )
+                              ) : (
+                                <div className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-black/55">
+                                  Selecciona un producto para elegir su variante.
+                                </div>
+                              )}
+                              <p className="text-xs text-black/45">Aquí eliges la variante por nombre y SKU.</p>
                             </label>
 
                             <label className="space-y-1.5">
@@ -1200,9 +1382,17 @@ export function ProductsWorkspace() {
                             {selectedComponentProduct ? (
                               <span>
                                 Seleccionado: {selectedComponentProduct.name}
-                                {selectedComponentProduct.defaultVariantId
-                                  ? ` · Variante principal ${selectedComponentProduct.defaultVariantId}`
-                                  : ""}
+                                {selectedComponentProductDetail ? (
+                                  activeComponentVariants.length === 1 ? (
+                                    ` · ${bundleVariantLabel(activeComponentVariants[0])}`
+                                  ) : activeComponentVariants.length > 1 ? (
+                                    ` · ${activeComponentVariants.length} variantes activas`
+                                  ) : (
+                                    " · Sin variantes activas"
+                                  )
+                                ) : (
+                                  " · Cargando variantes"
+                                )}
                               </span>
                             ) : (
                               <span>Selecciona un producto para resolver automáticamente la variante.</span>
