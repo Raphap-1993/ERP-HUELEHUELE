@@ -12,6 +12,7 @@ import {
 } from "@huelegood/shared";
 import { actionResponse, wrapResponse } from "../../common/response";
 import { CommissionsService } from "../commissions/commissions.service";
+import { CmsService } from "../cms/cms.service";
 import { OrdersService } from "../orders/orders.service";
 import { ProductsService } from "../products/products.service";
 
@@ -28,7 +29,8 @@ export class CommerceService {
   constructor(
     private readonly ordersService: OrdersService,
     private readonly commissionsService: CommissionsService,
-    private readonly productsService: ProductsService
+    private readonly productsService: ProductsService,
+    private readonly cmsService: CmsService
   ) {}
 
   async quote(body: CheckoutQuoteInput) {
@@ -97,7 +99,10 @@ export class CommerceService {
     const couponCode = normalizeCode(body.couponCode);
     const discountRate = this.getDiscountRate(items, vendorCode, couponCode);
     const discount = roundCurrency(Math.min(subtotal * discountRate, subtotal * 0.2));
-    const shipping = subtotal - discount >= 500 ? 0 : 49;
+    const settings = this.cmsService.getSiteSettings().data;
+    const freeShippingThreshold = Number.isFinite(settings.freeShippingThreshold) ? settings.freeShippingThreshold : 500;
+    const shippingFlatRate = Number.isFinite(settings.shippingFlatRate) ? settings.shippingFlatRate : 49;
+    const shipping = subtotal - discount >= freeShippingThreshold ? 0 : roundCurrency(shippingFlatRate);
     const grandTotal = roundCurrency(subtotal - discount + shipping);
     const paymentMethod = body.paymentMethod ?? "openpay";
 

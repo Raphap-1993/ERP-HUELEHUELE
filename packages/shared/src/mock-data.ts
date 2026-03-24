@@ -46,6 +46,8 @@ export const siteSetting: SiteSetting = {
   tagline: "Frescura herbal portátil para acompañarte en tráfico, viajes, oficina y altura.",
   supportEmail: "hola@huelegood.com",
   whatsapp: "+52 000 000 0000",
+  shippingFlatRate: 49,
+  freeShippingThreshold: 500,
   headerLogoUrl: undefined,
   heroProductImageUrl: undefined
 };

@@ -63,6 +63,19 @@ function normalizeOptionalAssetUrl(value?: string) {
   throw new BadRequestException("La imagen debe ser una ruta local o una URL pública válida.");
 }
 
+function normalizeMoneyValue(value: unknown, field: string, fallback: number) {
+  if (value == null || value === "") {
+    return fallback;
+  }
+
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new BadRequestException(`Valor inválido para ${field}.`);
+  }
+
+  return Math.round(parsed * 100) / 100;
+}
+
 function normalizeSlug(value: string) {
   return value
     .trim()
@@ -288,6 +301,12 @@ export class CmsService implements OnModuleInit {
     const tagline = normalizeText(body.tagline);
     const supportEmail = normalizeText(body.supportEmail);
     const whatsapp = normalizeText(body.whatsapp);
+    const shippingFlatRate = normalizeMoneyValue(body.shippingFlatRate, "costo de envío", defaultSiteSetting.shippingFlatRate);
+    const freeShippingThreshold = normalizeMoneyValue(
+      body.freeShippingThreshold,
+      "mínimo para envío gratis",
+      defaultSiteSetting.freeShippingThreshold
+    );
     const headerLogoUrl = normalizeOptionalAssetUrl(body.headerLogoUrl);
     const heroProductImageUrl = normalizeOptionalAssetUrl(body.heroProductImageUrl);
     const loadingImageUrl = normalizeOptionalAssetUrl(body.loadingImageUrl);
@@ -301,6 +320,8 @@ export class CmsService implements OnModuleInit {
       tagline,
       supportEmail,
       whatsapp,
+      shippingFlatRate,
+      freeShippingThreshold,
       headerLogoUrl,
       heroProductImageUrl,
       loadingImageUrl
@@ -309,6 +330,8 @@ export class CmsService implements OnModuleInit {
     this.recordAdminAction("cms.site_settings.updated", "site_setting", "global", "La configuración base del storefront quedó actualizada.", {
       brandName: this.siteSettingData.brandName,
       supportEmail: this.siteSettingData.supportEmail,
+      shippingFlatRate: this.siteSettingData.shippingFlatRate,
+      freeShippingThreshold: this.siteSettingData.freeShippingThreshold,
       hasHeaderLogo: Boolean(this.siteSettingData.headerLogoUrl),
       hasHeroProductImage: Boolean(this.siteSettingData.heroProductImageUrl),
       hasLoadingImage: Boolean(this.siteSettingData.loadingImageUrl)
@@ -818,7 +841,8 @@ export class CmsService implements OnModuleInit {
   }
 
   private restoreSnapshot(snapshot: CmsSnapshotResponse) {
-    this.siteSettingData = { ...snapshot.siteSetting };
+    // Merge with defaults to support older snapshots missing newer site setting fields.
+    this.siteSettingData = { ...defaultSiteSetting, ...snapshot.siteSetting };
     this.heroCopyData = cloneHeroCopy(snapshot.heroCopy);
     this.webNavigationData = cloneNavigation(snapshot.webNavigation);
 

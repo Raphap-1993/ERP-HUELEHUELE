@@ -53,6 +53,24 @@ export interface CatalogProduct {
   sku: string;
   imageUrl?: string;
   imageAlt?: string;
+  defaultVariantId?: string;
+  currencyCode?: string;
+  variants?: {
+    id: string;
+    sku: string;
+    name: string;
+    price: number;
+    compareAtPrice?: number;
+    status: "active" | "inactive" | "out_of_stock";
+  }[];
+  images?: {
+    id: string;
+    url: string;
+    altText?: string;
+    sortOrder: number;
+    isPrimary: boolean;
+    variantId?: string;
+  }[];
 }
 
 export interface BundleComponentInput {
@@ -164,6 +182,8 @@ export interface SiteSetting {
   tagline: string;
   supportEmail: string;
   whatsapp: string;
+  shippingFlatRate: number;
+  freeShippingThreshold: number;
   headerLogoUrl?: string;
   heroProductImageUrl?: string;
   loadingImageUrl?: string;

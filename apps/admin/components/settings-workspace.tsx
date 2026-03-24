@@ -81,6 +81,8 @@ function normalizeSiteSetting(value: SiteSetting): CmsSiteSettingsInput {
     tagline: value.tagline,
     supportEmail: value.supportEmail,
     whatsapp: value.whatsapp,
+    shippingFlatRate: value.shippingFlatRate,
+    freeShippingThreshold: value.freeShippingThreshold,
     headerLogoUrl: value.headerLogoUrl,
     heroProductImageUrl: value.heroProductImageUrl,
     loadingImageUrl: value.loadingImageUrl
@@ -397,6 +399,44 @@ export function SettingsWorkspace() {
                 WhatsApp
               </label>
               <Input id="site-whatsapp" value={siteForm.whatsapp} onChange={(event) => setSiteForm({ ...siteForm, whatsapp: event.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="site-shipping-flat">
+                Envio fijo (S/)
+              </label>
+              <Input
+                id="site-shipping-flat"
+                inputMode="decimal"
+                value={String(siteForm.shippingFlatRate)}
+                onChange={(event) =>
+                  setSiteForm({
+                    ...siteForm,
+                    shippingFlatRate: event.target.value ? Number(event.target.value) : 0
+                  })
+                }
+              />
+              <p className="text-xs leading-5 text-black/55">
+                Monto fijo de envio cuando el pedido no califica a envio gratis.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="site-free-shipping">
+                Envio gratis desde (S/)
+              </label>
+              <Input
+                id="site-free-shipping"
+                inputMode="decimal"
+                value={String(siteForm.freeShippingThreshold)}
+                onChange={(event) =>
+                  setSiteForm({
+                    ...siteForm,
+                    freeShippingThreshold: event.target.value ? Number(event.target.value) : 0
+                  })
+                }
+              />
+              <p className="text-xs leading-5 text-black/55">
+                Subtotal (menos descuentos) minimo para que el envio sea S/ 0.00.
+              </p>
             </div>
             <div className="rounded-[1.5rem] border border-black/8 bg-[#f7f8f4] p-4">
               <p className="text-[11px] uppercase tracking-[0.24em] text-black/40">Vista previa cabecera</p>
