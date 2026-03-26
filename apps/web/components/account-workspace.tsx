@@ -44,7 +44,7 @@ function AccountDetail({
   helper: string;
 }) {
   return (
-    <div className="rounded-[1.35rem] border border-[#d8f3dc] bg-[#f7f8f4] px-4 py-4">
+    <div className="rounded-2xl border border-[#d8f3dc] bg-[#f7f8f4] px-4 py-4">
       <p className="text-[11px] uppercase tracking-[0.24em] text-black/40">{label}</p>
       <p className="mt-3 text-xl font-semibold text-[#1a3a2e]">{value}</p>
       <p className="mt-2 text-sm leading-6 text-black/56">{helper}</p>

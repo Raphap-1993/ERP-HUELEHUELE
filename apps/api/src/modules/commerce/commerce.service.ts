@@ -13,6 +13,7 @@ import {
 import { actionResponse, wrapResponse } from "../../common/response";
 import { CommissionsService } from "../commissions/commissions.service";
 import { CmsService } from "../cms/cms.service";
+import { CouponsService } from "../coupons/coupons.service";
 import { OrdersService } from "../orders/orders.service";
 import { ProductsService } from "../products/products.service";
 
@@ -30,7 +31,8 @@ export class CommerceService {
     private readonly ordersService: OrdersService,
     private readonly commissionsService: CommissionsService,
     private readonly productsService: ProductsService,
-    private readonly cmsService: CmsService
+    private readonly cmsService: CmsService,
+    private readonly couponsService: CouponsService
   ) {}
 
   async quote(body: CheckoutQuoteInput) {
@@ -131,16 +133,8 @@ export class CommerceService {
       rate += 0.05;
     }
 
-    if (couponCode === "RESET10") {
-      rate += 0.1;
-    }
-
-    if (couponCode === "DUPLO15" && items.some((item) => item.slug === "combo-duo-perfecto")) {
-      rate += 0.15;
-    }
-
-    if (couponCode === "WELCOME5") {
-      rate += 0.05;
+    if (couponCode) {
+      rate += this.couponsService.resolveDiscount(items, couponCode);
     }
 
     return Math.min(rate, 0.2);

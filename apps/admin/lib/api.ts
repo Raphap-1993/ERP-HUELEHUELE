@@ -22,6 +22,8 @@ import type {
   CommissionRuleInput,
   CommissionRuleSummary,
   CommissionSummary,
+  CouponInput,
+  CouponSummary,
   LoyaltyMovementSummary,
   LoyaltyPointsInput,
   LoyaltyRedemptionInput,
@@ -173,6 +175,54 @@ export async function fetchDashboardOverview() {
   return requestJson<DashboardOverviewEnvelope>("/admin/dashboard/overview");
 }
 
+export async function fetchAdminReport(from?: string, to?: string) {
+  const params = new URLSearchParams();
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  const query = params.toString();
+  return requestJson<AdminReportEnvelope>(`/admin/reports${query ? `?${query}` : ""}`);
+}
+
+export async function fetchCoupons() {
+  return requestJson<{ data: CouponSummary[]; meta: { total: number } }>("/admin/coupons");
+}
+
+export async function createCoupon(input: CouponInput) {
+  return requestJson<{ data: CouponSummary }>("/admin/coupons", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input)
+  });
+}
+
+export async function updateCoupon(code: string, input: Partial<CouponInput>) {
+  return requestJson<{ data: CouponSummary }>(`/admin/coupons/${encodeURIComponent(code)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input)
+  });
+}
+
+export async function deleteCoupon(code: string) {
+  return requestJson<{ status: string; message: string }>(`/admin/coupons/${encodeURIComponent(code)}`, {
+    method: "DELETE"
+  });
+}
+
+export async function downloadAdminReportCsv(from: string, to: string): Promise<void> {
+  const params = new URLSearchParams({ from, to });
+  const url = `${getApiBaseUrl()}/admin/reports/export?${params.toString()}`;
+  const headers = getSessionHeaders();
+  const res = await fetch(url, { headers });
+  if (!res.ok) throw new Error(`Error al exportar: ${res.status}`);
+  const blob = await res.blob();
+  const anchor = document.createElement("a");
+  anchor.href = URL.createObjectURL(blob);
+  anchor.download = `reporte-${from}-${to}.csv`;
+  anchor.click();
+  URL.revokeObjectURL(anchor.href);
+}
+
 export async function logoutAdmin(token?: string) {
   return requestJson<{ status: string; message: string }>("/auth/logout", {
     method: "POST",
@@ -199,6 +249,12 @@ export async function createBackofficeOrder(body: {
   return requestJson<{ status: string; message: string; orderNumber: string }>("/admin/orders", {
     method: "POST",
     body: JSON.stringify(body)
+  });
+}
+
+export async function deleteOrder(orderNumber: string) {
+  return requestJson<{ status: string; orderNumber: string }>(`/admin/orders/${encodeURIComponent(orderNumber)}`, {
+    method: "DELETE"
   });
 }
 
@@ -786,6 +842,37 @@ export type AdminActionsEnvelope = {
 
 export type SecurityPostureEnvelope = {
   data: import("@huelegood/shared").SecurityPostureSummary;
+  meta?: Record<string, unknown>;
+};
+
+export type AdminReportPeriodData = {
+  period: { from: string; to: string };
+  orders: {
+    total: number;
+    revenue: number;
+    paidRevenue: number;
+    paid: number;
+    pending: number;
+    cancelled: number;
+    conversionRate: number;
+    avgOrderValue: number;
+    byPaymentMethod: Record<string, number>;
+    byStatus: Record<string, number>;
+    byDay: Array<{ date: string; count: number; revenue: number; paid: number }>;
+    recent: AdminOrderSummary[];
+  };
+  commissions: {
+    total: number;
+    totalAmount: number;
+    payable: number;
+    payableAmount: number;
+    paid: number;
+    paidAmount: number;
+  };
+};
+
+export type AdminReportEnvelope = {
+  data: AdminReportPeriodData;
   meta?: Record<string, unknown>;
 };
 

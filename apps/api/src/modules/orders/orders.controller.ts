@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post } from "@nestjs/common";
 import { adminAccessRoles } from "@huelegood/shared";
 import { RequireRoles } from "../auth/auth-rbac";
 import { OrdersService } from "./orders.service";
@@ -30,5 +30,10 @@ export class OrdersController {
   @Get(":orderNumber")
   getOrder(@Param("orderNumber") orderNumber: string) {
     return this.ordersService.getOrder(orderNumber);
+  }
+
+  @Delete(":orderNumber")
+  deleteOrder(@Param("orderNumber") orderNumber: string) {
+    return this.ordersService.deleteOrder(orderNumber);
   }
 }

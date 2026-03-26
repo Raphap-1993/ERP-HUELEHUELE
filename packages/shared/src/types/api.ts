@@ -550,6 +550,26 @@ export interface CommissionRuleInput {
   status?: CommissionRuleSummary["status"];
 }
 
+export interface CouponSummary {
+  code: string;
+  discountType: "percentage" | "fixed";
+  discountValue: number;
+  description: string;
+  conditions?: string;
+  isActive: boolean;
+  usageCount: number;
+  createdAt: string;
+}
+
+export interface CouponInput {
+  code: string;
+  discountType: "percentage" | "fixed";
+  discountValue: number;
+  description: string;
+  conditions?: string;
+  isActive?: boolean;
+}
+
 export interface CatalogCategorySummary {
   id?: string;
   slug: string;

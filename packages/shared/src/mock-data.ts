@@ -88,6 +88,7 @@ export const adminNavigation: AdminNavigationGroup[] = [
     title: "Operaciones",
     items: [
       { label: "Dashboard", href: "/", requiredRoles: adminAccessRoles.dashboard },
+      { label: "Reportes", href: "/reportes", requiredRoles: adminAccessRoles.dashboard },
       { label: "Pedidos", href: "/pedidos", requiredRoles: adminAccessRoles.orders },
       { label: "Pagos", href: "/pagos", requiredRoles: adminAccessRoles.payments }
     ]
@@ -104,6 +105,7 @@ export const adminNavigation: AdminNavigationGroup[] = [
     items: [
       { label: "Vendedores", href: "/vendedores", requiredRoles: adminAccessRoles.vendors },
       { label: "Comisiones", href: "/comisiones", requiredRoles: adminAccessRoles.commissions },
+      { label: "Cupones", href: "/cupones", requiredRoles: adminAccessRoles.coupons },
       { label: "Mayoristas", href: "/mayoristas", requiredRoles: adminAccessRoles.wholesale }
     ]
   },

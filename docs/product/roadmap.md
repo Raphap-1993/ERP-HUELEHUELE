@@ -37,15 +37,20 @@ Al `20 de marzo de 2026`, la base funcional del proyecto ya existe en el reposit
 
 ### Pendiente inmediato
 
+- [x] homologación visual del `panel-vendedor` al lenguaje herbal del storefront
+- [x] reportes de pedidos, pagos y conversión por periodo con gráfico diario (admin)
+- [x] exportación CSV de pedidos del periodo desde admin
+- [x] módulo de cupones administrativo: CRUD, activación/desactivación, condiciones por producto
+- [x] cupones conectados al motor de checkout (reemplaza hardcoded en `CommerceService`)
+- [x] imagen del producto antes que el copy en mobile en la hero section
+- [x] overlay de menú mobile corregido (escapar stacking context de `backdrop-blur-xl`)
 - [ ] frente urgente de catálogo y media administrable antes de seguir ampliando Fase 2
 - [ ] CRUD real de productos desde backoffice conectado a PostgreSQL
 - [ ] conexión de catálogo, home y checkout a productos persistidos en vez de `featuredProducts`
 - [ ] media pública administrable para logo, hero, banners e imágenes de producto
 - [ ] adopción de `Cloudflare R2` para media pública del storefront
-- [ ] homologación visual fina de superficies secundarias al baseline actual (`catalogo`, `checkout`, `cuenta`, `panel-vendedor`, `configuracion`)
 - [ ] automatización de campañas más rica y menos manual
 - [ ] segmentación comercial más profunda
-- [ ] mejores reportes de pedidos, pagos, comisiones y conversión
 - [ ] reglas avanzadas de promociones y compatibilidades
 - [ ] segundo pase UX de nivel final para storefront, checkout, cuenta y backoffice
 
@@ -78,6 +83,12 @@ Mejorar eficiencia operativa, visibilidad comercial y capacidad de crecimiento s
 - [x] dashboards operativos por rol
 - [x] reglas de comisión más flexibles
 - [x] migración base de home/storefront a lenguaje visual `Preline` con la home oficial publicada en `/`
+- [x] seller panel con lenguaje visual herbal y métricas dedicadas
+- [x] dashboards operativos por rol (ejecutivo, pagos, ventas, marketing)
+- [x] reglas de comisión más flexibles con prioridad, bonos y payout neto
+- [x] reportes de pedidos, ingresos y conversión por periodo con CSV export
+- [x] módulo de cupones: CRUD desde admin + condiciones por slug de producto
+- [x] hero section con imagen primero en mobile + overlay de menú mobile corregido
 - [ ] módulo real de productos administrables desde admin
 - [ ] fuente persistida de catálogo conectada a storefront y checkout
 - [ ] pipeline de media pública con `Cloudflare R2` para hero, logo, banners e imágenes de producto
@@ -85,7 +96,6 @@ Mejorar eficiencia operativa, visibilidad comercial y capacidad de crecimiento s
 - [ ] mayor automatización de campañas
 - [ ] segmentación más rica
 - [ ] reglas avanzadas de promociones
-- [ ] mejores reportes de pedidos, pagos y conversión
 - [ ] refinamiento del CMS y bloques reutilizables
 - [ ] optimizaciones de UX móvil y performance
 

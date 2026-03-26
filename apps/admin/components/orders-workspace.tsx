@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { AdminDataTable, Badge, Button, Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator, StatusBadge, TimelinePedido } from "@huelegood/ui";
 import type { AdminOrderDetail, AdminOrderSummary, OrderStatus, PaymentStatus, ManualPaymentRequestStatus, ProductAdminSummary } from "@huelegood/shared";
-import { approveManualPaymentRequest, createBackofficeOrder, fetchAdminProducts, fetchOrder, fetchOrders, rejectManualPaymentRequest } from "../lib/api";
+import { approveManualPaymentRequest, createBackofficeOrder, deleteOrder, fetchAdminProducts, fetchOrder, fetchOrders, rejectManualPaymentRequest } from "../lib/api";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("es-PE", {
@@ -93,6 +93,9 @@ export function OrdersWorkspace() {
   const [activeTab, setActiveTab] = useState<"detalle" | "timeline">("detalle");
   const [actionLoading, setActionLoading] = useState<"approve" | "reject" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Create order state
   const [createOpen, setCreateOpen] = useState(false);
@@ -195,6 +198,22 @@ export function OrdersWorkspace() {
       setActionError(err instanceof Error ? err.message : "No se pudo rechazar. Intenta de nuevo.");
     } finally {
       setActionLoading(null);
+    }
+  }
+
+  async function handleDelete() {
+    if (!selectedOrderNumber) return;
+    setDeleteLoading(true);
+    try {
+      await deleteOrder(selectedOrderNumber);
+      setDeleteConfirmOpen(false);
+      setDeleteConfirmText("");
+      setModalOpen(false);
+      setRefreshKey((k) => k + 1);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "No se pudo eliminar el pedido.");
+    } finally {
+      setDeleteLoading(false);
     }
   }
 
@@ -630,6 +649,14 @@ export function OrdersWorkspace() {
             {actionError && (
               <p className="mr-auto text-sm text-red-600">{actionError}</p>
             )}
+            <button
+              type="button"
+              onClick={() => { setDeleteConfirmText(""); setDeleteConfirmOpen(true); }}
+              disabled={!!actionLoading || !selectedOrder}
+              className="mr-auto rounded-[9px] border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-40"
+            >
+              Eliminar pedido
+            </button>
             {selectedOrder?.manualRequest?.status === "under_review" ? (
               <>
                 <Button
@@ -658,6 +685,45 @@ export function OrdersWorkspace() {
             ) : (
               <Button variant="secondary" onClick={() => setModalOpen(false)}>Cerrar</Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Confirmación de eliminación */}
+      <Dialog open={deleteConfirmOpen} onClose={() => { if (!deleteLoading) setDeleteConfirmOpen(false); }} size="sm">
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Eliminar pedido</DialogTitle>
+          </DialogHeader>
+          <DialogBody className="space-y-4">
+            <p className="text-sm text-[#132016]">
+              Estás a punto de eliminar permanentemente el pedido <span className="font-semibold">{selectedOrderNumber}</span>. Esta acción no se puede deshacer.
+            </p>
+            <div>
+              <label className="mb-1.5 block text-xs text-black/50">
+                Escribe <span className="font-semibold text-red-600">eliminar</span> para confirmar
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="eliminar"
+                autoComplete="off"
+                className="w-full rounded-[10px] border border-black/15 bg-white px-3 py-2 text-sm outline-none focus:border-red-400"
+              />
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setDeleteConfirmOpen(false)} disabled={deleteLoading}>
+              Cancelar
+            </Button>
+            <button
+              type="button"
+              onClick={() => { void handleDelete(); }}
+              disabled={deleteLoading || deleteConfirmText !== "eliminar"}
+              className="rounded-[10px] bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-40"
+            >
+              {deleteLoading ? "Eliminando..." : "Eliminar definitivamente"}
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

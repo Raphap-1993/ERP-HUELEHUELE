@@ -8,12 +8,13 @@ import { PaymentsModule } from "../payments/payments.module";
 import { VendorsModule } from "../vendors/vendors.module";
 import { WholesaleModule } from "../wholesale/wholesale.module";
 import { DashboardController } from "./dashboard.controller";
+import { ReportsController } from "./reports.controller";
 import { CoreService } from "./core.service";
 import { SellerPanelController } from "./seller-panel.controller";
 
 @Module({
   imports: [OrdersModule, PaymentsModule, VendorsModule, CommissionsModule, WholesaleModule, MarketingModule, NotificationsModule, LoyaltyModule],
-  controllers: [DashboardController, SellerPanelController],
+  controllers: [DashboardController, ReportsController, SellerPanelController],
   providers: [CoreService],
   exports: [CoreService]
 })

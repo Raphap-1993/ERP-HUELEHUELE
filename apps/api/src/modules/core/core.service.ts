@@ -4,6 +4,7 @@ import {
   CommissionPayoutStatus,
   CommissionStatus,
   NotificationStatus,
+  OrderStatus,
   PaymentStatus,
   RoleCode,
   WholesaleLeadStatus,
@@ -185,6 +186,105 @@ export class CoreService {
       generatedAt: new Date().toISOString(),
       vendorCode: seller.code
     });
+  }
+
+  getReportByPeriod(from: string, to: string) {
+    const orders = this.ordersService.listOrdersInRange(from, to).data;
+    const commissions = this.commissionsService.listCommissions().data;
+    const payouts = this.commissionsService.listPayouts().data;
+
+    const paidOrders = orders.filter((o) => o.paymentStatus === PaymentStatus.Paid);
+    const revenue = sum(orders.map((o) => o.total));
+    const paidRevenue = sum(paidOrders.map((o) => o.total));
+
+    // Daily breakdown
+    const byDayMap: Record<string, { count: number; revenue: number; paid: number }> = {};
+    for (const order of orders) {
+      const day = order.createdAt.slice(0, 10);
+      if (!byDayMap[day]) {
+        byDayMap[day] = { count: 0, revenue: 0, paid: 0 };
+      }
+      byDayMap[day].count++;
+      byDayMap[day].revenue += order.total;
+      if (order.paymentStatus === PaymentStatus.Paid) {
+        byDayMap[day].paid++;
+      }
+    }
+    const byDay = Object.entries(byDayMap)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, stats]) => ({ date, ...stats }));
+
+    // Payment method breakdown
+    const byPaymentMethod: Record<string, number> = {};
+    for (const order of orders) {
+      const method = order.paymentMethod ?? "unknown";
+      byPaymentMethod[method] = (byPaymentMethod[method] ?? 0) + 1;
+    }
+
+    // Order status breakdown
+    const byStatus: Record<string, number> = {};
+    for (const order of orders) {
+      byStatus[order.orderStatus] = (byStatus[order.orderStatus] ?? 0) + 1;
+    }
+
+    // Commission aggregates (current totals, no date filter available on CommissionSummary)
+    const payableComm = commissions.filter((c) =>
+      [CommissionStatus.Payable, CommissionStatus.ScheduledForPayout].includes(c.status)
+    );
+    const paidComm = commissions.filter((c) => c.status === CommissionStatus.Paid);
+    const paidPayouts = payouts.filter((p) => p.status === CommissionPayoutStatus.Paid);
+
+    return wrapResponse(
+      {
+        period: { from, to },
+        orders: {
+          total: orders.length,
+          revenue,
+          paidRevenue,
+          paid: paidOrders.length,
+          pending: orders.filter((o) => o.orderStatus === OrderStatus.PendingPayment).length,
+          cancelled: orders.filter((o) => o.orderStatus === OrderStatus.Cancelled).length,
+          conversionRate: orders.length > 0 ? Math.round((paidOrders.length / orders.length) * 100) : 0,
+          avgOrderValue: orders.length > 0 ? Math.round(revenue / orders.length) : 0,
+          byPaymentMethod,
+          byStatus,
+          byDay,
+          recent: orders.slice(0, 10)
+        },
+        commissions: {
+          total: commissions.length,
+          totalAmount: sum(commissions.map((c) => c.commissionAmount)),
+          payable: payableComm.length,
+          payableAmount: sum(payableComm.map((c) => c.commissionAmount)),
+          paid: paidComm.length,
+          paidAmount: sum(paidPayouts.map((p) => p.netAmount))
+        }
+      },
+      { generatedAt: new Date().toISOString() }
+    );
+  }
+
+  generateOrdersCsv(from: string, to: string): string {
+    const orders = this.ordersService.listOrdersInRange(from, to).data;
+    const escape = (v: string | number | undefined | null) => {
+      const s = v == null ? "" : String(v);
+      return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = ["Pedido", "Cliente", "Total", "Método", "Estado pedido", "Estado pago", "Vendedor", "Items", "Fecha"].join(",");
+    const rows = orders.map((o) =>
+      [
+        escape(o.orderNumber),
+        escape(o.customerName),
+        escape(o.total),
+        escape(o.paymentMethod),
+        escape(o.orderStatus),
+        escape(o.paymentStatus),
+        escape(o.vendorCode),
+        escape(o.itemCount),
+        escape(o.createdAt.slice(0, 10))
+      ].join(",")
+    );
+    return [header, ...rows].join("\n");
   }
 
   private buildDashboardByFocus(input: {

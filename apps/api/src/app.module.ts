@@ -11,6 +11,7 @@ import {
   CommissionsModule,
   CommerceModule,
   CoreModule,
+  CouponsModule,
   CustomersModule,
   HealthModule,
   LoyaltyModule,
@@ -48,6 +49,7 @@ import {
     SecurityModule,
     AuthModule,
     CustomersModule,
+    CouponsModule,
     CommerceModule,
     OrdersModule
   ],

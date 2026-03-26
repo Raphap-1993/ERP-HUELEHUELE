@@ -642,6 +642,24 @@ export class OrdersService implements OnModuleInit {
     });
   }
 
+  listOrdersInRange(from: string, to: string) {
+    const fromMs = new Date(from).getTime();
+    const toStr = to.includes("T") ? to : `${to}T23:59:59.999Z`;
+    const toMs = new Date(toStr).getTime();
+    const orders = this.sortedOrders()
+      .filter((order) => {
+        const t = new Date(order.createdAt).getTime();
+        return t >= fromMs && t <= toMs;
+      })
+      .map((order) => this.toOrderSummary(order));
+    return wrapResponse(orders, {
+      total: orders.length,
+      paid: orders.filter((order) => order.paymentStatus === PaymentStatus.Paid).length,
+      manualReview: orders.filter((order) => order.manualStatus === ManualPaymentRequestStatus.UnderReview).length,
+      pendingPayment: orders.filter((order) => order.orderStatus === OrderStatus.PendingPayment).length
+    });
+  }
+
   listOrdersByVendorCode(vendorCode: string) {
     const normalizedVendorCode = normalizeCode(vendorCode);
     if (!normalizedVendorCode) {
@@ -669,6 +687,20 @@ export class OrdersService implements OnModuleInit {
     return wrapResponse(this.requireOrder(orderNumber), {
       found: true
     });
+  }
+
+  async deleteOrder(orderNumber: string) {
+    const order = this.requireOrder(orderNumber);
+    this.orders.delete(order.orderNumber);
+    await this.persistState();
+    this.auditService.recordAdminAction({
+      actionType: "orders.deleted",
+      targetType: "order",
+      targetId: order.orderNumber,
+      summary: `El pedido ${order.orderNumber} fue eliminado manualmente por un administrador.`,
+      actorName: "admin"
+    });
+    return { status: "deleted" as const, orderNumber: order.orderNumber };
   }
 
   listPayments() {

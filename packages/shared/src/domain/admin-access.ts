@@ -27,6 +27,7 @@ export const adminAccessRoles = {
   crm: [RoleCode.SuperAdmin, RoleCode.Admin, RoleCode.Marketing, RoleCode.Ventas],
   notifications: [RoleCode.SuperAdmin, RoleCode.Admin, RoleCode.Marketing, RoleCode.Ventas],
   observability: [RoleCode.SuperAdmin, RoleCode.Admin, RoleCode.OperadorPagos],
+  coupons: [RoleCode.SuperAdmin, RoleCode.Admin, RoleCode.Ventas, RoleCode.Marketing],
   configuration: [RoleCode.SuperAdmin, RoleCode.Admin],
   audit: [RoleCode.SuperAdmin, RoleCode.Admin],
   security: [RoleCode.SuperAdmin, RoleCode.Admin]

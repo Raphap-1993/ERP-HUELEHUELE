@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { RoleCode, type AuthSessionSummary, type SellerPanelOverviewSummary } from "@huelegood/shared";
-import { AdminDataTable, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, MetricCard, SectionHeader } from "@huelegood/ui";
 import { fetchSellerPanelOverview, fetchSession } from "../lib/api";
 import { clearStoredSessionToken, readStoredSessionToken } from "../lib/session";
 
@@ -15,13 +15,99 @@ function formatCurrency(value: number) {
 }
 
 function hasSellerAccess(session: AuthSessionSummary | null) {
-  if (!session) {
-    return false;
-  }
-
+  if (!session) return false;
   const roles = session.user.roles.map((role) => role.code);
   return roles.includes(RoleCode.Vendedor) || roles.includes(RoleCode.SellerManager);
 }
+
+// ── Inline visual primitives ──────────────────────────────────────────────────
+
+function SPCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`rounded-2xl border border-black/6 bg-white shadow-[0_4px_24px_rgba(26,58,46,0.08)] ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+function SPMetricCard({ label, value, detail }: { label: string; value: string; detail?: string }) {
+  return (
+    <div className="rounded-2xl border border-black/6 bg-white p-5 shadow-[0_4px_24px_rgba(26,58,46,0.06)]">
+      <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#6b7280]">{label}</p>
+      <p className="font-serif text-2xl font-black text-[#1a3a2e]">{value}</p>
+      {detail && <p className="mt-1 text-xs text-[#6b7280]">{detail}</p>}
+    </div>
+  );
+}
+
+function SPBadge({ children, tone = "default" }: { children: React.ReactNode; tone?: "default" | "green" | "neutral" | "amber" }) {
+  const styles: Record<string, string> = {
+    default: "bg-[#d8f3dc] text-[#2d6a4f]",
+    green: "bg-[#d8f3dc] text-[#2d6a4f]",
+    neutral: "bg-black/6 text-black/60",
+    amber: "bg-amber-50 text-amber-700"
+  };
+  return (
+    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${styles[tone]}`}>
+      {children}
+    </span>
+  );
+}
+
+function SPTable({
+  title,
+  description,
+  headers,
+  rows
+}: {
+  title: string;
+  description?: string;
+  headers: string[];
+  rows: (string | number | null | undefined)[][];
+}) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-black/6 bg-white shadow-[0_4px_24px_rgba(26,58,46,0.06)]">
+      <div className="border-b border-black/6 px-6 py-5">
+        <h3 className="font-semibold text-[#1a3a2e]">{title}</h3>
+        {description && <p className="mt-0.5 text-sm text-[#6b7280]">{description}</p>}
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-black/6 bg-black/[0.02]">
+              {headers.map((header) => (
+                <th key={header} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-[#6b7280]">
+                  {header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={headers.length} className="px-4 py-10 text-center text-sm text-[#6b7280]">
+                  Sin registros todavía
+                </td>
+              </tr>
+            ) : (
+              rows.map((row, i) => (
+                <tr key={i} className="border-b border-black/6 last:border-0 transition hover:bg-[#faf8f3]">
+                  {row.map((cell, j) => (
+                    <td key={j} className="px-4 py-3 text-sm text-[#1a3a2e]">
+                      {cell ?? "—"}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 export function SellerPanelWorkspace() {
   const [session, setSession] = useState<AuthSessionSummary | null>(null);
@@ -48,9 +134,7 @@ export function SellerPanelWorkspace() {
 
       try {
         const sessionResponse = await fetchSession(token);
-        if (!active) {
-          return;
-        }
+        if (!active) return;
 
         if (!sessionResponse.data) {
           clearStoredSessionToken();
@@ -69,9 +153,7 @@ export function SellerPanelWorkspace() {
         }
 
         const overviewResponse = await fetchSellerPanelOverview(token);
-        if (!active) {
-          return;
-        }
+        if (!active) return;
 
         setOverview(overviewResponse.data);
         setError(null);
@@ -81,17 +163,12 @@ export function SellerPanelWorkspace() {
           setError(panelError instanceof Error ? panelError.message : "No pudimos cargar el panel vendedor.");
         }
       } finally {
-        if (active) {
-          setLoading(false);
-        }
+        if (active) setLoading(false);
       }
     }
 
     void loadPanel();
-
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [refreshKey]);
 
   const orderRows = useMemo(
@@ -134,125 +211,181 @@ export function SellerPanelWorkspace() {
   );
 
   return (
-    <div className="space-y-8 py-6 md:py-10">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <SectionHeader
-          title="Panel vendedor"
-          description="Consulta el rendimiento de tu código, tus pedidos atribuidos y el estado de tus liquidaciones."
-        />
-        <Button variant="secondary" onClick={() => setRefreshKey((current) => current + 1)} disabled={loading}>
-          Refrescar
-        </Button>
-      </div>
+    <div className="min-h-screen bg-[#faf8f3] py-10 md:py-14">
+      <div className="mx-auto max-w-[1120px] space-y-8 px-4 md:px-6">
 
-      {loading ? <p className="text-sm text-black/55">Cargando panel vendedor...</p> : null}
+        {/* Header */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="font-serif text-3xl font-black leading-tight text-[#1a3a2e] md:text-4xl">
+              Panel vendedor
+            </h1>
+            <p className="mt-1 text-sm text-[#6b7280]">
+              Consulta el rendimiento de tu código, tus pedidos atribuidos y el estado de tus liquidaciones.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setRefreshKey((current) => current + 1)}
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded-full border border-[#2d6a4f]/30 bg-white px-5 py-2.5 text-sm font-medium text-[#1a3a2e] shadow-sm transition hover:border-[#2d6a4f] hover:bg-[#d8f3dc] disabled:opacity-40"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="1 4 1 10 7 10" />
+              <path d="M3.51 15a9 9 0 1 0 .49-3.42" />
+            </svg>
+            Refrescar
+          </button>
+        </div>
 
-      {!loading && !session ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Acceso vendedor</CardTitle>
-            <CardDescription>Inicia sesión con tu cuenta comercial desde Mi cuenta para ver ventas, comisiones y liquidaciones.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-3">
-            <Button href="/cuenta">Ir a mi cuenta</Button>
-            <Button href="/catalogo" variant="secondary">
-              Ver catálogo
-            </Button>
-          </CardContent>
-        </Card>
-      ) : null}
+        {/* Loading */}
+        {loading && (
+          <div className="flex items-center gap-3 rounded-2xl border border-black/6 bg-white px-6 py-8 shadow-sm">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#52b788] border-t-transparent" />
+            <span className="text-sm text-[#6b7280]">Cargando panel vendedor...</span>
+          </div>
+        )}
 
-      {!loading && session && !hasSellerAccess(session) ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Cuenta sin acceso comercial</CardTitle>
-            <CardDescription>Esta sesión no tiene un rol vendedor habilitado para el panel.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="rounded-3xl bg-black/[0.03] p-4 text-sm text-black/65">
+        {/* No session */}
+        {!loading && !session && (
+          <SPCard className="overflow-hidden">
+            <div className="bg-[linear-gradient(135deg,#1a3a2e_0%,#2d6a4f_100%)] px-8 py-10 text-white">
+              <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-white/15 text-2xl">
+                🏷️
+              </div>
+              <h2 className="font-serif text-2xl font-bold">Acceso vendedor</h2>
+              <p className="mt-2 max-w-sm text-sm text-white/75">
+                Inicia sesión con tu cuenta comercial desde Mi cuenta para ver ventas, comisiones y liquidaciones.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3 px-8 py-6">
+              <Link
+                href="/cuenta"
+                className="inline-flex items-center gap-2 rounded-full bg-[#1a3a2e] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#2d6a4f]"
+              >
+                Ir a mi cuenta
+              </Link>
+              <Link
+                href="/catalogo"
+                className="inline-flex items-center gap-2 rounded-full border border-[#1a3a2e]/20 px-6 py-3 text-sm font-medium text-[#1a3a2e] transition hover:border-[#2d6a4f] hover:bg-[#d8f3dc]"
+              >
+                Ver catálogo
+              </Link>
+            </div>
+          </SPCard>
+        )}
+
+        {/* No access */}
+        {!loading && session && !hasSellerAccess(session) && (
+          <SPCard className="p-8">
+            <h2 className="mb-1 font-serif text-xl font-bold text-[#1a3a2e]">Cuenta sin acceso comercial</h2>
+            <p className="mb-4 text-sm text-[#6b7280]">Esta sesión no tiene un rol vendedor habilitado para el panel.</p>
+            <div className="mb-4 rounded-xl bg-black/[0.03] px-4 py-3 text-sm text-black/65">
               Sesión activa: {session.user.name} · {session.user.email}
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="mb-5 flex flex-wrap gap-2">
               {session.user.roles.map((role) => (
-                <Badge key={role.code} tone="neutral">
-                  {role.label}
-                </Badge>
+                <SPBadge key={role.code} tone="neutral">{role.label}</SPBadge>
               ))}
             </div>
-            <Button href="/cuenta" variant="secondary">
+            <Link
+              href="/cuenta"
+              className="inline-flex items-center gap-2 rounded-full border border-[#1a3a2e]/20 px-5 py-2.5 text-sm font-medium text-[#1a3a2e] transition hover:border-[#2d6a4f] hover:bg-[#d8f3dc]"
+            >
               Volver a mi cuenta
-            </Button>
-          </CardContent>
-        </Card>
-      ) : null}
+            </Link>
+          </SPCard>
+        )}
 
-      {!loading && session && hasSellerAccess(session) && overview ? (
-        <>
-          <div className="grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
-            <Card className="overflow-hidden border-[#132016]/10 bg-[linear-gradient(135deg,#132016_0%,#24412d_100%)] text-white">
-              <CardHeader>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge className="bg-white/15 text-white">Código activo</Badge>
-                  <Badge className="bg-emerald-200/20 text-white">{overview.seller.status}</Badge>
+        {/* Main panel */}
+        {!loading && session && hasSellerAccess(session) && overview && (
+          <>
+            {/* Identity + metrics */}
+            <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+              {/* Seller identity card */}
+              <div className="overflow-hidden rounded-2xl bg-[linear-gradient(135deg,#1a3a2e_0%,#2d6a4f_100%)] p-7 text-white shadow-[0_8px_32px_rgba(26,58,46,0.25)]">
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                  <SPBadge tone="green">{overview.seller.status}</SPBadge>
+                  <SPBadge tone="neutral">Código activo</SPBadge>
                 </div>
-                <CardTitle className="text-white">{overview.seller.name}</CardTitle>
-                <CardDescription className="text-white/72">
+                <h2 className="font-serif text-2xl font-bold text-white">{overview.seller.name}</h2>
+                <p className="mt-1 text-sm text-white/65">
                   {overview.seller.code} · {session.user.email}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-white/78">
-                <p>Aplicaciones vinculadas: {overview.seller.applicationsCount}</p>
-                <p>Pedidos atribuidos: {overview.seller.ordersCount}</p>
-                <p>Ventas acumuladas: {formatCurrency(overview.seller.sales)}</p>
-                <p>Comisiones consolidadas: {formatCurrency(overview.seller.commissions)}</p>
-              </CardContent>
-            </Card>
+                </p>
+                <div className="mt-5 grid grid-cols-2 gap-3 border-t border-white/15 pt-5 text-sm text-white/75">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-white/45">Aplicaciones</p>
+                    <p className="font-semibold text-white">{overview.seller.applicationsCount}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-white/45">Pedidos atribuidos</p>
+                    <p className="font-semibold text-white">{overview.seller.ordersCount}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-white/45">Ventas acumuladas</p>
+                    <p className="font-semibold text-white">{formatCurrency(overview.seller.sales)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-white/45">Comisiones consolidadas</p>
+                    <p className="font-semibold text-white">{formatCurrency(overview.seller.commissions)}</p>
+                  </div>
+                </div>
+              </div>
 
-            <div className="grid gap-5 md:grid-cols-2">
-              {overview.metrics.map((metric) => (
-                <MetricCard key={metric.label} metric={metric} />
-              ))}
+              {/* Metrics grid */}
+              <div className="grid grid-cols-2 gap-4">
+                {overview.metrics.map((metric) => (
+                  <SPMetricCard key={metric.label} label={metric.label} value={metric.value} detail={metric.detail} />
+                ))}
+              </div>
             </div>
-          </div>
 
-          <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-            <AdminDataTable
-              title="Pedidos atribuidos"
-              description="Últimos pedidos registrados con tu código vendedor."
-              headers={["Pedido", "Cliente", "Total", "Estado", "Pago", "Actualizado"]}
-              rows={orderRows}
+            {/* Orders + Payouts */}
+            <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+              <SPTable
+                title="Pedidos atribuidos"
+                description="Últimos pedidos registrados con tu código vendedor."
+                headers={["Pedido", "Cliente", "Total", "Estado", "Pago", "Actualizado"]}
+                rows={orderRows}
+              />
+              <SPTable
+                title="Liquidaciones"
+                description="Estado de tus pagos y referencias operativas."
+                headers={["Liquidación", "Periodo", "Monto", "Estado", "Referencia", "Actualizado"]}
+                rows={payoutRows}
+              />
+            </div>
+
+            {/* Commissions */}
+            <SPTable
+              title="Detalle de comisiones"
+              description="Comisiones por pedido y periodo comercial."
+              headers={["Pedido", "Venta", "Tasa", "Comisión", "Estado", "Periodo"]}
+              rows={commissionRows}
             />
-            <AdminDataTable
-              title="Liquidaciones"
-              description="Estado de tus pagos y referencias operativas."
-              headers={["Liquidación", "Periodo", "Monto", "Estado", "Referencia", "Actualizado"]}
-              rows={payoutRows}
-            />
-          </div>
+          </>
+        )}
 
-          <AdminDataTable
-            title="Detalle de comisiones"
-            description="Comisiones por pedido y periodo comercial."
-            headers={["Pedido", "Venta", "Tasa", "Comisión", "Estado", "Periodo"]}
-            rows={commissionRows}
-          />
-        </>
-      ) : null}
-
-      {!loading && error ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>No pudimos cargar tu panel</CardTitle>
-            <CardDescription>La cuenta existe, pero todavía no quedó enlazada al perfil vendedor operativo.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</div>
-            <Button href="/trabaja-con-nosotros" variant="secondary">
+        {/* Error */}
+        {!loading && error && (
+          <SPCard className="p-8">
+            <h2 className="mb-1 font-serif text-xl font-bold text-[#1a3a2e]">No pudimos cargar tu panel</h2>
+            <p className="mb-4 text-sm text-[#6b7280]">
+              La cuenta existe, pero todavía no quedó enlazada al perfil vendedor operativo.
+            </p>
+            <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              {error}
+            </div>
+            <Link
+              href="/trabaja-con-nosotros"
+              className="inline-flex items-center gap-2 rounded-full border border-[#1a3a2e]/20 px-5 py-2.5 text-sm font-medium text-[#1a3a2e] transition hover:border-[#2d6a4f] hover:bg-[#d8f3dc]"
+            >
               Contactar al equipo comercial
-            </Button>
-          </CardContent>
-        </Card>
-      ) : null}
+            </Link>
+          </SPCard>
+        )}
+
+      </div>
     </div>
   );
 }

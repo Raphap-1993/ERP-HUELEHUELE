@@ -12,8 +12,8 @@ export function HeroSection({ heroProductImageUrl }: { heroProductImageUrl?: str
 
       <div className="relative mx-auto max-w-[1120px] px-4 md:px-6">
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
-          {/* Left — copy */}
-          <div>
+          {/* Left — copy (second on mobile, first on desktop) */}
+          <div className="order-last lg:order-first">
             {/* Badge */}
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#52b788]/30 bg-[#d8f3dc] px-4 py-2 text-sm font-semibold text-[#2d6a4f]">
               <span className="h-2 w-2 animate-pulse rounded-full bg-[#52b788]" />
@@ -64,8 +64,8 @@ export function HeroSection({ heroProductImageUrl }: { heroProductImageUrl?: str
             </div>
           </div>
 
-          {/* Right — product image */}
-          <div className="relative">
+          {/* Right — product image (first on mobile, second on desktop) */}
+          <div className="relative order-first lg:order-last">
             {/* Float card top */}
             <div className="absolute -left-4 -top-4 z-10 flex animate-[float_4s_ease-in-out_infinite] items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.12)]">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#d8f3dc] text-xl">🌿</div>
