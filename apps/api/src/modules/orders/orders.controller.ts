@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post } from "@nestjs/common";
 import { adminAccessRoles } from "@huelegood/shared";
 import { RequireRoles } from "../auth/auth-rbac";
 import { OrdersService } from "./orders.service";
@@ -11,6 +11,20 @@ export class OrdersController {
   @Get()
   listOrders() {
     return this.ordersService.listOrders();
+  }
+
+  @Post()
+  createBackofficeOrder(
+    @Body() body: {
+      customer: { firstName: string; lastName: string; email: string; phone: string };
+      address: { line1: string; city: string; region?: string; countryCode?: string };
+      items: Array<{ slug: string; name: string; sku: string; variantId?: string; quantity: number; unitPrice: number }>;
+      initialStatus: "paid" | "pending_payment";
+      notes?: string;
+      vendorCode?: string;
+    }
+  ) {
+    return this.ordersService.createBackofficeOrder({ ...body, reviewer: "admin" });
   }
 
   @Get(":orderNumber")

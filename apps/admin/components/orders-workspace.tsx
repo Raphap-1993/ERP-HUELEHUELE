@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { AdminDataTable, Badge, Button, Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator, StatusBadge, TimelinePedido } from "@huelegood/ui";
-import type { AdminOrderDetail, AdminOrderSummary, OrderStatus, PaymentStatus, ManualPaymentRequestStatus } from "@huelegood/shared";
-import { approveManualPaymentRequest, fetchOrder, fetchOrders, rejectManualPaymentRequest } from "../lib/api";
+import type { AdminOrderDetail, AdminOrderSummary, OrderStatus, PaymentStatus, ManualPaymentRequestStatus, ProductAdminSummary } from "@huelegood/shared";
+import { approveManualPaymentRequest, createBackofficeOrder, fetchAdminProducts, fetchOrder, fetchOrders, rejectManualPaymentRequest } from "../lib/api";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("es-PE", {
@@ -93,6 +93,19 @@ export function OrdersWorkspace() {
   const [activeTab, setActiveTab] = useState<"detalle" | "timeline">("detalle");
   const [actionLoading, setActionLoading] = useState<"approve" | "reject" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // Create order state
+  const [createOpen, setCreateOpen] = useState(false);
+  const [availableProducts, setAvailableProducts] = useState<ProductAdminSummary[]>([]);
+  const [createForm, setCreateForm] = useState({
+    firstName: "", lastName: "", email: "", phone: "",
+    line1: "", city: "",
+    notes: "", vendorCode: "",
+    initialStatus: "pending_payment" as "paid" | "pending_payment"
+  });
+  const [createItems, setCreateItems] = useState<Array<{ slug: string; name: string; sku: string; variantId?: string; quantity: number; unitPrice: number }>>([]);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -185,6 +198,63 @@ export function OrdersWorkspace() {
     }
   }
 
+  async function openCreateModal() {
+    setCreateForm({ firstName: "", lastName: "", email: "", phone: "", line1: "", city: "", notes: "", vendorCode: "", initialStatus: "pending_payment" });
+    setCreateItems([]);
+    setCreateError(null);
+    setCreateOpen(true);
+    if (!availableProducts.length) {
+      try {
+        const res = await fetchAdminProducts();
+        setAvailableProducts(res.data ?? []);
+      } catch { /* no-op */ }
+    }
+  }
+
+  function addItem(product: ProductAdminSummary) {
+    setCreateItems((prev) => {
+      const existing = prev.find((i) => i.slug === product.slug);
+      if (existing) return prev.map((i) => i.slug === product.slug ? { ...i, quantity: i.quantity + 1 } : i);
+      return [...prev, { slug: product.slug, name: product.name, sku: product.sku, variantId: product.defaultVariantId, quantity: 1, unitPrice: product.price }];
+    });
+  }
+
+  function removeItem(slug: string) {
+    setCreateItems((prev) => prev.filter((i) => i.slug !== slug));
+  }
+
+  function updateItem(slug: string, field: "quantity" | "unitPrice", value: number) {
+    setCreateItems((prev) => prev.map((i) => i.slug === slug ? { ...i, [field]: value } : i));
+  }
+
+  async function handleCreate() {
+    if (!createItems.length) { setCreateError("Agrega al menos un producto."); return; }
+    if (!createForm.firstName.trim()) { setCreateError("El nombre del cliente es obligatorio."); return; }
+    if (!createForm.line1.trim() || !createForm.city.trim()) { setCreateError("La dirección y ciudad son obligatorias."); return; }
+    setCreateLoading(true);
+    setCreateError(null);
+    try {
+      const res = await createBackofficeOrder({
+        customer: { firstName: createForm.firstName.trim(), lastName: createForm.lastName.trim(), email: createForm.email.trim(), phone: createForm.phone.trim() },
+        address: { line1: createForm.line1.trim(), city: createForm.city.trim() },
+        items: createItems,
+        initialStatus: createForm.initialStatus,
+        notes: createForm.notes.trim() || undefined,
+        vendorCode: createForm.vendorCode.trim() || undefined
+      });
+      setCreateOpen(false);
+      setRefreshKey((k) => k + 1);
+      // Open the new order's detail
+      setSelectedOrderNumber(res.orderNumber);
+      setActiveTab("detalle");
+      setModalOpen(true);
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : "No se pudo crear el pedido.");
+    } finally {
+      setCreateLoading(false);
+    }
+  }
+
   const selectedSummary = orders.find((o) => o.orderNumber === selectedOrderNumber) ?? null;
 
   const allOrdersRows = useMemo(
@@ -230,9 +300,18 @@ export function OrdersWorkspace() {
             {error && <span className="text-sm text-red-600">{error}</span>}
           </div>
         </div>
-        <Button type="button" variant="secondary" onClick={() => setRefreshKey((k) => k + 1)} disabled={loading}>
-          {loading ? "Actualizando..." : "Refrescar"}
-        </Button>
+        <div className="flex gap-2">
+          <Button type="button" variant="secondary" onClick={() => setRefreshKey((k) => k + 1)} disabled={loading}>
+            {loading ? "Actualizando..." : "Refrescar"}
+          </Button>
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="rounded-[10px] bg-[#1a3a2e] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#2d6a4f]"
+          >
+            + Nuevo pedido
+          </button>
+        </div>
       </div>
 
       {/* Tabla principal */}
@@ -242,6 +321,166 @@ export function OrdersWorkspace() {
         headers={["Pedido", "Cliente", "Total", "Estado", "Pago", "Solicitud manual", "Vendedor"]}
         rows={allOrdersRows}
       />
+
+      {/* Modal crear pedido manual */}
+      <Dialog open={createOpen} onClose={() => { if (!createLoading) setCreateOpen(false); }} size="lg">
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nuevo pedido manual</DialogTitle>
+          </DialogHeader>
+          <DialogBody className="space-y-5">
+            {/* Productos */}
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-black/45">Productos</p>
+              {createItems.length > 0 && (
+                <div className="mb-3 space-y-2">
+                  {createItems.map((item) => (
+                    <div key={item.slug} className="flex items-center gap-3 rounded-[10px] border border-black/10 bg-white px-3 py-2 text-sm">
+                      <div className="flex-1">
+                        <div className="font-medium text-[#132016]">{item.name}</div>
+                        <div className="text-xs text-black/45">{item.sku}</div>
+                      </div>
+                      <input type="number" min={1} value={item.quantity}
+                        onChange={(e) => updateItem(item.slug, "quantity", Math.max(1, Number(e.target.value)))}
+                        className="w-14 rounded-[8px] border border-black/15 px-2 py-1 text-center text-sm"
+                      />
+                      <span className="text-black/45">×</span>
+                      <input type="number" min={0} step={0.5} value={item.unitPrice}
+                        onChange={(e) => updateItem(item.slug, "unitPrice", Number(e.target.value))}
+                        className="w-20 rounded-[8px] border border-black/15 px-2 py-1 text-right text-sm"
+                      />
+                      <span className="w-16 text-right text-sm font-semibold text-[#132016]">
+                        S/ {(item.unitPrice * item.quantity).toFixed(0)}
+                      </span>
+                      <button type="button" onClick={() => removeItem(item.slug)} className="text-red-400 hover:text-red-600">✕</button>
+                    </div>
+                  ))}
+                  <div className="flex justify-end border-t border-black/10 pt-2 text-sm font-semibold text-[#132016]">
+                    Total: S/ {createItems.reduce((s, i) => s + i.unitPrice * i.quantity, 0).toFixed(0)}
+                  </div>
+                </div>
+              )}
+              <div>
+                <p className="mb-1.5 text-[11px] text-black/40">Agregar producto</p>
+                <div className="grid gap-1.5 md:grid-cols-2">
+                  {availableProducts.filter((p) => p.status === "active" || p.status === "draft").map((product) => (
+                    <button key={product.id} type="button" onClick={() => addItem(product)}
+                      className="flex items-center justify-between gap-2 rounded-[10px] border border-black/10 bg-[#f9f9f7] px-3 py-2 text-left text-sm transition hover:border-[#52b788] hover:bg-[#f0faf4]"
+                    >
+                      <div>
+                        <div className="font-medium text-[#132016]">{product.name}</div>
+                        <div className="text-xs text-black/40">{product.sku} · S/ {product.price}</div>
+                      </div>
+                      <span className="text-[#52b788]">+</span>
+                    </button>
+                  ))}
+                  {!availableProducts.length && (
+                    <p className="col-span-2 text-xs text-black/40">Cargando productos...</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Cliente */}
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-black/45">Cliente</p>
+              <div className="grid gap-3 md:grid-cols-2">
+                {[
+                  { key: "firstName", label: "Nombre *", placeholder: "Pedro" },
+                  { key: "lastName", label: "Apellido", placeholder: "García" },
+                  { key: "phone", label: "WhatsApp / Teléfono", placeholder: "+51 999 000 000" },
+                  { key: "email", label: "Email", placeholder: "pedro@example.com" }
+                ].map(({ key, label, placeholder }) => (
+                  <div key={key}>
+                    <label className="mb-1 block text-[11px] text-black/50">{label}</label>
+                    <input
+                      type="text" placeholder={placeholder}
+                      value={createForm[key as keyof typeof createForm] as string}
+                      onChange={(e) => setCreateForm((f) => ({ ...f, [key]: e.target.value }))}
+                      className="w-full rounded-[10px] border border-black/15 bg-white px-3 py-2 text-sm outline-none focus:border-[#52b788]"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Dirección */}
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-black/45">Dirección de entrega</p>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="md:col-span-2">
+                  <label className="mb-1 block text-[11px] text-black/50">Dirección *</label>
+                  <input type="text" placeholder="Av. Larco 123"
+                    value={createForm.line1}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, line1: e.target.value }))}
+                    className="w-full rounded-[10px] border border-black/15 bg-white px-3 py-2 text-sm outline-none focus:border-[#52b788]"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] text-black/50">Distrito / Ciudad *</label>
+                  <input type="text" placeholder="Miraflores"
+                    value={createForm.city}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, city: e.target.value }))}
+                    className="w-full rounded-[10px] border border-black/15 bg-white px-3 py-2 text-sm outline-none focus:border-[#52b788]"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] text-black/50">Vendedor (opcional)</label>
+                  <input type="text" placeholder="VND-001"
+                    value={createForm.vendorCode}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, vendorCode: e.target.value }))}
+                    className="w-full rounded-[10px] border border-black/15 bg-white px-3 py-2 text-sm outline-none focus:border-[#52b788]"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Estado de pago */}
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-black/45">Estado de pago</p>
+              <div className="grid gap-2 md:grid-cols-2">
+                {([
+                  { value: "pending_payment", label: "Pendiente de cobro", desc: "El cliente aún no ha pagado" },
+                  { value: "paid", label: "Ya cobrado", desc: "El pago ya fue recibido y confirmado" }
+                ] as const).map(({ value, label, desc }) => (
+                  <button key={value} type="button" onClick={() => setCreateForm((f) => ({ ...f, initialStatus: value }))}
+                    className={`rounded-[12px] border-2 p-3 text-left transition ${
+                      createForm.initialStatus === value
+                        ? "border-[#52b788] bg-[#f0faf4]"
+                        : "border-black/10 bg-white hover:border-black/20"
+                    }`}
+                  >
+                    <div className="text-sm font-semibold text-[#132016]">{label}</div>
+                    <div className="text-xs text-black/50">{desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Notas */}
+            <div>
+              <label className="mb-1 block text-[11px] text-black/50">Notas internas (opcional)</label>
+              <textarea placeholder="Pedido por WhatsApp, entregar en horario de tarde..."
+                value={createForm.notes}
+                onChange={(e) => setCreateForm((f) => ({ ...f, notes: e.target.value }))}
+                rows={2}
+                className="w-full rounded-[10px] border border-black/15 bg-white px-3 py-2 text-sm outline-none focus:border-[#52b788]"
+              />
+            </div>
+
+            {createError && <p className="text-sm text-red-600">{createError}</p>}
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setCreateOpen(false)} disabled={createLoading}>Cancelar</Button>
+            <button
+              type="button" onClick={handleCreate} disabled={createLoading || !createItems.length}
+              className="rounded-[10px] bg-[#1a3a2e] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#2d6a4f] disabled:opacity-50"
+            >
+              {createLoading ? "Creando..." : "Crear pedido"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal de detalle */}
       <Dialog open={modalOpen} onClose={() => setModalOpen(false)} size="xl">

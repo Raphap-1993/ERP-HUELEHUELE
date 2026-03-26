@@ -188,6 +188,20 @@ export async function fetchOrder(orderNumber: string) {
   return requestJson<OrderEnvelope>(`/admin/orders/${encodeURIComponent(orderNumber)}`);
 }
 
+export async function createBackofficeOrder(body: {
+  customer: { firstName: string; lastName: string; email: string; phone: string };
+  address: { line1: string; city: string; region?: string };
+  items: Array<{ slug: string; name: string; sku: string; variantId?: string; quantity: number; unitPrice: number }>;
+  initialStatus: "paid" | "pending_payment";
+  notes?: string;
+  vendorCode?: string;
+}) {
+  return requestJson<{ status: string; message: string; orderNumber: string }>("/admin/orders", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
 export async function fetchPayments() {
   return requestJson<PaymentsEnvelope>("/admin/payments");
 }

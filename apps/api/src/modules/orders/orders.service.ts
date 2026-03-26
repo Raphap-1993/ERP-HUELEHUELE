@@ -485,6 +485,153 @@ export class OrdersService implements OnModuleInit {
     return order;
   }
 
+  async createBackofficeOrder(input: {
+    customer: { firstName: string; lastName: string; email: string; phone: string };
+    address: { line1: string; city: string; region?: string; countryCode?: string };
+    items: Array<{ slug: string; name: string; sku: string; variantId?: string; quantity: number; unitPrice: number }>;
+    initialStatus: "paid" | "pending_payment";
+    notes?: string;
+    vendorCode?: string;
+    reviewer?: string;
+  }) {
+    if (!input.items?.length) throw new BadRequestException("El pedido debe tener al menos un ítem.");
+    if (!input.customer?.firstName?.trim()) throw new BadRequestException("El nombre del cliente es obligatorio.");
+
+    const orderNumber = this.reserveOrderNumber();
+    const createdAt = new Date().toISOString();
+    const customer = normalizeCustomer({
+      firstName: input.customer.firstName,
+      lastName: input.customer.lastName || "",
+      email: input.customer.email || "",
+      phone: input.customer.phone || ""
+    });
+    const address = normalizeAddress({
+      recipientName: [customer.firstName, customer.lastName].filter(Boolean).join(" "),
+      line1: input.address.line1,
+      line2: undefined,
+      city: input.address.city,
+      region: input.address.region || input.address.city,
+      postalCode: "",
+      countryCode: input.address.countryCode || "PE"
+    });
+
+    const orderItems: OrderItemSummary[] = input.items.map((item) => ({
+      slug: item.slug,
+      name: item.name,
+      sku: item.sku,
+      variantId: item.variantId,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      lineTotal: item.unitPrice * item.quantity,
+      imageUrl: undefined,
+      originalUnitPrice: item.unitPrice,
+      discountApplied: 0
+    }));
+
+    const subtotal = orderItems.reduce((sum, i) => sum + i.lineTotal, 0);
+    const isPaid = input.initialStatus === "paid";
+    const orderStatus = isPaid ? OrderStatus.Confirmed : OrderStatus.PendingPayment;
+    const paymentStatus = isPaid ? PaymentStatus.Paid : PaymentStatus.Pending;
+    const customerName = fullName(customer) || customer.email;
+    const actorName = normalizeText(input.reviewer) ?? "backoffice";
+
+    const payment = this.buildPaymentSummary({
+      orderNumber,
+      customerName,
+      provider: "manual",
+      amount: subtotal,
+      currencyCode: "PEN",
+      paymentStatus,
+      manualStatus: undefined,
+      updatedAt: createdAt,
+      orderStatus
+    });
+
+    const order: AdminOrderDetail = {
+      orderNumber,
+      customer,
+      address,
+      items: orderItems,
+      subtotal,
+      discount: 0,
+      shipping: 0,
+      total: subtotal,
+      currencyCode: "PEN",
+      paymentMethod: "manual",
+      orderStatus,
+      paymentStatus,
+      vendorCode: normalizeCode(input.vendorCode),
+      couponCode: undefined,
+      notes: normalizeText(input.notes),
+      providerReference: `backoffice-${orderNumber.toLowerCase()}`,
+      checkoutUrl: undefined,
+      manualStatus: undefined,
+      manualRequestId: undefined,
+      manualEvidenceReference: undefined,
+      manualEvidenceNotes: undefined,
+      evidenceImageUrl: undefined,
+      statusHistory: [
+        createHistoryEntry(
+          orderStatus,
+          actorName,
+          isPaid ? "Pedido registrado manualmente como pagado." : "Pedido registrado manualmente, pendiente de cobro.",
+          createdAt
+        )
+      ],
+      payment,
+      manualRequest: undefined,
+      createdAt,
+      updatedAt: createdAt
+    };
+
+    await this.inventoryService.syncOrder({
+      orderNumber,
+      orderStatus: order.orderStatus,
+      items: order.items,
+      occurredAt: createdAt,
+      note: "Reserva generada por pedido manual desde backoffice."
+    });
+
+    this.orders.set(orderNumber, order);
+
+    if (isPaid) {
+      this.loyaltyService.recordOrderPoints({
+        customer: customerName,
+        points: Math.floor(subtotal / 10),
+        orderNumber,
+        reviewer: actorName,
+        available: true,
+        reason: "Puntos liberados por pedido manual confirmado."
+      });
+    }
+
+    this.auditService.recordAdminAction({
+      actionType: "orders.backoffice.created",
+      targetType: "order",
+      targetId: orderNumber,
+      summary: `Pedido ${orderNumber} creado manualmente desde backoffice por ${actorName}.`,
+      actorName,
+      metadata: { orderStatus, paymentStatus, total: subtotal, vendorCode: order.vendorCode }
+    });
+
+    this.observabilityService.recordDomainEvent({
+      category: "checkout",
+      action: "checkout.backoffice.created",
+      detail: `Pedido manual ${orderNumber} registrado por ${actorName} con total ${subtotal} PEN.`,
+      relatedType: "order",
+      relatedId: orderNumber
+    });
+
+    await this.persistState();
+
+    return {
+      status: "ok" as const,
+      message: `Pedido ${orderNumber} registrado correctamente.`,
+      orderNumber,
+      order: this.toOrderSummary(order)
+    };
+  }
+
   listOrders() {
     const orders = this.sortedOrders().map((order) => this.toOrderSummary(order));
     return wrapResponse(orders, {
