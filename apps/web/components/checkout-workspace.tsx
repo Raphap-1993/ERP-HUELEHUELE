@@ -19,6 +19,7 @@ import {
   fetchCheckoutQuote,
   fetchSession
 } from "../lib/api";
+import { YapePaymentModal } from "./yape-payment-modal";
 import {
   cloudflareImageLoader,
   isRemoteStorefrontMediaUrl,
@@ -80,7 +81,7 @@ export function CheckoutWorkspace() {
   const [items, setItems] = useState<CheckoutItemInput[]>([]);
   const [session, setSession] = useState<AuthSessionSummary | null>(null);
   const [siteSettings, setSiteSettings] = useState<SiteSetting | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("openpay");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("manual");
   const [vendorCode, setVendorCode] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const [notes, setNotes] = useState("");
@@ -106,6 +107,7 @@ export function CheckoutWorkspace() {
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [showYapeModal, setShowYapeModal] = useState(false);
   const [result, setResult] = useState<{
     status: string;
     message: string;
@@ -324,7 +326,7 @@ export function CheckoutWorkspace() {
     });
   }
 
-  async function handleSubmit() {
+  async function handleSubmit(evidenceImageUrl?: string) {
     if (!quote) {
       setQuoteError("Primero genera una cotización válida.");
       return;
@@ -345,12 +347,7 @@ export function CheckoutWorkspace() {
       customer,
       address,
       clientRequestId,
-      ...(paymentMethod === "manual"
-        ? {
-            manualEvidenceReference: manualEvidenceReference.trim() || undefined,
-            manualEvidenceNotes: manualEvidenceNotes.trim() || undefined
-          }
-        : {})
+      evidenceImageUrl
     };
 
     try {
@@ -621,45 +618,10 @@ export function CheckoutWorkspace() {
               <div className="rounded-[22px] border border-[rgba(26,58,46,0.1)] bg-white p-8">
                 <h3 className="mb-1 font-serif text-xl font-bold text-[#1a3a2e]">Método de pago</h3>
                 <p className="mb-6 text-sm leading-relaxed text-[#6b7280]">Todos los pagos son 100% seguros.</p>
-                <div className="mb-6 flex flex-wrap gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod("openpay")}
-                    className={`flex items-center gap-2 rounded-[10px] border-[1.5px] px-4 py-2.5 text-[13px] font-medium transition ${paymentMethod === "openpay" ? "border-[#2d6a4f] bg-[#d8f3dc] text-[#1a3a2e]" : "border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] text-[#6b7280] hover:border-[rgba(82,183,136,0.4)]"}`}
-                  >
-                    <span className="text-lg">💳</span> Tarjeta / Openpay
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod("manual")}
-                    className={`flex items-center gap-2 rounded-[10px] border-[1.5px] px-4 py-2.5 text-[13px] font-medium transition ${paymentMethod === "manual" ? "border-[#2d6a4f] bg-[#d8f3dc] text-[#1a3a2e]" : "border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] text-[#6b7280] hover:border-[rgba(82,183,136,0.4)]"}`}
-                  >
-                    <span className="text-lg">📱</span> Yape / Plin / Transferencia
-                  </button>
+                <div className="rounded-[14px] bg-[#d8f3dc] p-5">
+                  <p className="mb-1.5 text-[13px] font-semibold text-[#1a3a2e]">📱 Pago con Yape</p>
+                  <p className="text-[12px] leading-relaxed text-[#2d6a4f]">Al confirmar tu pedido, te mostraremos el número Yape para realizar el pago y podrás subir tu comprobante.</p>
                 </div>
-                {paymentMethod === "openpay" ? (
-                  <div className="rounded-[14px] bg-[#f4f4f0] p-5">
-                    <p className="mb-2 text-[13px] font-semibold text-[#1a3a2e]">Pago con tarjeta vía Openpay</p>
-                    <p className="text-[12px] leading-relaxed text-[#6b7280]">
-                      Al confirmar, te redirigiremos al portal seguro de Openpay para completar el pago con tu tarjeta de débito o crédito.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="rounded-[14px] bg-[#d8f3dc] p-5">
-                      <p className="mb-1.5 text-[13px] font-semibold text-[#1a3a2e]">Pago manual (Yape / Plin / Transferencia)</p>
-                      <p className="text-[12px] leading-relaxed text-[#2d6a4f]">Realiza el pago y comparte el comprobante. Lo validamos manualmente.</p>
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Referencia del comprobante *</label>
-                      <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Ej: N° operación Yape / N° transferencia" value={manualEvidenceReference} onChange={(e) => setManualEvidenceReference(e.target.value)} />
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Notas del comprobante</label>
-                      <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Ej: transferencia desde BCP móvil" value={manualEvidenceNotes} onChange={(e) => setManualEvidenceNotes(e.target.value)} />
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Cupón y código */}
@@ -749,11 +711,11 @@ export function CheckoutWorkspace() {
                 {quoteError ? <p className="mt-2 text-[11px] text-rose-600">{quoteError}</p> : null}
                 <button
                   type="button"
-                  onClick={handleSubmit}
+                  onClick={() => setShowYapeModal(true)}
                   disabled={submitting || activeItems.length === 0}
                   className="mt-5 w-full rounded-[13px] bg-[#2d6a4f] py-4 text-[15px] font-bold text-white shadow-[0_8px_24px_rgba(45,106,79,0.3)] transition hover:-translate-y-0.5 hover:bg-[#1a3a2e] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {submitting ? "Procesando..." : paymentMethod === "openpay" ? "Confirmar y pagar →" : "Confirmar pedido →"}
+                  {submitting ? "Procesando..." : "Pagar con Yape →"}
                 </button>
                 <div className="mt-4 flex justify-center gap-5">
                   {[{ icon: "🔒", label: "Pago seguro" }, { icon: "📍", label: "Envío rastreado" }, { icon: "🌿", label: "100% natural" }].map((badge) => (
@@ -768,6 +730,17 @@ export function CheckoutWorkspace() {
           </div>
         </>
       )}
+
+      <YapePaymentModal
+        open={showYapeModal}
+        yapeNumber={siteSettings?.yapeNumber ?? ""}
+        total={`S/ ${summary.grandTotal.toFixed(2)}`}
+        onConfirm={(evidenceImageUrl) => {
+          setShowYapeModal(false);
+          void handleSubmit(evidenceImageUrl);
+        }}
+        onClose={() => setShowYapeModal(false)}
+      />
     </div>
   );
 }

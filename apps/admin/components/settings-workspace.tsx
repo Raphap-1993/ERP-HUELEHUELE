@@ -83,6 +83,7 @@ function normalizeSiteSetting(value: SiteSetting): CmsSiteSettingsInput {
     whatsapp: value.whatsapp,
     shippingFlatRate: value.shippingFlatRate,
     freeShippingThreshold: value.freeShippingThreshold,
+    yapeNumber: value.yapeNumber,
     headerLogoUrl: value.headerLogoUrl,
     heroProductImageUrl: value.heroProductImageUrl,
     loadingImageUrl: value.loadingImageUrl
@@ -399,6 +400,20 @@ export function SettingsWorkspace() {
                 WhatsApp
               </label>
               <Input id="site-whatsapp" value={siteForm.whatsapp} onChange={(event) => setSiteForm({ ...siteForm, whatsapp: event.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="site-yape-number">
+                Número Yape
+              </label>
+              <Input
+                id="site-yape-number"
+                placeholder="+51 999 000 000"
+                value={siteForm.yapeNumber ?? ""}
+                onChange={(event) => setSiteForm({ ...siteForm, yapeNumber: event.target.value })}
+              />
+              <p className="text-xs leading-5 text-black/55">
+                Número que verá el cliente para realizar el pago con Yape.
+              </p>
             </div>
             <div className="space-y-2">
               <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="site-shipping-flat">

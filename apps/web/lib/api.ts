@@ -119,6 +119,27 @@ export async function createManualCheckout(body: CheckoutRequestInput) {
   });
 }
 
+export async function uploadPaymentEvidence(file: File): Promise<{ url: string }> {
+  const url = `${getApiBaseUrl()}/store/checkout/evidence`;
+  const formData = new FormData();
+  formData.append("file", file);
+
+  let response: Response;
+  try {
+    response = await fetch(url, { method: "POST", body: formData });
+  } catch (error) {
+    throw new Error(`No pudimos subir el comprobante. ${error instanceof Error ? error.message : ""}`);
+  }
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message = payload?.message ?? payload?.error ?? `HTTP ${response.status}`;
+    throw new Error(Array.isArray(message) ? message.join(", ") : String(message));
+  }
+
+  return payload as { url: string };
+}
+
 export async function submitWholesaleLead(body: WholesaleLeadInput) {
   return requestJson<WholesaleLeadActionEnvelope>("/store/wholesale-leads", {
     method: "POST",

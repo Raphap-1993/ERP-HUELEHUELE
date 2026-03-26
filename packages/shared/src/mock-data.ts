@@ -48,6 +48,7 @@ export const siteSetting: SiteSetting = {
   whatsapp: "+52 000 000 0000",
   shippingFlatRate: 49,
   freeShippingThreshold: 500,
+  yapeNumber: "+51 999 000 000",
   headerLogoUrl: undefined,
   heroProductImageUrl: undefined
 };

@@ -327,6 +327,7 @@ export class OrdersService implements OnModuleInit {
     const address = normalizeAddress(input.request.address);
     const manualEvidenceReference = normalizeText(input.request.manualEvidenceReference);
     const manualEvidenceNotes = normalizeText(input.request.manualEvidenceNotes);
+    const evidenceImageUrl = input.request.evidenceImageUrl?.trim() || undefined;
     const manualStatus =
       input.request.paymentMethod === "manual"
         ? input.manualStatus ?? (manualEvidenceReference ? ManualPaymentRequestStatus.UnderReview : ManualPaymentRequestStatus.Submitted)
@@ -360,6 +361,7 @@ export class OrdersService implements OnModuleInit {
             status: manualStatus ?? ManualPaymentRequestStatus.Submitted,
             evidenceReference: manualEvidenceReference,
             evidenceNotes: manualEvidenceNotes,
+            evidenceImageUrl,
             submittedAt: createdAt
           })
         : undefined;
@@ -386,6 +388,7 @@ export class OrdersService implements OnModuleInit {
       manualRequestId,
       manualEvidenceReference,
       manualEvidenceNotes,
+      evidenceImageUrl,
       statusHistory: this.buildInitialHistory({
         orderStatus,
         paymentMethod,
@@ -904,6 +907,7 @@ export class OrdersService implements OnModuleInit {
     status: ManualPaymentRequestStatus;
     evidenceReference?: string;
     evidenceNotes?: string;
+    evidenceImageUrl?: string;
     submittedAt: string;
   }): AdminManualPaymentRequestSummary {
     return {
@@ -915,6 +919,7 @@ export class OrdersService implements OnModuleInit {
       status: input.status,
       evidenceReference: input.evidenceReference,
       evidenceNotes: input.evidenceNotes,
+      evidenceImageUrl: input.evidenceImageUrl,
       submittedAt: input.submittedAt
     };
   }

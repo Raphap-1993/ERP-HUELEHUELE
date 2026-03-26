@@ -739,6 +739,7 @@ export interface CheckoutRequestInput {
   notes?: string;
   manualEvidenceReference?: string;
   manualEvidenceNotes?: string;
+  evidenceImageUrl?: string;
   clientRequestId?: string;
 }
 
@@ -824,6 +825,7 @@ export interface AdminManualPaymentRequestSummary {
   status: ManualPaymentRequestStatus;
   evidenceReference?: string;
   evidenceNotes?: string;
+  evidenceImageUrl?: string;
   submittedAt: string;
   reviewedAt?: string;
   reviewer?: string;
@@ -868,6 +870,7 @@ export interface AdminOrderDetail {
   manualRequestId?: string;
   manualEvidenceReference?: string;
   manualEvidenceNotes?: string;
+  evidenceImageUrl?: string;
   statusHistory: OrderStatusHistorySummary[];
   payment: AdminPaymentSummary;
   manualRequest?: AdminManualPaymentRequestSummary;

@@ -310,6 +310,7 @@ export class CmsService implements OnModuleInit {
     const headerLogoUrl = normalizeOptionalAssetUrl(body.headerLogoUrl);
     const heroProductImageUrl = normalizeOptionalAssetUrl(body.heroProductImageUrl);
     const loadingImageUrl = normalizeOptionalAssetUrl(body.loadingImageUrl);
+    const yapeNumber = body.yapeNumber?.trim() || undefined;
 
     if (!brandName || !tagline || !supportEmail || !whatsapp) {
       throw new BadRequestException("Marca, tagline, soporte y WhatsApp son obligatorios.");
@@ -322,6 +323,7 @@ export class CmsService implements OnModuleInit {
       whatsapp,
       shippingFlatRate,
       freeShippingThreshold,
+      yapeNumber,
       headerLogoUrl,
       heroProductImageUrl,
       loadingImageUrl

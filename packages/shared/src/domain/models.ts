@@ -185,6 +185,7 @@ export interface SiteSetting {
   whatsapp: string;
   shippingFlatRate: number;
   freeShippingThreshold: number;
+  yapeNumber?: string;
   headerLogoUrl?: string;
   heroProductImageUrl?: string;
   loadingImageUrl?: string;

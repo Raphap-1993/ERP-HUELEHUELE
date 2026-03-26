@@ -531,14 +531,38 @@ export function OrdersWorkspace() {
                 </div>
 
                 {selectedOrder.manualRequest ? (
-                  <div className="space-y-2 rounded-[1.5rem] border border-amber-200 bg-amber-50 p-4">
+                  <div className="space-y-3 rounded-[1.5rem] border border-amber-200 bg-amber-50 p-4">
                     <p className="text-sm font-semibold text-amber-950">Solicitud manual</p>
                     <p className="text-sm text-amber-950/80">
                       {selectedOrder.manualRequest.id} · {manualStatusLabel(selectedOrder.manualRequest.status)}
                     </p>
-                    <p className="text-sm text-amber-950/80">
-                      Evidencia: {selectedOrder.manualRequest.evidenceReference ?? "Sin comprobante"}
-                    </p>
+
+                    {/* Imagen del comprobante Yape */}
+                    {selectedOrder.manualRequest.evidenceImageUrl ? (
+                      <div className="space-y-1.5">
+                        <p className="text-xs font-medium uppercase tracking-wide text-amber-900/60">Comprobante</p>
+                        <div className="overflow-hidden rounded-[12px] border border-amber-200 bg-white">
+                          <img
+                            src={selectedOrder.manualRequest.evidenceImageUrl}
+                            alt="Comprobante de pago"
+                            className="max-h-72 w-full object-contain"
+                          />
+                        </div>
+                        <a
+                          href={selectedOrder.manualRequest.evidenceImageUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-block text-xs text-amber-800 underline underline-offset-2 hover:text-amber-950"
+                        >
+                          Ver imagen completa →
+                        </a>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-amber-950/80">
+                        Evidencia: {selectedOrder.manualRequest.evidenceReference ?? "Sin comprobante"}
+                      </p>
+                    )}
+
                     {selectedOrder.manualRequest.evidenceNotes ? (
                       <p className="text-sm text-amber-950/80">{selectedOrder.manualRequest.evidenceNotes}</p>
                     ) : null}

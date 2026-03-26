@@ -5,7 +5,7 @@ import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client
 import sharp from "sharp";
 import { isConfigured } from "../../common/env";
 
-type MediaAssetKind = "product" | "hero" | "banner" | "logo";
+type MediaAssetKind = "product" | "hero" | "banner" | "logo" | "evidence";
 
 interface UploadFileInput {
   buffer: Buffer;
@@ -39,7 +39,8 @@ const resizeProfiles: Record<MediaAssetKind, { maxWidth: number; maxHeight: numb
   product: { maxWidth: 1600, maxHeight: 1600, quality: 82 },
   hero: { maxWidth: 2400, maxHeight: 2400, quality: 78 },
   banner: { maxWidth: 1920, maxHeight: 1920, quality: 80 },
-  logo: { maxWidth: 512, maxHeight: 512, quality: 86 }
+  logo: { maxWidth: 512, maxHeight: 512, quality: 86 },
+  evidence: { maxWidth: 1920, maxHeight: 1920, quality: 80 }
 };
 
 function sanitizeSlug(value: string) {
