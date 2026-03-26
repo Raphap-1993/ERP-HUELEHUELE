@@ -311,6 +311,8 @@ export class CmsService implements OnModuleInit {
     const heroProductImageUrl = normalizeOptionalAssetUrl(body.heroProductImageUrl);
     const loadingImageUrl = normalizeOptionalAssetUrl(body.loadingImageUrl);
     const yapeNumber = body.yapeNumber?.trim() || undefined;
+    const walletType = body.walletType?.trim() || undefined;
+    const walletOwnerName = body.walletOwnerName?.trim() || undefined;
 
     if (!brandName || !tagline || !supportEmail || !whatsapp) {
       throw new BadRequestException("Marca, tagline, soporte y WhatsApp son obligatorios.");
@@ -324,6 +326,8 @@ export class CmsService implements OnModuleInit {
       shippingFlatRate,
       freeShippingThreshold,
       yapeNumber,
+      walletType,
+      walletOwnerName,
       headerLogoUrl,
       heroProductImageUrl,
       loadingImageUrl

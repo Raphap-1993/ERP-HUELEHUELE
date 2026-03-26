@@ -186,6 +186,8 @@ export interface SiteSetting {
   shippingFlatRate: number;
   freeShippingThreshold: number;
   yapeNumber?: string;
+  walletType?: string;
+  walletOwnerName?: string;
   headerLogoUrl?: string;
   heroProductImageUrl?: string;
   loadingImageUrl?: string;

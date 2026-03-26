@@ -117,7 +117,7 @@ function normalizeAddress(address: CheckoutAddressInput) {
     city: address.city.trim(),
     region: address.region.trim(),
     postalCode: address.postalCode.trim(),
-    countryCode: address.countryCode?.trim().toUpperCase() || "MX"
+    countryCode: address.countryCode?.trim().toUpperCase() || "PE"
   };
 }
 
@@ -862,8 +862,8 @@ export class OrdersService implements OnModuleInit {
         throw new BadRequestException("El pago manual debe iniciar pendiente.");
       }
 
-      if (!manualEvidenceReference) {
-        throw new BadRequestException("El pago manual requiere una referencia de comprobante.");
+      if (!manualEvidenceReference && !input.request.evidenceImageUrl) {
+        throw new BadRequestException("El pago manual requiere un comprobante de pago.");
       }
 
       if (!input.manualStatus || !isManualRequestResolvable(input.manualStatus)) {

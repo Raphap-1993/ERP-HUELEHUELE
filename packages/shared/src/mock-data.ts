@@ -49,6 +49,8 @@ export const siteSetting: SiteSetting = {
   shippingFlatRate: 49,
   freeShippingThreshold: 500,
   yapeNumber: "+51 999 000 000",
+  walletType: "Yape",
+  walletOwnerName: "",
   headerLogoUrl: undefined,
   heroProductImageUrl: undefined
 };

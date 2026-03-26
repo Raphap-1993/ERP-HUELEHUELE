@@ -84,6 +84,8 @@ function normalizeSiteSetting(value: SiteSetting): CmsSiteSettingsInput {
     shippingFlatRate: value.shippingFlatRate,
     freeShippingThreshold: value.freeShippingThreshold,
     yapeNumber: value.yapeNumber,
+    walletType: value.walletType,
+    walletOwnerName: value.walletOwnerName,
     headerLogoUrl: value.headerLogoUrl,
     heroProductImageUrl: value.heroProductImageUrl,
     loadingImageUrl: value.loadingImageUrl
@@ -412,7 +414,32 @@ export function SettingsWorkspace() {
                 onChange={(event) => setSiteForm({ ...siteForm, yapeNumber: event.target.value })}
               />
               <p className="text-xs leading-5 text-black/55">
-                Número que verá el cliente para realizar el pago con Yape.
+                Número de la billetera virtual que verá el cliente al pagar.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="site-wallet-type">
+                Tipo de billetera
+              </label>
+              <Input
+                id="site-wallet-type"
+                placeholder="Ej: Yape, Plin, Tunki..."
+                value={siteForm.walletType ?? ""}
+                onChange={(event) => setSiteForm({ ...siteForm, walletType: event.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="site-wallet-owner">
+                Titular de la billetera
+              </label>
+              <Input
+                id="site-wallet-owner"
+                placeholder="Nombre del titular"
+                value={siteForm.walletOwnerName ?? ""}
+                onChange={(event) => setSiteForm({ ...siteForm, walletOwnerName: event.target.value })}
+              />
+              <p className="text-xs leading-5 text-black/55">
+                Nombre que aparecerá debajo del número al momento de pagar.
               </p>
             </div>
             <div className="space-y-2">

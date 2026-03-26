@@ -38,21 +38,14 @@ import {
 type PaymentMethod = "openpay" | "manual";
 
 interface CustomerForm {
-  firstName: string;
-  lastName: string;
+  fullName: string;
   email: string;
   phone: string;
 }
 
 interface AddressForm {
-  label: string;
-  recipientName: string;
   line1: string;
-  line2: string;
-  city: string;
-  region: string;
-  postalCode: string;
-  countryCode: string;
+  district: string;
 }
 
 function splitName(name: string) {
@@ -85,23 +78,14 @@ export function CheckoutWorkspace() {
   const [vendorCode, setVendorCode] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const [notes, setNotes] = useState("");
-  const [manualEvidenceReference, setManualEvidenceReference] = useState("");
-  const [manualEvidenceNotes, setManualEvidenceNotes] = useState("");
   const [customer, setCustomer] = useState<CustomerForm>({
-    firstName: "",
-    lastName: "",
+    fullName: "",
     email: "",
     phone: ""
   });
   const [address, setAddress] = useState<AddressForm>({
-    label: "",
-    recipientName: "",
     line1: "",
-    line2: "",
-    city: "",
-    region: "",
-    postalCode: "",
-    countryCode: ""
+    district: ""
   });
   const [quote, setQuote] = useState<CheckoutQuoteSummary | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
@@ -147,16 +131,10 @@ export function CheckoutWorkspace() {
         const response = await fetchSession(token);
         if (active && response.data) {
           setSession(response.data);
-          const split = splitName(response.data.user.name);
           setCustomer((current) => ({
             ...current,
-            firstName: split.firstName || current.firstName,
-            lastName: split.lastName || current.lastName,
+            fullName: response.data?.user.name || current.fullName,
             email: response.data?.user.email ?? current.email
-          }));
-          setAddress((current) => ({
-            ...current,
-            recipientName: response.data?.user.name ?? current.recipientName
           }));
         } else if (active) {
           clearStoredSessionToken();
@@ -338,14 +316,27 @@ export function CheckoutWorkspace() {
     const clientRequestId = checkoutRequestIdRef.current ?? globalThis.crypto.randomUUID();
     checkoutRequestIdRef.current = clientRequestId;
 
+    const nameParts = customer.fullName.trim().split(/\s+/).filter(Boolean);
     const request: CheckoutRequestInput = {
       items: activeItems,
       paymentMethod,
       vendorCode: vendorCode.trim() || undefined,
       couponCode: couponCode.trim() || undefined,
       notes,
-      customer,
-      address,
+      customer: {
+        firstName: nameParts[0] ?? "",
+        lastName: nameParts.slice(1).join(" ") || nameParts[0] ?? "",
+        email: customer.email.trim(),
+        phone: customer.phone.trim()
+      },
+      address: {
+        recipientName: customer.fullName.trim(),
+        line1: address.line1.trim(),
+        city: address.district.trim(),
+        region: address.district.trim(),
+        postalCode: "",
+        countryCode: "PE"
+      },
       clientRequestId,
       evidenceImageUrl
     };
@@ -544,72 +535,32 @@ export function CheckoutWorkspace() {
                 </div>
               </div>
 
-              {/* Datos de contacto */}
+              {/* Datos de contacto y envío */}
               <div className="rounded-[22px] border border-[rgba(26,58,46,0.1)] bg-white p-8">
-                <h3 className="mb-1 font-serif text-xl font-bold text-[#1a3a2e]">Datos de contacto</h3>
-                <p className="mb-6 text-sm leading-relaxed text-[#6b7280]">
-                  {session ? `Sesión activa: ${session.user.name}` : "Puedes comprar sin cuenta o iniciar sesión para autocompletar."}
-                </p>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Nombre *</label>
-                    <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Tu nombre" value={customer.firstName} onChange={(e) => setCustomer((c) => ({ ...c, firstName: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Apellido *</label>
-                    <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Tu apellido" value={customer.lastName} onChange={(e) => setCustomer((c) => ({ ...c, lastName: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Email *</label>
-                    <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="email" placeholder="tu@correo.com" value={customer.email} onChange={(e) => setCustomer((c) => ({ ...c, email: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">WhatsApp *</label>
-                    <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="tel" placeholder="+51 999 000 000" value={customer.phone} onChange={(e) => setCustomer((c) => ({ ...c, phone: e.target.value }))} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Dirección */}
-              <div className="rounded-[22px] border border-[rgba(26,58,46,0.1)] bg-white p-8">
-                <h3 className="mb-1 font-serif text-xl font-bold text-[#1a3a2e]">Dirección de envío</h3>
+                <h3 className="mb-1 font-serif text-xl font-bold text-[#1a3a2e]">Tus datos</h3>
                 <p className="mb-6 text-sm leading-relaxed text-[#6b7280]">Enviamos a todo el Perú con Olva Courier y Shalom.</p>
                 <div className="space-y-4">
+                  <div>
+                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Nombre completo *</label>
+                    <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Tu nombre y apellido" value={customer.fullName} onChange={(e) => setCustomer((c) => ({ ...c, fullName: e.target.value }))} />
+                  </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
-                      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Destinatario</label>
-                      <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Nombre destinatario" value={address.recipientName} onChange={(e) => setAddress((a) => ({ ...a, recipientName: e.target.value }))} />
+                      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">WhatsApp *</label>
+                      <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="tel" placeholder="+51 999 000 000" value={customer.phone} onChange={(e) => setCustomer((c) => ({ ...c, phone: e.target.value }))} />
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Etiqueta</label>
-                      <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Casa, oficina..." value={address.label} onChange={(e) => setAddress((a) => ({ ...a, label: e.target.value }))} />
+                      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Email</label>
+                      <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="email" placeholder="tu@correo.com" value={customer.email} onChange={(e) => setCustomer((c) => ({ ...c, email: e.target.value }))} />
                     </div>
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Dirección principal *</label>
-                    <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Calle, número, referencia" value={address.line1} onChange={(e) => setAddress((a) => ({ ...a, line1: e.target.value }))} />
+                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Dirección de entrega *</label>
+                    <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Calle, número, urbanización, referencia" value={address.line1} onChange={(e) => setAddress((a) => ({ ...a, line1: e.target.value }))} />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Complemento</label>
-                    <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Referencia adicional" value={address.line2} onChange={(e) => setAddress((a) => ({ ...a, line2: e.target.value }))} />
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-3">
-                    <div>
-                      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Ciudad *</label>
-                      <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Ciudad" value={address.city} onChange={(e) => setAddress((a) => ({ ...a, city: e.target.value }))} />
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Región *</label>
-                      <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Región" value={address.region} onChange={(e) => setAddress((a) => ({ ...a, region: e.target.value }))} />
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">País *</label>
-                      <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="PE" value={address.countryCode} onChange={(e) => setAddress((a) => ({ ...a, countryCode: e.target.value }))} />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Código postal</label>
-                    <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Código postal" value={address.postalCode} onChange={(e) => setAddress((a) => ({ ...a, postalCode: e.target.value }))} />
+                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Distrito / Ciudad *</label>
+                    <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Ej: Miraflores, Lima" value={address.district} onChange={(e) => setAddress((a) => ({ ...a, district: e.target.value }))} />
                   </div>
                 </div>
               </div>
@@ -715,7 +666,7 @@ export function CheckoutWorkspace() {
                   disabled={submitting || activeItems.length === 0}
                   className="mt-5 w-full rounded-[13px] bg-[#2d6a4f] py-4 text-[15px] font-bold text-white shadow-[0_8px_24px_rgba(45,106,79,0.3)] transition hover:-translate-y-0.5 hover:bg-[#1a3a2e] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {submitting ? "Procesando..." : "Pagar con Yape →"}
+                  {submitting ? "Procesando..." : "Comprar →"}
                 </button>
                 <div className="mt-4 flex justify-center gap-5">
                   {[{ icon: "🔒", label: "Pago seguro" }, { icon: "📍", label: "Envío rastreado" }, { icon: "🌿", label: "100% natural" }].map((badge) => (
@@ -733,7 +684,9 @@ export function CheckoutWorkspace() {
 
       <YapePaymentModal
         open={showYapeModal}
-        yapeNumber={siteSettings?.yapeNumber ?? ""}
+        walletNumber={siteSettings?.yapeNumber ?? ""}
+        walletType={siteSettings?.walletType ?? "Billetera virtual"}
+        walletOwnerName={siteSettings?.walletOwnerName ?? ""}
         total={`S/ ${summary.grandTotal.toFixed(2)}`}
         onConfirm={(evidenceImageUrl) => {
           setShowYapeModal(false);

@@ -6,7 +6,9 @@ import { uploadPaymentEvidence } from "../lib/api";
 
 interface YapePaymentModalProps {
   open: boolean;
-  yapeNumber: string;
+  walletNumber: string;
+  walletType: string;
+  walletOwnerName: string;
   total: string;
   onConfirm: (evidenceImageUrl: string) => void;
   onClose: () => void;
@@ -14,7 +16,7 @@ interface YapePaymentModalProps {
 
 type UploadState = "idle" | "uploading" | "done" | "error";
 
-export function YapePaymentModal({ open, yapeNumber, total, onConfirm, onClose }: YapePaymentModalProps) {
+export function YapePaymentModal({ open, walletNumber, walletType, walletOwnerName, total, onConfirm, onClose }: YapePaymentModalProps) {
   const [copied, setCopied] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -24,7 +26,7 @@ export function YapePaymentModal({ open, yapeNumber, total, onConfirm, onClose }
   const inputRef = useRef<HTMLInputElement>(null);
 
   function handleCopy() {
-    navigator.clipboard.writeText(yapeNumber).then(() => {
+    navigator.clipboard.writeText(walletNumber).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
@@ -92,7 +94,7 @@ export function YapePaymentModal({ open, yapeNumber, total, onConfirm, onClose }
     <Dialog open={open} onClose={handleClose} size="md">
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Pagar con Yape</DialogTitle>
+          <DialogTitle>Confirmar compra</DialogTitle>
         </DialogHeader>
 
         <DialogBody className="space-y-5">
@@ -102,13 +104,13 @@ export function YapePaymentModal({ open, yapeNumber, total, onConfirm, onClose }
             <p className="mt-1 font-serif text-3xl font-bold text-[#1a3a2e]">{total}</p>
           </div>
 
-          {/* Número Yape */}
+          {/* Número de billetera */}
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">
-              Número Yape
+              {walletType || "Billetera virtual"}
             </p>
             <div className="flex items-center gap-3 rounded-[12px] border-[1.5px] border-[rgba(26,58,46,0.15)] bg-[#f4f4f0] px-4 py-3">
-              <span className="flex-1 font-mono text-[15px] font-semibold text-[#1a3a2e]">{yapeNumber}</span>
+              <span className="flex-1 font-mono text-[15px] font-semibold text-[#1a3a2e]">{walletNumber}</span>
               <button
                 type="button"
                 onClick={handleCopy}
@@ -117,8 +119,11 @@ export function YapePaymentModal({ open, yapeNumber, total, onConfirm, onClose }
                 {copied ? "¡Copiado!" : "Copiar"}
               </button>
             </div>
-            <p className="mt-1.5 text-[11px] text-[#6b7280]">
-              Abre Yape, ingresa este número y realiza el pago.
+            {walletOwnerName && (
+              <p className="mt-1.5 text-[12px] font-medium text-[#1a3a2e]">Titular: {walletOwnerName}</p>
+            )}
+            <p className="mt-1 text-[11px] text-[#6b7280]">
+              Realiza el pago y sube la captura de pantalla como comprobante.
             </p>
           </div>
 
