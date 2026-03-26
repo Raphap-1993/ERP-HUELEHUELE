@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { AdminDataTable, Badge, Button, Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator, StatusBadge, TimelinePedido } from "@huelegood/ui";
 import type { AdminOrderDetail, AdminOrderSummary, OrderStatus, PaymentStatus, ManualPaymentRequestStatus } from "@huelegood/shared";
-import { fetchOrder, fetchOrders } from "../lib/api";
+import { approveManualPaymentRequest, fetchOrder, fetchOrders, rejectManualPaymentRequest } from "../lib/api";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("es-PE", {
@@ -91,6 +91,8 @@ export function OrdersWorkspace() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"detalle" | "timeline">("detalle");
+  const [actionLoading, setActionLoading] = useState<"approve" | "reject" | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -153,21 +155,51 @@ export function OrdersWorkspace() {
     [orders]
   );
 
+  async function handleApprove() {
+    if (!selectedOrder?.manualRequest) return;
+    setActionLoading("approve");
+    setActionError(null);
+    try {
+      await approveManualPaymentRequest(selectedOrder.manualRequest.id, { reviewer: "admin", notes: "Aprobado desde backoffice." });
+      setRefreshKey((k) => k + 1);
+      setModalOpen(false);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "No se pudo aprobar. Intenta de nuevo.");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleReject() {
+    if (!selectedOrder?.manualRequest) return;
+    setActionLoading("reject");
+    setActionError(null);
+    try {
+      await rejectManualPaymentRequest(selectedOrder.manualRequest.id, { reviewer: "admin", notes: "Rechazado desde backoffice." });
+      setRefreshKey((k) => k + 1);
+      setModalOpen(false);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "No se pudo rechazar. Intenta de nuevo.");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   const selectedSummary = orders.find((o) => o.orderNumber === selectedOrderNumber) ?? null;
 
   const allOrdersRows = useMemo(
     () =>
       orders.map((order) => [
-        <div key={`${order.orderNumber}-meta`} className="space-y-0.5">
-          <Button
-            type="button"
-            variant="ghost"
-            className="h-auto px-0 py-0 text-left font-semibold"
-            onClick={() => { setSelectedOrderNumber(order.orderNumber); setActiveTab("detalle"); setModalOpen(true); }}
-          >
-            {order.orderNumber}
-          </Button>
+        <div key={`${order.orderNumber}-meta`} className="space-y-1.5">
+          <div className="font-semibold text-[#132016]">{order.orderNumber}</div>
           <div className="text-xs text-black/45">{formatDateTime(order.createdAt)}</div>
+          <button
+            type="button"
+            onClick={() => { setSelectedOrderNumber(order.orderNumber); setActiveTab("detalle"); setModalOpen(true); }}
+            className="inline-flex items-center gap-1 rounded-[8px] bg-[#1a3a2e] px-2.5 py-1 text-[11px] font-medium text-white transition hover:bg-[#2d6a4f] active:scale-95"
+          >
+            Ver detalles →
+          </button>
         </div>,
         <div key={`${order.orderNumber}-customer`} className="space-y-0.5">
           <div className="font-medium text-[#132016]">{order.customerName}</div>
@@ -356,7 +388,37 @@ export function OrdersWorkspace() {
           </DialogBody>
 
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>Cerrar</Button>
+            {actionError && (
+              <p className="mr-auto text-sm text-red-600">{actionError}</p>
+            )}
+            {selectedOrder?.manualRequest?.status === "under_review" ? (
+              <>
+                <Button
+                  variant="secondary"
+                  onClick={() => setModalOpen(false)}
+                  disabled={!!actionLoading}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={handleReject}
+                  disabled={!!actionLoading}
+                  className="border-red-200 text-red-700 hover:bg-red-50"
+                >
+                  {actionLoading === "reject" ? "Rechazando..." : "Rechazar"}
+                </Button>
+                <Button
+                  onClick={handleApprove}
+                  disabled={!!actionLoading}
+                  className="bg-[#1a3a2e] text-white hover:bg-[#2d6a4f]"
+                >
+                  {actionLoading === "approve" ? "Aprobando..." : "Aprobar pago ✓"}
+                </Button>
+              </>
+            ) : (
+              <Button variant="secondary" onClick={() => setModalOpen(false)}>Cerrar</Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

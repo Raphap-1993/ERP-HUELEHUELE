@@ -281,6 +281,11 @@ export class NotificationsService implements OnModuleInit {
     return this.toSummary(notification);
   }
 
+  findById(id: string) {
+    const notification = this.notifications.get(id.trim());
+    return notification ? this.toSummary(notification) : null;
+  }
+
   private requireNotification(id: string) {
     const notification = this.notifications.get(id.trim());
     if (!notification) {

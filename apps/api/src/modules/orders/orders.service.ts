@@ -704,13 +704,13 @@ export class OrdersService implements OnModuleInit {
       });
       void this.notificationsService.queueNotification({
         channel: NotificationChannel.Email,
-        audience: manualRequest.customerName,
-        subject: `Pago aprobado para ${order.orderNumber}`,
-        body: "Tu comprobante fue aprobado y el pedido pasó a pagado.",
+        audience: order.customer.email,
+        subject: `✅ Tu pago fue confirmado — Pedido ${order.orderNumber}`,
+        body: `Hola ${manualRequest.customerName},\n\nTu comprobante fue revisado y aprobado. Tu pedido ${order.orderNumber} ya está confirmado y pronto nos pondremos en contacto contigo para coordinar la entrega.\n\n¡Gracias por tu compra!`,
         source: "payments",
         relatedType: "order",
         relatedId: order.orderNumber,
-        status: NotificationStatus.Sent
+        status: NotificationStatus.Pending
       });
       void this.notificationsService.recordEvent(
         "order.manual.approved",
@@ -743,13 +743,13 @@ export class OrdersService implements OnModuleInit {
       });
       void this.notificationsService.queueNotification({
         channel: NotificationChannel.Email,
-        audience: manualRequest.customerName,
-        subject: `Pago rechazado para ${order.orderNumber}`,
-        body: "Tu comprobante fue rechazado y el pedido fue cancelado.",
+        audience: order.customer.email,
+        subject: `❌ Comprobante no válido — Pedido ${order.orderNumber}`,
+        body: `Hola ${manualRequest.customerName},\n\nRevisamos tu comprobante pero no pudimos validarlo para el pedido ${order.orderNumber}. El pedido fue cancelado.\n\nSi crees que hubo un error, comunícate con nosotros por WhatsApp y con gusto te ayudamos.`,
         source: "payments",
         relatedType: "order",
         relatedId: order.orderNumber,
-        status: NotificationStatus.Sent
+        status: NotificationStatus.Pending
       });
       void this.notificationsService.recordEvent(
         "order.manual.rejected",

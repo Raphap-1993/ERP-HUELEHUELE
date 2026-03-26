@@ -10,6 +10,7 @@
     "lint": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@huelegood/shared": "^0.1.0"
+    "@huelegood/shared": "^0.1.0",
+    "resend": "^4.0.0"
   }
 }
