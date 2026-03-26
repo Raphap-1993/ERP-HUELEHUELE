@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UploadedFile, UseInterceptors } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Post, UploadedFile, UseInterceptors } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { memoryStorage } from "multer";
 import { CommerceService } from "./commerce.service";
@@ -37,6 +37,9 @@ export class CommerceController {
   async uploadEvidence(
     @UploadedFile() file: { buffer: Buffer; mimetype?: string; originalname?: string } | undefined
   ) {
+    if (!file?.buffer) {
+      throw new BadRequestException("Debes adjuntar una imagen del comprobante.");
+    }
     const result = await this.mediaService.uploadImage(file, {
       kind: "evidence",
       slug: `yape-${Date.now()}`
