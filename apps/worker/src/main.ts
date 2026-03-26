@@ -1,5 +1,4 @@
 import "reflect-metadata";
-import { Resend } from "resend";
 import { NestFactory } from "@nestjs/core";
 import { type Job, Worker, type Processor } from "bullmq";
 import {
@@ -46,21 +45,29 @@ async function createWorkerServices() {
   };
 }
 
-const resendClient = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const resendApiKey = process.env.RESEND_API_KEY ?? null;
 const resendFrom = process.env.RESEND_FROM_EMAIL ?? "Huele Huele <noreply@huelegood.com>";
 
 async function sendEmailViaResend(to: string, subject: string, body: string) {
-  if (!resendClient) return;
+  if (!resendApiKey) return;
   try {
     const html = `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:24px">
       <p style="font-size:16px;line-height:1.7;color:#374151;white-space:pre-line">${body.replace(/\n/g, "<br>")}</p>
       <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0">
       <p style="font-size:12px;color:#9ca3af">Huele Huele · huelegood.com</p>
     </div>`;
-    await resendClient.emails.send({ from: resendFrom, to, subject, html });
-    writeWorkerLog("info", "notifications.email.sent", { to, subject });
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: resendFrom, to, subject, html })
+    });
+    if (!res.ok) {
+      writeWorkerLog("warn", "notifications.email.failed", { to, subject, status: res.status });
+    } else {
+      writeWorkerLog("info", "notifications.email.sent", { to, subject });
+    }
   } catch (err) {
-    writeWorkerLog("warn", "notifications.email.failed", { to, subject, error: String(err) });
+    writeWorkerLog("warn", "notifications.email.error", { to, subject, error: String(err) });
   }
 }
 
