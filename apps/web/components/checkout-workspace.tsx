@@ -212,21 +212,12 @@ export function CheckoutWorkspace() {
     checkoutRequestIdRef.current = null;
   }, [
     activeItems,
-    address.city,
-    address.countryCode,
-    address.label,
     address.line1,
-    address.line2,
-    address.postalCode,
-    address.region,
-    address.recipientName,
+    address.district,
+    customer.fullName,
     customer.email,
-    customer.firstName,
-    customer.lastName,
     customer.phone,
     couponCode,
-    manualEvidenceNotes,
-    manualEvidenceReference,
     notes,
     paymentMethod,
     vendorCode
