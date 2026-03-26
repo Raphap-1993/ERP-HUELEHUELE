@@ -325,7 +325,7 @@ export function CheckoutWorkspace() {
       notes,
       customer: {
         firstName: nameParts[0] ?? "",
-        lastName: nameParts.slice(1).join(" ") || nameParts[0] ?? "",
+        lastName: (nameParts.slice(1).join(" ") || nameParts[0]) ?? "",
         email: customer.email.trim(),
         phone: customer.phone.trim()
       },
