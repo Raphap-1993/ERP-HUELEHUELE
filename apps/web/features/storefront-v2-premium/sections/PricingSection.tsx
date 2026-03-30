@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { type CatalogProduct } from "@huelegood/shared";
 import {
-  cloudflareImageLoader,
   isRemoteStorefrontMediaUrl,
   resolveStorefrontMediaSrc,
   storefrontV2PremiumProductArtBySlug
@@ -140,7 +139,6 @@ function PricingCard({
           <Image
             fill
             src={image.src}
-            loader={image.remote ? cloudflareImageLoader : undefined}
             alt={image.alt}
             sizes="(min-width: 1024px) 22vw, 100vw"
             className="object-cover"
