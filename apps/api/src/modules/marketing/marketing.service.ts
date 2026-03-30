@@ -52,6 +52,11 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function demoDataEnabled() {
+  const value = process.env.HUELEGOOD_ENABLE_DEMO_DATA?.trim().toLowerCase();
+  return value === "1" || value === "true" || value === "yes" || value === "on";
+}
+
 function normalizeText(value?: string) {
   const normalized = value?.trim();
   return normalized ? normalized : undefined;
@@ -104,13 +109,11 @@ export class MarketingService implements OnModuleInit {
 
   private eventSequence = 5;
 
-  private readonly productionMode = process.env.NODE_ENV === "production";
-
   constructor(
     private readonly auditService: AuditService,
     private readonly moduleStateService: ModuleStateService
   ) {
-    if (!this.productionMode) {
+    if (demoDataEnabled()) {
       this.seedData();
     }
   }
@@ -118,7 +121,7 @@ export class MarketingService implements OnModuleInit {
   async onModuleInit() {
     const snapshot = await this.moduleStateService.load<MarketingSnapshot>("marketing");
     if (snapshot) {
-      const normalizedSnapshot = this.productionMode ? this.cleanProductionSnapshot(snapshot) : { snapshot, changed: false };
+      const normalizedSnapshot = demoDataEnabled() ? { snapshot, changed: false } : this.cleanProductionSnapshot(snapshot);
       this.restoreSnapshot(normalizedSnapshot.snapshot);
       if (normalizedSnapshot.changed) {
         await this.persistState();

@@ -1,7 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { HeroCopy } from "@huelegood/shared";
 
-export function HeroSection({ heroProductImageUrl }: { heroProductImageUrl?: string }) {
+export function HeroSection({
+  heroProductImageUrl,
+  heroCopy
+}: {
+  heroProductImageUrl?: string;
+  heroCopy: HeroCopy;
+}) {
   return (
     <section className="relative overflow-hidden bg-[#faf8f3] pt-8 pb-20 md:pt-14 md:pb-28">
       {/* Background gradients */}
@@ -17,35 +24,32 @@ export function HeroSection({ heroProductImageUrl }: { heroProductImageUrl?: str
             {/* Badge */}
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#52b788]/30 bg-[#d8f3dc] px-4 py-2 text-sm font-semibold text-[#2d6a4f]">
               <span className="h-2 w-2 animate-pulse rounded-full bg-[#52b788]" />
-              Inspirado en inhaladores tailandeses "Ya Dom" · 100% Natural
+              {heroCopy.eyebrow}
             </div>
 
             {/* Headline */}
             <h1 className="mb-6 font-serif text-5xl font-black leading-[1.05] tracking-tight text-[#1a3a2e] md:text-6xl lg:text-[4rem] xl:text-[4.5rem]">
-              ¿Cansado de llegar al{" "}
-              <span className="text-[#52b788]">destino sintiéndote</span>{" "}
-              <span className="text-[#c9a84c]">al piso?</span>
+              {heroCopy.title}
             </h1>
 
             <p className="mb-8 max-w-lg text-base leading-relaxed text-[#6b7280] md:text-lg">
-              El <strong className="text-[#1c1c1c]">soroche, los mareos, el tráfico</strong> y la fatiga mental te frenan. Huele Huele es el inhalador herbal de doble vía que te{" "}
-              <strong className="text-[#1c1c1c]">resetea en segundos</strong>, directo al cerebro, sin químicos, sin manchas, sin excusas.
+              {heroCopy.description}
             </p>
 
             {/* CTAs */}
             <div className="mb-10 flex flex-wrap gap-3">
               <Link
-                href="/catalogo"
+                href={heroCopy.primaryCta.href}
                 className="inline-flex items-center gap-2 rounded-full bg-[#2d6a4f] px-7 py-4 text-sm font-semibold text-white shadow-[0_8px_30px_rgba(45,106,79,0.35)] transition hover:-translate-y-0.5 hover:bg-[#1a3a2e] hover:shadow-[0_12px_40px_rgba(45,106,79,0.45)]"
               >
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
-                Quiero el mío
+                {heroCopy.primaryCta.label}
               </Link>
               <Link
-                href="#beneficios"
+                href={heroCopy.secondaryCta.href}
                 className="inline-flex items-center gap-2 rounded-full border-2 border-[#2d6a4f]/30 bg-transparent px-6 py-4 text-sm font-medium text-[#1a3a2e] transition hover:border-[#2d6a4f] hover:bg-[#d8f3dc]"
               >
-                Ver cómo funciona →
+                {heroCopy.secondaryCta.label} →
               </Link>
             </div>
 

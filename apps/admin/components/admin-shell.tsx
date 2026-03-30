@@ -84,12 +84,14 @@ export function AdminShell({ children, loadingImageUrl }: { children: ReactNode;
 
   return (
     <>
-      <div className="mx-auto min-h-screen w-full max-w-[1520px] overflow-x-hidden px-4 py-5 lg:px-6 lg:py-6">
-        <div className="grid items-start gap-6 lg:grid-cols-[272px_minmax(0,1fr)] xl:grid-cols-[288px_minmax(0,1fr)]">
+      <div className="mx-auto h-screen w-full max-w-[1520px] overflow-hidden px-4 py-5 lg:px-6 lg:py-6">
+        <div className="grid h-full gap-6 lg:grid-cols-[272px_minmax(0,1fr)] xl:grid-cols-[288px_minmax(0,1fr)]">
           <AdminSidebar variant="desktop" />
-          <main className="min-w-0 space-y-6">
+          <main className="flex min-h-0 min-w-0 flex-col overflow-hidden">
             <AdminTopbar onMenuClick={() => setMobileSidebarOpen(true)} />
-            {children}
+            <div className="mt-6 flex-1 space-y-6 overflow-y-auto pb-6">
+              {children}
+            </div>
           </main>
         </div>
       </div>

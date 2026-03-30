@@ -27,6 +27,11 @@ enum ProductStatus {
   archived
 }
 
+enum ProductSalesChannel {
+  public
+  internal
+}
+
 enum VariantStatus {
   active
   inactive
@@ -526,6 +531,8 @@ model Product {
   shortDescription String?
   longDescription String?
   status          ProductStatus  @default(draft)
+  salesChannel    ProductSalesChannel @default(public)
+  reportingGroup  String?
   isFeatured      Boolean        @default(false)
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
@@ -546,6 +553,7 @@ model ProductVariant {
   price           Decimal            @db.Decimal(10, 2)
   compareAtPrice  Decimal?           @db.Decimal(10, 2)
   stockOnHand     Int                @default(0)
+  lowStockThreshold Int              @default(100)
   status          VariantStatus      @default(active)
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt

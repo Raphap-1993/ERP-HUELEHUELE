@@ -53,6 +53,8 @@ Capturar demanda mayorista, calificarla y convertirla en una cotización operabl
 - Un lead mayorista no se convierte automáticamente en cliente B2B autoservicio.
 - Los tiers definen referencias para precio o condiciones, pero la cotización sigue siendo revisable en admin.
 - Debe existir trazabilidad del responsable comercial.
+- `interestType` puede ser `wholesale` o `distributor`; ambos viven en el mismo módulo y comparten estado/cotización.
+- `estimatedVolume` es dato comercial inicial y no reemplaza la cotización.
 
 ## Errores posibles
 
@@ -83,3 +85,4 @@ Capturar demanda mayorista, calificarla y convertirla en una cotización operabl
 
 - El módulo mayorista debe integrarse con marketing para alimentar segmentos futuros.
 - Los leads cerrados como `won` deben poder reutilizarse luego en campañas o onboarding comercial más avanzado.
+- la landing pública puede abrir la variante distribuidor usando `?interestType=distributor`, sin crear un dominio B2B distinto.

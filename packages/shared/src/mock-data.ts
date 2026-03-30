@@ -85,10 +85,15 @@ export const webNavigation: WebNavigationGroup[] = [
 
 export const adminNavigation: AdminNavigationGroup[] = [
   {
-    title: "Operaciones",
+    title: "Resumen",
     items: [
       { label: "Dashboard", href: "/", requiredRoles: adminAccessRoles.dashboard },
-      { label: "Reportes", href: "/reportes", requiredRoles: adminAccessRoles.dashboard },
+      { label: "Reportes", href: "/reportes", requiredRoles: adminAccessRoles.dashboard }
+    ]
+  },
+  {
+    title: "Operación",
+    items: [
       { label: "Pedidos", href: "/pedidos", requiredRoles: adminAccessRoles.orders },
       { label: "Pagos", href: "/pagos", requiredRoles: adminAccessRoles.payments }
     ]
@@ -105,7 +110,6 @@ export const adminNavigation: AdminNavigationGroup[] = [
     items: [
       { label: "Vendedores", href: "/vendedores", requiredRoles: adminAccessRoles.vendors },
       { label: "Comisiones", href: "/comisiones", requiredRoles: adminAccessRoles.commissions },
-      { label: "Cupones", href: "/cupones", requiredRoles: adminAccessRoles.coupons },
       { label: "Mayoristas", href: "/mayoristas", requiredRoles: adminAccessRoles.wholesale }
     ]
   },
@@ -113,14 +117,15 @@ export const adminNavigation: AdminNavigationGroup[] = [
     title: "Clientes",
     items: [
       { label: "CRM", href: "/crm", requiredRoles: adminAccessRoles.crm },
-      { label: "Fidelización", href: "/loyalty", requiredRoles: adminAccessRoles.loyalty },
-      { label: "Marketing", href: "/marketing", requiredRoles: adminAccessRoles.marketing }
+      { label: "Marketing", href: "/marketing", requiredRoles: adminAccessRoles.marketing },
+      { label: "Notificaciones", href: "/notificaciones", requiredRoles: adminAccessRoles.notifications },
+      { label: "Cupones", href: "/cupones", requiredRoles: adminAccessRoles.coupons },
+      { label: "Fidelización", href: "/loyalty", requiredRoles: adminAccessRoles.loyalty }
     ]
   },
   {
     title: "Sistema",
     items: [
-      { label: "Notificaciones", href: "/notificaciones", requiredRoles: adminAccessRoles.notifications },
       { label: "Observabilidad", href: "/observabilidad", requiredRoles: adminAccessRoles.observability },
       { label: "Auditoría", href: "/auditoria", requiredRoles: adminAccessRoles.audit },
       { label: "Configuración", href: "/configuracion", requiredRoles: adminAccessRoles.configuration }

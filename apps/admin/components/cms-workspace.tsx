@@ -22,6 +22,8 @@ import {
   Textarea
 } from "@huelegood/ui";
 import {
+  CmsSocialPlatform,
+  CmsTestimonialKind,
   cmsTestimonials,
   faqItems,
   heroCopy,
@@ -104,6 +106,18 @@ function ratingLabel(rating: number) {
   return `${Math.max(1, Math.min(5, rating))}/5`;
 }
 
+function testimonialKindLabel(kind?: CmsTestimonialKind) {
+  if (kind === CmsTestimonialKind.Audio) {
+    return "Audio";
+  }
+
+  if (kind === CmsTestimonialKind.Social) {
+    return "Social";
+  }
+
+  return "Texto";
+}
+
 function siteSummaryMetric(snapshot: CmsSnapshotResponse) {
   const totalLinks = snapshot.webNavigation.reduce((sum, group) => sum + group.items.length, 0);
   return [
@@ -159,6 +173,12 @@ function toTestimonialInput(testimonial: CmsTestimonial): CmsTestimonialInput {
     role: testimonial.role,
     quote: testimonial.quote,
     rating: testimonial.rating,
+    kind: testimonial.kind,
+    position: testimonial.position,
+    audioUrl: testimonial.audioUrl,
+    socialUrl: testimonial.socialUrl,
+    socialPlatform: testimonial.socialPlatform,
+    coverImageUrl: testimonial.coverImageUrl,
     status: testimonial.status
   };
 }
@@ -240,6 +260,12 @@ export function CmsWorkspace() {
   const [testimonialRole, setTestimonialRole] = useState("Cliente");
   const [testimonialQuote, setTestimonialQuote] = useState("Huelegood me permite vender y operar con claridad.");
   const [testimonialRating, setTestimonialRating] = useState("5");
+  const [testimonialKind, setTestimonialKind] = useState<CmsTestimonialKind>(CmsTestimonialKind.Text);
+  const [testimonialPosition, setTestimonialPosition] = useState("1");
+  const [testimonialAudioUrl, setTestimonialAudioUrl] = useState("");
+  const [testimonialSocialUrl, setTestimonialSocialUrl] = useState("");
+  const [testimonialSocialPlatform, setTestimonialSocialPlatform] = useState<CmsSocialPlatform>(CmsSocialPlatform.Instagram);
+  const [testimonialCoverImageUrl, setTestimonialCoverImageUrl] = useState("");
   const [testimonialStatus, setTestimonialStatus] = useState<"active" | "inactive">("active");
   const [pageModalOpen, setPageModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -415,10 +441,20 @@ export function CmsWorkspace() {
       await createCmsTestimonial({
         name: testimonialName.trim(),
         role: testimonialRole.trim(),
-        quote: testimonialQuote.trim(),
+        quote: testimonialQuote.trim() || undefined,
         rating: Number(testimonialRating),
+        kind: testimonialKind,
+        position: Number(testimonialPosition),
+        audioUrl: testimonialAudioUrl.trim() || undefined,
+        socialUrl: testimonialSocialUrl.trim() || undefined,
+        socialPlatform: testimonialKind === CmsTestimonialKind.Social ? testimonialSocialPlatform : undefined,
+        coverImageUrl: testimonialCoverImageUrl.trim() || undefined,
         status: testimonialStatus
       });
+      setTestimonialQuote("");
+      setTestimonialAudioUrl("");
+      setTestimonialSocialUrl("");
+      setTestimonialCoverImageUrl("");
       refresh();
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : "No pudimos crear el testimonio.");
@@ -702,7 +738,7 @@ export function CmsWorkspace() {
       <Card>
         <CardHeader>
           <CardTitle>Nuevo testimonio</CardTitle>
-          <CardDescription>Prueba social editable para reforzar conversión.</CardDescription>
+          <CardDescription>Prueba social editable para texto, audio o social curado.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
@@ -719,9 +755,30 @@ export function CmsWorkspace() {
           </div>
           <div className="space-y-2 md:col-span-2">
             <label className="text-sm font-medium text-[#132016]" htmlFor="testimonial-quote">
-              Cita
+              Cita o resumen editorial
             </label>
             <Textarea id="testimonial-quote" value={testimonialQuote} onChange={(event) => setTestimonialQuote(event.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-[#132016]" htmlFor="testimonial-kind">
+              Tipo
+            </label>
+            <select
+              id="testimonial-kind"
+              className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none focus:border-black/25"
+              value={testimonialKind}
+              onChange={(event) => setTestimonialKind(event.target.value as CmsTestimonialKind)}
+            >
+              <option value={CmsTestimonialKind.Text}>Texto</option>
+              <option value={CmsTestimonialKind.Audio}>Audio</option>
+              <option value={CmsTestimonialKind.Social}>Social</option>
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-[#132016]" htmlFor="testimonial-position">
+              Posición
+            </label>
+            <Input id="testimonial-position" type="number" min="0" step="1" value={testimonialPosition} onChange={(event) => setTestimonialPosition(event.target.value)} />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium text-[#132016]" htmlFor="testimonial-rating">
@@ -737,6 +794,44 @@ export function CmsWorkspace() {
               onChange={(event) => setTestimonialRating(event.target.value)}
             />
           </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-[#132016]" htmlFor="testimonial-cover-image">
+              Portada opcional
+            </label>
+            <Input id="testimonial-cover-image" value={testimonialCoverImageUrl} onChange={(event) => setTestimonialCoverImageUrl(event.target.value)} placeholder="https://..." />
+          </div>
+          {testimonialKind === CmsTestimonialKind.Audio ? (
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-sm font-medium text-[#132016]" htmlFor="testimonial-audio-url">
+                URL de audio
+              </label>
+              <Input id="testimonial-audio-url" value={testimonialAudioUrl} onChange={(event) => setTestimonialAudioUrl(event.target.value)} placeholder="https://..." />
+            </div>
+          ) : null}
+          {testimonialKind === CmsTestimonialKind.Social ? (
+            <>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[#132016]" htmlFor="testimonial-social-platform">
+                  Plataforma
+                </label>
+                <select
+                  id="testimonial-social-platform"
+                  className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none focus:border-black/25"
+                  value={testimonialSocialPlatform}
+                  onChange={(event) => setTestimonialSocialPlatform(event.target.value as CmsSocialPlatform)}
+                >
+                  <option value={CmsSocialPlatform.Instagram}>Instagram</option>
+                  <option value={CmsSocialPlatform.Tiktok}>TikTok</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[#132016]" htmlFor="testimonial-social-url">
+                  URL social
+                </label>
+                <Input id="testimonial-social-url" value={testimonialSocialUrl} onChange={(event) => setTestimonialSocialUrl(event.target.value)} placeholder="https://..." />
+              </div>
+            </>
+          ) : null}
           <div className="space-y-2">
             <label className="text-sm font-medium text-[#132016]" htmlFor="testimonial-status">
               Estado
@@ -810,9 +905,10 @@ export function CmsWorkspace() {
       <AdminDataTable
         title="Testimonios"
         description="Prueba social configurable."
-        headers={["Nombre", "Rol", "Rating", "Estado", "Actualizado", "Acciones"]}
+        headers={["Nombre", "Tipo", "Rol", "Rating", "Estado", "Actualizado", "Acciones"]}
         rows={snapshot.testimonials.map((testimonial) => [
           testimonial.name,
+          testimonialKindLabel(testimonial.kind),
           testimonial.role,
           ratingLabel(testimonial.rating),
           <StatusBadge key={`${testimonial.id}-status`} label={assetStatusLabel(testimonial.status)} tone={assetTone(testimonial.status)} />,

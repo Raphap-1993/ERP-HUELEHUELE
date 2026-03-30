@@ -75,11 +75,8 @@ Si solo existe un VPS:
 
 | Variable | Uso |
 | --- | --- |
-| `MAIL_FROM` | remitente por defecto |
-| `SMTP_HOST` | servidor SMTP |
-| `SMTP_PORT` | puerto SMTP |
-| `SMTP_USER` | usuario SMTP |
-| `SMTP_PASS` | contraseña SMTP |
+| `RESEND_API_KEY` | API key de Resend usada por el worker para correos transaccionales |
+| `RESEND_FROM_EMAIL` | remitente RFC 5322 para los correos enviados por Resend |
 
 ## Runtime por servicio
 
@@ -95,14 +92,39 @@ No definir `PORT` como variable global en `.env.production`. En este monolito mo
 Compatibilidad de despliegue:
 
 - `scripts/release-production.sh` acepta `APP_URL`, `ADMIN_URL` y `API_URL` como aliases y los normaliza a `NEXT_PUBLIC_*` antes de construir.
-- `scripts/release-production.sh` también acepta `ADMIN_LOGIN_*`, `SELLER_LOGIN_*`, `PAYMENTS_LOGIN_*` y `CUSTOMER_LOGIN_*` como aliases legados y los normaliza a `BOOTSTRAP_*`.
-- El código de `auth` consume `BOOTSTRAP_*` como convención preferida.
-- `AUTH_BOOTSTRAP_DEFAULT_USERS` no está consumida por `apps/api/src/modules/auth/auth.service.ts`; hoy es una variable muerta y conviene eliminarla o reemplazarla por `BOOTSTRAP_*`.
+- `scripts/release-production.sh` ya no requiere `BOOTSTRAP_*` en el flujo normal de despliegue.
+- `scripts/migrate-bootstrap-users.sh` realiza una migración one-shot e idempotente de los usuarios bootstrap hacia PostgreSQL usando `BOOTSTRAP_*`.
+- Tras ejecutar la migración, `BOOTSTRAP_*` puede eliminarse del entorno operativo de producción.
+- `AUTH_BOOTSTRAP_DEFAULT_USERS` no forma parte del runtime normal de producción; si existe, solo afecta escenarios legacy o bootstrap controlado.
+
+Flujo recomendado:
+
+1. Ejecutar `bash scripts/migrate-bootstrap-users.sh` una sola vez con `BOOTSTRAP_*` presentes en el entorno.
+2. Verificar que el login administrativo funcione contra la BD.
+3. Eliminar `BOOTSTRAP_*` de `.env.production` y del entorno compartido.
+4. Ejecutar `bash scripts/release-production.sh` normalmente a partir de ese momento.
+
+Variables bootstrap requeridas por la migración one-shot:
+
+- `BOOTSTRAP_ADMIN_NAME`
+- `BOOTSTRAP_ADMIN_EMAIL`
+- `BOOTSTRAP_ADMIN_PASSWORD`
+- `BOOTSTRAP_PAYMENTS_NAME`
+- `BOOTSTRAP_PAYMENTS_EMAIL`
+- `BOOTSTRAP_PAYMENTS_PASSWORD`
+- `BOOTSTRAP_SELLER_NAME`
+- `BOOTSTRAP_SELLER_EMAIL`
+- `BOOTSTRAP_SELLER_PASSWORD`
+- `BOOTSTRAP_SELLER_VENDOR_CODE`
+- `BOOTSTRAP_CUSTOMER_NAME`
+- `BOOTSTRAP_CUSTOMER_EMAIL`
+- `BOOTSTRAP_CUSTOMER_PASSWORD`
 
 Ubicación efectiva en producción actual:
 
 - en el VPS activo, la fuente operativa de entorno vive en `/home/huelehuele/apps/huelegood.com/shared/.env.production`
 - `scripts/release-production.sh` intenta primero `.env.production` dentro del repo y luego `../shared/.env.production`
+- `scripts/migrate-bootstrap-users.sh` lee las mismas ubicaciones y puede ejecutarse antes del primer release o durante una ventana de migración controlada
 - `PM2` debe recargarse con `--update-env` para que las variables nuevas entren realmente al proceso
 
 ## Operación y backups
@@ -133,6 +155,7 @@ Ubicación efectiva en producción actual:
 - credenciales sandbox
 - uploads locales
 - base local o copia de desarrollo
+- `prisma/seed.ts` y `npm run prisma:seed` son la ruta local/demo; no deben usarse como bootstrap productivo
 
 ### staging
 
@@ -176,3 +199,4 @@ Ubicación efectiva en producción actual:
 ## Observación
 
 La elección exacta de proveedor de correo puede variar. Para media pública del storefront, la decisión vigente queda fijada en `Cloudflare R2`. Los uploads privados pueden seguir resolviéndose localmente mientras no exista una decisión distinta.
+El bootstrap productivo de usuarios se hace con `scripts/migrate-bootstrap-users.sh`; el seed de Prisma se reserva para local/demo.

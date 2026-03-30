@@ -15,8 +15,9 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function isProductionRuntime() {
-  return process.env.NODE_ENV === "production";
+function demoDataEnabled() {
+  const value = process.env.HUELEGOOD_ENABLE_DEMO_DATA?.trim().toLowerCase();
+  return value === "1" || value === "true" || value === "yes" || value === "on";
 }
 
 function normalizeCode(value?: string) {
@@ -28,7 +29,7 @@ export class CouponsService implements OnModuleInit {
   private readonly coupons = new Map<string, CouponRecord>();
 
   constructor(private readonly moduleStateService: ModuleStateService) {
-    if (!isProductionRuntime()) {
+    if (demoDataEnabled()) {
       this.seedData();
     }
   }
@@ -36,8 +37,13 @@ export class CouponsService implements OnModuleInit {
   async onModuleInit() {
     const snapshot = await this.moduleStateService.load<CouponsSnapshot>("coupons");
     if (snapshot?.coupons?.length) {
-      for (const coupon of snapshot.coupons) {
+      const coupons = demoDataEnabled() ? snapshot.coupons : snapshot.coupons.filter((coupon) => !demoCouponCodes.has(coupon.code));
+      for (const coupon of coupons) {
         this.coupons.set(coupon.code, coupon);
+      }
+
+      if (!demoDataEnabled() && coupons.length !== snapshot.coupons.length) {
+        await this.persist();
       }
     }
   }

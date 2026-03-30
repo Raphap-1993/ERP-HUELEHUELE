@@ -25,6 +25,7 @@ import {
   Textarea
 } from "@huelegood/ui";
 import type {
+  InventoryReportRow,
   ProductAdminDetail,
   ProductAdminSummary,
   ProductCategorySummary,
@@ -36,12 +37,14 @@ import type {
   ProductVariantSummary,
   ProductVariantStatusValue
 } from "@huelegood/shared";
+import { ProductSalesChannel } from "@huelegood/shared";
 import {
   createAdminProduct,
   deleteAdminProductImage,
   fetchAdminProduct,
   fetchAdminProductCategories,
   fetchAdminProducts,
+  fetchInventoryReport,
   uploadAdminProductImage,
   updateAdminProduct
 } from "../lib/api";
@@ -53,6 +56,7 @@ type VariantDraft = {
   price: string;
   compareAtPrice: string;
   stockOnHand: string;
+  lowStockThreshold: string;
   status: ProductVariantStatusValue;
 };
 
@@ -70,6 +74,8 @@ type ProductFormState = {
   shortDescription: string;
   longDescription: string;
   status: ProductStatusValue;
+  salesChannel: ProductSalesChannel;
+  reportingGroup: string;
   isFeatured: boolean;
   variants: VariantDraft[];
   bundleComponents: BundleComponentDraft[];
@@ -175,6 +181,7 @@ function createVariantDraft(seed?: Partial<VariantDraft>): VariantDraft {
     price: seed?.price ?? "0",
     compareAtPrice: seed?.compareAtPrice ?? "",
     stockOnHand: seed?.stockOnHand ?? "0",
+    lowStockThreshold: seed?.lowStockThreshold ?? "100",
     status: seed?.status ?? "active"
   };
 }
@@ -209,6 +216,8 @@ function createEmptyForm(): ProductFormState {
     shortDescription: "",
     longDescription: "",
     status: "draft",
+    salesChannel: ProductSalesChannel.Public,
+    reportingGroup: "",
     isFeatured: false,
     variants: [createVariantDraft()],
     bundleComponents: []
@@ -223,6 +232,8 @@ function fromProductDetail(product: ProductAdminDetail): ProductFormState {
     shortDescription: product.shortDescription ?? "",
     longDescription: product.longDescription ?? "",
     status: product.status,
+    salesChannel: product.salesChannel ?? ProductSalesChannel.Public,
+    reportingGroup: product.reportingGroup ?? "",
     isFeatured: product.isFeatured,
     variants: (product.variants.length ? product.variants : [null]).map((variant, index) =>
       variant
@@ -233,6 +244,7 @@ function fromProductDetail(product: ProductAdminDetail): ProductFormState {
             price: String(variant.price),
             compareAtPrice: variant.compareAtPrice != null ? String(variant.compareAtPrice) : "",
             stockOnHand: String(variant.stockOnHand),
+            lowStockThreshold: String(variant.lowStockThreshold ?? 100),
             status: variant.status
           })
         : createVariantDraft({
@@ -270,6 +282,7 @@ function buildProductPayload(form: ProductFormState, products: ProductAdminSumma
     const variantName = variant.name.trim() || (index === 0 ? "Variante principal" : `Variante ${index + 1}`);
     const price = Number(variant.price);
     const stockOnHand = Number(variant.stockOnHand);
+    const lowStockThreshold = Number(variant.lowStockThreshold);
     const compareAtPrice = variant.compareAtPrice.trim() ? Number(variant.compareAtPrice) : undefined;
 
     if (variantSkus.has(sku)) {
@@ -285,6 +298,10 @@ function buildProductPayload(form: ProductFormState, products: ProductAdminSumma
       throw new Error(`La variante ${sku} tiene un stock inválido.`);
     }
 
+    if (!Number.isFinite(lowStockThreshold) || lowStockThreshold < 0) {
+      throw new Error(`La variante ${sku} tiene un umbral de stock inválido.`);
+    }
+
     if (compareAtPrice != null && (!Number.isFinite(compareAtPrice) || compareAtPrice < 0)) {
       throw new Error(`El precio comparativo de ${sku} es inválido.`);
     }
@@ -296,6 +313,7 @@ function buildProductPayload(form: ProductFormState, products: ProductAdminSumma
       price,
       compareAtPrice,
       stockOnHand: Math.trunc(stockOnHand),
+      lowStockThreshold: Math.trunc(lowStockThreshold),
       status: variant.status
     };
   });
@@ -339,6 +357,8 @@ function buildProductPayload(form: ProductFormState, products: ProductAdminSumma
     shortDescription: form.shortDescription.trim() || undefined,
     longDescription: form.longDescription.trim() || undefined,
     status: form.status,
+    salesChannel: form.salesChannel,
+    reportingGroup: form.reportingGroup.trim() || undefined,
     isFeatured: form.isFeatured,
     variants,
     bundleComponents
@@ -364,6 +384,7 @@ function createInitialImageForm(): {
 export function ProductsWorkspace() {
   const [products, setProducts] = useState<ProductAdminSummary[]>([]);
   const [categories, setCategories] = useState<ProductCategorySummary[]>([]);
+  const [inventoryRows, setInventoryRows] = useState<InventoryReportRow[]>([]);
   const [bundleComponentProducts, setBundleComponentProducts] = useState<Record<string, ProductAdminDetail>>({});
   const [bundleComponentProductLoading, setBundleComponentProductLoading] = useState<Record<string, boolean>>({});
   const [bundleComponentProductErrors, setBundleComponentProductErrors] = useState<Record<string, string>>({});
@@ -389,9 +410,10 @@ export function ProductsWorkspace() {
     async function loadList() {
       setLoading(true);
       try {
-        const [productsResponse, categoriesResponse] = await Promise.all([
+        const [productsResponse, categoriesResponse, inventoryResponse] = await Promise.all([
           fetchAdminProducts(),
-          fetchAdminProductCategories()
+          fetchAdminProductCategories(),
+          fetchInventoryReport()
         ]);
 
         if (!active) {
@@ -400,6 +422,7 @@ export function ProductsWorkspace() {
 
         setProducts(productsResponse.data);
         setCategories(categoriesResponse.data);
+        setInventoryRows(inventoryResponse.data.rows ?? []);
         setError(null);
 
         if (!isCreating) {
@@ -533,7 +556,8 @@ export function ProductsWorkspace() {
   const metrics = useMemo(() => {
     const activeProducts = products.filter((product) => product.status === "active").length;
     const featuredProducts = products.filter((product) => product.isFeatured).length;
-    const activeCategories = categories.filter((category) => category.isActive).length;
+    const lowStockRows = inventoryRows.filter((row) => row.lowStock).length;
+    const internalProducts = products.filter((product) => product.salesChannel === "internal").length;
 
     return [
       {
@@ -552,12 +576,12 @@ export function ProductsWorkspace() {
         detail: "Visibles en home y secciones clave."
       },
       {
-        label: "Categorías",
-        value: String(activeCategories),
-        detail: "Agrupaciones para navegación comercial."
+        label: "Internos / stock bajo",
+        value: `${internalProducts} / ${lowStockRows}`,
+        detail: "Canal interno y alertas operativas."
       }
     ];
-  }, [categories, products, selectedProduct]);
+  }, [inventoryRows, products]);
 
   const imageVariants = selectedProduct?.variants ?? form.variants.map((variant, index) => ({
     id: variant.id ?? `draft-${index}`,
@@ -699,6 +723,8 @@ export function ProductsWorkspace() {
 
     setProducts(productsResponse.data);
     setCategories(categoriesResponse.data);
+    const inventoryResponse = await fetchInventoryReport();
+    setInventoryRows(inventoryResponse.data.rows ?? []);
   }
 
   async function reloadSelectedProduct(productId: string) {
@@ -937,6 +963,10 @@ export function ProductsWorkspace() {
           </div>
           <div className="text-xs text-black/45">{displayCategorySlug(product.categorySlug)}</div>
         </div>,
+        <div key={`${product.id}-channel`} className="text-sm text-black/70">
+          <div className="font-medium text-[#132016]">{product.salesChannel === "internal" ? "Interno" : "Público"}</div>
+          <div className="text-xs text-black/45">{product.reportingGroup ?? "Sin grupo"}</div>
+        </div>,
         <StatusBadge key={`${product.id}-status`} label={statusLabel(product.status)} tone={statusTone(product.status)} />,
         <div key={`${product.id}-price`} className="text-sm font-semibold text-[#132016]">
           {formatCurrency(product.price, product.currencyCode)}
@@ -950,10 +980,10 @@ export function ProductsWorkspace() {
   );
 
   const tableRows = loading
-    ? [[<span key="loading" className="text-black/50">Cargando productos...</span>, null, null, null, null, null]]
+    ? [[<span key="loading" className="text-black/50">Cargando productos...</span>, null, null, null, null, null, null]]
     : productRows.length
       ? productRows
-      : [[<span key="empty" className="text-black/50">No hay productos registrados todavía.</span>, null, null, null, null, null]];
+      : [[<span key="empty" className="text-black/50">No hay productos registrados todavía.</span>, null, null, null, null, null, null]];
 
   const selectedTitle = isCreating
     ? "Nuevo producto"
@@ -1010,7 +1040,7 @@ export function ProductsWorkspace() {
           <AdminDataTable
             title="Productos"
             description={loading ? "Cargando catálogo..." : "Lista administrable de productos."}
-            headers={["Producto", "Categoría", "Estado", "Precio", "Actualizado", "Acción"]}
+            headers={["Producto", "Categoría", "Canal", "Estado", "Precio", "Actualizado", "Acción"]}
             rows={tableRows}
           />
 
@@ -1027,6 +1057,21 @@ export function ProductsWorkspace() {
               </div>
             ))}
           </div>
+
+          <AdminDataTable
+            title="Reporte de stock y ventas"
+            description="Fuente única para ventas confirmadas, canal y alerta de stock bajo."
+            headers={["SKU", "Producto", "Canal", "Vendidas", "Disponible", "Umbral", "Estado"]}
+            rows={inventoryRows.slice(0, 12).map((row) => [
+              row.sku,
+              `${row.productName} · ${row.reportingGroup}`,
+              row.salesChannel === "internal" ? "Interno" : "Público",
+              String(row.unitsSold),
+              String(row.availableStock),
+              String(row.lowStockThreshold),
+              <StatusBadge key={`${row.variantId}-stock`} label={row.lowStock ? "Bajo" : "Sano"} tone={row.lowStock ? "warning" : "success"} />
+            ])}
+          />
         </CardContent>
       </Card>
 
@@ -1132,6 +1177,30 @@ export function ProductsWorkspace() {
                   </label>
                 </div>
 
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="space-y-1.5">
+                    <span className="text-sm font-medium text-[#132016]">Canal de venta</span>
+                    <select
+                      value={form.salesChannel}
+                      onChange={(event) =>
+                        setForm((current) => ({ ...current, salesChannel: event.target.value as ProductSalesChannel }))
+                      }
+                      className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none transition focus:border-black/25"
+                    >
+                      <option value={ProductSalesChannel.Public}>Público</option>
+                      <option value={ProductSalesChannel.Internal}>Interno</option>
+                    </select>
+                  </label>
+                  <label className="space-y-1.5">
+                    <span className="text-sm font-medium text-[#132016]">Grupo de reporte</span>
+                    <Input
+                      value={form.reportingGroup}
+                      onChange={(event) => setForm((current) => ({ ...current, reportingGroup: event.target.value }))}
+                      placeholder="Retail, Canal interno, Wholesale..."
+                    />
+                  </label>
+                </div>
+
                 <label className="flex items-center gap-3 rounded-[1.25rem] border border-black/8 bg-[#fafaf7] px-4 py-3">
                   <input
                     type="checkbox"
@@ -1224,7 +1293,7 @@ export function ProductsWorkspace() {
                             </label>
                           </div>
 
-                          <div className="mt-4 grid gap-4 md:grid-cols-4">
+                          <div className="mt-4 grid gap-4 md:grid-cols-5">
                             <label className="space-y-1.5">
                               <span className="text-sm font-medium text-[#132016]">Precio</span>
                               <Input
@@ -1254,6 +1323,16 @@ export function ProductsWorkspace() {
                                 step="1"
                                 value={variant.stockOnHand}
                                 onChange={(event) => updateVariant(index, "stockOnHand", event.target.value)}
+                              />
+                            </label>
+                            <label className="space-y-1.5">
+                              <span className="text-sm font-medium text-[#132016]">Umbral bajo</span>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={variant.lowStockThreshold}
+                                onChange={(event) => updateVariant(index, "lowStockThreshold", event.target.value)}
                               />
                             </label>
                             <label className="space-y-1.5">
@@ -1305,7 +1384,7 @@ export function ProductsWorkspace() {
                         </label>
                       </div>
 
-                      <div className="mt-4 grid gap-4 md:grid-cols-4">
+                      <div className="mt-4 grid gap-4 md:grid-cols-5">
                         <label className="space-y-1.5">
                           <span className="text-sm font-medium text-[#132016]">Precio</span>
                           <Input
@@ -1335,6 +1414,16 @@ export function ProductsWorkspace() {
                             step="1"
                             value={primaryVariant.stockOnHand}
                             onChange={(event) => updateVariant(0, "stockOnHand", event.target.value)}
+                          />
+                        </label>
+                        <label className="space-y-1.5">
+                          <span className="text-sm font-medium text-[#132016]">Umbral bajo</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={primaryVariant.lowStockThreshold}
+                            onChange={(event) => updateVariant(0, "lowStockThreshold", event.target.value)}
                           />
                         </label>
                         <label className="space-y-1.5">

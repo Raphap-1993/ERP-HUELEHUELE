@@ -4,6 +4,7 @@ import {
   CommissionStatus,
   OrderStatus,
   PaymentStatus,
+  VendorCollaborationType,
   VendorStatus,
   type AdminOrderSummary,
   type CommissionPayoutInput,
@@ -95,6 +96,10 @@ function normalizeCode(value?: string) {
 function normalizeText(value?: string) {
   const normalized = value?.trim();
   return normalized ? normalized : undefined;
+}
+
+function normalizeCollaborationType(value?: VendorCollaborationType | string) {
+  return value === VendorCollaborationType.Affiliate ? VendorCollaborationType.Affiliate : value === VendorCollaborationType.Seller ? VendorCollaborationType.Seller : undefined;
 }
 
 function roundCurrency(value: number) {
@@ -215,6 +220,11 @@ function isProductionRuntime() {
   return process.env.NODE_ENV === "production";
 }
 
+function demoRuntimeEnabled() {
+  const value = process.env.HUELEGOOD_ENABLE_DEMO_DATA?.trim().toLowerCase();
+  return value === "1" || value === "true" || value === "yes" || value === "on";
+}
+
 const demoOrderNumbers = new Set(["HG-10040", "HG-10041", "HG-10042"]);
 
 @Injectable()
@@ -232,7 +242,7 @@ export class CommissionsService implements OnModuleInit {
     private readonly moduleStateService: ModuleStateService,
     private readonly bullMqService: BullMqService
   ) {
-    if (!isProductionRuntime()) {
+    if (demoRuntimeEnabled()) {
       this.seedRules();
     }
   }
@@ -247,7 +257,7 @@ export class CommissionsService implements OnModuleInit {
       }
     }
 
-    const changed = !isProductionRuntime() && this.ensureOperationalRules();
+    const changed = demoRuntimeEnabled() && this.ensureOperationalRules();
     if (!snapshot || changed) {
       await this.persistState();
     }
@@ -326,6 +336,7 @@ export class CommissionsService implements OnModuleInit {
         rate: rule.rate,
         paymentMethod: rule.paymentMethod,
         appliesToVendorCode: rule.appliesToVendorCode,
+        appliesToCollaborationType: rule.appliesToCollaborationType,
         minOrderTotal: rule.minOrderTotal,
         maxOrderTotal: rule.maxOrderTotal,
         payoutDelayDays: rule.payoutDelayDays,
@@ -362,6 +373,7 @@ export class CommissionsService implements OnModuleInit {
         priority: rule.priority,
         paymentMethod: rule.paymentMethod,
         appliesToVendorCode: rule.appliesToVendorCode,
+        appliesToCollaborationType: rule.appliesToCollaborationType,
         payoutDelayDays: rule.payoutDelayDays
       }
     });
@@ -400,6 +412,7 @@ export class CommissionsService implements OnModuleInit {
         priority: next.priority,
         paymentMethod: next.paymentMethod,
         appliesToVendorCode: next.appliesToVendorCode,
+        appliesToCollaborationType: next.appliesToCollaborationType,
         payoutDelayDays: next.payoutDelayDays,
         status: next.status
       }
@@ -796,6 +809,10 @@ export class CommissionsService implements OnModuleInit {
       return false;
     }
 
+    if (rule.appliesToCollaborationType && rule.appliesToCollaborationType !== normalizeCollaborationType(vendor?.collaborationType)) {
+      return false;
+    }
+
     if (rule.paymentMethod && rule.paymentMethod !== "any" && rule.paymentMethod !== order.paymentMethod) {
       return false;
     }
@@ -1089,7 +1106,7 @@ export class CommissionsService implements OnModuleInit {
   }
 
   private sanitizeSnapshot(snapshot: CommissionsSnapshot) {
-    if (!isProductionRuntime()) {
+    if (demoRuntimeEnabled()) {
       return undefined;
     }
 
@@ -1216,6 +1233,7 @@ export class CommissionsService implements OnModuleInit {
       rate,
       paymentMethod,
       appliesToVendorCode: normalizeCode(body.appliesToVendorCode),
+      appliesToCollaborationType: normalizeCollaborationType(body.appliesToCollaborationType),
       minOrderTotal,
       maxOrderTotal,
       payoutDelayDays,

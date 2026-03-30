@@ -64,6 +64,11 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function demoDataEnabled() {
+  const value = process.env.HUELEGOOD_ENABLE_DEMO_DATA?.trim().toLowerCase();
+  return value === "1" || value === "true" || value === "yes" || value === "on";
+}
+
 function normalizeText(value?: string) {
   const normalized = value?.trim();
   return normalized ? normalized : undefined;
@@ -81,6 +86,18 @@ function normalizeCompany(value?: string) {
 
 function normalizeStatus(value?: string) {
   return value?.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
+}
+
+function normalizeInterestType(value?: string): "wholesale" | "distributor" {
+  return value === "distributor" ? "distributor" : "wholesale";
+}
+
+function normalizeEstimatedVolume(value?: number) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    return undefined;
+  }
+
+  return Math.round(value);
 }
 
 function roundCurrency(value: number) {
@@ -126,14 +143,12 @@ export class WholesaleService implements OnModuleInit {
 
   private quoteSequence = 3;
 
-  private readonly productionMode = process.env.NODE_ENV === "production";
-
   constructor(
     private readonly auditService: AuditService,
     private readonly marketingService: MarketingService,
     private readonly moduleStateService: ModuleStateService
   ) {
-    if (!this.productionMode) {
+    if (demoDataEnabled()) {
       this.seedData();
     }
   }
@@ -141,7 +156,7 @@ export class WholesaleService implements OnModuleInit {
   async onModuleInit() {
     const snapshot = await this.moduleStateService.load<WholesaleSnapshot>("wholesale");
     if (snapshot) {
-      const normalizedSnapshot = this.productionMode ? this.cleanProductionSnapshot(snapshot) : { snapshot, changed: false };
+      const normalizedSnapshot = demoDataEnabled() ? { snapshot, changed: false } : this.cleanProductionSnapshot(snapshot);
       this.restoreSnapshot(normalizedSnapshot.snapshot);
       if (normalizedSnapshot.changed) {
         await this.persistState();
@@ -213,6 +228,8 @@ export class WholesaleService implements OnModuleInit {
       contact,
       email,
       city,
+      interestType: normalizeInterestType(body.interestType),
+      estimatedVolume: normalizeEstimatedVolume(body.estimatedVolume),
       source: normalizeText(body.source) || "Landing mayorista",
       status: WholesaleLeadStatus.New,
       phone: normalizeText(body.phone),
@@ -238,7 +255,8 @@ export class WholesaleService implements OnModuleInit {
         company: lead.company,
         email: lead.email,
         city: lead.city,
-        source: lead.source
+        source: lead.source,
+        interestType: lead.interestType
       }
     });
     this.marketingService.recordEvent(
@@ -464,6 +482,8 @@ export class WholesaleService implements OnModuleInit {
       contact: lead.contact,
       email: lead.email,
       city: lead.city,
+      interestType: normalizeInterestType(lead.interestType),
+      estimatedVolume: normalizeEstimatedVolume(lead.estimatedVolume),
       source: lead.source,
       status: lead.status,
       phone: lead.phone,
@@ -504,6 +524,8 @@ export class WholesaleService implements OnModuleInit {
         contact: "Paola Méndez",
         email: "paola@distribuidoraandina.com",
         city: "Lima",
+        interestType: "distributor",
+        estimatedVolume: 48,
         source: "Landing mayorista",
         status: WholesaleLeadStatus.Qualified,
         phone: "+51 999 888 777",
@@ -525,6 +547,8 @@ export class WholesaleService implements OnModuleInit {
         contact: "Carlos Fuentes",
         email: "carlos@rutanorte.com",
         city: "Trujillo",
+        interestType: "wholesale",
+        estimatedVolume: 24,
         source: "Referencia comercial",
         status: WholesaleLeadStatus.Negotiating,
         phone: "+51 999 444 333",
@@ -614,7 +638,7 @@ export class WholesaleService implements OnModuleInit {
     }
   }
 
-  private cleanProductionSnapshot(snapshot: WholesaleSnapshot) {
+  private cleanProductionSnapshot(snapshot: WholesaleSnapshot): { snapshot: WholesaleSnapshot; changed: boolean } {
     const originalLeads = snapshot.leads ?? [];
     const originalQuotes = snapshot.quotes ?? [];
 
@@ -624,13 +648,22 @@ export class WholesaleService implements OnModuleInit {
     const keptQuoteIds = new Set(quotes.map((quote) => quote.id));
 
     let changed = leads.length !== originalLeads.length || quotes.length !== originalQuotes.length;
-    const normalizedLeads = leads.map((lead) => {
+    const normalizedLeads: WholesaleLeadRecord[] = leads.map((lead) => {
       const originalQuoteIds = lead.quoteIds ?? [];
       const quoteIds = originalQuoteIds.filter((quoteId) => keptQuoteIds.has(quoteId));
-      if (quoteIds.length !== originalQuoteIds.length || quoteIds.length !== lead.quoteCount) {
+      const interestType = normalizeInterestType(lead.interestType);
+      const estimatedVolume = normalizeEstimatedVolume(lead.estimatedVolume);
+      if (
+        quoteIds.length !== originalQuoteIds.length ||
+        quoteIds.length !== lead.quoteCount ||
+        interestType !== lead.interestType ||
+        estimatedVolume !== lead.estimatedVolume
+      ) {
         changed = true;
         return {
           ...lead,
+          interestType,
+          estimatedVolume,
           quoteIds,
           quoteCount: quoteIds.length
         };
@@ -653,7 +686,11 @@ export class WholesaleService implements OnModuleInit {
     this.quotes.clear();
 
     for (const lead of snapshot.leads ?? []) {
-      this.leads.set(lead.id, lead);
+      this.leads.set(lead.id, {
+        ...lead,
+        interestType: normalizeInterestType(lead.interestType),
+        estimatedVolume: normalizeEstimatedVolume(lead.estimatedVolume)
+      });
     }
 
     for (const quote of snapshot.quotes ?? []) {

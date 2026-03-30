@@ -1,11 +1,14 @@
 "use client";
 
 import { type FormEvent, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { WholesalePlanCard } from "@huelegood/ui";
 import { wholesalePlans } from "@huelegood/shared";
 import { fetchWholesaleTiers, submitWholesaleLead } from "../lib/api";
 
 export function WholesaleWorkspace() {
+  const searchParams = useSearchParams();
+  const interestType = searchParams.get("interestType") === "distributor" ? "distributor" : "wholesale";
   const [tiers, setTiers] = useState(wholesalePlans);
   const [loadingTiers, setLoadingTiers] = useState(true);
 
@@ -73,8 +76,10 @@ export function WholesaleWorkspace() {
         email: email.trim(),
         city: city.trim(),
         phone: phone.trim() || undefined,
+        interestType,
+        estimatedVolume: volume.trim() ? Number(volume) : undefined,
         notes: notesValue || undefined,
-        source: "Landing mayorista",
+        source: interestType === "distributor" ? "Landing distribuidor" : "Landing mayorista",
       });
       setMessage(response.message);
       setNextStep(response.nextStep ?? null);
@@ -107,10 +112,10 @@ export function WholesaleWorkspace() {
             {/* Columna izquierda: info */}
             <div>
               <span className="inline-block text-xs font-semibold uppercase tracking-widest text-[#52b788] bg-[rgba(82,183,136,0.15)] px-4 py-1.5 rounded-full mb-5">
-                Oportunidad de negocio
+                {interestType === "distributor" ? "Ruta distribuidor" : "Oportunidad de negocio"}
               </span>
               <h2 className="font-serif text-4xl font-black text-white leading-tight mb-4 md:text-5xl">
-                Vende Huele Huele<br />en tu negocio
+                {interestType === "distributor" ? "Regístrate como distribuidor" : "Vende Huele Huele"}<br />en tu negocio
               </h2>
               <p className="text-[17px] text-white/65 leading-7 max-w-[520px] mb-8">
                 Márgenes atractivos, stock disponible y soporte desde el primer pedido.
@@ -186,7 +191,7 @@ export function WholesaleWorkspace() {
               ) : (
                 <div className="bg-white/5 border border-white/12 rounded-[26px] p-9">
                   <h3 className="font-serif text-xl text-white mb-1.5">
-                    Solicita tu catálogo mayorista
+                    {interestType === "distributor" ? "Solicita tu catálogo distribuidor" : "Solicita tu catálogo mayorista"}
                   </h3>
                   <p className="text-[13px] text-white/50 mb-6 leading-relaxed">
                     Completa el formulario y te respondemos en menos de 24 horas.

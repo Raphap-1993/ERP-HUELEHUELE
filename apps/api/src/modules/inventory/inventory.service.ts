@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { BadRequestException, ConflictException, Injectable, NotFoundException, OnModuleInit } from "@nestjs/common";
 import { type ProductVariant } from "@prisma/client";
-import { type OrderItemSummary, OrderStatus } from "@huelegood/shared";
+import { ProductSalesChannel, type InventoryReportRow, type InventoryReportSummary, type OrderItemSummary, OrderStatus } from "@huelegood/shared";
+import { wrapResponse } from "../../common/response";
 import { ModuleStateService } from "../../persistence/module-state.service";
 import { PrismaService } from "../../prisma/prisma.service";
 
@@ -273,6 +274,82 @@ export class InventoryService implements OnModuleInit {
     }
 
     await this.persistState();
+  }
+
+  async getAdminReport() {
+    const variants = await this.prisma.productVariant.findMany({
+      include: {
+        product: {
+          include: {
+            category: true
+          }
+        }
+      },
+      orderBy: [{ updatedAt: "desc" }]
+    });
+
+    const confirmedByVariant = new Map<string, number>();
+    for (const entry of this.ledger) {
+      if (entry.action !== "confirm") {
+        continue;
+      }
+
+      confirmedByVariant.set(entry.variantId, (confirmedByVariant.get(entry.variantId) ?? 0) + entry.quantity);
+    }
+
+    const rows: InventoryReportRow[] = variants.map((variant) => {
+      const state = this.variants.get(variant.id);
+      const reservedQuantity = state?.reservedQuantity ?? 0;
+      const committedQuantity = state?.committedQuantity ?? 0;
+      const availableStock = variant.stockOnHand - reservedQuantity - committedQuantity;
+      const reportingGroup = variant.product.reportingGroup?.trim() || variant.product.name;
+      const salesChannel =
+        variant.product.salesChannel === ProductSalesChannel.Internal
+          ? ProductSalesChannel.Internal
+          : ProductSalesChannel.Public;
+      const lowStockThreshold = Math.max(0, variant.lowStockThreshold ?? 100);
+
+      return {
+        reportingGroup,
+        productId: variant.productId,
+        productName: variant.product.name,
+        productSlug: variant.product.slug,
+        salesChannel,
+        variantId: variant.id,
+        variantName: variant.name,
+        sku: variant.sku,
+        unitsSold: confirmedByVariant.get(variant.id) ?? 0,
+        stockOnHand: variant.stockOnHand,
+        reservedQuantity,
+        availableStock,
+        lowStockThreshold,
+        lowStock: availableStock <= lowStockThreshold
+      };
+    });
+
+    rows.sort((left, right) => {
+      if (left.lowStock !== right.lowStock) {
+        return left.lowStock ? -1 : 1;
+      }
+
+      if (left.reportingGroup !== right.reportingGroup) {
+        return left.reportingGroup.localeCompare(right.reportingGroup);
+      }
+
+      return left.sku.localeCompare(right.sku);
+    });
+
+    const data: InventoryReportSummary = {
+      rows,
+      generatedAt: new Date().toISOString()
+    };
+
+    return wrapResponse<InventoryReportSummary>(data, {
+      total: rows.length,
+      lowStock: rows.filter((row) => row.lowStock).length,
+      internal: rows.filter((row) => row.salesChannel === ProductSalesChannel.Internal).length,
+      public: rows.filter((row) => row.salesChannel === ProductSalesChannel.Public).length
+    });
   }
 
   private async resolveItemReference(item: OrderItemSummary) {

@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Post } from "@nestjs/common";
-import { adminAccessRoles } from "@huelegood/shared";
+import { adminAccessRoles, type AdminManualPaymentCreateInput, type AdminOrderStatusTransitionInput } from "@huelegood/shared";
 import { RequireRoles } from "../auth/auth-rbac";
 import { OrdersService } from "./orders.service";
 
@@ -30,6 +30,21 @@ export class OrdersController {
   @Get(":orderNumber")
   getOrder(@Param("orderNumber") orderNumber: string) {
     return this.ordersService.getOrder(orderNumber);
+  }
+
+  @Post(":orderNumber/status")
+  transitionOrderStatus(@Param("orderNumber") orderNumber: string, @Body() body: AdminOrderStatusTransitionInput) {
+    return this.ordersService.transitionOrderStatus(orderNumber, body);
+  }
+
+  @Post(":orderNumber/manual-payment")
+  registerManualPayment(@Param("orderNumber") orderNumber: string, @Body() body: AdminManualPaymentCreateInput) {
+    return this.ordersService.registerAdminManualPayment(orderNumber, body);
+  }
+
+  @Post(":orderNumber/resend-approval-email")
+  resendApprovalEmail(@Param("orderNumber") orderNumber: string) {
+    return this.ordersService.resendManualApprovalNotification(orderNumber, "admin");
   }
 
   @Delete(":orderNumber")

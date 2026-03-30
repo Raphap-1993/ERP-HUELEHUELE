@@ -284,46 +284,6 @@ export function MetricCard({ metric }: { metric: AdminMetric }) {
   );
 }
 
-export function AdminDataTable({
-  title,
-  description,
-  headers,
-  rows
-}: {
-  title: string;
-  description?: string;
-  headers: string[];
-  rows: Array<Array<ReactNode>>;
-}) {
-  return (
-    <Card className="rounded-[1.6rem] border-black/8 bg-white shadow-[0_12px_34px_rgba(18,34,20,0.05)]">
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        {description ? <CardDescription>{description}</CardDescription> : null}
-      </CardHeader>
-      <CardContent className="overflow-x-auto p-0">
-        <Table>
-          <TableHeader className="bg-[#f7f8f4]">
-            <TableRow>
-              {headers.map((header) => (
-                <TableHead key={header}>{header}</TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row, index) => (
-              <TableRow key={index}>
-                {row.map((cell, cellIndex) => (
-                  <TableCell key={cellIndex}>{cell}</TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
-  );
-}
 
 export function ReviewDrawer({
   title,
@@ -392,47 +352,6 @@ export function TimelinePedido({ items = orderTimeline }: { items?: TimelineEntr
   );
 }
 
-export function CommissionTable({ rows = commissionRows }: { rows?: CommissionRow[] }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Comisiones</CardTitle>
-        <CardDescription>Saldo pendiente, pagable y liquidado.</CardDescription>
-      </CardHeader>
-      <CardContent className="overflow-x-auto p-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Vendedor</TableHead>
-              <TableHead>Código</TableHead>
-              <TableHead>Ventas</TableHead>
-              <TableHead>Comisión</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead>Periodo</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.code}>
-                <TableCell>{row.vendor}</TableCell>
-                <TableCell>{row.code}</TableCell>
-                <TableCell>{formatCurrency(row.totalSales)}</TableCell>
-                <TableCell>{formatCurrency(row.commission)}</TableCell>
-                <TableCell>
-                  <StatusBadge
-                    label={row.status}
-                    tone={row.status === "paid" ? "success" : row.status === "blocked" ? "danger" : "warning"}
-                  />
-                </TableCell>
-                <TableCell>{row.period}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
-  );
-}
 
 export function FAQAccordion({ items = faqItems }: { items?: FaqItem[] }) {
   return (

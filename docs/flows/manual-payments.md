@@ -35,6 +35,23 @@ Permitir compras mediante pago manual, con carga de comprobante y revisión oper
 11. Si rechaza, el worker deja registro del motivo y el pedido pasa a `cancelled` según la política vigente.
 12. Se notifica al cliente el resultado.
 
+## Subflujo: registro manual directo desde admin
+
+Además del circuito con comprobante, el admin dispone de un registro manual directo sobre un pedido ya existente.
+
+Pasos:
+
+1. operación abre el detalle del pedido en backoffice.
+2. si el pedido sigue impago y no tiene `manual_request`, registra monto completo, referencia y nota.
+3. la API marca `payment_status=paid`, actualiza `order_status=paid`, sincroniza inventario y liquida el frente de comisiones.
+4. el pedido vuelve a su state machine normal y puede pasar a `confirmed`, `preparing`, `shipped`, `delivered` o `completed`.
+
+Reglas:
+
+- no reemplaza la revisión con comprobante; es un segundo camino operacional.
+- sólo acepta pago completo.
+- deja auditoría y actor explícitos.
+
 ## Estados involucrados
 
 ### Pedido

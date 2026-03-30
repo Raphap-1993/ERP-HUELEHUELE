@@ -69,6 +69,12 @@ export class AdminCmsController {
     return this.cmsService.uploadLoadingImage(file);
   }
 
+  @Post("site-settings/favicon")
+  @UseInterceptors(FileInterceptor("file", { storage: memoryStorage(), limits: { fileSize: 2 * 1024 * 1024, files: 1 } }))
+  uploadFavicon(@UploadedFile() file: { buffer: Buffer; mimetype?: string; originalname?: string } | undefined) {
+    return this.cmsService.uploadFavicon(file);
+  }
+
   @Get("hero-copy")
   getHeroCopy() {
     return this.cmsService.getHeroCopy();

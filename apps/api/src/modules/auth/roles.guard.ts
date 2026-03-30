@@ -32,7 +32,7 @@ function getRoleCodes(session: AuthSessionSummary) {
 export class RolesGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const requiredRoles = this.reflector.getAllAndOverride<RoleCode[]>(AUTH_ROLES_KEY, [
       context.getHandler(),
       context.getClass()
@@ -46,9 +46,9 @@ export class RolesGuard implements CanActivate {
     const authorization = normalizeAuthorizationHeader(request.headers?.authorization);
     const session =
       request.authSession ??
-      resolveSession(authorization, {
+      (await resolveSession(authorization, {
         required: false
-      });
+      }));
 
     if (!session) {
       throw new UnauthorizedException("Debes iniciar sesión para acceder a este recurso.");

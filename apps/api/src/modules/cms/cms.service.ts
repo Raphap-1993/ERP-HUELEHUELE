@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException, OnModuleInit } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import {
+  CmsSocialPlatform,
+  CmsTestimonialKind,
   cmsTestimonials,
   faqItems,
   heroCopy as defaultHeroCopy,
@@ -133,6 +135,90 @@ function normalizeTone(value?: string): PromoBanner["tone"] {
 function normalizeRating(value: number) {
   const parsed = Number.isFinite(value) ? Math.round(value) : 5;
   return Math.min(5, Math.max(1, parsed));
+}
+
+function normalizeTestimonialKind(value?: string): CmsTestimonialKind {
+  if (value === CmsTestimonialKind.Audio || value === CmsTestimonialKind.Social) {
+    return value;
+  }
+
+  return CmsTestimonialKind.Text;
+}
+
+function normalizeSocialPlatform(value?: string): CmsSocialPlatform | undefined {
+  if (value === CmsSocialPlatform.Instagram || value === CmsSocialPlatform.Tiktok) {
+    return value;
+  }
+
+  return undefined;
+}
+
+function normalizeTestimonialPosition(value?: number, fallback = 0) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    return fallback;
+  }
+
+  return Math.round(value);
+}
+
+function normalizeMediaUrl(value?: string, field = "recurso") {
+  const normalized = value?.trim();
+  if (!normalized) {
+    return undefined;
+  }
+
+  if (normalized.startsWith("/") || /^https?:\/\//i.test(normalized)) {
+    return normalized;
+  }
+
+  throw new BadRequestException(`La URL de ${field} debe ser una ruta local o una URL pública válida.`);
+}
+
+function normalizeTestimonialInput(body: CmsTestimonialInput, fallback?: CmsTestimonial) {
+  const name = normalizeText(body.name) ?? fallback?.name;
+  const role = normalizeText(body.role) ?? fallback?.role;
+  const kind = normalizeTestimonialKind(body.kind ?? fallback?.kind);
+  const quote = normalizeText(body.quote);
+  const audioUrl = normalizeMediaUrl(body.audioUrl, "audio") ?? fallback?.audioUrl;
+  const socialUrl = normalizeMediaUrl(body.socialUrl, "testimonio social") ?? fallback?.socialUrl;
+  const socialPlatform = normalizeSocialPlatform(body.socialPlatform) ?? fallback?.socialPlatform;
+  const coverImageUrl = normalizeMediaUrl(body.coverImageUrl, "portada") ?? fallback?.coverImageUrl;
+
+  if (!name || !role) {
+    throw new BadRequestException("Nombre y rol son obligatorios.");
+  }
+
+  if (kind === CmsTestimonialKind.Text && !quote) {
+    throw new BadRequestException("La cita es obligatoria para testimonios de texto.");
+  }
+
+  if (kind === CmsTestimonialKind.Audio && !audioUrl) {
+    throw new BadRequestException("El audio es obligatorio para testimonios de audio.");
+  }
+
+  if (kind === CmsTestimonialKind.Social) {
+    if (!socialUrl) {
+      throw new BadRequestException("La URL es obligatoria para testimonios sociales.");
+    }
+
+    if (!socialPlatform) {
+      throw new BadRequestException("La plataforma es obligatoria para testimonios sociales.");
+    }
+  }
+
+  return {
+    name,
+    role,
+    kind,
+    quote: kind === CmsTestimonialKind.Text ? quote : quote ?? fallback?.quote,
+    rating: normalizeRating(body.rating ?? fallback?.rating ?? 5),
+    position: normalizeTestimonialPosition(body.position, fallback?.position ?? 0),
+    audioUrl: kind === CmsTestimonialKind.Audio ? audioUrl : undefined,
+    socialUrl: kind === CmsTestimonialKind.Social ? socialUrl : undefined,
+    socialPlatform: kind === CmsTestimonialKind.Social ? socialPlatform : undefined,
+    coverImageUrl,
+    status: body.status === "inactive" ? "inactive" : fallback?.status === "inactive" ? "inactive" : "active"
+  } satisfies Omit<CmsTestimonial, "id" | "updatedAt">;
 }
 
 function buildBlockId(pageSlug: string, position: number) {
@@ -310,6 +396,7 @@ export class CmsService implements OnModuleInit {
     const headerLogoUrl = normalizeOptionalAssetUrl(body.headerLogoUrl);
     const heroProductImageUrl = normalizeOptionalAssetUrl(body.heroProductImageUrl);
     const loadingImageUrl = normalizeOptionalAssetUrl(body.loadingImageUrl);
+    const faviconUrl = normalizeOptionalAssetUrl(body.faviconUrl);
     const yapeNumber = body.yapeNumber?.trim() || undefined;
     const walletType = body.walletType?.trim() || undefined;
     const walletOwnerName = body.walletOwnerName?.trim() || undefined;
@@ -330,7 +417,8 @@ export class CmsService implements OnModuleInit {
       walletOwnerName,
       headerLogoUrl,
       heroProductImageUrl,
-      loadingImageUrl
+      loadingImageUrl,
+      faviconUrl
     };
 
     this.recordAdminAction("cms.site_settings.updated", "site_setting", "global", "La configuración base del storefront quedó actualizada.", {
@@ -340,7 +428,8 @@ export class CmsService implements OnModuleInit {
       freeShippingThreshold: this.siteSettingData.freeShippingThreshold,
       hasHeaderLogo: Boolean(this.siteSettingData.headerLogoUrl),
       hasHeroProductImage: Boolean(this.siteSettingData.heroProductImageUrl),
-      hasLoadingImage: Boolean(this.siteSettingData.loadingImageUrl)
+      hasLoadingImage: Boolean(this.siteSettingData.loadingImageUrl),
+      hasFavicon: Boolean(this.siteSettingData.faviconUrl)
     });
     void this.persistState();
 
@@ -452,6 +541,42 @@ export class CmsService implements OnModuleInit {
 
     return {
       ...actionResponse("ok", "Imagen de loading actualizada correctamente."),
+      siteSetting: { ...this.siteSettingData }
+    };
+  }
+
+  async uploadFavicon(file: { buffer: Buffer; mimetype?: string; originalname?: string } | undefined) {
+    if (!file?.buffer) {
+      throw new BadRequestException("Debes adjuntar un favicon válido.");
+    }
+
+    const upload = await this.mediaService.uploadImage(file, {
+      kind: "logo",
+      slug: this.siteSettingData.brandName || "huelegood",
+      preserveSvg: true
+    });
+
+    const previousFavicon = this.siteSettingData.faviconUrl;
+    this.siteSettingData = {
+      ...this.siteSettingData,
+      faviconUrl: upload.url
+    };
+
+    this.recordAdminAction("cms.site_settings.favicon_updated", "site_setting", "global", "El favicon quedó actualizado.", {
+      hasFavicon: true
+    });
+    void this.persistState();
+
+    if (previousFavicon && previousFavicon !== upload.url) {
+      try {
+        await this.mediaService.deleteByPublicUrl(previousFavicon);
+      } catch {
+        // Non-blocking cleanup.
+      }
+    }
+
+    return {
+      ...actionResponse("ok", "Favicon actualizado correctamente."),
       siteSetting: { ...this.siteSettingData }
     };
   }
@@ -777,30 +902,27 @@ export class CmsService implements OnModuleInit {
   listTestimonials(publicView = false) {
     const testimonials = Array.from(this.testimonials.values())
       .filter((testimonial) => (publicView ? testimonial.status === "active" : true))
-      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+      .sort((left, right) => {
+        const positionDelta = (left.position ?? Number.MAX_SAFE_INTEGER) - (right.position ?? Number.MAX_SAFE_INTEGER);
+        if (positionDelta !== 0) {
+          return positionDelta;
+        }
+
+        return right.updatedAt.localeCompare(left.updatedAt);
+      })
       .map((testimonial) => cloneTestimonial(testimonial));
 
     return testimonials;
   }
 
   createTestimonial(body: CmsTestimonialInput) {
-    const name = normalizeText(body.name);
-    const role = normalizeText(body.role);
-    const quote = normalizeText(body.quote);
-    if (!name || !role || !quote) {
-      throw new BadRequestException("Nombre, rol y cita son obligatorios.");
-    }
-
     const now = nowIso();
     const id = `tst-${String(this.testimonialSequence).padStart(3, "0")}`;
     this.testimonialSequence += 1;
+    const draft = normalizeTestimonialInput(body);
     const testimonial: CmsTestimonial = {
       id,
-      name,
-      role,
-      quote,
-      rating: normalizeRating(body.rating),
-      status: body.status === "inactive" ? "inactive" : "active",
+      ...draft,
       updatedAt: now
     };
 
@@ -819,19 +941,19 @@ export class CmsService implements OnModuleInit {
 
   updateTestimonial(id: string, body: CmsTestimonialInput) {
     const testimonial = this.requireTestimonial(id);
-    const name = normalizeText(body.name);
-    const role = normalizeText(body.role);
-    const quote = normalizeText(body.quote);
+    const draft = normalizeTestimonialInput(body, testimonial);
 
-    if (!name || !role || !quote) {
-      throw new BadRequestException("Nombre, rol y cita son obligatorios.");
-    }
-
-    testimonial.name = name;
-    testimonial.role = role;
-    testimonial.quote = quote;
-    testimonial.rating = normalizeRating(body.rating);
-    testimonial.status = body.status === "inactive" ? "inactive" : "active";
+    testimonial.name = draft.name;
+    testimonial.role = draft.role;
+    testimonial.quote = draft.quote;
+    testimonial.kind = draft.kind;
+    testimonial.rating = draft.rating;
+    testimonial.position = draft.position;
+    testimonial.audioUrl = draft.audioUrl;
+    testimonial.socialUrl = draft.socialUrl;
+    testimonial.socialPlatform = draft.socialPlatform;
+    testimonial.coverImageUrl = draft.coverImageUrl;
+    testimonial.status = draft.status;
     testimonial.updatedAt = nowIso();
     this.testimonials.set(testimonial.id, testimonial);
     this.recordAdminAction("cms.testimonial.updated", "testimonial", testimonial.id, "El testimonio quedó actualizado.", {
@@ -870,7 +992,15 @@ export class CmsService implements OnModuleInit {
     }
 
     for (const testimonial of snapshot.testimonials ?? []) {
-      this.testimonials.set(testimonial.id, cloneTestimonial(testimonial));
+      this.testimonials.set(testimonial.id, {
+        ...cloneTestimonial(testimonial),
+        kind: normalizeTestimonialKind(testimonial.kind),
+        position: normalizeTestimonialPosition(testimonial.position),
+        audioUrl: normalizeMediaUrl(testimonial.audioUrl, "audio"),
+        socialUrl: normalizeMediaUrl(testimonial.socialUrl, "testimonio social"),
+        socialPlatform: normalizeSocialPlatform(testimonial.socialPlatform),
+        coverImageUrl: normalizeMediaUrl(testimonial.coverImageUrl, "portada")
+      });
     }
 
     this.syncSequences();

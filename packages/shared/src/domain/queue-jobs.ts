@@ -10,6 +10,7 @@ export interface ManualPaymentReviewJobData {
   decision: "approve" | "reject";
   reviewer?: string;
   notes?: string;
+  sendEmailNow?: boolean;
   requestedAt: string;
 }
 

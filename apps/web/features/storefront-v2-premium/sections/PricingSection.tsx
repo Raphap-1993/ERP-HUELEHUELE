@@ -1,10 +1,6 @@
-"use client";
-
-import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { type CatalogProduct } from "@huelegood/shared";
-import { fetchCatalogSummary } from "../../../lib/api";
 import {
   cloudflareImageLoader,
   isRemoteStorefrontMediaUrl,
@@ -202,47 +198,17 @@ function PricingCard({
   );
 }
 
-export function PricingSection() {
-  const [products, setProducts] = useState<CatalogProduct[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [currencyCode, setCurrencyCode] = useState("PEN");
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadCatalog() {
-      try {
-        const response = await fetchCatalogSummary();
-        if (!active) {
-          return;
-        }
-
-        setProducts(response.data.products ?? []);
-        setCurrencyCode(response.data.currencyCode || "PEN");
-      } catch {
-        if (active) {
-          setProducts([]);
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-
-    void loadCatalog();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const orderedProducts = useMemo(() => {
-    const bySlug = new Map(products.map((product) => [product.slug, product] as const));
-    return DISPLAY_ORDER.map((slug) => bySlug.get(slug)).filter((product): product is CatalogProduct => Boolean(product));
-  }, [products]);
-
+export function PricingSection({
+  products,
+  currencyCode = "PEN"
+}: {
+  products: CatalogProduct[];
+  currencyCode?: string;
+}) {
+  const bySlug = new Map(products.map((product) => [product.slug, product] as const));
+  const orderedProducts = DISPLAY_ORDER.map((slug) => bySlug.get(slug)).filter((product): product is CatalogProduct => Boolean(product));
   const visibleProducts = orderedProducts.length > 0 ? orderedProducts : products;
+  const loading = false;
 
   return (
     <section id="tienda" className="bg-[#f4f4f0] py-24">

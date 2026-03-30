@@ -24,6 +24,15 @@ Monorepo de implementación para la plataforma comercial modular Huelegood.
 3. generar Prisma
 4. levantar `web`, `admin`, `api` y `worker`
 
+### Demo local fiel a prod
+
+Para refrescar el contenido visual local con el baseline demo:
+
+1. levantar PostgreSQL y Redis locales
+2. ejecutar `npm run local:demo`
+
+El seed carga un snapshot fijo de CMS y assets públicos de demo para que `localhost` se parezca a producción sin depender de datos vivos ni cambiar la lógica de la app.
+
 ### Scripts
 
 - `npm run dev:web`

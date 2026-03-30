@@ -117,7 +117,7 @@ function mapTestimonial(testimonial: CmsTestimonial): StorefrontV2Testimonial {
     id: testimonial.id,
     name: testimonial.name,
     role: testimonial.role,
-    quote: testimonial.quote
+    quote: testimonial.quote ?? "Testimonio curado desde CMS."
   };
 }
 

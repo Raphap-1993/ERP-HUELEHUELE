@@ -2,6 +2,8 @@ import type {
   CampaignRecipientStatus,
   CampaignRunStatus,
   CampaignStatus,
+  CmsSocialPlatform,
+  CmsTestimonialKind,
   CommissionPayoutStatus,
   CommissionStatus,
   InventoryMovementType,
@@ -12,6 +14,7 @@ import type {
   PaymentStatus,
   RedemptionStatus,
   RoleCode,
+  VendorCollaborationType,
   VendorApplicationStatus,
   VendorStatus,
   WholesaleLeadStatus,
@@ -191,6 +194,7 @@ export interface SiteSetting {
   headerLogoUrl?: string;
   heroProductImageUrl?: string;
   loadingImageUrl?: string;
+  faviconUrl?: string;
 }
 
 export type AuditSeverity = "info" | "warning" | "error" | "critical";
@@ -336,7 +340,7 @@ export interface ObservabilityRouteMetricSummary {
 
 export interface ObservabilityEventSummary {
   id: string;
-  category: "http" | "checkout" | "payment" | "notification" | "queue" | "system";
+  category: "http" | "checkout" | "payment" | "notification" | "queue" | "system" | "orders";
   action: string;
   severity: AuditSeverity;
   detail: string;
@@ -436,8 +440,14 @@ export interface CmsTestimonial {
   id: string;
   name: string;
   role: string;
-  quote: string;
+  quote?: string;
   rating: number;
+  kind?: CmsTestimonialKind;
+  position?: number;
+  audioUrl?: string;
+  socialUrl?: string;
+  socialPlatform?: CmsSocialPlatform;
+  coverImageUrl?: string;
   status: "active" | "inactive";
   updatedAt: string;
 }
@@ -488,6 +498,7 @@ export interface VendorOverview {
   status: VendorStatus;
   sales: number;
   commissions: number;
+  collaborationType?: VendorCollaborationType;
 }
 
 export interface RoleSummary {

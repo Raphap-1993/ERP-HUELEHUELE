@@ -15,9 +15,11 @@ import {
   Separator,
   StatusBadge
 } from "@huelegood/ui";
-import type { VendorApplicationSummary, VendorCodeSummary, VendorStatus, VendorSummary } from "@huelegood/shared";
+import { VendorCollaborationType, type VendorApplicationSummary, type VendorCodeSummary, type VendorStatus, type VendorSummary } from "@huelegood/shared";
 import {
   approveVendorApplication,
+  createCommissionRule,
+  createVendor,
   fetchVendorApplications,
   fetchVendorCodes,
   fetchVendors,
@@ -71,6 +73,10 @@ function vendorTone(status: VendorStatus): "neutral" | "success" | "warning" | "
   return "warning";
 }
 
+function collaborationTypeLabel(type?: VendorCollaborationType) {
+  return type === "affiliate" ? "Afiliado" : "Seller";
+}
+
 export function VendorsWorkspace() {
   const [applications, setApplications] = useState<VendorApplicationSummary[]>([]);
   const [vendors, setVendors] = useState<VendorSummary[]>([]);
@@ -80,7 +86,18 @@ export function VendorsWorkspace() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [manualVendor, setManualVendor] = useState({
+    name: "",
+    email: "",
+    city: "",
+    phone: "",
+    source: "Alta manual desde admin",
+    notes: "",
+    collaborationType: VendorCollaborationType.Seller,
+    enableCommission: true
+  });
 
   useEffect(() => {
     let active = true;
@@ -154,6 +171,7 @@ export function VendorsWorkspace() {
   async function handleReview(applicationId: string, decision: "approve" | "reject") {
     setActionLoading(true);
     setError(null);
+    setFeedback(null);
 
     try {
       const payload = {
@@ -175,6 +193,62 @@ export function VendorsWorkspace() {
     }
   }
 
+  async function handleCreateManualVendor() {
+    setActionLoading(true);
+    setError(null);
+    setFeedback(null);
+
+    try {
+      const response = await createVendor({
+        name: manualVendor.name.trim(),
+        email: manualVendor.email.trim(),
+        city: manualVendor.city.trim(),
+        phone: manualVendor.phone.trim() || undefined,
+        source: manualVendor.source.trim() || undefined,
+        notes: manualVendor.notes.trim() || undefined,
+        collaborationType: manualVendor.collaborationType,
+        enableCommission: manualVendor.enableCommission
+      });
+
+      if (manualVendor.enableCommission && manualVendor.collaborationType === VendorCollaborationType.Affiliate && response.vendor?.code) {
+        await createCommissionRule({
+          name: `Afiliado ${response.vendor.code} 10%`,
+          description: `Regla automática para ${response.vendor.name} con comisión base de afiliado.`,
+          scope: "vendor",
+          rate: 0.1,
+          paymentMethod: "any",
+          appliesToVendorCode: response.vendor.code,
+          appliesToCollaborationType: VendorCollaborationType.Affiliate,
+          payoutDelayDays: 7,
+          notes: "Creada automáticamente al dar de alta un afiliado desde admin.",
+          priority: 10,
+          status: "active"
+        });
+      }
+
+      setFeedback(
+        manualVendor.enableCommission && manualVendor.collaborationType === VendorCollaborationType.Affiliate
+          ? "Vendedor creado y regla 10% para afiliado registrada."
+          : response.message
+      );
+      setManualVendor({
+        name: "",
+        email: "",
+        city: "",
+        phone: "",
+        source: "Alta manual desde admin",
+        notes: "",
+        collaborationType: VendorCollaborationType.Seller,
+        enableCommission: true
+      });
+      refresh();
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : "No pudimos dar de alta al vendedor.");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
   return (
     <div className="space-y-6 pb-8">
       <SectionHeader
@@ -187,6 +261,110 @@ export function VendorsWorkspace() {
           <MetricCard key={metric.label} metric={metric} />
         ))}
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Alta manual</CardTitle>
+          <CardDescription>Da de alta sellers o afiliados sin esperar una postulación web.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[#132016]" htmlFor="manual-vendor-name">
+                Nombre
+              </label>
+              <Input
+                id="manual-vendor-name"
+                value={manualVendor.name}
+                onChange={(event) => setManualVendor((current) => ({ ...current, name: event.target.value }))}
+                placeholder="Nombre comercial"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[#132016]" htmlFor="manual-vendor-email">
+                Email
+              </label>
+              <Input
+                id="manual-vendor-email"
+                value={manualVendor.email}
+                onChange={(event) => setManualVendor((current) => ({ ...current, email: event.target.value }))}
+                placeholder="seller@huelegood.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[#132016]" htmlFor="manual-vendor-city">
+                Ciudad
+              </label>
+              <Input
+                id="manual-vendor-city"
+                value={manualVendor.city}
+                onChange={(event) => setManualVendor((current) => ({ ...current, city: event.target.value }))}
+                placeholder="Lima"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[#132016]" htmlFor="manual-vendor-phone">
+                Teléfono
+              </label>
+              <Input
+                id="manual-vendor-phone"
+                value={manualVendor.phone}
+                onChange={(event) => setManualVendor((current) => ({ ...current, phone: event.target.value }))}
+                placeholder="+51 999 000 000"
+              />
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-[1fr_220px]">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[#132016]" htmlFor="manual-vendor-notes">
+                Notas
+              </label>
+              <Input
+                id="manual-vendor-notes"
+                value={manualVendor.notes}
+                onChange={(event) => setManualVendor((current) => ({ ...current, notes: event.target.value }))}
+                placeholder="Canal, contexto comercial o alcance."
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[#132016]" htmlFor="manual-vendor-type">
+                Tipo comercial
+              </label>
+              <select
+                id="manual-vendor-type"
+                value={manualVendor.collaborationType}
+                onChange={(event) =>
+                  setManualVendor((current) => ({
+                    ...current,
+                    collaborationType: event.target.value as VendorCollaborationType
+                  }))
+                }
+                className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm text-[#132016]"
+              >
+                  <option value={VendorCollaborationType.Seller}>Seller</option>
+                  <option value={VendorCollaborationType.Affiliate}>Afiliado</option>
+              </select>
+            </div>
+          </div>
+          <label className="flex items-center gap-3 rounded-2xl border border-black/10 bg-black/[0.02] px-4 py-3">
+            <input
+              type="checkbox"
+              checked={manualVendor.enableCommission}
+              onChange={(event) => setManualVendor((current) => ({ ...current, enableCommission: event.target.checked }))}
+              className="h-4 w-4 rounded border-black/20"
+            />
+            <span className="text-sm text-[#132016]">
+              Si es afiliado, crear automáticamente la regla base de comisión al <strong>10%</strong>.
+            </span>
+          </label>
+          {feedback ? <p className="text-sm text-[#2d6a4f]">{feedback}</p> : null}
+          <div className="flex justify-end">
+            <Button onClick={() => void handleCreateManualVendor()} disabled={actionLoading}>
+              {actionLoading ? "Guardando..." : "Crear vendedor"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -290,10 +468,11 @@ export function VendorsWorkspace() {
       <AdminDataTable
         title="Vendedores"
         description="Consolidado operativo con ventas, comisiones y estado comercial."
-        headers={["Nombre", "Código", "Estado", "Ciudad", "Ventas", "Comisiones", "Pendientes", "Pagadas"]}
+        headers={["Nombre", "Código", "Tipo", "Estado", "Ciudad", "Ventas", "Comisiones", "Pendientes", "Pagadas"]}
         rows={vendors.map((vendor) => [
           vendor.name,
           vendor.code,
+          collaborationTypeLabel(vendor.collaborationType),
           <StatusBadge key={`${vendor.code}-status`} label={vendor.status} tone={vendorTone(vendor.status)} />,
           vendor.city ?? "Sin ciudad",
           formatCurrency(vendor.sales),
@@ -306,10 +485,11 @@ export function VendorsWorkspace() {
       <AdminDataTable
         title="Códigos comerciales"
         description="Trazabilidad rápida del código aplicado a cada vendedor."
-        headers={["Código", "Nombre", "Estado", "Aprobado", "Actualizado"]}
+        headers={["Código", "Nombre", "Tipo", "Estado", "Aprobado", "Actualizado"]}
         rows={codes.map((code) => [
           code.code,
           code.name,
+          collaborationTypeLabel(code.collaborationType),
           <StatusBadge key={`${code.code}-badge`} label={code.status} tone={vendorTone(code.status)} />,
           formatDate(code.approvedAt),
           formatDate(code.updatedAt)

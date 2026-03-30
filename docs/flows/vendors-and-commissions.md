@@ -45,6 +45,9 @@ Formalizar cómo se atribuye una venta a un vendedor y cómo esa atribución evo
 - El código debe persistir en el pedido aunque luego el carrito cambie.
 - La atribución puede convivir con promociones solo si la regla comercial lo permite.
 - El vendedor no controla el precio final del pedido.
+- `vendors` puede ser `seller` o `affiliate` mediante `collaborationType`.
+- una regla puede aplicar por `vendorCode` o por `collaborationType`.
+- el alta manual de afiliado desde admin puede crear una regla automática del `10%`.
 
 ## Subflujo B: maduración y liquidación de comisión
 
@@ -99,3 +102,4 @@ Formalizar cómo se atribuye una venta a un vendedor y cómo esa atribución evo
 - La liquidación debe trabajar sobre snapshots y no recalcular montos históricos sin razón explícita.
 - La preparación y conciliación de payout deben ejecutarse con `jobId` estable para evitar corridas duplicadas.
 - Las reversas deben registrar causa, actor y referencia al evento que las originó.
+- el endpoint canónico para registrar pago manual directo debe pasar por `payments`, porque allí se dispara el sync de comisiones.

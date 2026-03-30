@@ -6,8 +6,10 @@ import {
   OnModuleInit
 } from "@nestjs/common";
 import {
+  VendorCollaborationType,
   VendorApplicationStatus,
   VendorStatus,
+  type AdminVendorCreateInput,
   type AuthUserSummary,
   type VendorApplicationActionInput,
   type VendorApplicationInput,
@@ -81,8 +83,9 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function isProductionRuntime() {
-  return process.env.NODE_ENV === "production";
+function demoDataEnabled() {
+  const value = process.env.HUELEGOOD_ENABLE_DEMO_DATA?.trim().toLowerCase();
+  return value === "1" || value === "true" || value === "yes" || value === "on";
 }
 
 function normalizeEmail(value?: string) {
@@ -96,6 +99,10 @@ function normalizeText(value?: string) {
 
 function normalizeCode(value?: string) {
   return value?.trim().toUpperCase() || undefined;
+}
+
+function normalizeCollaborationType(value?: VendorCollaborationType | string) {
+  return value === VendorCollaborationType.Affiliate ? VendorCollaborationType.Affiliate : VendorCollaborationType.Seller;
 }
 
 function fullName(value: string) {
@@ -134,7 +141,7 @@ export class VendorsService implements OnModuleInit {
     private readonly auditService: AuditService,
     private readonly moduleStateService: ModuleStateService
   ) {
-    if (!isProductionRuntime()) {
+    if (demoDataEnabled()) {
       this.seedApplications();
       this.seedVendors();
     }
@@ -144,9 +151,9 @@ export class VendorsService implements OnModuleInit {
   async onModuleInit() {
     const snapshot = await this.moduleStateService.load<VendorsSnapshot>("vendors");
     if (snapshot) {
-      const { snapshot: sanitizedSnapshot, changed } = isProductionRuntime()
-        ? this.sanitizeSnapshot(snapshot)
-        : { snapshot, changed: false };
+      const { snapshot: sanitizedSnapshot, changed } = demoDataEnabled()
+        ? { snapshot, changed: false }
+        : this.sanitizeSnapshot(snapshot);
       this.restoreSnapshot(sanitizedSnapshot);
       if (changed) {
         await this.persistState();
@@ -241,6 +248,7 @@ export class VendorsService implements OnModuleInit {
       Array.from(this.vendors.values()).map((vendor) => ({
         code: vendor.code,
         name: vendor.name,
+        collaborationType: vendor.collaborationType,
         status: vendor.status,
         approvedAt: vendor.approvedAt,
         updatedAt: vendor.updatedAt
@@ -317,6 +325,71 @@ export class VendorsService implements OnModuleInit {
     };
   }
 
+  createManualVendor(body: AdminVendorCreateInput) {
+    if (!body.name?.trim() || !body.email?.trim() || !body.city?.trim()) {
+      throw new BadRequestException("Nombre, email y ciudad son obligatorios.");
+    }
+
+    const email = normalizeEmail(body.email);
+    if (!email) {
+      throw new BadRequestException("Email inválido.");
+    }
+
+    if (this.findApplicationByEmail(email) || this.findVendorByEmail(email)) {
+      throw new ConflictException("Ya existe una postulación o vendedor con ese email.");
+    }
+
+    const occurredAt = nowIso();
+    const actor = "admin";
+    const note = normalizeText(body.notes) || "Alta manual desde backoffice.";
+    const collaborationType = normalizeCollaborationType(body.collaborationType);
+    const id = `ven-${String(this.vendors.size + 1).padStart(3, "0")}`;
+    const codePrefix = collaborationType === VendorCollaborationType.Affiliate ? "AFF" : "VEND";
+    const code = `${codePrefix}-${String(this.vendorSequence).padStart(3, "0")}`;
+    this.vendorSequence += 1;
+
+    const vendor: VendorRecord = {
+      id,
+      name: fullName(body.name),
+      email,
+      code,
+      collaborationType,
+      city: body.city.trim(),
+      source: normalizeText(body.source) || "Alta manual admin",
+      status: VendorStatus.Active,
+      sales: 0,
+      commissions: 0,
+      pendingCommissions: 0,
+      paidCommissions: 0,
+      ordersCount: 0,
+      applicationsCount: 0,
+      approvedAt: occurredAt,
+      updatedAt: occurredAt,
+      applicationIds: [],
+      statusHistory: [vendorHistory(VendorStatus.Active, actor, note, occurredAt)]
+    };
+
+    this.vendors.set(vendor.code, vendor);
+    this.auditService.recordAdminAction({
+      actionType: "vendors.manual.created",
+      targetType: "vendor",
+      targetId: vendor.id,
+      summary: `Se dio de alta manual al ${collaborationType === VendorCollaborationType.Affiliate ? "afiliado" : "vendedor"} ${vendor.code}.`,
+      actorName: actor,
+      metadata: {
+        code: vendor.code,
+        email: vendor.email,
+        collaborationType: vendor.collaborationType
+      }
+    });
+    void this.persistState();
+
+    return {
+      ...actionResponse("ok", "El perfil comercial quedó creado.", vendor.id),
+      vendor: this.toVendorSummary(vendor)
+    };
+  }
+
   findVendorByCode(code?: string) {
     if (!code) {
       return null;
@@ -360,6 +433,7 @@ export class VendorsService implements OnModuleInit {
     const existing = this.findVendorByEmail(application.email) ?? this.findVendorByName(application.name);
 
     if (existing) {
+      existing.collaborationType = existing.collaborationType ?? VendorCollaborationType.Seller;
       existing.status = VendorStatus.Active;
       existing.city = application.city;
       existing.email = application.email;
@@ -380,6 +454,7 @@ export class VendorsService implements OnModuleInit {
       name: application.name,
       email: application.email,
       code,
+      collaborationType: VendorCollaborationType.Seller,
       city: application.city,
       source: application.source,
       status: VendorStatus.Active,
@@ -480,6 +555,7 @@ export class VendorsService implements OnModuleInit {
 
       vendors.push({
         ...vendor,
+        collaborationType: normalizeCollaborationType(vendor.collaborationType),
         applicationIds,
         applicationsCount,
         statusHistory: vendor.statusHistory.map((entry) => ({ ...entry }))
@@ -544,6 +620,7 @@ export class VendorsService implements OnModuleInit {
         name: "Mónica Herrera",
         email: "monica@seller.com",
         code: "VEND-014",
+        collaborationType: VendorCollaborationType.Seller,
         city: "Lima",
         status: VendorStatus.Active,
         sales: 12600,
@@ -560,6 +637,7 @@ export class VendorsService implements OnModuleInit {
         name: "Jorge Salas",
         email: "jorge@seller.com",
         code: "VEND-007",
+        collaborationType: VendorCollaborationType.Seller,
         city: "Arequipa",
         status: VendorStatus.Active,
         sales: 9800,
@@ -576,6 +654,7 @@ export class VendorsService implements OnModuleInit {
         name: "Ana Torres",
         email: "ana@seller.com",
         code: "VEND-021",
+        collaborationType: VendorCollaborationType.Seller,
         city: "Cusco",
         status: VendorStatus.Active,
         sales: 16800,
@@ -614,7 +693,10 @@ export class VendorsService implements OnModuleInit {
     }
 
     for (const vendor of snapshot.vendors ?? []) {
-      this.vendors.set(vendor.code, vendor);
+      this.vendors.set(vendor.code, {
+        ...vendor,
+        collaborationType: normalizeCollaborationType(vendor.collaborationType)
+      });
     }
 
     this.syncApplicationLinks();
@@ -676,6 +758,7 @@ export class VendorsService implements OnModuleInit {
       name: vendor.name,
       email: vendor.email,
       code: vendor.code,
+      collaborationType: vendor.collaborationType ?? VendorCollaborationType.Seller,
       city: vendor.city,
       status: vendor.status,
       sales: vendor.sales,

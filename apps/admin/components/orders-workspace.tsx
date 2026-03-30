@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { AdminDataTable, Badge, Button, Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator, StatusBadge, TimelinePedido } from "@huelegood/ui";
-import type { AdminOrderDetail, AdminOrderSummary, OrderStatus, PaymentStatus, ManualPaymentRequestStatus, ProductAdminSummary } from "@huelegood/shared";
-import { approveManualPaymentRequest, createBackofficeOrder, deleteOrder, fetchAdminProducts, fetchOrder, fetchOrders, rejectManualPaymentRequest } from "../lib/api";
+import { CrmStage, type AdminOrderDetail, type AdminOrderSummary, type ManualReviewActionInput, type OrderStatus, type PaymentStatus, type ManualPaymentRequestStatus, type ProductAdminSummary } from "@huelegood/shared";
+import { approveManualPaymentRequest, createBackofficeOrder, deleteOrder, fetchAdminProducts, fetchOrder, fetchOrders, registerAdminManualPayment, rejectManualPaymentRequest, resendOrderApprovalEmail, transitionOrderStatus } from "../lib/api";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("es-PE", {
@@ -81,6 +81,71 @@ function manualStatusLabel(status?: ManualPaymentRequestStatus) {
   return status ? labels[status] : "Sin solicitud";
 }
 
+function formatStageLabel(stage?: string) {
+  if (!stage) {
+    return "Sin etapa";
+  }
+
+  const labels: Record<string, string> = {
+    [CrmStage.ReadyForFollowUp]: "Listo para seguimiento",
+    [CrmStage.FollowUp]: "Seguimiento en curso",
+    [CrmStage.Closed]: "Cerrado"
+  };
+
+  return labels[stage] ?? stage.replace(/[_-]+/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function stageTone(stage?: string): "neutral" | "success" | "warning" | "danger" | "info" {
+  if (!stage) {
+    return "neutral";
+  }
+
+  if (stage === CrmStage.Closed) {
+    return "success";
+  }
+
+  if (stage === CrmStage.ReadyForFollowUp) {
+    return "warning";
+  }
+
+  return "info";
+}
+
+function crmFollowUpLabel(stage?: CrmStage) {
+  if (stage === CrmStage.ReadyForFollowUp) {
+    return "Listo para contactar al cliente";
+  }
+
+  if (stage === CrmStage.FollowUp) {
+    return "Seguimiento activo";
+  }
+
+  if (stage === CrmStage.Closed) {
+    return "Gestión cerrada";
+  }
+
+  return "Pendiente de resolución";
+}
+
+function availableOperationalStatuses(order?: AdminOrderDetail | null): OrderStatus[] {
+  if (!order) {
+    return [];
+  }
+
+  const transitions: Partial<Record<OrderStatus, OrderStatus[]>> = {
+    draft: ["pending_payment" as OrderStatus, "cancelled" as OrderStatus],
+    pending_payment: ["payment_under_review" as OrderStatus, "cancelled" as OrderStatus, "expired" as OrderStatus],
+    payment_under_review: ["cancelled" as OrderStatus],
+    paid: ["confirmed" as OrderStatus, "refunded" as OrderStatus],
+    confirmed: ["preparing" as OrderStatus, "shipped" as OrderStatus, "delivered" as OrderStatus, "completed" as OrderStatus, "refunded" as OrderStatus],
+    preparing: ["shipped" as OrderStatus, "delivered" as OrderStatus, "completed" as OrderStatus, "refunded" as OrderStatus],
+    shipped: ["delivered" as OrderStatus, "completed" as OrderStatus, "refunded" as OrderStatus],
+    delivered: ["completed" as OrderStatus, "refunded" as OrderStatus]
+  };
+
+  return transitions[order.orderStatus] ?? [];
+}
+
 export function OrdersWorkspace() {
   const [orders, setOrders] = useState<AdminOrderSummary[]>([]);
   const [selectedOrderNumber, setSelectedOrderNumber] = useState<string | null>(null);
@@ -91,11 +156,19 @@ export function OrdersWorkspace() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"detalle" | "timeline">("detalle");
-  const [actionLoading, setActionLoading] = useState<"approve" | "reject" | null>(null);
+  const [actionLoading, setActionLoading] = useState<"approve" | "reject" | "resend" | "transition" | "manual_payment" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [approveConfirmOpen, setApproveConfirmOpen] = useState(false);
+  const [approveSendEmailNow, setApproveSendEmailNow] = useState(true);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [nextOrderStatus, setNextOrderStatus] = useState<OrderStatus | "">("");
+  const [transitionNote, setTransitionNote] = useState("Actualización operativa desde backoffice.");
+  const [manualPaymentAmount, setManualPaymentAmount] = useState("");
+  const [manualPaymentReference, setManualPaymentReference] = useState("");
+  const [manualPaymentNotes, setManualPaymentNotes] = useState("Pago confirmado manualmente desde backoffice.");
 
   // Create order state
   const [createOpen, setCreateOpen] = useState(false);
@@ -154,7 +227,10 @@ export function OrdersWorkspace() {
       setDetailLoading(true);
       try {
         const response = await fetchOrder(orderNumber!);
-        if (active) setSelectedOrder(response.data);
+        if (active) {
+          setSelectedOrder(response.data);
+          setActionError(null);
+        }
       } catch (fetchError) {
         if (active) setError(fetchError instanceof Error ? fetchError.message : "No pudimos cargar el detalle del pedido.");
       } finally {
@@ -166,19 +242,66 @@ export function OrdersWorkspace() {
     return () => { active = false; };
   }, [refreshKey, selectedOrderNumber]);
 
+  useEffect(() => {
+    if (!approveConfirmOpen) {
+      return;
+    }
+
+    setApproveSendEmailNow(true);
+  }, [approveConfirmOpen, selectedOrderNumber]);
+
+  useEffect(() => {
+    setActionNotice(null);
+  }, [selectedOrderNumber]);
+
+  useEffect(() => {
+    const available = availableOperationalStatuses(selectedOrder);
+    setNextOrderStatus(available[0] ?? "");
+    setTransitionNote("Actualización operativa desde backoffice.");
+    setManualPaymentAmount(selectedOrder ? String(selectedOrder.total) : "");
+    setManualPaymentReference(selectedOrder?.providerReference ?? "");
+    setManualPaymentNotes("Pago confirmado manualmente desde backoffice.");
+  }, [selectedOrder]);
+
   const reviewCount = useMemo(
     () => orders.filter((o) => o.orderStatus === "payment_under_review" || o.manualStatus === "under_review").length,
     [orders]
   );
+  const selectedOrderStage = selectedOrder?.crmStage;
+  const availableStatuses = useMemo(() => availableOperationalStatuses(selectedOrder), [selectedOrder]);
+  const canRegisterManualPayment = Boolean(selectedOrder && selectedOrder.paymentStatus !== "paid" && !selectedOrder.manualRequest);
 
-  async function handleApprove() {
+  function openApproveConfirm() {
     if (!selectedOrder?.manualRequest) return;
+    setActionError(null);
+    setActionNotice(null);
+    setApproveConfirmOpen(true);
+  }
+
+  async function handleApproveConfirmed() {
+    if (!selectedOrder?.manualRequest) return;
+
     setActionLoading("approve");
     setActionError(null);
+
     try {
-      await approveManualPaymentRequest(selectedOrder.manualRequest.id, { reviewer: "admin", notes: "Aprobado desde backoffice." });
+      const payload: ManualReviewActionInput = {
+        reviewer: "admin",
+        notes: approveSendEmailNow
+          ? "Aprobado desde backoffice. Email de confirmación confirmado por operación."
+          : "Aprobado desde backoffice.",
+        sendEmailNow: approveSendEmailNow
+      };
+
+      const response = await approveManualPaymentRequest(selectedOrder.manualRequest.id, payload);
+
+      setApproveConfirmOpen(false);
+      setActionNotice(response.message);
       setRefreshKey((k) => k + 1);
-      setModalOpen(false);
+
+      if (response.status === "queued") {
+        window.setTimeout(() => setRefreshKey((k) => k + 1), 1200);
+      }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "No se pudo aprobar. Intenta de nuevo.");
     } finally {
@@ -190,12 +313,31 @@ export function OrdersWorkspace() {
     if (!selectedOrder?.manualRequest) return;
     setActionLoading("reject");
     setActionError(null);
+    setActionNotice(null);
     try {
       await rejectManualPaymentRequest(selectedOrder.manualRequest.id, { reviewer: "admin", notes: "Rechazado desde backoffice." });
       setRefreshKey((k) => k + 1);
-      setModalOpen(false);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "No se pudo rechazar. Intenta de nuevo.");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleResendApprovalEmail() {
+    if (!selectedOrder?.manualRequest || selectedOrder.manualRequest.status !== "approved") {
+      return;
+    }
+
+    setActionLoading("resend");
+    setActionError(null);
+    setActionNotice(null);
+
+    try {
+      const response = await resendOrderApprovalEmail(selectedOrder.orderNumber);
+      setActionNotice(response.message);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "No se pudo reenviar el email al cliente.");
     } finally {
       setActionLoading(null);
     }
@@ -206,6 +348,8 @@ export function OrdersWorkspace() {
     setDeleteLoading(true);
     try {
       await deleteOrder(selectedOrderNumber);
+      setActionNotice(null);
+      setApproveConfirmOpen(false);
       setDeleteConfirmOpen(false);
       setDeleteConfirmText("");
       setModalOpen(false);
@@ -214,6 +358,57 @@ export function OrdersWorkspace() {
       setActionError(err instanceof Error ? err.message : "No se pudo eliminar el pedido.");
     } finally {
       setDeleteLoading(false);
+    }
+  }
+
+  async function handleTransitionStatus() {
+    if (!selectedOrder || !nextOrderStatus) {
+      return;
+    }
+
+    setActionLoading("transition");
+    setActionError(null);
+    setActionNotice(null);
+
+    try {
+      const response = await transitionOrderStatus(selectedOrder.orderNumber, {
+        status: nextOrderStatus,
+        actor: "admin",
+        note: transitionNote.trim() || "Actualización operativa desde backoffice."
+      });
+      setSelectedOrder(response.data);
+      setActionNotice(`Pedido movido a ${orderStatusLabel(response.data.orderStatus)}.`);
+      setRefreshKey((current) => current + 1);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "No se pudo actualizar el estado del pedido.");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleRegisterManualPayment() {
+    if (!selectedOrder) {
+      return;
+    }
+
+    setActionLoading("manual_payment");
+    setActionError(null);
+    setActionNotice(null);
+
+    try {
+      const response = await registerAdminManualPayment(selectedOrder.orderNumber, {
+        reviewer: "admin",
+        amount: Number(manualPaymentAmount),
+        reference: manualPaymentReference.trim() || undefined,
+        notes: manualPaymentNotes.trim() || undefined
+      });
+      setSelectedOrder(response.data);
+      setActionNotice("Pago manual registrado y pedido actualizado.");
+      setRefreshKey((current) => current + 1);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "No se pudo registrar el pago manual.");
+    } finally {
+      setActionLoading(null);
     }
   }
 
@@ -502,7 +697,7 @@ export function OrdersWorkspace() {
       </Dialog>
 
       {/* Modal de detalle */}
-      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} size="xl">
+      <Dialog open={modalOpen} onClose={() => { setApproveConfirmOpen(false); setActionNotice(null); setModalOpen(false); }} size="xl">
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
@@ -538,6 +733,9 @@ export function OrdersWorkspace() {
                     <StatusBadge tone={paymentTone(selectedOrder.paymentStatus)} label={paymentStatusLabel(selectedOrder.paymentStatus)} />
                     {selectedOrder.manualStatus && (
                       <StatusBadge tone={manualTone(selectedOrder.manualStatus)} label={manualStatusLabel(selectedOrder.manualStatus)} />
+                    )}
+                    {selectedOrderStage && (
+                      <StatusBadge tone={stageTone(selectedOrderStage)} label={formatStageLabel(selectedOrderStage)} />
                     )}
                   </div>
                   <span className="text-lg font-semibold text-[#132016]">{formatCurrency(selectedOrder.total)}</span>
@@ -592,6 +790,78 @@ export function OrdersWorkspace() {
                   <SummaryTile label="Vendedor" value={selectedOrder.vendorCode ?? "—"} />
                 </div>
 
+                <div className="grid gap-3 md:grid-cols-3 text-sm">
+                  <SummaryTile label="Estado operativo" value={orderStatusLabel(selectedOrder.orderStatus)} />
+                  <SummaryTile label="Etapa CRM" value={formatStageLabel(selectedOrder.crmStage)} />
+                  <SummaryTile label="Seguimiento" value={crmFollowUpLabel(selectedOrder.crmStage)} />
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <DetailBlock label="Transición operativa">
+                    <div className="space-y-3">
+                      <select
+                        value={nextOrderStatus}
+                        onChange={(event) => setNextOrderStatus(event.target.value as OrderStatus | "")}
+                        className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm text-[#132016]"
+                        disabled={!availableStatuses.length || !!actionLoading}
+                      >
+                        {availableStatuses.length ? null : <option value="">Sin transición disponible</option>}
+                        {availableStatuses.map((status) => (
+                          <option key={status} value={status}>
+                            {orderStatusLabel(status)}
+                          </option>
+                        ))}
+                      </select>
+                      <textarea
+                        value={transitionNote}
+                        onChange={(event) => setTransitionNote(event.target.value)}
+                        rows={3}
+                        className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-[#132016]"
+                        placeholder="Nota operativa"
+                      />
+                      <Button onClick={() => void handleTransitionStatus()} disabled={!nextOrderStatus || !!actionLoading}>
+                        {actionLoading === "transition" ? "Actualizando..." : "Aplicar transición"}
+                      </Button>
+                    </div>
+                  </DetailBlock>
+
+                  <DetailBlock label="Pago manual directo">
+                    <div className="space-y-3">
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={manualPaymentAmount}
+                        onChange={(event) => setManualPaymentAmount(event.target.value)}
+                        className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm text-[#132016]"
+                        placeholder="Monto"
+                      />
+                      <input
+                        type="text"
+                        value={manualPaymentReference}
+                        onChange={(event) => setManualPaymentReference(event.target.value)}
+                        className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm text-[#132016]"
+                        placeholder="Referencia u operación"
+                      />
+                      <textarea
+                        value={manualPaymentNotes}
+                        onChange={(event) => setManualPaymentNotes(event.target.value)}
+                        rows={3}
+                        className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-[#132016]"
+                        placeholder="Notas del registro manual"
+                      />
+                      <Button onClick={() => void handleRegisterManualPayment()} disabled={!canRegisterManualPayment || !!actionLoading}>
+                        {actionLoading === "manual_payment" ? "Registrando..." : "Registrar pago manual"}
+                      </Button>
+                      {!canRegisterManualPayment ? (
+                        <p className="text-xs text-black/45">
+                          Disponible sólo para pedidos impagos sin solicitud manual en revisión.
+                        </p>
+                      ) : null}
+                    </div>
+                  </DetailBlock>
+                </div>
+
                 {/* Solicitud manual con comprobante */}
                 {selectedOrder.manualRequest ? (
                   <div className="space-y-3 rounded-[1.25rem] border border-amber-200 bg-amber-50 p-4">
@@ -635,6 +905,20 @@ export function OrdersWorkspace() {
                     ) : (
                       <p className="text-xs text-amber-900/60">Pendiente de decisión.</p>
                     )}
+
+                    {selectedOrder.manualRequest.status === "approved" && selectedOrder.customer.email ? (
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => { void handleResendApprovalEmail(); }}
+                          disabled={!!actionLoading}
+                          className="rounded-[9px] border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-900 transition hover:bg-amber-100 disabled:opacity-40"
+                        >
+                          {actionLoading === "resend" ? "Reenviando email..." : "Reenviar email al cliente"}
+                        </button>
+                        <span className="text-xs text-amber-900/60">{selectedOrder.customer.email}</span>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
@@ -646,9 +930,10 @@ export function OrdersWorkspace() {
           </DialogBody>
 
           <DialogFooter>
-            {actionError && (
-              <p className="mr-auto text-sm text-red-600">{actionError}</p>
-            )}
+            <div className="mr-auto space-y-1">
+              {actionError && <p className="text-sm text-red-600">{actionError}</p>}
+              {actionNotice && <p className="text-sm text-[#2d6a4f]">{actionNotice}</p>}
+            </div>
             <button
               type="button"
               onClick={() => { setDeleteConfirmText(""); setDeleteConfirmOpen(true); }}
@@ -661,7 +946,7 @@ export function OrdersWorkspace() {
               <>
                 <Button
                   variant="secondary"
-                  onClick={() => setModalOpen(false)}
+                  onClick={() => { setApproveConfirmOpen(false); setActionNotice(null); setModalOpen(false); }}
                   disabled={!!actionLoading}
                 >
                   Cancelar
@@ -675,7 +960,7 @@ export function OrdersWorkspace() {
                   {actionLoading === "reject" ? "Rechazando..." : "Rechazar"}
                 </Button>
                 <Button
-                  onClick={handleApprove}
+                  onClick={openApproveConfirm}
                   disabled={!!actionLoading}
                   className="bg-[#1a3a2e] text-white hover:bg-[#2d6a4f]"
                 >
@@ -683,11 +968,73 @@ export function OrdersWorkspace() {
                 </Button>
               </>
             ) : (
-              <Button variant="secondary" onClick={() => setModalOpen(false)}>Cerrar</Button>
+              <Button variant="secondary" onClick={() => { setApproveConfirmOpen(false); setActionNotice(null); setModalOpen(false); }}>Cerrar</Button>
             )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={approveConfirmOpen} onClose={() => { if (!actionLoading) setApproveConfirmOpen(false); }} size="sm">
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar aprobación</DialogTitle>
+          </DialogHeader>
+          <DialogBody className="space-y-4">
+            <p className="text-sm leading-6 text-[#132016]">
+              Vas a aprobar el pago manual de <span className="font-semibold">{selectedOrder?.orderNumber}</span> y dejar visible la nueva etapa operativa del pedido.
+            </p>
+
+            <div className="rounded-[1.25rem] border border-black/10 bg-white p-4">
+              <label className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={approveSendEmailNow}
+                  onChange={(event) => setApproveSendEmailNow(event.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-black/20 text-[#1a3a2e] focus:ring-[#1a3a2e]"
+                />
+                <span className="space-y-1">
+                  <span className="block text-sm font-medium text-[#132016]">Enviar email al cliente ahora</span>
+                  <span className="block text-xs text-black/55">
+                    La confirmación por correo se dispara junto con la aprobación operativa.
+                  </span>
+                </span>
+              </label>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                disabled
+                className="rounded-[10px] border border-dashed border-black/20 bg-black/[0.03] px-4 py-3 text-left text-sm font-medium text-black/45"
+              >
+                WhatsApp
+                <span className="mt-1 block text-xs font-normal text-black/35">Próximamente</span>
+              </button>
+              <div className="rounded-[10px] border border-[#1a3a2e]/15 bg-[#f2f8f4] px-4 py-3 text-sm text-[#1a3a2e]">
+                La aprobación actualizará el pedido a la etapa operativa indicada por el API.
+              </div>
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setApproveConfirmOpen(false)} disabled={!!actionLoading}>
+              Cancelar
+            </Button>
+            <button
+              type="button"
+              onClick={() => { void handleApproveConfirmed(); }}
+              disabled={!!actionLoading}
+              className="rounded-[10px] bg-[#1a3a2e] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#2d6a4f] disabled:opacity-50"
+            >
+              {actionLoading === "approve"
+                ? "Aprobando..."
+                : approveSendEmailNow
+                  ? "Confirmar y aprobar con email"
+                  : "Confirmar y aprobar"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Confirmación de eliminación */}
       <Dialog open={deleteConfirmOpen} onClose={() => { if (!deleteLoading) setDeleteConfirmOpen(false); }} size="sm">
         <DialogContent>

@@ -1,6 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException, OnModuleInit } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException, OnModuleInit } from "@nestjs/common";
 import { createHash } from "node:crypto";
 import {
+  type AdminManualPaymentCreateInput,
+  CrmStage,
+  type AdminOrderStatusTransitionInput,
   ManualPaymentRequestStatus,
   LoyaltyMovementStatus,
   NotificationChannel,
@@ -95,6 +98,49 @@ function resolveNotificationStatus(orderStatus: OrderStatus, paymentStatus: Paym
   return NotificationStatus.Pending;
 }
 
+function resolveInitialCrmStage(orderStatus: OrderStatus, paymentStatus: PaymentStatus) {
+  if (
+    paymentStatus === PaymentStatus.Paid ||
+    orderStatus === OrderStatus.Paid ||
+    orderStatus === OrderStatus.Confirmed
+  ) {
+    return CrmStage.ReadyForFollowUp;
+  }
+
+  return undefined;
+}
+
+function resolveOperationalCrmStage(orderStatus: OrderStatus, paymentStatus: PaymentStatus) {
+  if (paymentStatus !== PaymentStatus.Paid) {
+    return undefined;
+  }
+
+  if (orderStatus === OrderStatus.Delivered || orderStatus === OrderStatus.Completed) {
+    return CrmStage.Closed;
+  }
+
+  if (orderStatus === OrderStatus.Preparing || orderStatus === OrderStatus.Shipped) {
+    return CrmStage.FollowUp;
+  }
+
+  if (orderStatus === OrderStatus.Paid || orderStatus === OrderStatus.Confirmed) {
+    return CrmStage.ReadyForFollowUp;
+  }
+
+  return undefined;
+}
+
+const operationalTransitions: Partial<Record<OrderStatus, readonly OrderStatus[]>> = {
+  [OrderStatus.Draft]: [OrderStatus.PendingPayment, OrderStatus.Cancelled],
+  [OrderStatus.PendingPayment]: [OrderStatus.PaymentUnderReview, OrderStatus.Cancelled, OrderStatus.Expired],
+  [OrderStatus.PaymentUnderReview]: [OrderStatus.Cancelled],
+  [OrderStatus.Paid]: [OrderStatus.Confirmed, OrderStatus.Refunded],
+  [OrderStatus.Confirmed]: [OrderStatus.Preparing, OrderStatus.Shipped, OrderStatus.Delivered, OrderStatus.Completed, OrderStatus.Refunded],
+  [OrderStatus.Preparing]: [OrderStatus.Shipped, OrderStatus.Delivered, OrderStatus.Completed, OrderStatus.Refunded],
+  [OrderStatus.Shipped]: [OrderStatus.Delivered, OrderStatus.Completed, OrderStatus.Refunded],
+  [OrderStatus.Delivered]: [OrderStatus.Completed, OrderStatus.Refunded]
+};
+
 function fullName(customer: CheckoutCustomerInput) {
   return [customer.firstName, customer.lastName].map((part) => part.trim()).filter(Boolean).join(" ");
 }
@@ -119,6 +165,17 @@ function normalizeAddress(address: CheckoutAddressInput) {
     postalCode: address.postalCode.trim(),
     countryCode: address.countryCode?.trim().toUpperCase() || "PE"
   };
+}
+
+function isStatusPaidLike(status: OrderStatus) {
+  return (
+    status === OrderStatus.Paid ||
+    status === OrderStatus.Confirmed ||
+    status === OrderStatus.Preparing ||
+    status === OrderStatus.Shipped ||
+    status === OrderStatus.Delivered ||
+    status === OrderStatus.Completed
+  );
 }
 
 function cloneInventoryAllocations(allocations?: InventoryAllocationSummary[]) {
@@ -240,6 +297,11 @@ function isProductionRuntime() {
   return process.env.NODE_ENV === "production";
 }
 
+function demoRuntimeEnabled() {
+  const value = process.env.HUELEGOOD_ENABLE_DEMO_DATA?.trim().toLowerCase();
+  return value === "1" || value === "true" || value === "yes" || value === "on";
+}
+
 const demoOrderNumbers = new Set(["HG-10040", "HG-10041", "HG-10042"]);
 
 @Injectable()
@@ -258,7 +320,7 @@ export class OrdersService implements OnModuleInit {
     private readonly observabilityService: ObservabilityService,
     private readonly moduleStateService: ModuleStateService
   ) {
-    if (!isProductionRuntime()) {
+    if (demoRuntimeEnabled()) {
       this.seedInitialOrders();
     }
   }
@@ -385,6 +447,7 @@ export class OrdersService implements OnModuleInit {
       providerReference: input.providerReference,
       checkoutUrl: input.checkoutUrl,
       manualStatus,
+      crmStage: resolveInitialCrmStage(orderStatus, paymentStatus),
       manualRequestId,
       manualEvidenceReference,
       manualEvidenceNotes,
@@ -445,7 +508,7 @@ export class OrdersService implements OnModuleInit {
 
     void this.notificationsService.queueNotification({
       channel: NotificationChannel.Email,
-      audience: customerName,
+      audience: customer.email,
       subject: `Pedido ${orderNumber} recibido`,
       body:
         order.paymentMethod === "manual"
@@ -566,6 +629,7 @@ export class OrdersService implements OnModuleInit {
       providerReference: `backoffice-${orderNumber.toLowerCase()}`,
       checkoutUrl: undefined,
       manualStatus: undefined,
+      crmStage: isPaid ? CrmStage.ReadyForFollowUp : undefined,
       manualRequestId: undefined,
       manualEvidenceReference: undefined,
       manualEvidenceNotes: undefined,
@@ -689,6 +753,189 @@ export class OrdersService implements OnModuleInit {
     });
   }
 
+  async transitionOrderStatus(orderNumber: string, input: AdminOrderStatusTransitionInput) {
+    const order = this.requireOrder(orderNumber);
+    const nextStatus = input.status;
+    const actor = normalizeText(input.actor) ?? "admin";
+    const note = normalizeText(input.note) ?? "Estado actualizado manualmente desde backoffice.";
+    const occurredAt = new Date().toISOString();
+
+    if (order.orderStatus === nextStatus) {
+      throw new ConflictException(`El pedido ${order.orderNumber} ya está en ${statusLabels[nextStatus]}.`);
+    }
+
+    const allowed = operationalTransitions[order.orderStatus] ?? [];
+    if (!allowed.includes(nextStatus)) {
+      throw new ConflictException(`No permitimos pasar de ${statusLabels[order.orderStatus]} a ${statusLabels[nextStatus]} desde operación.`);
+    }
+
+    if (isStatusPaidLike(nextStatus) && order.paymentStatus !== PaymentStatus.Paid) {
+      throw new ConflictException(`El pedido ${order.orderNumber} debe tener pago confirmado antes de avanzar a ${statusLabels[nextStatus]}.`);
+    }
+
+    if (nextStatus === OrderStatus.Refunded && order.paymentStatus !== PaymentStatus.Paid) {
+      throw new ConflictException(`Solo puedes marcar como reembolsado un pedido con pago confirmado.`);
+    }
+
+    const previousStatus = order.orderStatus;
+    order.orderStatus = nextStatus;
+    order.crmStage = resolveOperationalCrmStage(nextStatus, order.paymentStatus);
+    order.updatedAt = occurredAt;
+    order.payment = this.buildPaymentSummary({
+      orderNumber: order.orderNumber,
+      customerName: fullName(order.customer) || order.customer.email,
+      provider: order.payment.provider,
+      amount: order.payment.amount,
+      currencyCode: order.currencyCode,
+      paymentStatus: order.paymentStatus,
+      manualStatus: order.manualStatus,
+      manualEvidenceReference: order.manualEvidenceReference,
+      updatedAt: occurredAt,
+      orderStatus: order.orderStatus
+    });
+    order.statusHistory = [...order.statusHistory, createHistoryEntry(nextStatus, actor, note, occurredAt)];
+
+    await this.inventoryService.syncOrder({
+      orderNumber: order.orderNumber,
+      orderStatus: order.orderStatus,
+      items: order.items,
+      occurredAt,
+      note
+    });
+
+    if (nextStatus === OrderStatus.Refunded || nextStatus === OrderStatus.Cancelled || nextStatus === OrderStatus.Expired) {
+      try {
+        await this.loyaltyService.reverseOrderPoints(order.orderNumber, actor);
+      } catch (error) {
+        if (!(error instanceof NotFoundException)) {
+          throw error;
+        }
+      }
+    }
+
+    this.auditService.recordAdminAction({
+      actionType: "orders.status.transitioned",
+      targetType: "order",
+      targetId: order.orderNumber,
+      summary: `El pedido ${order.orderNumber} pasó de ${statusLabels[previousStatus]} a ${statusLabels[nextStatus]}.`,
+      actorName: actor,
+      metadata: {
+        previousStatus,
+        nextStatus,
+        paymentStatus: order.paymentStatus,
+        crmStage: order.crmStage
+      }
+    });
+    this.observabilityService.recordDomainEvent({
+      category: "orders",
+      action: "orders.status.transitioned",
+      detail: `Pedido ${order.orderNumber} pasó de ${previousStatus} a ${nextStatus}.`,
+      relatedType: "order",
+      relatedId: order.orderNumber
+    });
+
+    await this.persistState();
+
+    return {
+      status: "ok" as const,
+      message: `Pedido ${order.orderNumber} actualizado a ${statusLabels[nextStatus]}.`,
+      orderNumber: order.orderNumber,
+      order: this.toOrderSummary(order)
+    };
+  }
+
+  async registerAdminManualPayment(orderNumber: string, input: AdminManualPaymentCreateInput = {}) {
+    const order = this.requireOrder(orderNumber);
+    const actor = normalizeText(input.reviewer) ?? "operador_pagos";
+    const notes = normalizeText(input.notes) ?? "Pago registrado manualmente desde backoffice.";
+    const reference = normalizeText(input.reference) ?? `manual-${order.orderNumber.toLowerCase()}`;
+    const occurredAt = new Date().toISOString();
+    const amount = typeof input.amount === "number" ? Number(input.amount) : order.total;
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new BadRequestException("El monto del pago manual debe ser válido.");
+    }
+
+    if (Math.abs(amount - order.total) > 0.01) {
+      throw new BadRequestException("Por ahora solo soportamos registrar el pago completo del pedido.");
+    }
+
+    if (order.paymentStatus === PaymentStatus.Paid) {
+      throw new ConflictException(`El pedido ${order.orderNumber} ya tiene un pago confirmado.`);
+    }
+
+    if (order.manualRequest) {
+      throw new ConflictException(`El pedido ${order.orderNumber} ya tiene una solicitud manual. Usa la revisión manual existente.`);
+    }
+
+    order.paymentMethod = "manual";
+    order.paymentStatus = PaymentStatus.Paid;
+    order.orderStatus = OrderStatus.Paid;
+    order.crmStage = resolveOperationalCrmStage(order.orderStatus, order.paymentStatus);
+    order.providerReference = reference;
+    order.manualEvidenceReference = reference;
+    order.manualEvidenceNotes = notes;
+    order.updatedAt = occurredAt;
+    order.payment = this.buildPaymentSummary({
+      orderNumber: order.orderNumber,
+      customerName: fullName(order.customer) || order.customer.email,
+      provider: "manual",
+      amount,
+      currencyCode: order.currencyCode,
+      paymentStatus: order.paymentStatus,
+      manualStatus: undefined,
+      manualEvidenceReference: reference,
+      updatedAt: occurredAt,
+      orderStatus: order.orderStatus
+    });
+    order.statusHistory = [...order.statusHistory, createHistoryEntry(OrderStatus.Paid, actor, notes, occurredAt)];
+
+    await this.inventoryService.syncOrder({
+      orderNumber: order.orderNumber,
+      orderStatus: order.orderStatus,
+      items: order.items,
+      occurredAt,
+      note: "Inventario confirmado por registro manual de pago."
+    });
+
+    try {
+      await this.loyaltyService.settleOrderPoints(order.orderNumber, actor);
+    } catch (error) {
+      if (!(error instanceof NotFoundException)) {
+        throw error;
+      }
+    }
+
+    this.auditService.recordAdminAction({
+      actionType: "payments.manual.recorded",
+      targetType: "order",
+      targetId: order.orderNumber,
+      summary: `Se registró manualmente el pago del pedido ${order.orderNumber}.`,
+      actorName: actor,
+      metadata: {
+        amount,
+        reference,
+        paymentMethod: order.paymentMethod
+      }
+    });
+    this.observabilityService.recordDomainEvent({
+      category: "payment",
+      action: "payment.manual.recorded",
+      detail: `Se registró manualmente el pago del pedido ${order.orderNumber}.`,
+      relatedType: "order",
+      relatedId: order.orderNumber
+    });
+
+    await this.persistState();
+
+    return {
+      status: "ok" as const,
+      message: `Pago manual registrado para ${order.orderNumber}.`,
+      orderNumber: order.orderNumber,
+      order: this.toOrderSummary(order)
+    };
+  }
+
   async deleteOrder(orderNumber: string) {
     const order = this.requireOrder(orderNumber);
     this.orders.delete(order.orderNumber);
@@ -726,7 +973,7 @@ export class OrdersService implements OnModuleInit {
     });
   }
 
-  async approveManualRequest(id: string, reviewer?: string, notes?: string) {
+  async approveManualRequest(id: string, reviewer?: string, notes?: string, sendEmailNow = true) {
     const order = this.findOrderByManualRequestId(id);
     const now = new Date().toISOString();
     const reviewerName = normalizeText(reviewer) ?? "operador";
@@ -749,18 +996,26 @@ export class OrdersService implements OnModuleInit {
 
     this.ensureManualRequestReviewable(order, manualRequest);
 
-    await this.applyManualDecision(order, {
+    const decision = await this.applyManualDecision(order, {
       status: ManualPaymentRequestStatus.Approved,
       orderStatus: OrderStatus.Paid,
       paymentStatus: PaymentStatus.Paid,
       reviewer: reviewerName,
       notes: note,
-      occurredAt: now
+      occurredAt: now,
+      sendEmailNow
     });
+
+    const message =
+      decision.emailNotification === "queued"
+        ? "La solicitud fue aprobada operativamente, el pedido quedó pagado y el email al cliente quedó en cola."
+        : decision.emailNotification === "skipped"
+          ? "La solicitud fue aprobada operativamente, el pedido quedó pagado y pasó a seguimiento CRM."
+          : "La solicitud fue aprobada operativamente, el pedido quedó pagado y pasó a seguimiento CRM. El email al cliente no pudo registrarse.";
 
     return {
       status: "ok" as const,
-      message: "La solicitud fue aprobada operativamente y el pedido quedó en estado pagado.",
+      message,
       referenceId: id,
       request: this.requireManualRequest(order),
       order: this.toOrderSummary(order)
@@ -808,6 +1063,67 @@ export class OrdersService implements OnModuleInit {
     };
   }
 
+  async resendManualApprovalNotification(orderNumber: string, reviewer?: string) {
+    const order = this.requireOrder(orderNumber);
+    const manualRequest = this.requireManualRequest(order);
+    const reviewerName = normalizeText(reviewer) ?? "admin";
+
+    if (order.paymentMethod !== "manual") {
+      throw new BadRequestException(`El pedido ${order.orderNumber} no usa pago manual.`);
+    }
+
+    if (manualRequest.status !== ManualPaymentRequestStatus.Approved || order.paymentStatus !== PaymentStatus.Paid) {
+      throw new ConflictException(`El pedido ${order.orderNumber} todavía no tiene una aprobación manual confirmada para reenviar.`);
+    }
+
+    if (!normalizeText(order.customer.email)) {
+      throw new BadRequestException(`El pedido ${order.orderNumber} no tiene email de cliente para reenviar la notificación.`);
+    }
+
+    try {
+      await this.notificationsService.queueNotification(this.buildManualApprovalEmailNotification(order, manualRequest));
+    } catch (error) {
+      this.observabilityService.recordDomainEvent({
+        category: "notification",
+        action: "payment.manual.approved.email_resend_failed",
+        severity: "warning",
+        detail: `No pudimos registrar el reenvío del email para el pedido ${order.orderNumber}.`,
+        relatedType: "order",
+        relatedId: order.orderNumber
+      });
+      throw new InternalServerErrorException(`No pudimos registrar el reenvío del email para el pedido ${order.orderNumber}.`);
+    }
+
+    this.auditService.recordAdminAction({
+      actionType: "payments.manual_request.email_resent",
+      targetType: "order",
+      targetId: order.orderNumber,
+      summary: `Reenvío manual del email de confirmación para ${order.orderNumber}.`,
+      actorName: reviewerName,
+      metadata: {
+        orderNumber: order.orderNumber,
+        customerEmail: order.customer.email,
+        manualRequestId: manualRequest.id
+      }
+    });
+
+    await this.notificationsService.recordEvent(
+      "order.manual.approval_email.resent",
+      "payments",
+      manualRequest.customerName,
+      `Reenviamos el email de confirmación del pedido ${order.orderNumber} a ${order.customer.email}.`,
+      "order",
+      order.orderNumber
+    );
+
+    return {
+      status: "ok" as const,
+      message: `Reenviamos el email de confirmación al cliente (${order.customer.email}).`,
+      referenceId: order.orderNumber,
+      order: this.toOrderSummary(order)
+    };
+  }
+
   private async applyManualDecision(
     order: AdminOrderDetail,
     input: {
@@ -817,6 +1133,7 @@ export class OrdersService implements OnModuleInit {
       reviewer: string;
       notes: string;
       occurredAt: string;
+      sendEmailNow?: boolean;
     }
   ) {
     const manualRequest = this.requireManualRequest(order);
@@ -824,6 +1141,7 @@ export class OrdersService implements OnModuleInit {
     order.manualStatus = input.status;
     order.orderStatus = input.orderStatus;
     order.paymentStatus = input.paymentStatus;
+    order.crmStage = input.status === ManualPaymentRequestStatus.Approved ? CrmStage.ReadyForFollowUp : undefined;
     order.updatedAt = input.occurredAt;
     order.payment = this.buildPaymentSummary({
       orderNumber: order.orderNumber,
@@ -848,7 +1166,9 @@ export class OrdersService implements OnModuleInit {
       createHistoryEntry(
         input.orderStatus,
         input.reviewer,
-        input.status === ManualPaymentRequestStatus.Approved ? "Pago manual aprobado." : "Pago manual rechazado.",
+        input.status === ManualPaymentRequestStatus.Approved
+          ? "Pago manual aprobado. Pedido listo para seguimiento CRM."
+          : "Pago manual rechazado.",
         input.occurredAt
       )
     ];
@@ -861,8 +1181,26 @@ export class OrdersService implements OnModuleInit {
       note: input.status === ManualPaymentRequestStatus.Approved ? "Inventario confirmado por aprobación manual." : "Inventario liberado por rechazo manual."
     });
 
+    let emailNotification: "queued" | "skipped" | "failed" = "skipped";
+
     if (input.status === ManualPaymentRequestStatus.Approved) {
-      this.loyaltyService.settleOrderPoints(order.orderNumber, input.reviewer);
+      try {
+        await this.loyaltyService.settleOrderPoints(order.orderNumber, input.reviewer);
+      } catch (error) {
+        if (!(error instanceof NotFoundException)) {
+          throw error;
+        }
+
+        this.observabilityService.recordDomainEvent({
+          category: "payment",
+          action: "payment.manual.approved.loyalty_missing",
+          severity: "warning",
+          detail: `No encontramos puntos de loyalty para el pedido ${order.orderNumber}. Continuamos sin actualizar loyalty.`,
+          relatedType: "order",
+          relatedId: order.orderNumber
+        });
+      }
+
       this.auditService.recordAdminAction({
         actionType: "payments.manual_request.approved",
         targetType: "manual_payment_request",
@@ -871,7 +1209,9 @@ export class OrdersService implements OnModuleInit {
         actorName: input.reviewer,
         metadata: {
           orderNumber: order.orderNumber,
-          reviewer: input.reviewer
+          reviewer: input.reviewer,
+          crmStage: order.crmStage,
+          sendEmailNow: input.sendEmailNow !== false
         }
       });
       this.observabilityService.recordDomainEvent({
@@ -881,26 +1221,53 @@ export class OrdersService implements OnModuleInit {
         relatedType: "manual_payment_request",
         relatedId: manualRequest.id
       });
-      void this.notificationsService.queueNotification({
-        channel: NotificationChannel.Email,
-        audience: order.customer.email,
-        subject: `✅ Tu pago fue confirmado — Pedido ${order.orderNumber}`,
-        body: `Hola ${manualRequest.customerName},\n\nTu comprobante fue revisado y aprobado. Tu pedido ${order.orderNumber} ya está confirmado y pronto nos pondremos en contacto contigo para coordinar la entrega.\n\n¡Gracias por tu compra!`,
-        source: "payments",
-        relatedType: "order",
-        relatedId: order.orderNumber,
-        status: NotificationStatus.Pending
-      });
-      void this.notificationsService.recordEvent(
+      if (input.sendEmailNow !== false && order.customer.email) {
+        try {
+          await this.notificationsService.queueNotification(this.buildManualApprovalEmailNotification(order, manualRequest));
+          emailNotification = "queued";
+        } catch (error) {
+          emailNotification = "failed";
+          this.observabilityService.recordDomainEvent({
+            category: "notification",
+            action: "payment.manual.approved.email_failed",
+            severity: "warning",
+            detail: `No pudimos registrar el email para el pedido ${order.orderNumber}.`,
+            relatedType: "order",
+            relatedId: order.orderNumber
+          });
+        }
+      }
+
+      await this.notificationsService.recordEvent(
         "order.manual.approved",
         "payments",
         manualRequest.customerName,
-        `El pedido ${order.orderNumber} quedó pagado después de la revisión manual.`,
+        emailNotification === "queued"
+          ? `El pedido ${order.orderNumber} quedó pagado después de la revisión manual y el email quedó en cola.`
+          : emailNotification === "failed"
+            ? `El pedido ${order.orderNumber} quedó pagado después de la revisión manual, pero el email no pudo registrarse.`
+            : `El pedido ${order.orderNumber} quedó pagado después de la revisión manual y quedó listo para seguimiento CRM.`,
         "order",
         order.orderNumber
       );
     } else {
-      this.loyaltyService.reverseOrderPoints(order.orderNumber, input.reviewer);
+      try {
+        await this.loyaltyService.reverseOrderPoints(order.orderNumber, input.reviewer);
+      } catch (error) {
+        if (!(error instanceof NotFoundException)) {
+          throw error;
+        }
+
+        this.observabilityService.recordDomainEvent({
+          category: "payment",
+          action: "payment.manual.rejected.loyalty_missing",
+          severity: "warning",
+          detail: `No encontramos puntos de loyalty para el pedido ${order.orderNumber}. Continuamos sin revertir loyalty.`,
+          relatedType: "order",
+          relatedId: order.orderNumber
+        });
+      }
+
       this.auditService.recordAdminAction({
         actionType: "payments.manual_request.rejected",
         targetType: "manual_payment_request",
@@ -941,6 +1308,23 @@ export class OrdersService implements OnModuleInit {
     }
 
     await this.persistState();
+
+    return {
+      emailNotification
+    };
+  }
+
+  private buildManualApprovalEmailNotification(order: AdminOrderDetail, manualRequest: AdminManualPaymentRequestSummary) {
+    return {
+      channel: NotificationChannel.Email,
+      audience: order.customer.email,
+      subject: `✅ Tu pago fue confirmado — Pedido ${order.orderNumber}`,
+      body: `Hola ${manualRequest.customerName},\n\nTu comprobante fue revisado y aprobado. Tu pedido ${order.orderNumber} quedó pagado y ya pasó a seguimiento de atención para coordinar la entrega.\n\n¡Gracias por tu compra!`,
+      source: "payments",
+      relatedType: "order",
+      relatedId: order.orderNumber,
+      status: NotificationStatus.Pending
+    };
   }
 
   private buildInitialHistory(input: {
@@ -1151,6 +1535,7 @@ export class OrdersService implements OnModuleInit {
       paymentMethod: order.paymentMethod,
       vendorCode: order.vendorCode,
       manualStatus: order.manualStatus,
+      crmStage: order.crmStage,
       providerReference: order.providerReference,
       updatedAt: order.updatedAt,
       createdAt: order.createdAt,
@@ -1418,7 +1803,7 @@ export class OrdersService implements OnModuleInit {
   }
 
   private sanitizeSnapshot(snapshot: OrdersSnapshot) {
-    if (!isProductionRuntime()) {
+    if (demoRuntimeEnabled()) {
       return undefined;
     }
 

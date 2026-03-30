@@ -43,3 +43,30 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+.admin-sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(214, 228, 220, 0.28) rgba(255, 255, 255, 0.04);
+}
+
+.admin-sidebar-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.admin-sidebar-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 9999px;
+}
+
+.admin-sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(214, 228, 220, 0.24);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.admin-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(214, 228, 220, 0.34);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}

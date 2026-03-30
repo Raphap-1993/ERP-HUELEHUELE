@@ -41,6 +41,12 @@ Una `vendor_application` puede existir antes de convertirse en `user`/`vendor`.
 
 `products` y `product_variants` modelan la oferta comercial. Las variantes son el nivel operativo de stock, precio y venta.
 
+Campos aditivos vigentes:
+
+- `products.sales_channel`: `public | internal`
+- `products.reporting_group`: agrupación comercial y analítica
+- `product_variants.low_stock_threshold`: umbral operativo por SKU
+
 ### Pedido
 
 `orders` es el agregado transaccional central. Debe encapsular:
@@ -59,6 +65,15 @@ Una `vendor_application` puede existir antes de convertirse en `user`/`vendor`.
 ### Vendedor y comisión
 
 `vendors` define el actor comercial. `vendor_codes` materializa la atribución en checkout. `commission_attributions` y `commissions` registran el derecho económico derivado.
+
+Campos aditivos vigentes:
+
+- `vendors.collaboration_type`: `seller | affiliate`
+- `commission_rules.applies_to_collaboration_type`
+
+### CMS
+
+`CmsTestimonial` se extendió a `kind: text | audio | social` con `audioUrl`, `socialUrl`, `socialPlatform`, `coverImageUrl` y `position`.
 
 ### Loyalty
 
@@ -128,6 +143,8 @@ Una `vendor_application` puede existir antes de convertirse en `user`/`vendor`.
 - Un cliente no puede canjear puntos no disponibles.
 - Una campaña no debe despachar sin audiencia materializada.
 - Un pago manual aprobado debe dejar huella de quién lo aprobó.
+- Un producto `internal` no puede aparecer en catálogo, PDP ni checkout público.
+- El reporte de inventario debe usar la misma fuente de reservas y confirmaciones del ledger operativo.
 
 ## Eventos internos recomendados
 

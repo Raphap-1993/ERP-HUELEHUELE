@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { WholesalePlan } from "@huelegood/shared";
 
 const PERKS = [
   { num: "100%", label: "Margen de ganancia posible comprando al por mayor" },
@@ -7,13 +8,17 @@ const PERKS = [
   { num: "🇵🇪", label: "Distribución disponible en todo el territorio peruano" },
 ] as const;
 
-const TIERS = [
-  { name: "Starter — 12 unidades", sub: "Precio mayorista inicial", margin: "~40%" },
-  { name: "Distribuidor — 24 unidades", sub: "Acceso a catálogo completo", margin: "~65%" },
-  { name: "Partner Oficial — 48+ unidades", sub: "Máximo margen + soporte marketing", margin: "~100%" },
-] as const;
+function tierMargin(plan: WholesalePlan) {
+  return plan.savingsLabel || `${plan.minimumUnits}+ unidades`;
+}
 
-export function WholesaleB2BSection() {
+export function WholesaleB2BSection({
+  plans,
+  ctaHref = "/mayoristas?interestType=distributor"
+}: {
+  plans: WholesalePlan[];
+  ctaHref?: string;
+}) {
   return (
     <section id="distribuidores" className="relative overflow-hidden bg-gradient-to-br from-[#1a3a2e] to-[#0d2b20] py-24">
       <div className="pointer-events-none absolute right-[-100px] top-[-100px] h-[600px] w-[600px] rounded-full bg-[radial-gradient(circle,rgba(82,183,136,0.08)_0%,transparent_70%)]" />
@@ -43,9 +48,7 @@ export function WholesaleB2BSection() {
             </div>
 
             <Link
-              href="https://www.instagram.com/huele.good/"
-              target="_blank"
-              rel="noreferrer"
+              href={ctaHref}
               className="inline-flex items-center gap-2 rounded-full bg-[#c9a84c] px-8 py-4 text-sm font-bold text-[#1a3a2e] shadow-[0_8px_30px_rgba(201,168,76,0.35)] transition hover:-translate-y-0.5 hover:bg-[#f0d080] hover:shadow-[0_12px_40px_rgba(201,168,76,0.45)]"
             >
               📋 Solicitar Catálogo Mayorista
@@ -58,13 +61,13 @@ export function WholesaleB2BSection() {
             <p className="mb-8 text-sm text-white/55">Elige el paquete que se adapta a tu negocio.</p>
 
             <div className="space-y-3">
-              {TIERS.map((tier) => (
-                <div key={tier.name} className="flex items-center justify-between rounded-2xl border border-white/7 bg-white/5 p-5">
+              {plans.map((plan) => (
+                <div key={plan.tier} className="flex items-center justify-between rounded-2xl border border-white/7 bg-white/5 p-5">
                   <div>
-                    <p className="mb-0.5 text-sm font-semibold text-white">{tier.name}</p>
-                    <p className="text-xs text-white/55">{tier.sub}</p>
+                    <p className="mb-0.5 text-sm font-semibold text-white">{plan.tier}</p>
+                    <p className="text-xs text-white/55">{plan.description}</p>
                   </div>
-                  <span className="font-serif text-3xl font-black text-[#52b788]">{tier.margin}</span>
+                  <span className="font-serif text-3xl font-black text-[#52b788]">{tierMargin(plan)}</span>
                 </div>
               ))}
             </div>

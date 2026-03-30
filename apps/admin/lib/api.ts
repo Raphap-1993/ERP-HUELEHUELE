@@ -1,6 +1,9 @@
 import type {
   AuthCredentialsInput,
+  AdminManualPaymentCreateInput,
   AdminRoleDashboardSummary,
+  AdminOrderStatusTransitionInput,
+  AdminVendorCreateInput,
   AuthSessionSummary,
   CmsActionEnvelope,
   CmsBannerInput,
@@ -39,6 +42,7 @@ import type {
   NotificationLogSummary,
   NotificationSummary,
   AdminManualPaymentRequestSummary,
+  InventoryReportEnvelope,
   ProductAdminDetail,
   ProductAdminSummary,
   ProductCategorySummary,
@@ -238,6 +242,12 @@ export async function fetchOrder(orderNumber: string) {
   return requestJson<OrderEnvelope>(`/admin/orders/${encodeURIComponent(orderNumber)}`);
 }
 
+export async function resendOrderApprovalEmail(orderNumber: string) {
+  return requestJson<OrderNotificationActionEnvelope>(`/admin/orders/${encodeURIComponent(orderNumber)}/resend-approval-email`, {
+    method: "POST"
+  });
+}
+
 export async function createBackofficeOrder(body: {
   customer: { firstName: string; lastName: string; email: string; phone: string };
   address: { line1: string; city: string; region?: string };
@@ -255,6 +265,13 @@ export async function createBackofficeOrder(body: {
 export async function deleteOrder(orderNumber: string) {
   return requestJson<{ status: string; orderNumber: string }>(`/admin/orders/${encodeURIComponent(orderNumber)}`, {
     method: "DELETE"
+  });
+}
+
+export async function transitionOrderStatus(orderNumber: string, body: AdminOrderStatusTransitionInput) {
+  return requestJson<OrderEnvelope>(`/admin/orders/${encodeURIComponent(orderNumber)}/status`, {
+    method: "POST",
+    body: JSON.stringify(body)
   });
 }
 
@@ -280,6 +297,13 @@ export async function rejectManualPaymentRequest(id: string, body: ManualReviewA
   });
 }
 
+export async function registerAdminManualPayment(orderNumber: string, body: AdminManualPaymentCreateInput) {
+  return requestJson<OrderEnvelope>(`/admin/payments/${encodeURIComponent(orderNumber)}/register-manual`, {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
 export async function fetchVendorApplications() {
   return requestJson<VendorApplicationsEnvelope>("/admin/vendor-applications");
 }
@@ -300,6 +324,13 @@ export async function rejectVendorApplication(id: string, body: VendorApplicatio
 
 export async function fetchVendors() {
   return requestJson<VendorsEnvelope>("/admin/vendors");
+}
+
+export async function createVendor(body: AdminVendorCreateInput) {
+  return requestJson<VendorActionEnvelope>("/admin/vendors", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
 }
 
 export async function fetchVendorCodes() {
@@ -393,6 +424,12 @@ export async function uploadCmsLoadingImage(file: File) {
   const formData = new FormData();
   formData.append("file", file);
   return requestFormData<CmsActionEnvelope>("/admin/cms/site-settings/loading-image", formData);
+}
+
+export async function uploadCmsFavicon(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return requestFormData<CmsActionEnvelope>("/admin/cms/site-settings/favicon", formData);
 }
 
 export async function updateCmsHeroCopy(body: CmsHeroCopyInput) {
@@ -497,6 +534,10 @@ export async function fetchAdminProduct(id: string) {
 
 export async function fetchAdminProductCategories() {
   return requestJson<AdminProductCategoriesEnvelope>("/admin/products/categories");
+}
+
+export async function fetchInventoryReport() {
+  return requestJson<InventoryReportEnvelope>("/admin/inventory/report");
 }
 
 export async function createAdminProduct(body: ProductUpsertInput) {
@@ -692,6 +733,13 @@ export type ManualActionEnvelope = {
   message: string;
   referenceId?: string;
   request?: AdminManualPaymentRequestSummary;
+  order?: AdminOrderSummary;
+};
+
+export type OrderNotificationActionEnvelope = {
+  status: string;
+  message: string;
+  referenceId?: string;
   order?: AdminOrderSummary;
 };
 

@@ -1,92 +1,145 @@
-const TESTIMONIALS = [
+import Link from "next/link";
+import { CmsSocialPlatform, CmsTestimonialKind, type CmsTestimonial } from "@huelegood/shared";
+
+const FALLBACK_TESTIMONIALS: CmsTestimonial[] = [
   {
-    stars: 5,
-    text: "Subí al Machu Picchu con mi familia y a las 2 horas en Aguas Calientes ya sentía el soroche clásico: cabeza pesada, náuseas. Mi guía tenía un Huele Huele. Lo usé tres veces y en 10 minutos era otra persona.",
-    highlight: "Ahora es lo primero que meto a la mochila antes de cada viaje a la sierra.",
+    id: "premium-tst-1",
     name: "Rodrigo M.",
     role: "Ingeniero, 34 años",
-    location: "Cusco — Machu Picchu",
-    avatar: "🧔",
-    avatarBg: "#d8f3dc",
+    quote:
+      "Subí al Machu Picchu con mi familia y a las 2 horas en Aguas Calientes ya sentía el soroche clásico. Lo usé tres veces y en 10 minutos era otra persona.",
+    rating: 5,
+    kind: CmsTestimonialKind.Text,
+    position: 1,
+    status: "active",
+    updatedAt: "2026-03-28T10:00:00.000Z"
   },
   {
-    stars: 5,
-    text: "Dos horas en la Panamericana Norte todos los días. El olor a smog y al bus me tenía con dolor de cabeza constante. Empecé a usar el Huele Huele Verde en el trayecto y cambió todo.",
-    highlight: "Llego a la oficina como si hubiera descansado bien.",
+    id: "premium-tst-2",
     name: "Valeria Ch.",
     role: "Analista financiera, 28 años",
-    location: "Lima — Tráfico diario",
-    avatar: "👩",
-    avatarBg: "#fff9e6",
+    quote:
+      "Dos horas en la Panamericana Norte todos los días. Empecé a usar el Huele Huele Verde en el trayecto y ahora llego a la oficina mucho más fresca.",
+    rating: 5,
+    kind: CmsTestimonialKind.Text,
+    position: 2,
+    status: "active",
+    updatedAt: "2026-03-28T10:05:00.000Z"
   },
   {
-    stars: 5,
-    text: "Semanas de exámenes finales en la UNI: 5 horas de pantalla, sin dormir bien, con los ojos y la cabeza bloqueados. Un amigo me pasó el Negro y lo probé antes de estudiar. El mentol es intenso pero te activa al toque.",
-    highlight: "Ahora lo tengo en mi escritorio y no estudio sin él.",
+    id: "premium-tst-3",
     name: "Sebastián A.",
     role: "Estudiante de Sistemas, 22 años",
-    location: "Lima — UNI",
-    avatar: "🧑‍💻",
-    avatarBg: "#e8f4fd",
-  },
-] as const;
+    quote:
+      "En semanas de exámenes el Negro me ayudó a mantenerme enfocado. Ahora lo tengo en mi escritorio y ya es parte de mi rutina.",
+    rating: 5,
+    kind: CmsTestimonialKind.Text,
+    position: 3,
+    status: "active",
+    updatedAt: "2026-03-28T10:10:00.000Z"
+  }
+];
 
-export function TestimonialsSection() {
+function kindLabel(testimonial: CmsTestimonial) {
+  if (testimonial.kind === CmsTestimonialKind.Audio) {
+    return "Audio curado";
+  }
+
+  if (testimonial.kind === CmsTestimonialKind.Social) {
+    return testimonial.socialPlatform === CmsSocialPlatform.Tiktok ? "TikTok curado" : "Instagram curado";
+  }
+
+  return "Testimonio real";
+}
+
+function summaryText(testimonial: CmsTestimonial) {
+  if (testimonial.kind === CmsTestimonialKind.Audio) {
+    return testimonial.quote ?? "Escucha un testimonio en audio curado desde el CMS.";
+  }
+
+  if (testimonial.kind === CmsTestimonialKind.Social) {
+    return testimonial.quote ?? "Ver testimonio curado desde redes sociales.";
+  }
+
+  return testimonial.quote ?? "Testimonio activo.";
+}
+
+function actionHref(testimonial: CmsTestimonial) {
+  if (testimonial.kind === CmsTestimonialKind.Audio) {
+    return testimonial.audioUrl;
+  }
+
+  if (testimonial.kind === CmsTestimonialKind.Social) {
+    return testimonial.socialUrl;
+  }
+
+  return undefined;
+}
+
+function actionLabel(testimonial: CmsTestimonial) {
+  if (testimonial.kind === CmsTestimonialKind.Audio) {
+    return "Escuchar audio";
+  }
+
+  if (testimonial.kind === CmsTestimonialKind.Social) {
+    return "Ver publicación";
+  }
+
+  return undefined;
+}
+
+export function TestimonialsSection({ testimonials = FALLBACK_TESTIMONIALS }: { testimonials?: CmsTestimonial[] }) {
+  const visibleTestimonials = testimonials.length > 0 ? testimonials : FALLBACK_TESTIMONIALS;
+
   return (
     <section id="testimonios" className="bg-white py-24">
       <div className="mx-auto max-w-[1120px] px-4 md:px-6">
-        {/* Heading */}
         <div className="mb-14">
           <span className="mb-4 inline-block rounded-full bg-[#d8f3dc] px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-[#2d6a4f]">
             Lo dicen ellos
           </span>
           <h2 className="mb-4 font-serif text-4xl font-black leading-tight text-[#1a3a2e] md:text-5xl">
-            Reales. Peruanos. Convencidos.
+            Prueba social curada y visible en runtime
           </h2>
           <p className="max-w-xl text-base leading-relaxed text-[#6b7280]">
-            Más de cientos de personas ya lo tienen en su bolsillo. Aquí algunas historias.
+            Testimonios de texto, audio y social publicados desde CMS sin redeploy.
           </p>
         </div>
 
         <div className="grid gap-6 md:grid-cols-3">
-          {TESTIMONIALS.map((t) => (
-            <div
-              key={t.name}
-              className="relative overflow-hidden rounded-3xl border border-[#1a3a2e]/7 bg-[#faf8f3] p-7"
-            >
-              {/* Large quote mark */}
-              <span className="pointer-events-none absolute right-5 top-4 font-serif text-8xl leading-none text-[#d8f3dc]" aria-hidden="true">
-                &ldquo;
-              </span>
-
-              {/* Stars */}
-              <div className="mb-4 text-lg tracking-widest text-[#c9a84c]">
-                {"★".repeat(t.stars)}
-              </div>
-
-              <p className="relative mb-4 text-sm leading-7 text-[#1c1c1c]">
-                {t.text}{" "}
-                <strong className="font-semibold text-[#2d6a4f]">{t.highlight}</strong>
-              </p>
-
-              {/* Author */}
-              <div className="flex items-center gap-3">
-                <div
-                  className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-xl"
-                  style={{ background: t.avatarBg }}
-                >
-                  {t.avatar}
+          {visibleTestimonials.map((testimonial) => {
+            const href = actionHref(testimonial);
+            const label = actionLabel(testimonial);
+            return (
+              <div
+                key={testimonial.id}
+                className="relative overflow-hidden rounded-3xl border border-[#1a3a2e]/7 bg-[#faf8f3] p-7"
+              >
+                <span className="mb-4 inline-flex rounded-full bg-[#d8f3dc] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#2d6a4f]">
+                  {kindLabel(testimonial)}
+                </span>
+                <div className="mb-4 text-lg tracking-widest text-[#c9a84c]">
+                  {"★".repeat(Math.max(1, Math.min(5, testimonial.rating ?? 5)))}
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-[#1a3a2e]">{t.name}</p>
-                  <p className="text-xs text-[#6b7280]">{t.role}</p>
-                  <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-[#d8f3dc] px-2.5 py-0.5 text-[11px] font-semibold text-[#52b788]">
-                    📍 {t.location}
-                  </div>
+                <p className="mb-5 text-sm leading-7 text-[#1c1c1c]">{summaryText(testimonial)}</p>
+                {href && label ? (
+                  <Link
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mb-5 inline-flex rounded-full border border-[#2d6a4f]/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-[#2d6a4f] transition hover:border-[#2d6a4f] hover:bg-[#d8f3dc]"
+                  >
+                    {label}
+                  </Link>
+                ) : null}
+
+                <div className="border-t border-[#1a3a2e]/8 pt-4">
+                  <p className="text-sm font-bold text-[#1a3a2e]">{testimonial.name}</p>
+                  <p className="text-xs text-[#6b7280]">{testimonial.role}</p>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

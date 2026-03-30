@@ -4,6 +4,10 @@
 
 Traducir la Fase 2 actual de Huelegood a un frente ejecutable, secuenciado y transferible a `Linear` sin perder alineación con el roadmap homologado.
 
+## Estado actualizado
+
+Al `30 de marzo de 2026`, el aterrizaje quirúrgico de requerimientos quedó documentado en [requirements-impact-plan-2026-03.md](./requirements-impact-plan-2026-03.md). Ese documento es la fuente vigente para operaciones manuales, sellers/affiliates, testimonios multimedia, productos internos y la extensión de `wholesale` con `interestType=distributor`.
+
 ## Decisión de priorización
 
 Al `20 de marzo de 2026`, la Fase 2 ya no necesita abrir una nueva migración visual de la home. Esa base ya existe en producción. Antes de seguir con automatización y reporting, se abre un desvío urgente para cerrar la brecha entre promesa y runtime en catálogo y media.

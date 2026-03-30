@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { siteSetting } from "@huelegood/shared";
 import { AdminSessionProvider } from "../components/admin-session-provider";

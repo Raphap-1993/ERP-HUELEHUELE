@@ -26,7 +26,7 @@ import {
   type SiteSetting,
   type WebNavigationGroup
 } from "@huelegood/shared";
-import { fetchCmsOverview, updateCmsHeroCopy, updateCmsNavigation, updateCmsSiteSettings, uploadCmsHeaderLogo, uploadCmsHeroProductImage, uploadCmsLoadingImage } from "../lib/api";
+import { fetchCmsOverview, updateCmsHeroCopy, updateCmsNavigation, updateCmsSiteSettings, uploadCmsHeaderLogo, uploadCmsHeroProductImage, uploadCmsLoadingImage, uploadCmsFavicon } from "../lib/api";
 
 function formatDate(value?: string) {
   if (!value) {
@@ -88,7 +88,8 @@ function normalizeSiteSetting(value: SiteSetting): CmsSiteSettingsInput {
     walletOwnerName: value.walletOwnerName,
     headerLogoUrl: value.headerLogoUrl,
     heroProductImageUrl: value.heroProductImageUrl,
-    loadingImageUrl: value.loadingImageUrl
+    loadingImageUrl: value.loadingImageUrl,
+    faviconUrl: value.faviconUrl
   };
 }
 
@@ -116,6 +117,8 @@ export function SettingsWorkspace() {
   const [heroImageUploading, setHeroImageUploading] = useState(false);
   const [loadingImageFile, setLoadingImageFile] = useState<File | null>(null);
   const [loadingImageUploading, setLoadingImageUploading] = useState(false);
+  const [faviconFile, setFaviconFile] = useState<File | null>(null);
+  const [faviconUploading, setFaviconUploading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -261,6 +264,24 @@ export function SettingsWorkspace() {
     }
   }
 
+  async function handleUploadFavicon() {
+    if (!faviconFile) return;
+    setFaviconUploading(true);
+    setError(null);
+    try {
+      const response = await uploadCmsFavicon(faviconFile);
+      if (response.siteSetting) {
+        setSiteForm(response.siteSetting);
+      }
+      setFaviconFile(null);
+      refresh();
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "No pudimos subir el favicon.");
+    } finally {
+      setFaviconUploading(false);
+    }
+  }
+
   async function handleUploadLogo() {
     if (!logoFile) {
       return;
@@ -395,6 +416,36 @@ export function SettingsWorkspace() {
               </div>
               <p className="text-xs leading-5 text-black/55">
                 WebP, PNG o JPG. Se muestra centrado a 150 × 150 px al cargar la web pública.
+              </p>
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42">
+                Favicon del navegador
+              </label>
+              {siteForm.faviconUrl ? (
+                <div className="rounded-[1.2rem] border border-black/8 bg-[#f7f8f4] p-3">
+                  <p className="mb-2 text-[11px] uppercase tracking-[0.24em] text-black/40">Favicon actual</p>
+                  <img
+                    src={siteForm.faviconUrl}
+                    alt="Favicon actual"
+                    className="h-8 w-8 rounded object-contain"
+                  />
+                </div>
+              ) : null}
+              <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                <input
+                  type="file"
+                  accept="image/svg+xml,image/png,image/x-icon,image/webp"
+                  onChange={(event) => setFaviconFile(event.target.files?.[0] ?? null)}
+                  disabled={faviconUploading}
+                  className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm outline-none"
+                />
+                <Button type="button" variant="secondary" onClick={handleUploadFavicon} disabled={faviconUploading || !faviconFile}>
+                  {faviconUploading ? "Subiendo..." : "Subir favicon"}
+                </Button>
+              </div>
+              <p className="text-xs leading-5 text-black/55">
+                SVG (recomendado), PNG o ICO. Se usa como ícono en la pestaña del navegador. Máx. 2 MB.
               </p>
             </div>
             <div className="space-y-2">

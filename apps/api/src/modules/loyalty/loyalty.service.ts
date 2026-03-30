@@ -53,8 +53,9 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function isProductionRuntime() {
-  return process.env.NODE_ENV === "production";
+function demoDataEnabled() {
+  const value = process.env.HUELEGOOD_ENABLE_DEMO_DATA?.trim().toLowerCase();
+  return value === "1" || value === "true" || value === "yes" || value === "on";
 }
 
 function normalizeText(value?: string) {
@@ -127,7 +128,7 @@ export class LoyaltyService implements OnModuleInit {
     private readonly notificationsService: NotificationsService,
     private readonly moduleStateService: ModuleStateService
   ) {
-    if (!isProductionRuntime()) {
+    if (demoDataEnabled()) {
       this.seedData();
     }
   }
@@ -135,9 +136,9 @@ export class LoyaltyService implements OnModuleInit {
   async onModuleInit() {
     const snapshot = await this.moduleStateService.load<LoyaltySnapshot>("loyalty");
     if (snapshot) {
-      const { snapshot: sanitizedSnapshot, changed } = isProductionRuntime()
-        ? this.sanitizeSnapshot(snapshot)
-        : { snapshot, changed: false };
+      const { snapshot: sanitizedSnapshot, changed } = demoDataEnabled()
+        ? { snapshot, changed: false }
+        : this.sanitizeSnapshot(snapshot);
       this.restoreSnapshot(sanitizedSnapshot);
       if (changed) {
         await this.persistState();
@@ -325,7 +326,7 @@ export class LoyaltyService implements OnModuleInit {
     });
   }
 
-  settleOrderPoints(orderNumber: string, reviewer?: string) {
+  async settleOrderPoints(orderNumber: string, reviewer?: string) {
     const movement = this.findMovementByOrderNumber(orderNumber);
     const account = this.requireAccount(movement.customer);
 
@@ -359,7 +360,9 @@ export class LoyaltyService implements OnModuleInit {
       }
     });
 
-    void this.notificationsService.recordEvent(
+    await this.persistState();
+
+    await this.notificationsService.recordEvent(
       "loyalty.points.available",
       "orders",
       account.customer,
@@ -368,7 +371,7 @@ export class LoyaltyService implements OnModuleInit {
       movement.id
     );
 
-    void this.notificationsService.queueNotification({
+    await this.notificationsService.queueNotification({
       channel: NotificationChannel.Email,
       audience: account.customer,
       subject: "Tus puntos ya están disponibles",
@@ -378,12 +381,11 @@ export class LoyaltyService implements OnModuleInit {
       relatedId: movement.id,
       status: NotificationStatus.Sent
     });
-    void this.persistState();
 
     return this.toMovementSummary(movement);
   }
 
-  reverseOrderPoints(orderNumber: string, reviewer?: string) {
+  async reverseOrderPoints(orderNumber: string, reviewer?: string) {
     const movement = this.findMovementByOrderNumber(orderNumber);
     const account = this.requireAccount(movement.customer);
 
@@ -419,7 +421,9 @@ export class LoyaltyService implements OnModuleInit {
       }
     });
 
-    void this.notificationsService.recordEvent(
+    await this.persistState();
+
+    await this.notificationsService.recordEvent(
       "loyalty.points.reversed",
       "orders",
       account.customer,
@@ -428,7 +432,7 @@ export class LoyaltyService implements OnModuleInit {
       movement.id
     );
 
-    void this.notificationsService.queueNotification({
+    await this.notificationsService.queueNotification({
       channel: NotificationChannel.Email,
       audience: account.customer,
       subject: "Puntos revertidos",
@@ -438,7 +442,6 @@ export class LoyaltyService implements OnModuleInit {
       relatedId: movement.id,
       status: NotificationStatus.Sent
     });
-    void this.persistState();
 
     return this.toMovementSummary(movement);
   }

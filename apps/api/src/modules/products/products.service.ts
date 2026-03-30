@@ -24,6 +24,7 @@ import {
   type ProductImageSummary,
   type ProductImageUploadInput,
   type ProductImageUploadSummary,
+  ProductSalesChannel,
   type ProductStatusValue,
   type ProductUpsertInput,
   type ProductVariantSummary,
@@ -203,6 +204,28 @@ function selectDefaultVariant(variants: ProductVariant[]) {
     })[0];
 }
 
+function normalizeSalesChannel(value?: string): ProductSalesChannel {
+  return value === ProductSalesChannel.Internal ? ProductSalesChannel.Internal : ProductSalesChannel.Public;
+}
+
+function normalizeReportingGroup(value?: string) {
+  const normalized = normalizeText(value);
+  return normalized ? normalized.slice(0, 120) : undefined;
+}
+
+function normalizeLowStockThreshold(value: unknown, fallback = 100) {
+  if (value == null || value === "") {
+    return fallback;
+  }
+
+  const parsed = Math.trunc(Number(value));
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new BadRequestException("El umbral de stock bajo debe ser un entero mayor o igual a cero.");
+  }
+
+  return parsed;
+}
+
 function sortImages(images: ProductImage[]) {
   return images.slice().sort((left, right) => {
     if (left.isPrimary && !right.isPrimary) {
@@ -261,6 +284,7 @@ function mapVariant(variant: ProductVariant): ProductVariantSummary {
     price: Number(variant.price),
     compareAtPrice: toNumber(variant.compareAtPrice),
     stockOnHand: variant.stockOnHand,
+    lowStockThreshold: variant.lowStockThreshold,
     status: variant.status
   };
 }
@@ -394,6 +418,8 @@ export class ProductsService {
             shortDescription: input.shortDescription ?? null,
             longDescription: input.longDescription ?? null,
             status: input.status,
+            salesChannel: input.salesChannel,
+            reportingGroup: input.reportingGroup ?? null,
             isFeatured: input.isFeatured
           }
         });
@@ -455,6 +481,8 @@ export class ProductsService {
             shortDescription: input.shortDescription ?? null,
             longDescription: input.longDescription ?? null,
             status: input.status,
+            salesChannel: input.salesChannel,
+            reportingGroup: input.reportingGroup ?? null,
             isFeatured: input.isFeatured
           }
         });
@@ -646,6 +674,10 @@ export class ProductsService {
       return null;
     }
 
+    if (normalizeSalesChannel(product.salesChannel) === ProductSalesChannel.Internal) {
+      return null;
+    }
+
     return this.mapCatalogProductDetail(product);
   }
 
@@ -679,6 +711,10 @@ export class ProductsService {
     const productMap = new Map<string, CheckoutProductRecord>();
     for (const record of records) {
       if (record.status !== "active") {
+        continue;
+      }
+
+      if (normalizeSalesChannel(record.salesChannel) === ProductSalesChannel.Internal) {
         continue;
       }
 
@@ -744,7 +780,8 @@ export class ProductsService {
     const search = normalizeText(query.search)?.toLowerCase();
     const products = await this.prisma.product.findMany({
       where: {
-        status: "active"
+        status: "active",
+        salesChannel: ProductSalesChannel.Public
       },
       include: {
         category: true,
@@ -869,6 +906,7 @@ export class ProductsService {
             ? undefined
             : coerceNumber(variant.compareAtPrice, `compareAtPrice:${sku}`),
         stockOnHand: Math.max(0, Math.trunc(coerceNumber(variant.stockOnHand, `stockOnHand:${sku}`))),
+        lowStockThreshold: normalizeLowStockThreshold(variant.lowStockThreshold, 100),
         status: variant.status
       };
     });
@@ -980,6 +1018,8 @@ export class ProductsService {
       shortDescription: normalizeText(body.shortDescription),
       longDescription: normalizeText(body.longDescription),
       status: body.status,
+      salesChannel: normalizeSalesChannel(body.salesChannel),
+      reportingGroup: normalizeReportingGroup(body.reportingGroup) ?? name,
       isFeatured: Boolean(body.isFeatured),
       variants,
       bundleComponents
@@ -1007,6 +1047,7 @@ export class ProductsService {
             compareAtPrice:
               variant.compareAtPrice == null ? null : new Prisma.Decimal(variant.compareAtPrice),
             stockOnHand: variant.stockOnHand,
+            lowStockThreshold: variant.lowStockThreshold,
             status: variant.status
           }
         });
@@ -1022,6 +1063,7 @@ export class ProductsService {
           compareAtPrice:
             variant.compareAtPrice == null ? null : new Prisma.Decimal(variant.compareAtPrice),
           stockOnHand: variant.stockOnHand,
+          lowStockThreshold: variant.lowStockThreshold,
           status: variant.status
         }
       });
@@ -1065,6 +1107,8 @@ export class ProductsService {
       categorySlug: product.category?.slug ?? undefined,
       categoryName: product.category?.name ?? undefined,
       status: product.status,
+      salesChannel: normalizeSalesChannel(product.salesChannel),
+      reportingGroup: normalizeReportingGroup(product.reportingGroup ?? undefined) ?? product.name,
       isFeatured: product.isFeatured,
       price: defaultVariant ? Number(defaultVariant.price) : 0,
       compareAtPrice: defaultVariant ? toNumber(defaultVariant.compareAtPrice) : undefined,
@@ -1087,6 +1131,10 @@ export class ProductsService {
   }
 
   private mapCatalogProductSummary(product: CatalogProductSummaryRecord): CatalogProduct | null {
+    if (normalizeSalesChannel(product.salesChannel) === ProductSalesChannel.Internal) {
+      return null;
+    }
+
     const variant = selectDefaultVariant(product.variants);
     if (!variant) {
       return null;

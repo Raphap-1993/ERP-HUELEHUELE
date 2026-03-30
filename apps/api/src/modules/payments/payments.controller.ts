@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post } from "@nestjs/common";
-import { adminAccessRoles, type ManualReviewActionInput } from "@huelegood/shared";
+import { adminAccessRoles, type AdminManualPaymentCreateInput, type ManualReviewActionInput } from "@huelegood/shared";
 import { RequireRoles } from "../auth/auth-rbac";
 import { PaymentsService } from "./payments.service";
 
@@ -16,6 +16,11 @@ export class PaymentsController {
   @Get("manual-requests")
   listManualRequests() {
     return this.paymentsService.listManualRequests();
+  }
+
+  @Post(":orderNumber/register-manual")
+  registerManualPayment(@Param("orderNumber") orderNumber: string, @Body() body: AdminManualPaymentCreateInput) {
+    return this.paymentsService.registerManualPayment(orderNumber, body);
   }
 
   @Post("manual-requests/:id/approve")

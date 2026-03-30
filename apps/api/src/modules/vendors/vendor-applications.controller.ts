@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post } from "@nestjs/common";
-import { adminAccessRoles, type VendorApplicationActionInput, type VendorApplicationInput } from "@huelegood/shared";
+import { adminAccessRoles, type AdminVendorCreateInput, type VendorApplicationActionInput, type VendorApplicationInput } from "@huelegood/shared";
 import { RequireRoles } from "../auth/auth-rbac";
 import { VendorsService } from "./vendors.service";
 
@@ -42,6 +42,11 @@ export class AdminVendorsController {
   @Get()
   list() {
     return this.vendorsService.listVendors();
+  }
+
+  @Post()
+  create(@Body() body: AdminVendorCreateInput) {
+    return this.vendorsService.createManualVendor(body);
   }
 
   @Get("codes")

@@ -28,8 +28,9 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function isProductionRuntime() {
-  return process.env.NODE_ENV === "production";
+function demoDataEnabled() {
+  const value = process.env.HUELEGOOD_ENABLE_DEMO_DATA?.trim().toLowerCase();
+  return value === "1" || value === "true" || value === "yes" || value === "on";
 }
 
 function normalizeText(value?: string) {
@@ -79,7 +80,7 @@ export class NotificationsService implements OnModuleInit {
     private readonly bullMqService: BullMqService,
     private readonly observabilityService: ObservabilityService
   ) {
-    if (!isProductionRuntime()) {
+    if (demoDataEnabled()) {
       this.seedData();
     }
   }
@@ -221,9 +222,15 @@ export class NotificationsService implements OnModuleInit {
     detail: string,
     relatedType?: string,
     relatedId?: string,
-    notificationId?: string
+    notificationId?: string,
+    options: {
+      skipRefresh?: boolean;
+    } = {}
   ) {
-    await this.refreshState();
+    if (!options.skipRefresh) {
+      await this.refreshState();
+    }
+
     const occurredAt = nowIso();
     const log: NotificationLogSummary = {
       id: `nlog-${String(this.logSequence).padStart(3, "0")}`,
@@ -275,7 +282,51 @@ export class NotificationsService implements OnModuleInit {
       normalizeText(detail) ?? `Se envió la notificación ${notification.id}.`,
       notification.relatedType,
       notification.relatedId,
-      notification.id
+      notification.id,
+      {
+        skipRefresh: true
+      }
+    );
+    await this.persistState();
+    return this.toSummary(notification);
+  }
+
+  async markNotificationFailed(id: string, detail?: string) {
+    await this.refreshState();
+    const notification = this.requireNotification(id);
+    const now = nowIso();
+    notification.status = NotificationStatus.Failed;
+    notification.updatedAt = now;
+    this.auditService.recordAdminAction({
+      actionType: "notifications.failed",
+      targetType: "notification",
+      targetId: notification.id,
+      summary: `La notificación ${notification.id} falló al enviarse.`,
+      actorName: "sistema",
+      metadata: {
+        audience: notification.audience,
+        subject: notification.subject,
+        detail: normalizeText(detail)
+      }
+    });
+    this.observabilityService.recordDomainEvent({
+      category: "notification",
+      action: "notification.failed",
+      detail: `La notificación ${notification.id} falló al enviarse.`,
+      relatedType: "notification",
+      relatedId: notification.id
+    });
+    await this.recordEvent(
+      "notification.failed",
+      notification.source,
+      notification.subject,
+      normalizeText(detail) ?? `Falló el envío de la notificación ${notification.id}.`,
+      notification.relatedType,
+      notification.relatedId,
+      notification.id,
+      {
+        skipRefresh: true
+      }
     );
     await this.persistState();
     return this.toSummary(notification);
@@ -284,6 +335,11 @@ export class NotificationsService implements OnModuleInit {
   findById(id: string) {
     const notification = this.notifications.get(id.trim());
     return notification ? this.toSummary(notification) : null;
+  }
+
+  async findByIdFresh(id: string) {
+    await this.refreshState();
+    return this.findById(id);
   }
 
   private requireNotification(id: string) {
@@ -394,16 +450,16 @@ export class NotificationsService implements OnModuleInit {
       const numeric = Number(log.id.replace(/[^\d]/g, ""));
       return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
     }, 0);
-    this.notificationSequence = Math.max(notificationSequence + 1, 1);
-    this.logSequence = Math.max(logSequence + 1, 1);
+    this.notificationSequence = Math.max(notificationSequence + 1, 4);
+    this.logSequence = Math.max(logSequence + 1, 4);
   }
 
   private async loadSnapshotState() {
     const snapshot = await this.moduleStateService.load<NotificationsSnapshot>("notifications");
     if (snapshot) {
-      const { snapshot: sanitizedSnapshot, changed } = isProductionRuntime()
-        ? this.sanitizeSnapshot(snapshot)
-        : { snapshot, changed: false };
+      const { snapshot: sanitizedSnapshot, changed } = demoDataEnabled()
+        ? { snapshot, changed: false }
+        : this.sanitizeSnapshot(snapshot);
       this.restoreSnapshot(sanitizedSnapshot);
       if (changed) {
         await this.persistState();

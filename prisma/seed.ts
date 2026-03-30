@@ -1,31 +1,46 @@
-import { Prisma, PrismaClient } from "@prisma/client";
+import "dotenv/config";
+import { LifecycleStatus, Prisma, PrismaClient, VendorCodeStatus, VendorStatus } from "@prisma/client";
+import { scryptSync } from "node:crypto";
+import { RoleCode } from "@huelegood/shared";
+import { localDemoCategories, localDemoCmsSnapshot, localDemoProducts } from "./demo-content";
 
 const prisma = new PrismaClient();
 
-async function main() {
+if (process.env.NODE_ENV === "production" && process.env.HUELEGOOD_ALLOW_PRODUCTION_SEED !== "1") {
+  throw new Error("prisma/seed.ts is for local/demo use only. Use scripts/migrate-bootstrap-users.sh for production bootstrap migration.");
+}
+
+function envValue(name: string) {
+  const value = process.env[name]?.trim();
+  return value ? value : undefined;
+}
+
+function bootstrapEnv(name: string, fallback: string) {
+  return envValue(name) ?? fallback;
+}
+
+function hashSeedPassword(email: string, password: string) {
+  const salt = email.trim().toLowerCase();
+  const hash = scryptSync(password, salt, 64).toString("hex");
+  return `scrypt:${salt}:${hash}`;
+}
+
+async function seedSiteSettings() {
   await prisma.siteSetting.upsert({
     where: { key: "brand" },
     update: {
       scope: "global",
-      valueJson: {
-        brandName: "Huelegood",
-        tagline: "Plataforma comercial modular para vender, administrar y escalar.",
-        supportEmail: "hola@huelegood.com",
-        whatsapp: "+52 000 000 0000"
-      }
+      valueJson: localDemoCmsSnapshot.siteSetting as unknown as Prisma.InputJsonValue
     },
     create: {
       key: "brand",
       scope: "global",
-      valueJson: {
-        brandName: "Huelegood",
-        tagline: "Plataforma comercial modular para vender, administrar y escalar.",
-        supportEmail: "hola@huelegood.com",
-        whatsapp: "+52 000 000 0000"
-      }
+      valueJson: localDemoCmsSnapshot.siteSetting as unknown as Prisma.InputJsonValue
     }
   });
+}
 
+async function seedRolesAndPermissions() {
   const roles = [
     { code: "super_admin", name: "Super Admin" },
     { code: "admin", name: "Admin" },
@@ -63,13 +78,164 @@ async function main() {
       create: permission
     });
   }
+}
 
-  const categories = [
-    { slug: "productos", name: "Productos", description: "Referencias principales de Huelegood" },
-    { slug: "bundles", name: "Bundles", description: "Combos y ofertas activas" }
+async function seedOperationalUsers() {
+  const accounts = [
+    {
+      name: bootstrapEnv("BOOTSTRAP_ADMIN_NAME", "Admin Huelegood"),
+      email: bootstrapEnv("BOOTSTRAP_ADMIN_EMAIL", "admin@huelegood.com"),
+      password: bootstrapEnv("BOOTSTRAP_ADMIN_PASSWORD", "huelegood123"),
+      accountType: "admin" as const,
+      roles: [RoleCode.SuperAdmin, RoleCode.Admin],
+      adminJobTitle: "Super Admin"
+    },
+    {
+      name: bootstrapEnv("BOOTSTRAP_SELLER_NAME", "Mónica Herrera"),
+      email: bootstrapEnv("BOOTSTRAP_SELLER_EMAIL", "monica@seller.com"),
+      password: bootstrapEnv("BOOTSTRAP_SELLER_PASSWORD", "huelegood123"),
+      accountType: "seller" as const,
+      roles: [RoleCode.SellerManager, RoleCode.Vendedor],
+      vendorCode: bootstrapEnv("BOOTSTRAP_SELLER_VENDOR_CODE", "VEND-014")
+    },
+    {
+      name: bootstrapEnv("BOOTSTRAP_PAYMENTS_NAME", "Operador de Pagos"),
+      email: bootstrapEnv("BOOTSTRAP_PAYMENTS_EMAIL", "pagos@huelegood.com"),
+      password: bootstrapEnv("BOOTSTRAP_PAYMENTS_PASSWORD", "huelegood123"),
+      accountType: "operator" as const,
+      roles: [RoleCode.OperadorPagos],
+      adminJobTitle: "Operador de Pagos"
+    },
+    {
+      name: bootstrapEnv("BOOTSTRAP_CUSTOMER_NAME", "Cliente Huelegood"),
+      email: bootstrapEnv("BOOTSTRAP_CUSTOMER_EMAIL", "cliente@huelegood.com"),
+      password: bootstrapEnv("BOOTSTRAP_CUSTOMER_PASSWORD", "huelegood123"),
+      accountType: "customer" as const,
+      roles: [RoleCode.Cliente]
+    }
   ];
 
-  for (const category of categories) {
+  const requiredRoles = await prisma.role.findMany({
+    where: {
+      code: {
+        in: Array.from(new Set(accounts.flatMap((account) => account.roles)))
+      }
+    }
+  });
+  const roleIdByCode = new Map(requiredRoles.map((role) => [role.code, role.id]));
+
+  for (const account of accounts) {
+    const user = await prisma.user.upsert({
+      where: { email: account.email.trim().toLowerCase() },
+      update: {
+        phone: null,
+        passwordHash: hashSeedPassword(account.email, account.password),
+        status: LifecycleStatus.active
+      },
+      create: {
+        email: account.email.trim().toLowerCase(),
+        phone: null,
+        passwordHash: hashSeedPassword(account.email, account.password),
+        status: LifecycleStatus.active
+      }
+    });
+
+    await prisma.userRole.deleteMany({
+      where: { userId: user.id }
+    });
+
+    await prisma.userRole.createMany({
+      data: account.roles
+        .map((code) => roleIdByCode.get(code))
+        .filter((roleId): roleId is string => Boolean(roleId))
+        .map((roleId) => ({
+          userId: user.id,
+          roleId
+        }))
+    });
+
+    if (account.accountType === "admin" || account.accountType === "operator") {
+      await prisma.admin.upsert({
+        where: { userId: user.id },
+        update: {
+          displayName: account.name,
+          jobTitle: account.adminJobTitle,
+          status: LifecycleStatus.active,
+          isActive: true
+        },
+        create: {
+          userId: user.id,
+          displayName: account.name,
+          jobTitle: account.adminJobTitle,
+          status: LifecycleStatus.active,
+          isActive: true
+        }
+      });
+    }
+
+    if (account.accountType === "customer") {
+      const [firstName, ...lastNameParts] = account.name.trim().split(/\s+/);
+      await prisma.customer.upsert({
+        where: { userId: user.id },
+        update: {
+          firstName: firstName || "Cliente",
+          lastName: lastNameParts.join(" ") || "Huelegood",
+          status: LifecycleStatus.active
+        },
+        create: {
+          userId: user.id,
+          firstName: firstName || "Cliente",
+          lastName: lastNameParts.join(" ") || "Huelegood",
+          status: LifecycleStatus.active
+        }
+      });
+    }
+
+    if (account.accountType === "seller") {
+      const vendor = await prisma.vendor.upsert({
+        where: { userId: user.id },
+        update: {
+          codePrefix: "VEND",
+          status: VendorStatus.active
+        },
+        create: {
+          userId: user.id,
+          codePrefix: "VEND",
+          status: VendorStatus.active
+        }
+      });
+
+      await prisma.vendorProfile.upsert({
+        where: { vendorId: vendor.id },
+        update: {
+          displayName: account.name
+        },
+        create: {
+          vendorId: vendor.id,
+          displayName: account.name
+        }
+      });
+
+      if (account.vendorCode) {
+        await prisma.vendorCode.upsert({
+          where: { code: account.vendorCode },
+          update: {
+            vendorId: vendor.id,
+            status: VendorCodeStatus.active
+          },
+          create: {
+            vendorId: vendor.id,
+            code: account.vendorCode,
+            status: VendorCodeStatus.active
+          }
+        });
+      }
+    }
+  }
+}
+
+async function seedCatalog() {
+  for (const category of localDemoCategories) {
     await prisma.category.upsert({
       where: { slug: category.slug },
       update: { name: category.name, description: category.description, isActive: true },
@@ -77,46 +243,9 @@ async function main() {
     });
   }
 
-  const products = [
-    {
-      slug: "clasico-verde",
-      name: "Clásico Verde",
-      shortDescription: "Fresco, directo y portable.",
-      longDescription: "La referencia base para una experiencia limpia y práctica.",
-      categorySlug: "productos",
-      sku: "HG-CV-001",
-      price: new Prisma.Decimal(249),
-      compareAtPrice: new Prisma.Decimal(299)
-    },
-    {
-      slug: "premium-negro",
-      name: "Premium Negro",
-      shortDescription: "Más sobrio, más premium.",
-      longDescription: "La línea con percepción más elegante para reforzar la narrativa de marca.",
-      categorySlug: "productos",
-      sku: "HG-PN-001",
-      price: new Prisma.Decimal(349),
-      compareAtPrice: new Prisma.Decimal(399)
-    },
-    {
-      slug: "combo-duo-perfecto",
-      name: "Combo Dúo Perfecto",
-      shortDescription: "Bundle pensado para ticket promedio.",
-      longDescription: "Bundle para promociones, códigos y bundles de campaña.",
-      categorySlug: "bundles",
-      sku: "HG-CDP-001",
-      price: new Prisma.Decimal(449),
-      compareAtPrice: new Prisma.Decimal(549),
-      bundleComponents: [
-        { productSlug: "clasico-verde", quantity: 1 },
-        { productSlug: "premium-negro", quantity: 1 }
-      ]
-    }
-  ];
+  const seededProducts = new Map<string, { id: string; variantId: string }>();
 
-  const seededProducts = new Map<string, { id: string }>();
-
-  for (const product of products) {
+  for (const product of localDemoProducts) {
     const category = await prisma.category.findUnique({
       where: { slug: product.categorySlug }
     });
@@ -146,12 +275,12 @@ async function main() {
       }
     });
 
-    await prisma.productVariant.upsert({
+    const variant = await prisma.productVariant.upsert({
       where: { sku: product.sku },
       update: {
         name: product.name,
-        price: product.price,
-        compareAtPrice: product.compareAtPrice,
+        price: new Prisma.Decimal(product.price),
+        compareAtPrice: product.compareAtPrice != null ? new Prisma.Decimal(product.compareAtPrice) : null,
         stockOnHand: 120,
         status: "active",
         productId: record.id
@@ -160,17 +289,32 @@ async function main() {
         productId: record.id,
         sku: product.sku,
         name: product.name,
-        price: product.price,
-        compareAtPrice: product.compareAtPrice,
+        price: new Prisma.Decimal(product.price),
+        compareAtPrice: product.compareAtPrice != null ? new Prisma.Decimal(product.compareAtPrice) : null,
         stockOnHand: 120,
         status: "active"
       }
     });
 
-    seededProducts.set(product.slug, { id: record.id });
+    await prisma.productImage.deleteMany({
+      where: { productId: record.id }
+    });
+
+    await prisma.productImage.create({
+      data: {
+        productId: record.id,
+        variantId: variant.id,
+        url: product.imageUrl,
+        altText: product.imageAlt,
+        sortOrder: 1,
+        isPrimary: true
+      }
+    });
+
+    seededProducts.set(product.slug, { id: record.id, variantId: variant.id });
   }
 
-  for (const product of products) {
+  for (const product of localDemoProducts) {
     const bundleComponents = product.bundleComponents ?? [];
     if (!bundleComponents.length) {
       continue;
@@ -216,102 +360,115 @@ async function main() {
       )
     });
   }
+}
 
-  const pages = [
-    { slug: "home", title: "Home Huelegood", status: "published" },
-    { slug: "catalogo", title: "Catálogo", status: "published" },
-    { slug: "mayoristas", title: "Mayoristas", status: "published" },
-    { slug: "trabaja-con-nosotros", title: "Trabaja con nosotros", status: "published" }
-  ] as const;
+async function seedCmsTables() {
+  const pageSlugs = localDemoCmsSnapshot.pages.map((page) => page.slug);
 
-  for (const page of pages) {
-    await prisma.page.upsert({
-      where: { slug: page.slug },
-      update: { title: page.title, status: page.status },
-      create: { slug: page.slug, title: page.title, status: page.status }
-    });
-  }
-
-  const homePage = await prisma.page.findUnique({ where: { slug: "home" } });
-  if (homePage) {
-    await prisma.pageBlock.deleteMany({ where: { pageId: homePage.id } });
-    await prisma.pageBlock.createMany({
-      data: [
-        {
-          pageId: homePage.id,
-          type: "hero",
-          sortOrder: 1,
-          contentJson: {
-            eyebrow: "Seller-first, premium y administrable",
-            title: "Huelegood",
-            description: "Plataforma comercial modular."
-          },
-          isActive: true
-        },
-        {
-          pageId: homePage.id,
-          type: "product-grid",
-          sortOrder: 2,
-          contentJson: { source: "featuredProducts" },
-          isActive: true
-        }
-      ]
-    });
-  }
-
-  const banners = [
-    {
-      title: "Oferta activa con código promocional",
-      placement: "home",
-      ctaLabel: "Comprar ahora",
-      ctaUrl: "/checkout"
-    },
-    {
-      title: "Bloque mayorista y distribuidores",
-      placement: "home",
-      ctaLabel: "Cotizar volumen",
-      ctaUrl: "/mayoristas"
+  await prisma.page.deleteMany({
+    where: {
+      slug: {
+        notIn: pageSlugs
+      }
     }
-  ];
+  });
+
+  for (const page of localDemoCmsSnapshot.pages) {
+    const pageRecord = await prisma.page.upsert({
+      where: { slug: page.slug },
+      update: {
+        title: page.title,
+        status: page.status,
+        publishedAt: page.status === "published" ? new Date(page.updatedAt) : null
+      },
+      create: {
+        slug: page.slug,
+        title: page.title,
+        status: page.status,
+        publishedAt: page.status === "published" ? new Date(page.updatedAt) : null
+      }
+    });
+
+    await prisma.pageBlock.deleteMany({
+      where: { pageId: pageRecord.id }
+    });
+
+    await prisma.pageBlock.createMany({
+      data: page.blocks.map((block) => ({
+        pageId: pageRecord.id,
+        type: block.type,
+        sortOrder: block.position,
+        contentJson: {
+          title: block.title,
+          description: block.description,
+          content: block.content,
+          status: block.status
+        },
+        isActive: block.status === "active"
+      }))
+    });
+  }
 
   await prisma.banner.deleteMany();
   await prisma.banner.createMany({
-    data: banners.map((banner) => ({
+    data: localDemoCmsSnapshot.banners.map((banner) => ({
       title: banner.title,
-      placement: banner.placement,
+      placement: "home",
       ctaLabel: banner.ctaLabel,
-      ctaUrl: banner.ctaUrl,
-      isActive: true
+      ctaUrl: banner.ctaHref,
+      isActive: banner.status === "active"
     }))
   });
-
-  const faqs = [
-    {
-      question: "¿Puedo pagar con Openpay?",
-      answer: "Sí. El checkout contempla cobro online y conciliación de estado.",
-      category: "Pagos"
-    },
-    {
-      question: "¿Se aceptan pagos manuales?",
-      answer: "Sí. El cliente puede subir comprobante y el equipo interno revisa la solicitud.",
-      category: "Pagos"
-    },
-    {
-      question: "¿Hay vendedor con código y comisión?",
-      answer: "Sí. La venta puede atribuirse a un vendedor y liquidarse por comisiones.",
-      category: "Seller-first"
-    }
-  ];
 
   await prisma.faq.deleteMany();
   await prisma.faq.createMany({
-    data: faqs.map((faq) => ({
+    data: localDemoCmsSnapshot.faqs.map((faq) => ({
       question: faq.question,
       answer: faq.answer,
       category: faq.category,
-      isPublished: true
+      sortOrder: faq.position,
+      isPublished: faq.status === "active"
     }))
   });
+
+  await prisma.testimonial.deleteMany();
+  await prisma.testimonial.createMany({
+    data: localDemoCmsSnapshot.testimonials
+      .filter((testimonial) => Boolean(testimonial.quote?.trim()))
+      .map((testimonial) => ({
+        authorName: testimonial.name,
+        headline: testimonial.role,
+        content: testimonial.quote!,
+        rating: testimonial.rating,
+        isPublished: testimonial.status === "active"
+      }))
+  });
+}
+
+async function seedCmsSnapshot() {
+  await prisma.moduleSnapshot.upsert({
+    where: {
+      moduleName: "cms"
+    },
+    update: {
+      snapshot: localDemoCmsSnapshot as unknown as Prisma.InputJsonValue,
+      version: 1
+    },
+    create: {
+      moduleName: "cms",
+      snapshot: localDemoCmsSnapshot as unknown as Prisma.InputJsonValue,
+      version: 1
+    }
+  });
+}
+
+async function main() {
+  await seedSiteSettings();
+  await seedRolesAndPermissions();
+  await seedOperationalUsers();
+  await seedCatalog();
+  await seedCmsTables();
+  await seedCmsSnapshot();
 }
 
 main()

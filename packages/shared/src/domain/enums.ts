@@ -41,6 +41,12 @@ export enum ManualPaymentRequestStatus {
   Expired = "expired"
 }
 
+export enum CrmStage {
+  ReadyForFollowUp = "ready_for_followup",
+  FollowUp = "followup",
+  Closed = "closed"
+}
+
 export enum VendorApplicationStatus {
   Submitted = "submitted",
   Screening = "screening",
@@ -53,6 +59,11 @@ export enum VendorStatus {
   Active = "active",
   Inactive = "inactive",
   Suspended = "suspended"
+}
+
+export enum VendorCollaborationType {
+  Seller = "seller",
+  Affiliate = "affiliate"
 }
 
 export enum CommissionStatus {
@@ -89,6 +100,17 @@ export enum WholesaleQuoteStatus {
   Accepted = "accepted",
   Rejected = "rejected",
   Expired = "expired"
+}
+
+export enum CmsTestimonialKind {
+  Text = "text",
+  Audio = "audio",
+  Social = "social"
+}
+
+export enum CmsSocialPlatform {
+  Instagram = "instagram",
+  Tiktok = "tiktok"
 }
 
 export enum LoyaltyMovementStatus {
@@ -145,6 +167,11 @@ export enum InventoryMovementType {
   Inbound = "inbound",
   Outbound = "outbound",
   Adjustment = "adjustment"
+}
+
+export enum ProductSalesChannel {
+  Public = "public",
+  Internal = "internal"
 }
 
 export enum QueueName {

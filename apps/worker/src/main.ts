@@ -48,8 +48,20 @@ async function createWorkerServices() {
 const resendApiKey = process.env.RESEND_API_KEY ?? null;
 const resendFrom = process.env.RESEND_FROM_EMAIL ?? "Huele Huele <noreply@huelegood.com>";
 
+type EmailDispatchResult =
+  | { status: "sent"; provider: "resend"; providerMessageId?: string }
+  | { status: "skipped"; reason: string }
+  | { status: "failed"; reason: string; httpStatus?: number; providerMessageId?: string };
+
 async function sendEmailViaResend(to: string, subject: string, body: string) {
-  if (!resendApiKey) return;
+  if (!resendApiKey) {
+    writeWorkerLog("warn", "notifications.email.skipped", {
+      to,
+      subject,
+      reason: "RESEND_API_KEY missing"
+    });
+    return { status: "skipped", reason: "RESEND_API_KEY missing" } satisfies EmailDispatchResult;
+  }
   try {
     const html = `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:24px">
       <p style="font-size:16px;line-height:1.7;color:#374151;white-space:pre-line">${body.replace(/\n/g, "<br>")}</p>
@@ -61,13 +73,38 @@ async function sendEmailViaResend(to: string, subject: string, body: string) {
       headers: { "Authorization": `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({ from: resendFrom, to, subject, html })
     });
+    const payload = await res.json().catch(() => null) as { id?: string; message?: string } | null;
     if (!res.ok) {
-      writeWorkerLog("warn", "notifications.email.failed", { to, subject, status: res.status });
+      const reason = payload?.message ?? `HTTP ${res.status}`;
+      writeWorkerLog("warn", "notifications.email.failed", {
+        to,
+        subject,
+        status: res.status,
+        reason,
+        resendMessageId: payload?.id
+      });
+      return {
+        status: "failed",
+        reason,
+        httpStatus: res.status,
+        providerMessageId: payload?.id
+      } satisfies EmailDispatchResult;
     } else {
-      writeWorkerLog("info", "notifications.email.sent", { to, subject });
+      writeWorkerLog("info", "notifications.email.sent", {
+        to,
+        subject,
+        resendMessageId: payload?.id
+      });
+      return {
+        status: "sent",
+        provider: "resend",
+        providerMessageId: payload?.id
+      } satisfies EmailDispatchResult;
     }
   } catch (err) {
-    writeWorkerLog("warn", "notifications.email.error", { to, subject, error: String(err) });
+    const reason = String(err);
+    writeWorkerLog("warn", "notifications.email.error", { to, subject, error: reason });
+    return { status: "failed", reason } satisfies EmailDispatchResult;
   }
 }
 
@@ -75,15 +112,38 @@ async function processNotificationDispatch(
   notificationsService: NotificationsService,
   job: Job<NotificationDispatchJobData>
 ) {
-  const record = notificationsService.findById(job.data.notificationId);
-  if (record && record.channel === "email" && record.audience?.includes("@")) {
-    await sendEmailViaResend(record.audience, record.subject, record.body);
-  }
-
-  const detail = job.data.reason
+  const record = await notificationsService.findByIdFresh(job.data.notificationId);
+  let deliveryDetail = job.data.reason
     ? `${job.data.reason} · entrega procesada por worker.`
     : "La notificación quedó enviada por el worker.";
-  const notification = await notificationsService.markNotificationSent(job.data.notificationId, detail);
+
+  if (record && record.channel === "email" && record.audience?.includes("@")) {
+    const result = await sendEmailViaResend(record.audience, record.subject, record.body);
+    if (result.status !== "sent") {
+      const notification = await notificationsService.markNotificationFailed(
+        job.data.notificationId,
+        `Email no enviado: ${result.reason}`
+      );
+      writeWorkerLog("warn", "notifications.dispatch.failed", {
+        notificationId: notification.id,
+        status: notification.status,
+        requestedAt: job.data.requestedAt,
+        queueName: job.queueName,
+        jobId: job.id,
+        reason: result.reason
+      });
+      return {
+        status: "failed",
+        notificationId: notification.id,
+        notificationStatus: notification.status
+      };
+    }
+
+    if (result.providerMessageId) {
+      deliveryDetail = `${deliveryDetail} resend:${result.providerMessageId}`;
+    }
+  }
+  const notification = await notificationsService.markNotificationSent(job.data.notificationId, deliveryDetail);
 
   writeWorkerLog("info", "notifications.dispatch.processed", {
     notificationId: notification.id,
@@ -107,7 +167,8 @@ async function processManualPaymentReview(
 ) {
   const payload = {
     reviewer: job.data.reviewer,
-    notes: job.data.notes
+    notes: job.data.notes,
+    sendEmailNow: job.data.sendEmailNow
   };
   const result = await (
     job.data.decision === "approve"

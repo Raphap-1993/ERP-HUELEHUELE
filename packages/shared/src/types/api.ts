@@ -2,16 +2,21 @@ import type {
   CampaignRunStatus,
   CampaignStatus,
   CampaignRecipientStatus,
+  CmsSocialPlatform,
+  CmsTestimonialKind,
   CommissionPayoutStatus,
   CommissionStatus,
+  CrmStage,
   LoyaltyMovementStatus,
   ManualPaymentRequestStatus,
   OrderStatus,
   NotificationChannel,
   NotificationStatus,
   PaymentStatus,
+  ProductSalesChannel,
   RoleCode,
   RedemptionStatus,
+  VendorCollaborationType,
   VendorApplicationStatus,
   VendorStatus,
   WholesaleLeadStatus,
@@ -158,6 +163,7 @@ export interface VendorSummary {
   name: string;
   email?: string;
   code: string;
+  collaborationType?: VendorCollaborationType;
   city?: string;
   status: VendorStatus;
   sales: number;
@@ -173,6 +179,7 @@ export interface VendorSummary {
 export interface VendorCodeSummary {
   code: string;
   name: string;
+  collaborationType?: VendorCollaborationType;
   status: VendorStatus;
   approvedAt?: string;
   updatedAt: string;
@@ -183,6 +190,8 @@ export interface WholesaleLeadInput {
   contact: string;
   email: string;
   city: string;
+  interestType?: "wholesale" | "distributor";
+  estimatedVolume?: number;
   phone?: string;
   notes?: string;
   source?: string;
@@ -194,6 +203,8 @@ export interface WholesaleLeadSummary {
   contact: string;
   email: string;
   city: string;
+  interestType?: "wholesale" | "distributor";
+  estimatedVolume?: number;
   source: string;
   status: WholesaleLeadStatus;
   phone?: string;
@@ -351,8 +362,14 @@ export interface CmsFaqInput {
 export interface CmsTestimonialInput {
   name: string;
   role: string;
-  quote: string;
-  rating: number;
+  quote?: string;
+  rating?: number;
+  kind?: CmsTestimonialKind;
+  position?: number;
+  audioUrl?: string;
+  socialUrl?: string;
+  socialPlatform?: CmsSocialPlatform;
+  coverImageUrl?: string;
   status?: CmsTestimonial["status"];
 }
 
@@ -465,6 +482,7 @@ export interface CommissionRuleSummary {
   rate: number;
   paymentMethod?: "openpay" | "manual" | "any";
   appliesToVendorCode?: string;
+  appliesToCollaborationType?: VendorCollaborationType;
   minOrderTotal?: number;
   maxOrderTotal?: number;
   payoutDelayDays: number;
@@ -542,6 +560,7 @@ export interface CommissionRuleInput {
   rate: number;
   paymentMethod?: CommissionRuleSummary["paymentMethod"];
   appliesToVendorCode?: string;
+  appliesToCollaborationType?: VendorCollaborationType;
   minOrderTotal?: number;
   maxOrderTotal?: number;
   payoutDelayDays?: number;
@@ -599,6 +618,7 @@ export interface ProductVariantSummary {
   price: number;
   compareAtPrice?: number;
   stockOnHand: number;
+  lowStockThreshold?: number;
   status: ProductVariantStatusValue;
 }
 
@@ -634,6 +654,8 @@ export interface ProductAdminSummary {
   compareAtPrice?: number;
   sku: string;
   defaultVariantId?: string;
+  salesChannel?: ProductSalesChannel;
+  reportingGroup?: string;
   currencyCode: string;
   primaryImageUrl?: string;
   updatedAt: string;
@@ -653,6 +675,7 @@ export interface ProductVariantInput {
   price: number;
   compareAtPrice?: number;
   stockOnHand: number;
+  lowStockThreshold?: number;
   status: ProductVariantStatusValue;
 }
 
@@ -668,6 +691,8 @@ export interface ProductUpsertInput {
   longDescription?: string;
   status: ProductStatusValue;
   isFeatured: boolean;
+  salesChannel?: ProductSalesChannel;
+  reportingGroup?: string;
   variants: ProductVariantInput[];
   bundleComponents: ProductBundleComponentInput[];
 }
@@ -836,6 +861,13 @@ export interface AdminPaymentSummary {
   updatedAt: string;
 }
 
+export interface AdminManualPaymentCreateInput {
+  reviewer?: string;
+  reference?: string;
+  notes?: string;
+  amount?: number;
+}
+
 export interface AdminManualPaymentRequestSummary {
   id: string;
   orderNumber: string;
@@ -862,6 +894,7 @@ export interface AdminOrderSummary {
   paymentMethod: "openpay" | "manual";
   vendorCode?: string;
   manualStatus?: ManualPaymentRequestStatus;
+  crmStage?: CrmStage;
   providerReference: string;
   updatedAt: string;
   createdAt: string;
@@ -891,6 +924,7 @@ export interface AdminOrderDetail {
   manualEvidenceReference?: string;
   manualEvidenceNotes?: string;
   evidenceImageUrl?: string;
+  crmStage?: CrmStage;
   statusHistory: OrderStatusHistorySummary[];
   payment: AdminPaymentSummary;
   manualRequest?: AdminManualPaymentRequestSummary;
@@ -898,9 +932,49 @@ export interface AdminOrderDetail {
   updatedAt: string;
 }
 
+export interface AdminOrderStatusTransitionInput {
+  status: OrderStatus;
+  actor?: string;
+  note?: string;
+}
+
 export interface ManualReviewActionInput {
   reviewer?: string;
   notes?: string;
+  sendEmailNow?: boolean;
+}
+
+export interface AdminVendorCreateInput {
+  name: string;
+  email: string;
+  city: string;
+  collaborationType?: VendorCollaborationType;
+  phone?: string;
+  source?: string;
+  notes?: string;
+  enableCommission?: boolean;
+}
+
+export interface InventoryReportRow {
+  reportingGroup: string;
+  productId: string;
+  productName: string;
+  productSlug: string;
+  salesChannel: ProductSalesChannel;
+  variantId: string;
+  variantName: string;
+  sku: string;
+  unitsSold: number;
+  stockOnHand: number;
+  reservedQuantity: number;
+  availableStock: number;
+  lowStockThreshold: number;
+  lowStock: boolean;
+}
+
+export interface InventoryReportSummary {
+  rows: InventoryReportRow[];
+  generatedAt: string;
 }
 
 export interface LoyaltySummaryEnvelope {
@@ -984,6 +1058,11 @@ export interface OperationalHealthEnvelope {
 
 export interface ObservabilityOverviewEnvelope {
   data: ObservabilityOverviewSummary;
+  meta?: Record<string, unknown>;
+}
+
+export interface InventoryReportEnvelope {
+  data: InventoryReportSummary;
   meta?: Record<string, unknown>;
 }
 
