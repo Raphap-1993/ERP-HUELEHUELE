@@ -26,6 +26,17 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
+function formatDateTime(value?: string) {
+  if (!value) {
+    return "—";
+  }
+
+  return new Intl.DateTimeFormat("es-PE", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(new Date(value));
+}
+
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -235,6 +246,33 @@ export function ReportsWorkspace() {
     o.createdAt.slice(0, 10)
   ]);
 
+  const vendorRows = (report?.vendors.rows ?? []).map((row) => [
+    row.vendorName,
+    row.vendorCode ?? "—",
+    String(row.salesCount),
+    formatCurrency(row.totalRevenue),
+    formatCurrency(row.avgOrderValue),
+    formatDateTime(row.lastSaleAt)
+  ]);
+
+  const productRows = (report?.products.rows ?? []).map((row) => [
+    `${row.productName} · ${row.sku}`,
+    String(row.unitsSold),
+    formatCurrency(row.totalRevenue),
+    `${row.webUnitsSold} web / ${row.manualUnitsSold} manual`,
+    formatDateTime(row.lastSoldAt)
+  ]);
+
+  const detailRows = (report?.sales.details ?? []).map((row) => [
+    formatDateTime(row.confirmedAt),
+    row.orderNumber,
+    row.salesChannel === "manual" ? "Manual" : "Web",
+    row.vendorName ? `${row.vendorName}${row.vendorCode ? ` (${row.vendorCode})` : ""}` : row.vendorCode ?? "—",
+    `${row.productName} · ${row.sku}`,
+    String(row.quantity),
+    formatCurrency(row.lineTotal)
+  ]);
+
   return (
     <div className="space-y-6 py-6 md:py-10">
       {/* Header */}
@@ -348,7 +386,7 @@ export function ReportsWorkspace() {
               <CardHeader>
                 <CardTitle>Métodos de pago</CardTitle>
                 <CardDescription>
-                  Distribución de {report.orders.total} pedidos por canal.
+                  Distribución de {report.sales.totalConfirmed} ventas confirmadas por método.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -366,6 +404,29 @@ export function ReportsWorkspace() {
             description={`${report.orders.total} pedido${report.orders.total !== 1 ? "s" : ""} entre ${report.period.from} y ${report.period.to}`}
             headers={["Pedido", "Cliente", "Total", "Método", "Estado", "Pago", "Fecha"]}
             rows={recentRows}
+          />
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <AdminDataTable
+              title="Ventas por vendedor"
+              description={`${report.sales.totalConfirmed} venta${report.sales.totalConfirmed !== 1 ? "s" : ""} confirmada${report.sales.totalConfirmed !== 1 ? "s" : ""} para el periodo.`}
+              headers={["Vendedor", "Código", "Ventas", "Monto", "Ticket prom.", "Última venta"]}
+              rows={vendorRows}
+            />
+
+            <AdminDataTable
+              title="Ventas por producto"
+              description="Unidades e ingresos agrupados por producto y SKU."
+              headers={["Producto", "Unidades", "Ingresos", "Canales", "Última venta"]}
+              rows={productRows}
+            />
+          </div>
+
+          <AdminDataTable
+            title="Detalle de ventas"
+            description="Fecha de venta confirmada por producto, canal y vendedor."
+            headers={["Fecha venta", "Pedido", "Canal", "Vendedor", "Producto", "Cant.", "Total línea"]}
+            rows={detailRows}
           />
 
           {/* Status breakdown + Commissions summary */}

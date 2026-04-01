@@ -27,15 +27,16 @@ Permitir que un cliente complete una compra online usando Openpay, preservando t
 2. El cliente aplica, si corresponde, un cupón y/o un código de vendedor.
 3. El sistema recalcula subtotal, descuentos, shipping si aplica y total.
 4. El cliente completa datos de contacto y dirección.
-5. La web solicita a la API la creación del pedido desde el carrito.
-6. La API crea `order`, `order_items`, `order_addresses` y snapshot comercial.
-7. La API crea un registro `payment` en estado inicial y genera el intento con Openpay.
-8. La web redirige o embebe el flujo de Openpay según la modalidad elegida.
-9. Openpay responde resultado inmediato o diferido.
-10. La API registra `payment_transactions`.
-11. El webhook de Openpay confirma el resultado final.
-12. La API actualiza `payments` y transiciona `orders` a estado elegible.
-13. Se disparan procesos asíncronos post-pago: notificación, atribución de comisión, evaluación de puntos y auditoría.
+5. Si el cliente marca envío a provincia, el checkout exige tipo y número de documento compatible con `SUNAT`, fuerza carrier `Shalom`, solicita la sucursal más cercana y deja el flete como pago contra recojo.
+6. La web solicita a la API la creación del pedido desde el carrito.
+7. La API crea `order`, `order_items`, `order_addresses` y snapshot comercial.
+8. La API crea un registro `payment` en estado inicial y genera el intento con Openpay.
+9. La web redirige o embebe el flujo de Openpay según la modalidad elegida.
+10. Openpay responde resultado inmediato o diferido.
+11. La API registra `payment_transactions`.
+12. El webhook de Openpay confirma el resultado final.
+13. La API actualiza `payments` y transiciona `orders` a estado elegible.
+14. Se disparan procesos asíncronos post-pago: notificación, atribución de comisión, evaluación de puntos y auditoría.
 
 ## Estados involucrados
 
@@ -66,6 +67,9 @@ Si Openpay utiliza un estado intermedio distinto al modelo local, se persiste en
 - Un pedido conserva snapshot de precios y descuentos aunque luego cambie el catálogo.
 - La comisión no se paga en este flujo; solo se deja lista la atribución.
 - La asignación de puntos no debe quedar disponible hasta que el pedido alcance estado elegible definido por el dominio.
+- Si el cliente elige envío a provincia, el checkout solo permite `Shalom`.
+- El envío a provincia requiere tipo y número de documento válido del cliente, además del nombre de sucursal de recojo.
+- El costo del envío a provincia no se cobra en el checkout; se paga al momento de recoger en agencia.
 
 ## Errores posibles
 

@@ -13,6 +13,7 @@
     "dev:worker": "npm run dev -w @huelegood/worker",
     "build": "npm run build -w @huelegood/shared && npm run build -w @huelegood/web && npm run build -w @huelegood/admin && npm run build -w @huelegood/api && npm run build -w @huelegood/worker",
     "build:apps": "npm run build",
+    "test:erp-sales": "npm run test:erp-sales -w @huelegood/api",
     "typecheck": "npm run typecheck -ws",
     "lint": "npm run typecheck -ws",
     "prisma:generate": "npm run prisma:generate -w @huelegood/api",

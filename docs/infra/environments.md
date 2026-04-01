@@ -24,6 +24,8 @@ Si solo existe un VPS:
 | `APP_NAME` | nombre lógico del servicio |
 | `APP_RELEASE_SHA` | versión o commit desplegado |
 | `APP_BASE_DIR` | directorio base del release en el VPS |
+| `APP_SHARED_DIR` | directorio compartido del entorno operativo |
+| `APP_LOG_DIR` | ruta absoluta para logs de PM2 del release activo |
 | `NEXT_PUBLIC_APP_URL` | URL pública del storefront |
 | `NEXT_PUBLIC_ADMIN_URL` | URL pública del admin |
 | `NEXT_PUBLIC_API_URL` | URL pública de la API |
@@ -124,6 +126,7 @@ Ubicación efectiva en producción actual:
 
 - en el VPS activo, la fuente operativa de entorno vive en `/home/huelehuele/apps/huelegood.com/shared/.env.production`
 - `scripts/release-production.sh` intenta primero `.env.production` dentro del repo y luego `../shared/.env.production`
+- cuando una release corre desde `releases/<timestamp>`, los scripts resuelven además `APP_SHARED_DIR/.env.production`
 - `scripts/migrate-bootstrap-users.sh` lee las mismas ubicaciones y puede ejecutarse antes del primer release o durante una ventana de migración controlada
 - `PM2` debe recargarse con `--update-env` para que las variables nuevas entren realmente al proceso
 

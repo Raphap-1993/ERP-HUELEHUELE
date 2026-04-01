@@ -736,9 +736,37 @@ export interface CheckoutCustomerInput {
   lastName: string;
   email: string;
   phone: string;
+  documentType?: CheckoutDocumentType;
+  documentNumber?: string;
 }
 
-export interface CheckoutAddressInput {
+export type CheckoutDocumentType = "dni" | "ce" | "ruc" | "passport" | "other_sunat";
+
+export const CHECKOUT_DOCUMENT_TYPE_OPTIONS: Array<{
+  value: CheckoutDocumentType;
+  label: string;
+  placeholder: string;
+  inputMode: "text" | "numeric";
+}> = [
+  { value: "dni", label: "DNI", placeholder: "8 dígitos", inputMode: "numeric" },
+  { value: "ce", label: "Carné de extranjería", placeholder: "Tu número de CE", inputMode: "text" },
+  { value: "ruc", label: "RUC", placeholder: "11 dígitos", inputMode: "numeric" },
+  { value: "passport", label: "Pasaporte", placeholder: "Tu número de pasaporte", inputMode: "text" },
+  { value: "other_sunat", label: "Otro documento SUNAT", placeholder: "Tu número de documento", inputMode: "text" }
+];
+
+export type CheckoutDeliveryMode = "standard" | "province_shalom_pickup";
+
+export type CheckoutCarrier = "olva_courier" | "shalom";
+
+export interface CheckoutShippingInput {
+  deliveryMode?: CheckoutDeliveryMode;
+  carrier?: CheckoutCarrier;
+  agencyName?: string;
+  payOnPickup?: boolean;
+}
+
+export interface CheckoutAddressInput extends CheckoutShippingInput {
   label?: string;
   recipientName: string;
   line1: string;
@@ -793,6 +821,7 @@ export interface CheckoutQuoteInput {
   paymentMethod?: "openpay" | "manual";
   vendorCode?: string;
   couponCode?: string;
+  shipping?: CheckoutShippingInput;
 }
 
 export interface CheckoutActionSummary {
@@ -800,6 +829,7 @@ export interface CheckoutActionSummary {
   orderStatus: OrderStatus;
   paymentStatus: PaymentStatus;
   paymentMethod: "openpay" | "manual";
+  salesChannel: SalesChannelValue;
   manualStatus?: ManualPaymentRequestStatus;
   manualRequestId?: string;
   manualEvidenceReference?: string;
@@ -826,9 +856,11 @@ export interface OrderCustomerSummary {
   lastName: string;
   email: string;
   phone: string;
+  documentType?: CheckoutDocumentType;
+  documentNumber?: string;
 }
 
-export interface OrderAddressSummary {
+export interface OrderAddressSummary extends CheckoutShippingInput {
   label?: string;
   recipientName: string;
   line1: string;
@@ -846,6 +878,8 @@ export interface OrderStatusHistorySummary {
   occurredAt: string;
   note: string;
 }
+
+export type SalesChannelValue = "web" | "manual";
 
 export interface AdminPaymentSummary {
   id: string;
@@ -892,10 +926,14 @@ export interface AdminOrderSummary {
   orderStatus: OrderStatus;
   paymentStatus: PaymentStatus;
   paymentMethod: "openpay" | "manual";
+  salesChannel: SalesChannelValue;
+  vendorId?: string;
   vendorCode?: string;
+  vendorName?: string;
   manualStatus?: ManualPaymentRequestStatus;
   crmStage?: CrmStage;
   providerReference: string;
+  confirmedAt?: string;
   updatedAt: string;
   createdAt: string;
   itemCount: number;
@@ -912,9 +950,12 @@ export interface AdminOrderDetail {
   total: number;
   currencyCode: string;
   paymentMethod: "openpay" | "manual";
+  salesChannel: SalesChannelValue;
   orderStatus: OrderStatus;
   paymentStatus: PaymentStatus;
+  vendorId?: string;
   vendorCode?: string;
+  vendorName?: string;
   couponCode?: string;
   notes?: string;
   providerReference: string;
@@ -928,6 +969,7 @@ export interface AdminOrderDetail {
   statusHistory: OrderStatusHistorySummary[];
   payment: AdminPaymentSummary;
   manualRequest?: AdminManualPaymentRequestSummary;
+  confirmedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -975,6 +1017,43 @@ export interface InventoryReportRow {
 export interface InventoryReportSummary {
   rows: InventoryReportRow[];
   generatedAt: string;
+}
+
+export interface VendorSalesReportRow {
+  vendorId?: string;
+  vendorCode?: string;
+  vendorName: string;
+  salesCount: number;
+  totalRevenue: number;
+  avgOrderValue: number;
+  lastSaleAt?: string;
+  webSalesCount: number;
+  manualSalesCount: number;
+}
+
+export interface ProductSalesReportRow {
+  productSlug: string;
+  productName: string;
+  sku: string;
+  unitsSold: number;
+  totalRevenue: number;
+  lastSoldAt?: string;
+  webUnitsSold: number;
+  manualUnitsSold: number;
+}
+
+export interface SalesDetailReportRow {
+  orderNumber: string;
+  confirmedAt: string;
+  salesChannel: SalesChannelValue;
+  vendorId?: string;
+  vendorCode?: string;
+  vendorName?: string;
+  productSlug: string;
+  productName: string;
+  sku: string;
+  quantity: number;
+  lineTotal: number;
 }
 
 export interface LoyaltySummaryEnvelope {

@@ -6,6 +6,7 @@ import {
   type CheckoutQuoteInput,
   type CheckoutQuoteSummary,
   type CheckoutRequestInput,
+  type CheckoutShippingInput,
   ManualPaymentRequestStatus,
   OrderStatus,
   PaymentStatus
@@ -23,6 +24,23 @@ function normalizeCode(value?: string) {
 
 function roundCurrency(value: number) {
   return Math.round(value * 100) / 100;
+}
+
+function resolveShippingInput(body: CheckoutQuoteInput | CheckoutRequestInput): CheckoutShippingInput | undefined {
+  if ("shipping" in body && body.shipping) {
+    return body.shipping;
+  }
+
+  if ("address" in body && body.address) {
+    return {
+      deliveryMode: body.address.deliveryMode,
+      carrier: body.address.carrier,
+      agencyName: body.address.agencyName,
+      payOnPickup: body.address.payOnPickup
+    };
+  }
+
+  return undefined;
 }
 
 @Injectable()
@@ -104,7 +122,13 @@ export class CommerceService {
     const settings = this.cmsService.getSiteSettings().data;
     const freeShippingThreshold = Number.isFinite(settings.freeShippingThreshold) ? settings.freeShippingThreshold : 500;
     const shippingFlatRate = Number.isFinite(settings.shippingFlatRate) ? settings.shippingFlatRate : 49;
-    const shipping = subtotal - discount >= freeShippingThreshold ? 0 : roundCurrency(shippingFlatRate);
+    const shippingInput = resolveShippingInput(body);
+    const shipping =
+      shippingInput?.deliveryMode === "province_shalom_pickup"
+        ? 0
+        : subtotal - discount >= freeShippingThreshold
+          ? 0
+          : roundCurrency(shippingFlatRate);
     const grandTotal = roundCurrency(subtotal - discount + shipping);
     const paymentMethod = body.paymentMethod ?? "openpay";
 
@@ -146,6 +170,7 @@ export class CommerceService {
       orderStatus: order.orderStatus,
       paymentStatus: order.paymentStatus,
       paymentMethod: order.paymentMethod,
+      salesChannel: order.salesChannel,
       manualStatus: order.manualStatus,
       manualRequestId: order.manualRequestId,
       manualEvidenceReference: order.manualEvidenceReference,

@@ -42,6 +42,11 @@ export class OrdersController {
     return this.ordersService.registerAdminManualPayment(orderNumber, body);
   }
 
+  @Post(":orderNumber/confirm-online-payment")
+  confirmOnlinePayment(@Param("orderNumber") orderNumber: string, @Body() body: AdminManualPaymentCreateInput) {
+    return this.ordersService.confirmOnlinePayment(orderNumber, body);
+  }
+
   @Post(":orderNumber/resend-approval-email")
   resendApprovalEmail(@Param("orderNumber") orderNumber: string) {
     return this.ordersService.resendManualApprovalNotification(orderNumber, "admin");

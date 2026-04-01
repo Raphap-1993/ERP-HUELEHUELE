@@ -10,12 +10,16 @@ import {
   NotificationStatus,
   OrderStatus,
   PaymentStatus,
+  type SalesChannelValue,
   type AdminManualPaymentRequestSummary,
   type AdminOrderDetail,
   type AdminOrderSummary,
   type AdminPaymentSummary,
   type CheckoutAddressInput,
+  type CheckoutCarrier,
   type CheckoutCustomerInput,
+  type CheckoutDeliveryMode,
+  type CheckoutDocumentType,
   type CheckoutQuoteSummary,
   type CheckoutRequestInput,
   type InventoryAllocationSummary,
@@ -29,6 +33,7 @@ import { LoyaltyService } from "../loyalty/loyalty.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ObservabilityService } from "../observability/observability.service";
 import { ModuleStateService } from "../../persistence/module-state.service";
+import { VendorsService } from "../vendors/vendors.service";
 
 interface CreateCheckoutOrderInput {
   orderNumber: string;
@@ -52,6 +57,12 @@ interface OrdersSnapshot {
   idempotencyIndex: Record<string, CheckoutIdempotencyRecord>;
 }
 
+interface VendorTraceSnapshot {
+  vendorId?: string;
+  vendorCode?: string;
+  vendorName?: string;
+}
+
 const statusLabels: Record<OrderStatus, string> = {
   [OrderStatus.Draft]: "Pedido creado",
   [OrderStatus.PendingPayment]: "Pendiente de pago",
@@ -66,6 +77,7 @@ const statusLabels: Record<OrderStatus, string> = {
   [OrderStatus.Refunded]: "Reembolsado",
   [OrderStatus.Expired]: "Expirado"
 };
+const validCheckoutDocumentTypes = new Set<CheckoutDocumentType>(["dni", "ce", "ruc", "passport", "other_sunat"]);
 
 function normalizeCode(value?: string) {
   return value?.trim().toUpperCase() || undefined;
@@ -74,6 +86,53 @@ function normalizeCode(value?: string) {
 function normalizeText(value?: string) {
   const normalized = value?.trim();
   return normalized ? normalized : undefined;
+}
+
+function normalizeDocumentType(value?: CheckoutDocumentType): CheckoutDocumentType | undefined {
+  return value && validCheckoutDocumentTypes.has(value) ? value : undefined;
+}
+
+function normalizeDocumentNumber(value?: string, documentType?: CheckoutDocumentType) {
+  const raw = value?.trim().toUpperCase();
+  if (!raw) {
+    return undefined;
+  }
+
+  const normalized = documentType === "dni" || documentType === "ruc" ? raw.replace(/\D/g, "") : raw.replace(/[^0-9A-Z-]/g, "");
+  return normalized ? normalized : undefined;
+}
+
+function isValidDocumentNumber(documentType: CheckoutDocumentType, documentNumber?: string) {
+  if (!documentNumber) {
+    return false;
+  }
+
+  switch (documentType) {
+    case "dni":
+      return /^\d{8}$/.test(documentNumber);
+    case "ruc":
+      return /^\d{11}$/.test(documentNumber);
+    case "ce":
+      return /^[A-Z0-9-]{6,15}$/.test(documentNumber);
+    case "passport":
+      return /^[A-Z0-9-]{6,15}$/.test(documentNumber);
+    case "other_sunat":
+      return /^[A-Z0-9-]{3,20}$/.test(documentNumber);
+    default:
+      return false;
+  }
+}
+
+function normalizeDeliveryMode(value?: CheckoutDeliveryMode): CheckoutDeliveryMode {
+  return value === "province_shalom_pickup" ? "province_shalom_pickup" : "standard";
+}
+
+function normalizeCarrier(value?: CheckoutCarrier, deliveryMode: CheckoutDeliveryMode = "standard"): CheckoutCarrier | undefined {
+  if (value === "shalom" || value === "olva_courier") {
+    return value;
+  }
+
+  return deliveryMode === "province_shalom_pickup" ? "shalom" : undefined;
 }
 
 function createHistoryEntry(status: OrderStatus, actor: string, note: string, occurredAt: string): OrderStatusHistorySummary {
@@ -146,15 +205,21 @@ function fullName(customer: CheckoutCustomerInput) {
 }
 
 function normalizeCustomer(customer: CheckoutCustomerInput) {
+  const documentType = normalizeDocumentType(customer.documentType);
+
   return {
     firstName: customer.firstName.trim(),
     lastName: customer.lastName.trim(),
     email: customer.email.trim().toLowerCase(),
-    phone: customer.phone.trim()
+    phone: customer.phone.trim(),
+    documentType,
+    documentNumber: normalizeDocumentNumber(customer.documentNumber, documentType)
   };
 }
 
 function normalizeAddress(address: CheckoutAddressInput) {
+  const deliveryMode = normalizeDeliveryMode(address.deliveryMode);
+
   return {
     label: normalizeText(address.label),
     recipientName: address.recipientName.trim(),
@@ -163,7 +228,11 @@ function normalizeAddress(address: CheckoutAddressInput) {
     city: address.city.trim(),
     region: address.region.trim(),
     postalCode: address.postalCode.trim(),
-    countryCode: address.countryCode?.trim().toUpperCase() || "PE"
+    countryCode: address.countryCode?.trim().toUpperCase() || "PE",
+    deliveryMode,
+    carrier: normalizeCarrier(address.carrier, deliveryMode),
+    agencyName: normalizeText(address.agencyName),
+    payOnPickup: deliveryMode === "province_shalom_pickup" ? true : address.payOnPickup === true ? true : undefined
   };
 }
 
@@ -254,7 +323,10 @@ function normalizeCheckoutRequest(input: CreateCheckoutOrderInput) {
         firstName: request.customer.firstName.trim(),
         lastName: request.customer.lastName.trim(),
         email: request.customer.email.trim().toLowerCase(),
-        phone: request.customer.phone.trim()
+        phone: request.customer.phone.trim(),
+        documentType: normalizeDocumentType(request.customer.documentType) ?? null,
+        documentNumber:
+          normalizeDocumentNumber(request.customer.documentNumber, normalizeDocumentType(request.customer.documentType)) ?? null
       },
       address: normalizeAddress(request.address),
       items: request.items
@@ -318,6 +390,7 @@ export class OrdersService implements OnModuleInit {
     private readonly loyaltyService: LoyaltyService,
     private readonly notificationsService: NotificationsService,
     private readonly observabilityService: ObservabilityService,
+    private readonly vendorsService: VendorsService,
     private readonly moduleStateService: ModuleStateService
   ) {
     if (demoRuntimeEnabled()) {
@@ -338,6 +411,7 @@ export class OrdersService implements OnModuleInit {
     }
 
     await this.hydrateLegacyOrders();
+    this.hydrateLegacyMetadata();
     await this.persistState();
     await this.inventoryService.rebuildFromOrders(
       this.sortedOrders().map((order) => ({
@@ -353,6 +427,18 @@ export class OrdersService implements OnModuleInit {
   reserveOrderNumber() {
     this.orderSequence += 1;
     return `HG-${this.orderSequence}`;
+  }
+
+  getAllOrderDetails() {
+    return this.sortedOrders().map((order) => ({
+      ...order,
+      customer: { ...order.customer },
+      address: { ...order.address },
+      items: cloneOrderItems(order.items),
+      statusHistory: order.statusHistory.map((entry) => ({ ...entry })),
+      payment: { ...order.payment },
+      manualRequest: order.manualRequest ? { ...order.manualRequest } : undefined
+    }));
   }
 
   async createCheckoutOrder(input: CreateCheckoutOrderInput) {
@@ -398,6 +484,8 @@ export class OrdersService implements OnModuleInit {
     const paymentStatus = input.paymentStatus;
     const orderStatus = input.orderStatus;
     const paymentMethod = input.request.paymentMethod;
+    const vendorTrace = this.resolveVendorTrace(input.request.vendorCode, { strict: true });
+    const salesChannel: SalesChannelValue = "web";
 
     const payment = this.buildPaymentSummary({
       orderNumber,
@@ -439,9 +527,12 @@ export class OrdersService implements OnModuleInit {
       total: input.quote.grandTotal,
       currencyCode: input.quote.currencyCode,
       paymentMethod,
+      salesChannel,
       orderStatus,
       paymentStatus,
-      vendorCode: normalizeCode(input.request.vendorCode),
+      vendorId: vendorTrace.vendorId,
+      vendorCode: vendorTrace.vendorCode,
+      vendorName: vendorTrace.vendorName,
       couponCode: normalizeCode(input.request.couponCode),
       notes: normalizeText(input.request.notes),
       providerReference: input.providerReference,
@@ -459,6 +550,7 @@ export class OrdersService implements OnModuleInit {
       }),
       payment,
       manualRequest,
+      confirmedAt: undefined,
       createdAt,
       updatedAt: createdAt
     };
@@ -597,6 +689,8 @@ export class OrdersService implements OnModuleInit {
     const paymentStatus = isPaid ? PaymentStatus.Paid : PaymentStatus.Pending;
     const customerName = fullName(customer) || customer.email;
     const actorName = normalizeText(input.reviewer) ?? "backoffice";
+    const vendorTrace = this.resolveVendorTrace(input.vendorCode, { strict: true });
+    const salesChannel: SalesChannelValue = "manual";
 
     const payment = this.buildPaymentSummary({
       orderNumber,
@@ -621,9 +715,12 @@ export class OrdersService implements OnModuleInit {
       total: subtotal,
       currencyCode: "PEN",
       paymentMethod: "manual",
+      salesChannel,
       orderStatus,
       paymentStatus,
-      vendorCode: normalizeCode(input.vendorCode),
+      vendorId: vendorTrace.vendorId,
+      vendorCode: vendorTrace.vendorCode,
+      vendorName: vendorTrace.vendorName,
       couponCode: undefined,
       notes: normalizeText(input.notes),
       providerReference: `backoffice-${orderNumber.toLowerCase()}`,
@@ -644,6 +741,7 @@ export class OrdersService implements OnModuleInit {
       ],
       payment,
       manualRequest: undefined,
+      confirmedAt: isPaid ? createdAt : undefined,
       createdAt,
       updatedAt: createdAt
     };
@@ -780,6 +878,8 @@ export class OrdersService implements OnModuleInit {
     const previousStatus = order.orderStatus;
     order.orderStatus = nextStatus;
     order.crmStage = resolveOperationalCrmStage(nextStatus, order.paymentStatus);
+    order.salesChannel = this.inferSalesChannel(order);
+    order.confirmedAt = order.confirmedAt ?? this.inferConfirmedAt({ ...order, orderStatus: nextStatus });
     order.updatedAt = occurredAt;
     order.payment = this.buildPaymentSummary({
       orderNumber: order.orderNumber,
@@ -868,43 +968,17 @@ export class OrdersService implements OnModuleInit {
       throw new ConflictException(`El pedido ${order.orderNumber} ya tiene una solicitud manual. Usa la revisión manual existente.`);
     }
 
-    order.paymentMethod = "manual";
-    order.paymentStatus = PaymentStatus.Paid;
-    order.orderStatus = OrderStatus.Paid;
-    order.crmStage = resolveOperationalCrmStage(order.orderStatus, order.paymentStatus);
-    order.providerReference = reference;
-    order.manualEvidenceReference = reference;
-    order.manualEvidenceNotes = notes;
-    order.updatedAt = occurredAt;
-    order.payment = this.buildPaymentSummary({
-      orderNumber: order.orderNumber,
-      customerName: fullName(order.customer) || order.customer.email,
+    await this.applyCommercialConfirmation(order, {
+      actor,
+      notes: "Inventario confirmado por registro manual de pago.",
+      occurredAt,
       provider: "manual",
-      amount,
-      currencyCode: order.currencyCode,
-      paymentStatus: order.paymentStatus,
+      paymentMethod: "manual",
+      providerReference: reference,
       manualStatus: undefined,
       manualEvidenceReference: reference,
-      updatedAt: occurredAt,
-      orderStatus: order.orderStatus
+      manualEvidenceNotes: notes
     });
-    order.statusHistory = [...order.statusHistory, createHistoryEntry(OrderStatus.Paid, actor, notes, occurredAt)];
-
-    await this.inventoryService.syncOrder({
-      orderNumber: order.orderNumber,
-      orderStatus: order.orderStatus,
-      items: order.items,
-      occurredAt,
-      note: "Inventario confirmado por registro manual de pago."
-    });
-
-    try {
-      await this.loyaltyService.settleOrderPoints(order.orderNumber, actor);
-    } catch (error) {
-      if (!(error instanceof NotFoundException)) {
-        throw error;
-      }
-    }
 
     this.auditService.recordAdminAction({
       actionType: "payments.manual.recorded",
@@ -931,6 +1005,66 @@ export class OrdersService implements OnModuleInit {
     return {
       status: "ok" as const,
       message: `Pago manual registrado para ${order.orderNumber}.`,
+      orderNumber: order.orderNumber,
+      order: this.toOrderSummary(order)
+    };
+  }
+
+  async confirmOnlinePayment(orderNumber: string, input: AdminManualPaymentCreateInput = {}) {
+    const order = this.requireOrder(orderNumber);
+    const actor = normalizeText(input.reviewer) ?? "operador_pagos";
+    const notes = normalizeText(input.notes) ?? "Pago online conciliado desde backoffice.";
+    const reference = normalizeText(input.reference) ?? order.providerReference;
+    const occurredAt = new Date().toISOString();
+
+    if (order.paymentMethod !== "openpay") {
+      throw new BadRequestException(`El pedido ${order.orderNumber} no usa pago online conciliable por esta ruta.`);
+    }
+
+    if (order.paymentStatus === PaymentStatus.Paid) {
+      return {
+        status: "ok" as const,
+        message: `El pedido ${order.orderNumber} ya tenia el pago online confirmado.`,
+        orderNumber: order.orderNumber,
+        order: this.toOrderSummary(order)
+      };
+    }
+
+    await this.applyCommercialConfirmation(order, {
+      actor,
+      notes: "Inventario confirmado por conciliacion de pago online.",
+      occurredAt,
+      provider: "openpay",
+      paymentMethod: "openpay",
+      providerReference: reference,
+      manualStatus: undefined
+    });
+
+    this.auditService.recordAdminAction({
+      actionType: "payments.online.confirmed",
+      targetType: "order",
+      targetId: order.orderNumber,
+      summary: `Se confirmo el pago online del pedido ${order.orderNumber}.`,
+      actorName: actor,
+      metadata: {
+        paymentMethod: order.paymentMethod,
+        providerReference: order.providerReference,
+        confirmedAt: order.confirmedAt
+      }
+    });
+    this.observabilityService.recordDomainEvent({
+      category: "payment",
+      action: "payment.online.confirmed",
+      detail: `Se confirmo el pago online del pedido ${order.orderNumber}.`,
+      relatedType: "order",
+      relatedId: order.orderNumber
+    });
+
+    await this.persistState();
+
+    return {
+      status: "ok" as const,
+      message: `Pago online confirmado para ${order.orderNumber}.`,
       orderNumber: order.orderNumber,
       order: this.toOrderSummary(order)
     };
@@ -1139,67 +1273,26 @@ export class OrdersService implements OnModuleInit {
     const manualRequest = this.requireManualRequest(order);
 
     order.manualStatus = input.status;
-    order.orderStatus = input.orderStatus;
-    order.paymentStatus = input.paymentStatus;
-    order.crmStage = input.status === ManualPaymentRequestStatus.Approved ? CrmStage.ReadyForFollowUp : undefined;
-    order.updatedAt = input.occurredAt;
-    order.payment = this.buildPaymentSummary({
-      orderNumber: order.orderNumber,
-      customerName: manualRequest.customerName,
-      provider: order.paymentMethod,
-      amount: order.total,
-      currencyCode: order.currencyCode,
-      paymentStatus: input.paymentStatus,
-      manualStatus: input.status,
-      manualEvidenceReference: manualRequest.evidenceReference,
-      updatedAt: input.occurredAt,
-      orderStatus: input.orderStatus
-    });
 
     manualRequest.status = input.status;
     manualRequest.reviewedAt = input.occurredAt;
     manualRequest.reviewer = input.reviewer;
     manualRequest.notes = input.notes;
 
-    order.statusHistory = [
-      ...order.statusHistory,
-      createHistoryEntry(
-        input.orderStatus,
-        input.reviewer,
-        input.status === ManualPaymentRequestStatus.Approved
-          ? "Pago manual aprobado. Pedido listo para seguimiento CRM."
-          : "Pago manual rechazado.",
-        input.occurredAt
-      )
-    ];
-
-    await this.inventoryService.syncOrder({
-      orderNumber: order.orderNumber,
-      orderStatus: order.orderStatus,
-      items: order.items,
-      occurredAt: input.occurredAt,
-      note: input.status === ManualPaymentRequestStatus.Approved ? "Inventario confirmado por aprobación manual." : "Inventario liberado por rechazo manual."
-    });
-
     let emailNotification: "queued" | "skipped" | "failed" = "skipped";
 
     if (input.status === ManualPaymentRequestStatus.Approved) {
-      try {
-        await this.loyaltyService.settleOrderPoints(order.orderNumber, input.reviewer);
-      } catch (error) {
-        if (!(error instanceof NotFoundException)) {
-          throw error;
-        }
-
-        this.observabilityService.recordDomainEvent({
-          category: "payment",
-          action: "payment.manual.approved.loyalty_missing",
-          severity: "warning",
-          detail: `No encontramos puntos de loyalty para el pedido ${order.orderNumber}. Continuamos sin actualizar loyalty.`,
-          relatedType: "order",
-          relatedId: order.orderNumber
-        });
-      }
+      await this.applyCommercialConfirmation(order, {
+        actor: input.reviewer,
+        notes: "Inventario confirmado por aprobacion manual.",
+        occurredAt: input.occurredAt,
+        provider: "manual",
+        paymentMethod: "manual",
+        providerReference: order.providerReference,
+        manualStatus: ManualPaymentRequestStatus.Approved,
+        manualEvidenceReference: manualRequest.evidenceReference,
+        manualEvidenceNotes: manualRequest.evidenceNotes
+      });
 
       this.auditService.recordAdminAction({
         actionType: "payments.manual_request.approved",
@@ -1246,11 +1339,40 @@ export class OrdersService implements OnModuleInit {
           ? `El pedido ${order.orderNumber} quedó pagado después de la revisión manual y el email quedó en cola.`
           : emailNotification === "failed"
             ? `El pedido ${order.orderNumber} quedó pagado después de la revisión manual, pero el email no pudo registrarse.`
-            : `El pedido ${order.orderNumber} quedó pagado después de la revisión manual y quedó listo para seguimiento CRM.`,
+          : `El pedido ${order.orderNumber} quedó pagado después de la revisión manual y quedó listo para seguimiento CRM.`,
         "order",
         order.orderNumber
       );
     } else {
+      order.orderStatus = input.orderStatus;
+      order.paymentStatus = input.paymentStatus;
+      order.crmStage = undefined;
+      order.updatedAt = input.occurredAt;
+      order.payment = this.buildPaymentSummary({
+        orderNumber: order.orderNumber,
+        customerName: manualRequest.customerName,
+        provider: order.paymentMethod,
+        amount: order.total,
+        currencyCode: order.currencyCode,
+        paymentStatus: input.paymentStatus,
+        manualStatus: input.status,
+        manualEvidenceReference: manualRequest.evidenceReference,
+        updatedAt: input.occurredAt,
+        orderStatus: input.orderStatus
+      });
+      order.statusHistory = [
+        ...order.statusHistory,
+        createHistoryEntry(OrderStatus.Cancelled, input.reviewer, "Pago manual rechazado.", input.occurredAt)
+      ];
+
+      await this.inventoryService.syncOrder({
+        orderNumber: order.orderNumber,
+        orderStatus: order.orderStatus,
+        items: order.items,
+        occurredAt: input.occurredAt,
+        note: "Inventario liberado por rechazo manual."
+      });
+
       try {
         await this.loyaltyService.reverseOrderPoints(order.orderNumber, input.reviewer);
       } catch (error) {
@@ -1355,6 +1477,140 @@ export class OrdersService implements OnModuleInit {
     return history;
   }
 
+  private resolveVendorTrace(vendorCode?: string, options: { strict?: boolean } = {}): VendorTraceSnapshot {
+    const normalizedVendorCode = normalizeCode(vendorCode);
+    if (!normalizedVendorCode) {
+      return {};
+    }
+
+    const vendor = this.vendorsService.findVendorSummaryByCode(normalizedVendorCode);
+    if (!vendor) {
+      if (options.strict) {
+        throw new BadRequestException(`No encontramos un vendedor activo con el codigo ${normalizedVendorCode}.`);
+      }
+
+      return {
+        vendorCode: normalizedVendorCode
+      };
+    }
+
+    if (options.strict && vendor.status !== "active") {
+      throw new BadRequestException(`El vendedor ${normalizedVendorCode} no esta activo para atribuir ventas.`);
+    }
+
+    return {
+      vendorId: vendor.id,
+      vendorCode: vendor.code,
+      vendorName: vendor.name
+    };
+  }
+
+  private inferSalesChannel(order: Pick<AdminOrderDetail, "salesChannel" | "paymentMethod" | "manualRequest" | "providerReference">): SalesChannelValue {
+    if (order.salesChannel === "web" || order.salesChannel === "manual") {
+      return order.salesChannel;
+    }
+
+    if (order.paymentMethod === "openpay") {
+      return "web";
+    }
+
+    if (order.manualRequest || order.providerReference.startsWith("MP-")) {
+      return "web";
+    }
+
+    return "manual";
+  }
+
+  private inferConfirmedAt(order: Pick<AdminOrderDetail, "confirmedAt" | "orderStatus" | "paymentStatus" | "statusHistory" | "updatedAt" | "createdAt">) {
+    if (order.confirmedAt) {
+      return order.confirmedAt;
+    }
+
+    const historyEntry = order.statusHistory.find((entry) => isStatusPaidLike(entry.status));
+    if (historyEntry?.occurredAt) {
+      return historyEntry.occurredAt;
+    }
+
+    if (order.paymentStatus === PaymentStatus.Paid || isStatusPaidLike(order.orderStatus)) {
+      return order.updatedAt || order.createdAt;
+    }
+
+    return undefined;
+  }
+
+  private hydrateLegacyMetadata() {
+    for (const order of this.orders.values()) {
+      const vendorTrace = this.resolveVendorTrace(order.vendorCode, { strict: false });
+      order.salesChannel = this.inferSalesChannel(order);
+      order.vendorId = vendorTrace.vendorId ?? order.vendorId;
+      order.vendorCode = vendorTrace.vendorCode ?? order.vendorCode;
+      order.vendorName = vendorTrace.vendorName ?? order.vendorName;
+      order.confirmedAt = this.inferConfirmedAt(order);
+    }
+  }
+
+  private async applyCommercialConfirmation(
+    order: AdminOrderDetail,
+    input: {
+      actor: string;
+      notes: string;
+      occurredAt: string;
+      provider: "openpay" | "manual";
+      providerReference?: string;
+      paymentMethod?: "openpay" | "manual";
+      manualStatus?: ManualPaymentRequestStatus;
+      manualEvidenceReference?: string;
+      manualEvidenceNotes?: string;
+    }
+  ) {
+    order.paymentMethod = input.paymentMethod ?? order.paymentMethod;
+    order.paymentStatus = PaymentStatus.Paid;
+    order.orderStatus = OrderStatus.Paid;
+    order.crmStage = resolveOperationalCrmStage(order.orderStatus, order.paymentStatus);
+    order.providerReference = input.providerReference ?? order.providerReference;
+    order.manualStatus = input.manualStatus;
+    order.manualEvidenceReference = input.manualEvidenceReference ?? order.manualEvidenceReference;
+    order.manualEvidenceNotes = input.manualEvidenceNotes ?? order.manualEvidenceNotes;
+    order.salesChannel = this.inferSalesChannel(order);
+    order.confirmedAt = order.confirmedAt ?? input.occurredAt;
+    order.updatedAt = input.occurredAt;
+
+    const vendorTrace = this.resolveVendorTrace(order.vendorCode, { strict: false });
+    order.vendorId = vendorTrace.vendorId ?? order.vendorId;
+    order.vendorCode = vendorTrace.vendorCode ?? order.vendorCode;
+    order.vendorName = vendorTrace.vendorName ?? order.vendorName;
+
+    order.payment = this.buildPaymentSummary({
+      orderNumber: order.orderNumber,
+      customerName: fullName(order.customer) || order.customer.email,
+      provider: input.provider,
+      amount: order.total,
+      currencyCode: order.currencyCode,
+      paymentStatus: order.paymentStatus,
+      manualStatus: order.manualStatus,
+      manualEvidenceReference: order.manualEvidenceReference,
+      updatedAt: input.occurredAt,
+      orderStatus: order.orderStatus
+    });
+    order.statusHistory = [...order.statusHistory, createHistoryEntry(OrderStatus.Paid, input.actor, input.notes, input.occurredAt)];
+
+    await this.inventoryService.syncOrder({
+      orderNumber: order.orderNumber,
+      orderStatus: order.orderStatus,
+      items: order.items,
+      occurredAt: input.occurredAt,
+      note: input.notes
+    });
+
+    try {
+      await this.loyaltyService.settleOrderPoints(order.orderNumber, input.actor);
+    } catch (error) {
+      if (!(error instanceof NotFoundException)) {
+        throw error;
+      }
+    }
+  }
+
   private async hydrateLegacyOrders() {
     for (const order of this.orders.values()) {
       order.items = await this.inventoryService.hydrateOrderItems(order.items);
@@ -1411,9 +1667,32 @@ export class OrdersService implements OnModuleInit {
     const manualEvidenceReference = normalizeText(input.request.manualEvidenceReference);
     const manualEvidenceNotes = normalizeText(input.request.manualEvidenceNotes);
     const clientRequestId = normalizeText(input.request.clientRequestId);
+    const deliveryMode = normalizeDeliveryMode(input.request.address.deliveryMode);
+    const carrier = normalizeCarrier(input.request.address.carrier, deliveryMode);
+    const agencyName = normalizeText(input.request.address.agencyName);
+    const documentType = normalizeDocumentType(input.request.customer.documentType);
+    const documentNumber = normalizeDocumentNumber(input.request.customer.documentNumber, documentType);
 
     if (!clientRequestId) {
       throw new BadRequestException("El checkout requiere una clave de idempotencia.");
+    }
+
+    if (deliveryMode === "province_shalom_pickup") {
+      if (carrier !== "shalom") {
+        throw new BadRequestException("Los envíos a provincia solo se atienden por Shalom.");
+      }
+
+      if (!agencyName) {
+        throw new BadRequestException("Debes indicar la sucursal de Shalom más cercana.");
+      }
+
+      if (!documentType) {
+        throw new BadRequestException("El envío a provincia requiere seleccionar un tipo de documento.");
+      }
+
+      if (!isValidDocumentNumber(documentType, documentNumber)) {
+        throw new BadRequestException("El envío a provincia requiere un número de documento válido para el tipo seleccionado.");
+      }
     }
 
     if (paymentMethod === "manual") {
@@ -1533,10 +1812,14 @@ export class OrdersService implements OnModuleInit {
       orderStatus: order.orderStatus,
       paymentStatus: order.paymentStatus,
       paymentMethod: order.paymentMethod,
+      salesChannel: order.salesChannel,
+      vendorId: order.vendorId,
       vendorCode: order.vendorCode,
+      vendorName: order.vendorName,
       manualStatus: order.manualStatus,
       crmStage: order.crmStage,
       providerReference: order.providerReference,
+      confirmedAt: order.confirmedAt,
       updatedAt: order.updatedAt,
       createdAt: order.createdAt,
       itemCount: order.items.length
@@ -1594,6 +1877,7 @@ export class OrdersService implements OnModuleInit {
         total: 349,
         currencyCode: "PEN",
         paymentMethod: "openpay",
+        salesChannel: "web",
         orderStatus: OrderStatus.Confirmed,
         paymentStatus: PaymentStatus.Paid,
         vendorCode: "VEND-021",
@@ -1662,6 +1946,7 @@ export class OrdersService implements OnModuleInit {
         total: 449,
         currencyCode: "PEN",
         paymentMethod: "manual",
+        salesChannel: "web",
         orderStatus: OrderStatus.PaymentUnderReview,
         paymentStatus: PaymentStatus.Pending,
         vendorCode: "VEND-007",
@@ -1747,6 +2032,7 @@ export class OrdersService implements OnModuleInit {
         total: 749,
         currencyCode: "PEN",
         paymentMethod: "openpay",
+        salesChannel: "web",
         orderStatus: OrderStatus.Confirmed,
         paymentStatus: PaymentStatus.Paid,
         vendorCode: "VEND-014",

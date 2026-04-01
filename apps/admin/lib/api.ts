@@ -269,7 +269,7 @@ export async function deleteOrder(orderNumber: string) {
 }
 
 export async function transitionOrderStatus(orderNumber: string, body: AdminOrderStatusTransitionInput) {
-  return requestJson<OrderEnvelope>(`/admin/orders/${encodeURIComponent(orderNumber)}/status`, {
+  return requestJson<OrderActionEnvelope>(`/admin/orders/${encodeURIComponent(orderNumber)}/status`, {
     method: "POST",
     body: JSON.stringify(body)
   });
@@ -298,7 +298,14 @@ export async function rejectManualPaymentRequest(id: string, body: ManualReviewA
 }
 
 export async function registerAdminManualPayment(orderNumber: string, body: AdminManualPaymentCreateInput) {
-  return requestJson<OrderEnvelope>(`/admin/payments/${encodeURIComponent(orderNumber)}/register-manual`, {
+  return requestJson<OrderActionEnvelope>(`/admin/payments/${encodeURIComponent(orderNumber)}/register-manual`, {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function confirmOnlinePayment(orderNumber: string, body: AdminManualPaymentCreateInput) {
+  return requestJson<OrderActionEnvelope>(`/admin/orders/${encodeURIComponent(orderNumber)}/confirm-online-payment`, {
     method: "POST",
     body: JSON.stringify(body)
   });
@@ -736,6 +743,13 @@ export type ManualActionEnvelope = {
   order?: AdminOrderSummary;
 };
 
+export type OrderActionEnvelope = {
+  status: string;
+  message: string;
+  orderNumber: string;
+  order?: AdminOrderSummary;
+};
+
 export type OrderNotificationActionEnvelope = {
   status: string;
   message: string;
@@ -908,6 +922,18 @@ export type AdminReportPeriodData = {
     byStatus: Record<string, number>;
     byDay: Array<{ date: string; count: number; revenue: number; paid: number }>;
     recent: AdminOrderSummary[];
+  };
+  sales: {
+    totalConfirmed: number;
+    totalRevenue: number;
+    byChannel: Record<string, number>;
+    details: Array<import("@huelegood/shared").SalesDetailReportRow>;
+  };
+  vendors: {
+    rows: Array<import("@huelegood/shared").VendorSalesReportRow>;
+  };
+  products: {
+    rows: Array<import("@huelegood/shared").ProductSalesReportRow>;
   };
   commissions: {
     total: number;

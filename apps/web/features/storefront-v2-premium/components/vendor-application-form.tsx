@@ -148,8 +148,9 @@ export function VendorApplicationForm({
 
           {/* Email */}
           <label className="block space-y-1.5">
-            <span className={labelStyle}>Email</span>
+            <span className={labelStyle}>Email *</span>
             <input
+              required
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}

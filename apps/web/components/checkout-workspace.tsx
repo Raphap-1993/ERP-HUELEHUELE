@@ -4,8 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import {
+  CHECKOUT_DOCUMENT_TYPE_OPTIONS,
   type AuthSessionSummary,
   type CheckoutItemInput,
+  type CheckoutDocumentType,
   type CheckoutQuoteSummary,
   type CheckoutRequestInput,
   type CatalogProduct,
@@ -41,11 +43,14 @@ interface CustomerForm {
   fullName: string;
   email: string;
   phone: string;
+  documentType: CheckoutDocumentType | "";
+  documentNumber: string;
 }
 
 interface AddressForm {
   line1: string;
   district: string;
+  agencyName: string;
 }
 
 function splitName(name: string) {
@@ -54,6 +59,16 @@ function splitName(name: string) {
     firstName: parts[0] ?? "",
     lastName: parts.slice(1).join(" ")
   };
+}
+
+function normalizeDocumentNumber(value: string, documentType?: CheckoutDocumentType | "") {
+  const raw = value.trim().toUpperCase();
+
+  if (documentType === "dni" || documentType === "ruc") {
+    return raw.replace(/\D/g, "");
+  }
+
+  return raw.replace(/[^0-9A-Z-]/g, "");
 }
 
 function resolveCheckoutProductImage(product?: CatalogProduct) {
@@ -81,12 +96,16 @@ export function CheckoutWorkspace() {
   const [customer, setCustomer] = useState<CustomerForm>({
     fullName: "",
     email: "",
-    phone: ""
+    phone: "",
+    documentType: "",
+    documentNumber: ""
   });
   const [address, setAddress] = useState<AddressForm>({
     line1: "",
-    district: ""
+    district: "",
+    agencyName: ""
   });
+  const [provinceShalomPickup, setProvinceShalomPickup] = useState(false);
   const [quote, setQuote] = useState<CheckoutQuoteSummary | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(true);
@@ -214,12 +233,16 @@ export function CheckoutWorkspace() {
     activeItems,
     address.line1,
     address.district,
+    address.agencyName,
     customer.fullName,
     customer.email,
     customer.phone,
+    customer.documentType,
+    customer.documentNumber,
     couponCode,
     notes,
     paymentMethod,
+    provinceShalomPickup,
     vendorCode
   ]);
 
@@ -240,7 +263,17 @@ export function CheckoutWorkspace() {
           items: activeItems,
           paymentMethod,
           vendorCode: vendorCode.trim() || undefined,
-          couponCode: couponCode.trim() || undefined
+          couponCode: couponCode.trim() || undefined,
+          shipping: provinceShalomPickup
+            ? {
+                deliveryMode: "province_shalom_pickup",
+                carrier: "shalom",
+                agencyName: address.agencyName.trim() || undefined,
+                payOnPickup: true
+              }
+            : {
+                deliveryMode: "standard"
+              }
         });
 
         if (active) {
@@ -264,7 +297,7 @@ export function CheckoutWorkspace() {
     return () => {
       active = false;
     };
-  }, [activeItems, couponCode, paymentMethod, vendorCode]);
+  }, [activeItems, address.agencyName, couponCode, paymentMethod, provinceShalomPickup, vendorCode]);
 
   const resolvedProducts = useMemo(() => {
     return products;
@@ -301,13 +334,19 @@ export function CheckoutWorkspace() {
       return;
     }
 
+    const validationError = validateCheckoutForm();
+    if (validationError) {
+      setQuoteError(validationError);
+      return;
+    }
+
     setSubmitting(true);
     setQuoteError(null);
 
     const clientRequestId = checkoutRequestIdRef.current ?? globalThis.crypto.randomUUID();
     checkoutRequestIdRef.current = clientRequestId;
 
-    const nameParts = customer.fullName.trim().split(/\s+/).filter(Boolean);
+    const nameParts = splitName(customer.fullName);
     const request: CheckoutRequestInput = {
       items: activeItems,
       paymentMethod,
@@ -315,10 +354,15 @@ export function CheckoutWorkspace() {
       couponCode: couponCode.trim() || undefined,
       notes,
       customer: {
-        firstName: nameParts[0] ?? "",
-        lastName: (nameParts.slice(1).join(" ") || nameParts[0]) ?? "",
+        firstName: nameParts.firstName,
+        lastName: nameParts.lastName || nameParts.firstName,
         email: customer.email.trim(),
-        phone: customer.phone.trim()
+        phone: customer.phone.trim(),
+        documentType: provinceShalomPickup && customer.documentType ? customer.documentType : undefined,
+        documentNumber:
+          provinceShalomPickup && customer.documentType
+            ? normalizeDocumentNumber(customer.documentNumber, customer.documentType)
+            : undefined
       },
       address: {
         recipientName: customer.fullName.trim(),
@@ -326,7 +370,11 @@ export function CheckoutWorkspace() {
         city: address.district.trim(),
         region: address.district.trim(),
         postalCode: "",
-        countryCode: "PE"
+        countryCode: "PE",
+        deliveryMode: provinceShalomPickup ? "province_shalom_pickup" : "standard",
+        carrier: provinceShalomPickup ? "shalom" : undefined,
+        agencyName: provinceShalomPickup ? address.agencyName.trim() : undefined,
+        payOnPickup: provinceShalomPickup ? true : undefined
       },
       clientRequestId,
       evidenceImageUrl
@@ -358,7 +406,68 @@ export function CheckoutWorkspace() {
     estimatedPoints: 0
   };
 
+  const selectedDocumentType = useMemo(
+    () => CHECKOUT_DOCUMENT_TYPE_OPTIONS.find((option) => option.value === customer.documentType),
+    [customer.documentType]
+  );
+
+  function validateCheckoutForm() {
+    if (activeItems.length === 0) {
+      return "Agrega al menos un producto para continuar.";
+    }
+
+    if (!customer.fullName.trim()) {
+      return "Ingresa tu nombre completo.";
+    }
+
+    if (!customer.phone.trim()) {
+      return "Ingresa tu WhatsApp.";
+    }
+
+    if (!address.line1.trim()) {
+      return provinceShalomPickup ? "Ingresa una dirección o referencia del cliente." : "Ingresa la dirección de entrega.";
+    }
+
+    if (!address.district.trim()) {
+      return provinceShalomPickup ? "Ingresa tu ciudad o provincia." : "Ingresa tu distrito o ciudad.";
+    }
+
+    if (provinceShalomPickup) {
+      if (!customer.documentType) {
+        return "Selecciona el tipo de documento.";
+      }
+
+      const normalizedDocumentNumber = normalizeDocumentNumber(customer.documentNumber, customer.documentType);
+
+      if (customer.documentType === "dni" && normalizedDocumentNumber.length !== 8) {
+        return "Ingresa un DNI válido de 8 dígitos.";
+      }
+
+      if (customer.documentType === "ruc" && normalizedDocumentNumber.length !== 11) {
+        return "Ingresa un RUC válido de 11 dígitos.";
+      }
+
+      if ((customer.documentType === "ce" || customer.documentType === "passport") && normalizedDocumentNumber.length < 6) {
+        return "Ingresa un número de documento válido.";
+      }
+
+      if (customer.documentType === "other_sunat" && normalizedDocumentNumber.length < 3) {
+        return "Ingresa un número de documento válido.";
+      }
+
+      if (!address.agencyName.trim()) {
+        return "Indica la sucursal de Shalom más cercana.";
+      }
+    }
+
+    return null;
+  }
+
   const shippingNote = useMemo(() => {
+    if (provinceShalomPickup) {
+      return "Envío exclusivo por Shalom. No pagas el flete ahora; lo cancelas al momento de recoger con tu documento.";
+    }
+
     if (!siteSettings) {
       return "El costo de envío se calcula según el total de tu pedido.";
     }
@@ -383,7 +492,7 @@ export function CheckoutWorkspace() {
     }
 
     return "El costo de envío se calcula según el total de tu pedido.";
-  }, [siteSettings, summary.shipping]);
+  }, [provinceShalomPickup, siteSettings, summary.shipping]);
 
   return (
     <div className="mx-auto max-w-[1120px] px-6 py-12">
@@ -408,8 +517,12 @@ export function CheckoutWorkspace() {
 
           <p className="mt-5 max-w-sm text-[15px] leading-7 text-[#4b5563]">
             {result.order?.orderStatus === "payment_under_review"
-              ? "Revisaremos tu comprobante y nos pondremos en contacto contigo para confirmar y coordinar la entrega."
-              : "Gracias por tu compra. Te confirmaremos los detalles y coordinaremos la entrega contigo."}
+              ? provinceShalomPickup
+                ? "Revisaremos tu comprobante y coordinaremos el envío por Shalom a la sucursal indicada. El flete lo pagas al recoger con tu documento."
+                : "Revisaremos tu comprobante y nos pondremos en contacto contigo para confirmar y coordinar la entrega."
+              : provinceShalomPickup
+                ? "Gracias por tu compra. Coordinaremos el envío por Shalom a la sucursal indicada y el flete lo pagarás al recoger."
+                : "Gracias por tu compra. Te confirmaremos los detalles y coordinaremos la entrega contigo."}
           </p>
 
           {/* WhatsApp CTA si hay número configurado */}
@@ -542,8 +655,33 @@ export function CheckoutWorkspace() {
               {/* Datos de contacto y envío */}
               <div className="rounded-[22px] border border-[rgba(26,58,46,0.1)] bg-white p-8">
                 <h3 className="mb-1 font-serif text-xl font-bold text-[#1a3a2e]">Tus datos</h3>
-                <p className="mb-6 text-sm leading-relaxed text-[#6b7280]">Enviamos a todo el Perú con Olva Courier y Shalom.</p>
+                <p className="mb-6 text-sm leading-relaxed text-[#6b7280]">
+                  {provinceShalomPickup
+                    ? "Envío a provincia únicamente por Shalom. El costo del envío se paga al momento de recoger."
+                    : "Enviamos a todo el Perú con Olva Courier y Shalom."}
+                </p>
                 <div className="space-y-4">
+                  <label className="flex items-start gap-3 rounded-[14px] border border-[rgba(26,58,46,0.1)] bg-[#f8faf8] px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={provinceShalomPickup}
+                      onChange={(event) => {
+                        const checked = event.target.checked;
+                        setProvinceShalomPickup(checked);
+                        if (!checked) {
+                          setCustomer((current) => ({ ...current, documentType: "", documentNumber: "" }));
+                          setAddress((current) => ({ ...current, agencyName: "" }));
+                        }
+                      }}
+                      className="mt-1 h-4 w-4 rounded border-[rgba(26,58,46,0.2)] text-[#2d6a4f] focus:ring-[#52b788]"
+                    />
+                    <span className="block text-sm leading-6 text-[#355149]">
+                      <strong className="font-semibold text-[#1a3a2e]">Envío a provincia por agencia Shalom</strong>
+                      <span className="mt-1 block text-[13px] text-[#5b6f67]">
+                        Si recoges en provincia, necesitaremos tu tipo y número de documento, además de la sucursal Shalom más cercana. El flete se paga al recoger.
+                      </span>
+                    </span>
+                  </label>
                   <div>
                     <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Nombre completo *</label>
                     <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Tu nombre y apellido" value={customer.fullName} onChange={(e) => setCustomer((c) => ({ ...c, fullName: e.target.value }))} />
@@ -558,14 +696,96 @@ export function CheckoutWorkspace() {
                       <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="email" placeholder="tu@correo.com" value={customer.email} onChange={(e) => setCustomer((c) => ({ ...c, email: e.target.value }))} />
                     </div>
                   </div>
+                  {provinceShalomPickup ? (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Tipo de documento *</label>
+                        <div className="relative">
+                          <select
+                            className="w-full cursor-pointer appearance-none rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 pr-10 text-sm text-[#1c1c1c] outline-none transition focus:border-[#52b788] focus:bg-white"
+                            value={customer.documentType}
+                            onChange={(e) =>
+                              setCustomer((c) => ({
+                                ...c,
+                                documentType: e.target.value as CheckoutDocumentType | "",
+                                documentNumber: ""
+                              }))
+                            }
+                          >
+                            <option value="">Selecciona tu documento</option>
+                            {CHECKOUT_DOCUMENT_TYPE_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#6b7280]">▾</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Número de documento *</label>
+                        <input
+                          className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                          type="text"
+                          inputMode={selectedDocumentType?.inputMode ?? "text"}
+                          maxLength={customer.documentType === "dni" ? 8 : customer.documentType === "ruc" ? 11 : 20}
+                          placeholder={selectedDocumentType?.placeholder ?? "Selecciona primero el tipo de documento"}
+                          value={customer.documentNumber}
+                          onChange={(e) =>
+                            setCustomer((c) => ({
+                              ...c,
+                              documentNumber: normalizeDocumentNumber(e.target.value, c.documentType).slice(
+                                0,
+                                c.documentType === "dni" ? 8 : c.documentType === "ruc" ? 11 : 20
+                              )
+                            }))
+                          }
+                          disabled={!customer.documentType}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+                  {provinceShalomPickup ? (
+                    <div>
+                        <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Sucursal Shalom *</label>
+                        <input
+                          className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white"
+                          type="text"
+                          placeholder="Ej: Shalom Juliaca Centro"
+                          value={address.agencyName}
+                          onChange={(e) => setAddress((a) => ({ ...a, agencyName: e.target.value }))}
+                        />
+                    </div>
+                  ) : null}
                   <div>
-                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Dirección de entrega *</label>
-                    <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Calle, número, urbanización, referencia" value={address.line1} onChange={(e) => setAddress((a) => ({ ...a, line1: e.target.value }))} />
+                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">
+                      {provinceShalomPickup ? "Dirección o referencia del cliente *" : "Dirección de entrega *"}
+                    </label>
+                    <input
+                      className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white"
+                      type="text"
+                      placeholder={provinceShalomPickup ? "Calle, referencia o zona donde te encuentras" : "Calle, número, urbanización, referencia"}
+                      value={address.line1}
+                      onChange={(e) => setAddress((a) => ({ ...a, line1: e.target.value }))}
+                    />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Distrito / Ciudad *</label>
-                    <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Ej: Miraflores, Lima" value={address.district} onChange={(e) => setAddress((a) => ({ ...a, district: e.target.value }))} />
+                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">
+                      {provinceShalomPickup ? "Ciudad / Provincia *" : "Distrito / Ciudad *"}
+                    </label>
+                    <input
+                      className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white"
+                      type="text"
+                      placeholder={provinceShalomPickup ? "Ej: Juliaca, Puno" : "Ej: Miraflores, Lima"}
+                      value={address.district}
+                      onChange={(e) => setAddress((a) => ({ ...a, district: e.target.value }))}
+                    />
                   </div>
+                  {provinceShalomPickup ? (
+                    <div className="rounded-[14px] border border-[#c9a84c]/30 bg-[#fff9ea] px-4 py-3 text-[13px] leading-6 text-[#6e5a1d]">
+                      <strong className="font-semibold text-[#5a4712]">PD:</strong> El costo del envío lo pagas al momento de recoger en la sucursal Shalom indicada.
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -652,21 +872,30 @@ export function CheckoutWorkspace() {
                     </div>
                   ) : null}
                   <div className="flex justify-between text-[13px] text-[#6b7280]">
-                    <span>Envío</span>
-                    <strong className="text-[#1c1c1c]">S/ {summary.shipping.toFixed(2)}</strong>
+                    <span>{provinceShalomPickup ? "Envío Shalom" : "Envío"}</span>
+                    <strong className="text-[#1c1c1c]">{provinceShalomPickup ? "Pago al recoger" : `S/ ${summary.shipping.toFixed(2)}`}</strong>
                   </div>
                   <p className="text-[11px] leading-5 text-[#8b8b8b]">{shippingNote}</p>
                 </div>
                 <div className="h-px bg-[rgba(26,58,46,0.08)]" />
                 <div className="mt-4 flex justify-between font-bold text-[#1a3a2e]">
-                  <span className="text-[16px]">Total</span>
+                  <span className="text-[16px]">{provinceShalomPickup ? "Total a pagar ahora" : "Total"}</span>
                   <span className="font-serif text-[22px] font-black">S/ {summary.grandTotal.toFixed(2)}</span>
                 </div>
                 {quoteLoading ? <p className="mt-2 text-[11px] text-[#6b7280]">Calculando totales...</p> : null}
                 {quoteError ? <p className="mt-2 text-[11px] text-rose-600">{quoteError}</p> : null}
                 <button
                   type="button"
-                  onClick={() => setShowYapeModal(true)}
+                  onClick={() => {
+                    const validationError = validateCheckoutForm();
+                    if (validationError) {
+                      setQuoteError(validationError);
+                      return;
+                    }
+
+                    setQuoteError(null);
+                    setShowYapeModal(true);
+                  }}
                   disabled={submitting || activeItems.length === 0}
                   className="mt-5 w-full rounded-[13px] bg-[#2d6a4f] py-4 text-[15px] font-bold text-white shadow-[0_8px_24px_rgba(45,106,79,0.3)] transition hover:-translate-y-0.5 hover:bg-[#1a3a2e] disabled:cursor-not-allowed disabled:opacity-60"
                 >

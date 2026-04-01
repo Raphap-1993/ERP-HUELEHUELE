@@ -29,11 +29,14 @@ interface UploadOptions {
   preserveSvg?: boolean;
 }
 
+type SharpFailOn = "error" | "none";
+
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 6000;
 
 const rasterMimeTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
 const svgMimeTypes = new Set(["image/svg+xml"]);
+const truncatedEvidenceJpegPattern = /premature end of JPEG image/i;
 
 const resizeProfiles: Record<MediaAssetKind, { maxWidth: number; maxHeight: number; quality: number }> = {
   product: { maxWidth: 1600, maxHeight: 1600, quality: 82 },
@@ -160,52 +163,98 @@ export class MediaService {
     }
 
     try {
-      const profile = resizeProfiles[options.kind];
-      const pipeline = sharp(file.buffer, { failOn: "error" }).rotate();
-      const metadata = await pipeline.metadata();
-
-      if (!metadata.width || !metadata.height) {
-        throw new BadRequestException("No pudimos leer las dimensiones de la imagen.");
-      }
-
-      if (metadata.width > MAX_IMAGE_DIMENSION || metadata.height > MAX_IMAGE_DIMENSION) {
-        throw new BadRequestException("La imagen es demasiado grande para procesarla de forma segura.");
-      }
-
-      const buffer = await pipeline
-        .resize({
-          width: profile.maxWidth,
-          height: profile.maxHeight,
-          fit: "inside",
-          withoutEnlargement: true
-        })
-        .webp({
-          quality: profile.quality,
-          effort: 5
-        })
-        .toBuffer();
-
-      const outputMetadata = await sharp(buffer).metadata();
-      const objectKey = buildObjectKey(options.kind, options.slug);
-
-      return {
-        objectKey,
-        url: `${this.publicBaseUrl!.replace(/\/$/, "")}/${objectKey}`,
-        buffer,
-        contentType: "image/webp",
-        width: outputMetadata.width,
-        height: outputMetadata.height,
-        sizeBytes: buffer.length
-      };
+      return await this.prepareRasterAsset(file, options, "error");
     } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
+      if (this.shouldRetryTruncatedEvidence(error, options, mimetype)) {
+        try {
+          // Some mobile wallets export JPEGs that browsers can preview but libvips
+          // flags as truncated. Recover them only for payment evidence uploads.
+          console.warn("[media] retrying truncated JPEG payment evidence with failOn=none", {
+            originalname: file.originalname,
+            mimetype,
+            sizeBytes: file.buffer.length
+          });
+          return await this.prepareRasterAsset(file, options, "none");
+        } catch (retryError) {
+          this.throwImageProcessingError(retryError);
+        }
       }
 
-      throw new BadRequestException(
-        `No pudimos procesar la imagen. ${error instanceof Error ? error.message : "Archivo inválido."}`
-      );
+      this.throwImageProcessingError(error);
     }
+  }
+
+  private async prepareRasterAsset(
+    file: UploadFileInput,
+    options: UploadOptions,
+    failOn: SharpFailOn
+  ): Promise<UploadPreparedAsset> {
+    const profile = resizeProfiles[options.kind];
+    const pipeline = sharp(file.buffer, { failOn }).rotate();
+    const metadata = await pipeline.metadata();
+
+    if (!metadata.width || !metadata.height) {
+      throw new BadRequestException("No pudimos leer las dimensiones de la imagen.");
+    }
+
+    if (metadata.width > MAX_IMAGE_DIMENSION || metadata.height > MAX_IMAGE_DIMENSION) {
+      throw new BadRequestException("La imagen es demasiado grande para procesarla de forma segura.");
+    }
+
+    const buffer = await pipeline
+      .resize({
+        width: profile.maxWidth,
+        height: profile.maxHeight,
+        fit: "inside",
+        withoutEnlargement: true
+      })
+      .webp({
+        quality: profile.quality,
+        effort: 5
+      })
+      .toBuffer();
+
+    const outputMetadata = await sharp(buffer).metadata();
+    const objectKey = buildObjectKey(options.kind, options.slug);
+
+    return {
+      objectKey,
+      url: `${this.publicBaseUrl!.replace(/\/$/, "")}/${objectKey}`,
+      buffer,
+      contentType: "image/webp",
+      width: outputMetadata.width,
+      height: outputMetadata.height,
+      sizeBytes: buffer.length
+    };
+  }
+
+  private shouldRetryTruncatedEvidence(error: unknown, options: UploadOptions, mimetype: string) {
+    return (
+      options.kind === "evidence" &&
+      mimetype === "image/jpeg" &&
+      error instanceof Error &&
+      truncatedEvidenceJpegPattern.test(error.message)
+    );
+  }
+
+  private throwImageProcessingError(error: unknown): never {
+    if (error instanceof BadRequestException) {
+      throw error;
+    }
+
+    throw new BadRequestException(`No pudimos procesar la imagen. ${this.formatImageProcessingError(error)}`);
+  }
+
+  private formatImageProcessingError(error: unknown) {
+    if (!(error instanceof Error)) {
+      return "Archivo inválido.";
+    }
+
+    if (truncatedEvidenceJpegPattern.test(error.message)) {
+      return "El archivo JPG parece incompleto. Intenta subirlo de nuevo o exportarlo como PNG o WebP.";
+    }
+
+    return error.message;
   }
 
   private resolveObjectKey(url: string) {

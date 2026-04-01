@@ -97,6 +97,7 @@ module.exports = {
 ```
 
 El archivo versionado real es `ecosystem.config.cjs`. Los nombres de proceso deben mantenerse estables para operación, monitoreo y smoke checks.
+En producción, `cwd` y rutas de log deben resolverse contra `APP_BASE_DIR` y `APP_LOG_DIR` para que `PM2` quede ligado al release activo y no a un checkout mutable.
 
 ## Lineamientos operativos
 

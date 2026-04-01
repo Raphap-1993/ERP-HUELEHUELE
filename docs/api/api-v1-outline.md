@@ -81,10 +81,17 @@ Definir el contorno de la API inicial de Huelegood para soportar storefront, adm
 
 ### Checkout y pedidos
 
-- `POST /store/checkout/validate`
-- `POST /store/orders`
+- `POST /store/checkout/quote`
+- `POST /store/checkout/openpay`
+- `POST /store/checkout/manual`
+- `POST /store/checkout/evidence`
 - `GET /store/orders/:orderNumber`
 - `POST /store/orders/:orderNumber/cancel` según política
+
+Notas operativas:
+
+- el quote acepta metadata de shipping para diferenciar entrega estándar vs `province_shalom_pickup`
+- `province_shalom_pickup` exige tipo y número de documento compatible con `SUNAT`, carrier `Shalom`, sucursal de recojo y deja el flete fuera del total online
 
 ### Pagos
 

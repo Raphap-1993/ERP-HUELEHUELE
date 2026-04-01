@@ -761,6 +761,9 @@ function CardSnapshot({ order }: { order: AdminOrderDetail }) {
             <p className="text-sm text-black/60">
               {order.address.city}, {order.address.region} · {order.address.postalCode}
             </p>
+            {order.address.deliveryMode === "province_shalom_pickup" ? (
+              <p className="mt-2 text-sm text-black/60">Shalom · {order.address.agencyName ?? "Sucursal pendiente"} · pago al recoger</p>
+            ) : null}
           </div>
         </div>
       </div>

@@ -187,8 +187,13 @@ export class VendorsService implements OnModuleInit {
       throw new BadRequestException("Email inválido.");
     }
 
-    if (this.findApplicationByEmail(email) || this.findVendorByEmail(email)) {
+    if (this.findVendorByEmail(email)) {
       throw new ConflictException("Ya existe una postulación o vendedor con ese email.");
+    }
+
+    const blockingApplication = this.findBlockingApplicationByEmail(email);
+    if (blockingApplication) {
+      throw new ConflictException("Ya existe una postulación activa con ese email.");
     }
 
     const id = `va-${String(this.applications.size + 1).padStart(3, "0")}`;
@@ -335,8 +340,13 @@ export class VendorsService implements OnModuleInit {
       throw new BadRequestException("Email inválido.");
     }
 
-    if (this.findApplicationByEmail(email) || this.findVendorByEmail(email)) {
+    if (this.findVendorByEmail(email)) {
       throw new ConflictException("Ya existe una postulación o vendedor con ese email.");
+    }
+
+    const blockingApplication = this.findBlockingApplicationByEmail(email);
+    if (blockingApplication) {
+      throw new ConflictException("Ya existe una postulación activa con ese email. Revísala o apruébala antes de crear otro vendedor.");
     }
 
     const occurredAt = nowIso();
@@ -489,6 +499,18 @@ export class VendorsService implements OnModuleInit {
     }
 
     return Array.from(this.applications.values()).find((application) => application.email === email) ?? null;
+  }
+
+  private findBlockingApplicationByEmail(email?: string) {
+    if (!email) {
+      return null;
+    }
+
+    return (
+      Array.from(this.applications.values()).find(
+        (application) => application.email === email && application.status !== VendorApplicationStatus.Rejected
+      ) ?? null
+    );
   }
 
   private findVendorByEmail(email?: string) {

@@ -87,6 +87,16 @@ Como insumo funcional, se asume que la v1 de Huelegood ya comunica:
 
 ## Estructura de documentos
 
+### Auditoria y homologacion ERP
+
+- [00-auditoria-inicial.md](./00-auditoria-inicial.md)
+- [01-requerimientos-funcionales-erp-huelehuele.md](./01-requerimientos-funcionales-erp-huelehuele.md)
+- [02-glosario-y-homologacion.md](./02-glosario-y-homologacion.md)
+- [03-casos-de-uso.md](./03-casos-de-uso.md)
+- [04-diseno-tecnico.md](./04-diseno-tecnico.md)
+- [05-plan-de-implementacion.md](./05-plan-de-implementacion.md)
+- [06-validacion-y-pruebas.md](./06-validacion-y-pruebas.md) `se actualiza al cierre de la implementacion`
+
 ### Arquitectura
 
 - [overview.md](./architecture/overview.md)

@@ -4,9 +4,25 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+resolve_app_root_dir() {
+  local root_dir="$1"
+  local parent_dir
+  parent_dir="$(dirname "$root_dir")"
+
+  if [[ "$(basename "$parent_dir")" == "releases" ]]; then
+    dirname "$parent_dir"
+  else
+    printf '%s\n' "$parent_dir"
+  fi
+}
+
+APP_ROOT_DIR="${APP_ROOT_DIR:-$(resolve_app_root_dir "$ROOT_DIR")}"
+APP_SHARED_DIR_DEFAULT="${APP_SHARED_DIR:-$APP_ROOT_DIR/shared}"
+
 env_candidates=(
   ".env.production"
   "../shared/.env.production"
+  "$APP_SHARED_DIR_DEFAULT/.env.production"
 )
 
 for env_file in "${env_candidates[@]}"; do
@@ -38,7 +54,7 @@ require_env() {
 
   if [[ "${#missing[@]}" -gt 0 ]]; then
     echo "[bootstrap-migration] missing required env vars: ${missing[*]}" >&2
-    echo "[bootstrap-migration] define them in .env.production or ../shared/.env.production before running this migration." >&2
+    echo "[bootstrap-migration] define them in .env.production or the shared production env before running this migration." >&2
     exit 1
   fi
 }

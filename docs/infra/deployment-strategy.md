@@ -51,13 +51,24 @@ El script de release soporta ambas ubicaciones:
 - `.env.production` dentro del repo
 - `../shared/.env.production` como origen compartido de producción
 
+Cuando se despliega desde un árbol versionado en `releases/<timestamp>`, el script también resuelve el entorno compartido en:
+
+- `/home/huelehuele/apps/huelegood.com/shared/.env.production`
+
+Convención operativa vigente:
+
+- el código de una release productiva debe vivir en `releases/<timestamp>`
+- el symlink `current` debe apuntar a la release activa
+- `PM2` debe arrancar contra `current`, no contra un checkout mutable en `repo`
+
 ## Flujo de despliegue recomendado
 
 1. Actualizar código desde Git y preparar `.env.production`.
-2. Ejecutar `npm run deploy:release`.
-3. Si la release incluye cambios de esquema, activar `HUELEGOOD_RUN_DB_PUSH=1` antes de lanzar el script.
-4. Validar `pm2 status`, logs y smoke checks.
-5. Ejecutar `npm run deploy:backup` o dejarlo programado por `cron`.
+2. Publicar el código en una nueva carpeta `releases/<timestamp>`.
+3. Ejecutar `npm run deploy:release` desde esa release.
+4. Si la release incluye cambios de esquema, activar `HUELEGOOD_RUN_DB_PUSH=1` antes de lanzar el script.
+5. Validar `pm2 status`, logs y smoke checks.
+6. Ejecutar `npm run deploy:backup` o dejarlo programado por `cron`.
 
 Notas operativas:
 

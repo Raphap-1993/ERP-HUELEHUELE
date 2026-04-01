@@ -1,13 +1,27 @@
+const path = require("node:path");
+
+const appBaseDir = process.env.APP_BASE_DIR ? path.resolve(process.env.APP_BASE_DIR) : __dirname;
+const appLogDir = process.env.APP_LOG_DIR ? path.resolve(process.env.APP_LOG_DIR) : path.join(appBaseDir, "logs");
 const webPort = Number(process.env.WEB_PORT || 3000);
 const adminPort = Number(process.env.ADMIN_PORT || 3005);
 const apiPort = Number(process.env.API_PORT || 4000);
 const workerConcurrency = Number(process.env.WORKER_CONCURRENCY || 5);
 const appRelease = process.env.APP_RELEASE_SHA || "dev";
 
+function resolveAppPath(...segments) {
+  return path.join(appBaseDir, ...segments);
+}
+
+function resolveLogPath(filename) {
+  return path.join(appLogDir, filename);
+}
+
 function withBaseEnv(overrides = {}) {
   return {
     NODE_ENV: "production",
     APP_RELEASE_SHA: appRelease,
+    APP_BASE_DIR: appBaseDir,
+    APP_LOG_DIR: appLogDir,
     ...overrides
   };
 }
@@ -16,7 +30,7 @@ module.exports = {
   apps: [
     {
       name: "huelegood-web",
-      cwd: "./apps/web",
+      cwd: resolveAppPath("apps", "web"),
       script: "npm",
       args: "run start",
       exec_mode: "fork",
@@ -28,8 +42,8 @@ module.exports = {
       restart_delay: 5000,
       exp_backoff_restart_delay: 200,
       kill_timeout: 10000,
-      out_file: "../../logs/web.out.log",
-      error_file: "../../logs/web.error.log",
+      out_file: resolveLogPath("web.out.log"),
+      error_file: resolveLogPath("web.error.log"),
       env: withBaseEnv({
         PORT: webPort
       }),
@@ -39,7 +53,7 @@ module.exports = {
     },
     {
       name: "huelegood-admin",
-      cwd: "./apps/admin",
+      cwd: resolveAppPath("apps", "admin"),
       script: "npm",
       args: "run start",
       exec_mode: "fork",
@@ -51,8 +65,8 @@ module.exports = {
       restart_delay: 5000,
       exp_backoff_restart_delay: 200,
       kill_timeout: 10000,
-      out_file: "../../logs/admin.out.log",
-      error_file: "../../logs/admin.error.log",
+      out_file: resolveLogPath("admin.out.log"),
+      error_file: resolveLogPath("admin.error.log"),
       env: withBaseEnv({
         PORT: adminPort
       }),
@@ -62,7 +76,7 @@ module.exports = {
     },
     {
       name: "huelegood-api",
-      cwd: "./apps/api",
+      cwd: resolveAppPath("apps", "api"),
       script: "npm",
       args: "run start",
       exec_mode: "fork",
@@ -74,8 +88,8 @@ module.exports = {
       restart_delay: 5000,
       exp_backoff_restart_delay: 200,
       kill_timeout: 10000,
-      out_file: "../../logs/api.out.log",
-      error_file: "../../logs/api.error.log",
+      out_file: resolveLogPath("api.out.log"),
+      error_file: resolveLogPath("api.error.log"),
       env: withBaseEnv({
         PORT: apiPort
       }),
@@ -85,7 +99,7 @@ module.exports = {
     },
     {
       name: "huelegood-worker",
-      cwd: "./apps/worker",
+      cwd: resolveAppPath("apps", "worker"),
       script: "npm",
       args: "run start",
       exec_mode: "fork",
@@ -97,8 +111,8 @@ module.exports = {
       restart_delay: 5000,
       exp_backoff_restart_delay: 200,
       kill_timeout: 10000,
-      out_file: "../../logs/worker.out.log",
-      error_file: "../../logs/worker.error.log",
+      out_file: resolveLogPath("worker.out.log"),
+      error_file: resolveLogPath("worker.error.log"),
       env: withBaseEnv({
         WORKER_CONCURRENCY: workerConcurrency
       }),

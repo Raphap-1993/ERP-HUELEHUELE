@@ -8,12 +8,16 @@ import {
   PaymentStatus,
   RoleCode,
   WholesaleLeadStatus,
+  type AdminOrderDetail,
   type AdminMetric,
   type AdminRoleDashboardSummary,
   type AuthUserSummary,
   type CommissionRow,
   type CommissionSummary,
+  type ProductSalesReportRow,
+  type SalesDetailReportRow,
   type SellerPanelOverviewSummary,
+  type VendorSalesReportRow,
   type VendorSummary
 } from "@huelegood/shared";
 import { wrapResponse } from "../../common/response";
@@ -36,6 +40,10 @@ function formatCurrency(value: number) {
 
 function sum(values: number[]) {
   return values.reduce((total, value) => total + value, 0);
+}
+
+function fullCustomerName(customer: AdminOrderDetail["customer"]) {
+  return [customer.firstName, customer.lastName].map((part) => part.trim()).filter(Boolean).join(" ");
 }
 
 function deriveCommissionStatus(commissions: CommissionSummary[]) {
@@ -91,6 +99,40 @@ function resolveDashboardFocus(user: AuthUserSummary): AdminRoleDashboardSummary
   }
 
   return "sales";
+}
+
+function toPeriodRange(from: string, to: string) {
+  const fromMs = new Date(from).getTime();
+  const toMs = new Date(to.includes("T") ? to : `${to}T23:59:59.999Z`).getTime();
+
+  return {
+    fromMs,
+    toMs
+  };
+}
+
+function isInRange(value: string | undefined, from: string, to: string) {
+  if (!value) {
+    return false;
+  }
+
+  const { fromMs, toMs } = toPeriodRange(from, to);
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) && timestamp >= fromMs && timestamp <= toMs;
+}
+
+function isSalesReportable(order: AdminOrderDetail) {
+  return (
+    Boolean(order.confirmedAt) &&
+    [
+      OrderStatus.Paid,
+      OrderStatus.Confirmed,
+      OrderStatus.Preparing,
+      OrderStatus.Shipped,
+      OrderStatus.Delivered,
+      OrderStatus.Completed
+    ].includes(order.orderStatus)
+  );
 }
 
 @Injectable()
@@ -189,45 +231,136 @@ export class CoreService {
   }
 
   getReportByPeriod(from: string, to: string) {
-    const orders = this.ordersService.listOrdersInRange(from, to).data;
+    const operationalOrders = this.ordersService.listOrdersInRange(from, to).data;
+    const salesOrders = this.ordersService
+      .getAllOrderDetails()
+      .filter((order) => isSalesReportable(order) && isInRange(order.confirmedAt, from, to))
+      .sort((left, right) => (right.confirmedAt ?? "").localeCompare(left.confirmedAt ?? ""));
     const commissions = this.commissionsService.listCommissions().data;
     const payouts = this.commissionsService.listPayouts().data;
 
-    const paidOrders = orders.filter((o) => o.paymentStatus === PaymentStatus.Paid);
-    const revenue = sum(orders.map((o) => o.total));
-    const paidRevenue = sum(paidOrders.map((o) => o.total));
+    const revenue = sum(salesOrders.map((order) => order.total));
 
-    // Daily breakdown
     const byDayMap: Record<string, { count: number; revenue: number; paid: number }> = {};
-    for (const order of orders) {
-      const day = order.createdAt.slice(0, 10);
+    for (const order of salesOrders) {
+      const day = (order.confirmedAt ?? order.createdAt).slice(0, 10);
       if (!byDayMap[day]) {
         byDayMap[day] = { count: 0, revenue: 0, paid: 0 };
       }
-      byDayMap[day].count++;
+      byDayMap[day].count += 1;
       byDayMap[day].revenue += order.total;
-      if (order.paymentStatus === PaymentStatus.Paid) {
-        byDayMap[day].paid++;
-      }
+      byDayMap[day].paid += 1;
     }
+
     const byDay = Object.entries(byDayMap)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, stats]) => ({ date, ...stats }));
 
-    // Payment method breakdown
     const byPaymentMethod: Record<string, number> = {};
-    for (const order of orders) {
+    for (const order of salesOrders) {
       const method = order.paymentMethod ?? "unknown";
       byPaymentMethod[method] = (byPaymentMethod[method] ?? 0) + 1;
     }
 
-    // Order status breakdown
     const byStatus: Record<string, number> = {};
-    for (const order of orders) {
+    for (const order of operationalOrders) {
       byStatus[order.orderStatus] = (byStatus[order.orderStatus] ?? 0) + 1;
     }
 
-    // Commission aggregates (current totals, no date filter available on CommissionSummary)
+    const byChannel: Record<string, number> = {};
+    const detailRows: SalesDetailReportRow[] = [];
+    const vendorMap = new Map<string, VendorSalesReportRow>();
+    const productMap = new Map<string, ProductSalesReportRow>();
+
+    for (const order of salesOrders) {
+      const confirmedAt = order.confirmedAt ?? order.createdAt;
+      const salesChannel = order.salesChannel;
+      byChannel[salesChannel] = (byChannel[salesChannel] ?? 0) + 1;
+
+      const vendorKey = order.vendorId ?? order.vendorCode ?? "sin-vendedor";
+      const vendorName = order.vendorName ?? order.vendorCode ?? "Sin vendedor";
+      const vendorRow = vendorMap.get(vendorKey) ?? {
+        vendorId: order.vendorId,
+        vendorCode: order.vendorCode,
+        vendorName,
+        salesCount: 0,
+        totalRevenue: 0,
+        avgOrderValue: 0,
+        lastSaleAt: undefined,
+        webSalesCount: 0,
+        manualSalesCount: 0
+      };
+
+      vendorRow.salesCount += 1;
+      vendorRow.totalRevenue += order.total;
+      vendorRow.avgOrderValue = Math.round(vendorRow.totalRevenue / vendorRow.salesCount);
+      vendorRow.lastSaleAt =
+        !vendorRow.lastSaleAt || confirmedAt > vendorRow.lastSaleAt ? confirmedAt : vendorRow.lastSaleAt;
+      if (salesChannel === "web") {
+        vendorRow.webSalesCount += 1;
+      } else {
+        vendorRow.manualSalesCount += 1;
+      }
+      vendorMap.set(vendorKey, vendorRow);
+
+      for (const item of order.items) {
+        const productKey = `${item.slug}::${item.sku}`;
+        const productRow = productMap.get(productKey) ?? {
+          productSlug: item.slug,
+          productName: item.name,
+          sku: item.sku,
+          unitsSold: 0,
+          totalRevenue: 0,
+          lastSoldAt: undefined,
+          webUnitsSold: 0,
+          manualUnitsSold: 0
+        };
+
+        productRow.unitsSold += item.quantity;
+        productRow.totalRevenue += item.lineTotal;
+        productRow.lastSoldAt =
+          !productRow.lastSoldAt || confirmedAt > productRow.lastSoldAt ? confirmedAt : productRow.lastSoldAt;
+        if (salesChannel === "web") {
+          productRow.webUnitsSold += item.quantity;
+        } else {
+          productRow.manualUnitsSold += item.quantity;
+        }
+        productMap.set(productKey, productRow);
+
+        detailRows.push({
+          orderNumber: order.orderNumber,
+          confirmedAt,
+          salesChannel,
+          vendorId: order.vendorId,
+          vendorCode: order.vendorCode,
+          vendorName: order.vendorName,
+          productSlug: item.slug,
+          productName: item.name,
+          sku: item.sku,
+          quantity: item.quantity,
+          lineTotal: item.lineTotal
+        });
+      }
+    }
+
+    const vendorRows = Array.from(vendorMap.values()).sort((left, right) => {
+      if (right.totalRevenue !== left.totalRevenue) {
+        return right.totalRevenue - left.totalRevenue;
+      }
+
+      return left.vendorName.localeCompare(right.vendorName);
+    });
+
+    const productRows = Array.from(productMap.values()).sort((left, right) => {
+      if (right.unitsSold !== left.unitsSold) {
+        return right.unitsSold - left.unitsSold;
+      }
+
+      return left.productName.localeCompare(right.productName);
+    });
+
+    detailRows.sort((left, right) => right.confirmedAt.localeCompare(left.confirmedAt));
+
     const payableComm = commissions.filter((c) =>
       [CommissionStatus.Payable, CommissionStatus.ScheduledForPayout].includes(c.status)
     );
@@ -238,18 +371,30 @@ export class CoreService {
       {
         period: { from, to },
         orders: {
-          total: orders.length,
+          total: operationalOrders.length,
           revenue,
-          paidRevenue,
-          paid: paidOrders.length,
-          pending: orders.filter((o) => o.orderStatus === OrderStatus.PendingPayment).length,
-          cancelled: orders.filter((o) => o.orderStatus === OrderStatus.Cancelled).length,
-          conversionRate: orders.length > 0 ? Math.round((paidOrders.length / orders.length) * 100) : 0,
-          avgOrderValue: orders.length > 0 ? Math.round(revenue / orders.length) : 0,
+          paidRevenue: revenue,
+          paid: salesOrders.length,
+          pending: operationalOrders.filter((o) => o.orderStatus === OrderStatus.PendingPayment).length,
+          cancelled: operationalOrders.filter((o) => o.orderStatus === OrderStatus.Cancelled).length,
+          conversionRate: operationalOrders.length > 0 ? Math.round((salesOrders.length / operationalOrders.length) * 100) : 0,
+          avgOrderValue: salesOrders.length > 0 ? Math.round(revenue / salesOrders.length) : 0,
           byPaymentMethod,
           byStatus,
           byDay,
-          recent: orders.slice(0, 10)
+          recent: operationalOrders.slice(0, 10)
+        },
+        sales: {
+          totalConfirmed: salesOrders.length,
+          totalRevenue: revenue,
+          byChannel,
+          details: detailRows.slice(0, 50)
+        },
+        vendors: {
+          rows: vendorRows
+        },
+        products: {
+          rows: productRows
         },
         commissions: {
           total: commissions.length,
@@ -265,23 +410,28 @@ export class CoreService {
   }
 
   generateOrdersCsv(from: string, to: string): string {
-    const orders = this.ordersService.listOrdersInRange(from, to).data;
+    const orders = this.ordersService
+      .getAllOrderDetails()
+      .filter((order) => isSalesReportable(order) && isInRange(order.confirmedAt, from, to))
+      .sort((left, right) => (right.confirmedAt ?? "").localeCompare(left.confirmedAt ?? ""));
     const escape = (v: string | number | undefined | null) => {
       const s = v == null ? "" : String(v);
       return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const header = ["Pedido", "Cliente", "Total", "Método", "Estado pedido", "Estado pago", "Vendedor", "Items", "Fecha"].join(",");
+    const header = ["Pedido", "Cliente", "Canal", "Total", "Metodo", "Estado pedido", "Estado pago", "Vendedor", "Codigo", "Items", "Fecha venta"].join(",");
     const rows = orders.map((o) =>
       [
         escape(o.orderNumber),
-        escape(o.customerName),
+        escape(fullCustomerName(o.customer) || o.customer.email),
+        escape(o.salesChannel),
         escape(o.total),
         escape(o.paymentMethod),
         escape(o.orderStatus),
         escape(o.paymentStatus),
+        escape(o.vendorName),
         escape(o.vendorCode),
-        escape(o.itemCount),
-        escape(o.createdAt.slice(0, 10))
+        escape(o.items.length),
+        escape((o.confirmedAt ?? o.createdAt).slice(0, 10))
       ].join(",")
     );
     return [header, ...rows].join("\n");

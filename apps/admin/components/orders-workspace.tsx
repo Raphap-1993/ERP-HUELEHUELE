@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { AdminDataTable, Badge, Button, Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator, StatusBadge, TimelinePedido } from "@huelegood/ui";
-import { CrmStage, type AdminOrderDetail, type AdminOrderSummary, type ManualReviewActionInput, type OrderStatus, type PaymentStatus, type ManualPaymentRequestStatus, type ProductAdminSummary } from "@huelegood/shared";
-import { approveManualPaymentRequest, createBackofficeOrder, deleteOrder, fetchAdminProducts, fetchOrder, fetchOrders, registerAdminManualPayment, rejectManualPaymentRequest, resendOrderApprovalEmail, transitionOrderStatus } from "../lib/api";
+import { CHECKOUT_DOCUMENT_TYPE_OPTIONS, CrmStage, type AdminOrderDetail, type AdminOrderSummary, type ManualReviewActionInput, type OrderStatus, type PaymentStatus, type ManualPaymentRequestStatus, type ProductAdminSummary, type VendorSummary } from "@huelegood/shared";
+import { approveManualPaymentRequest, confirmOnlinePayment, createBackofficeOrder, deleteOrder, fetchAdminProducts, fetchOrder, fetchOrders, fetchVendors, registerAdminManualPayment, rejectManualPaymentRequest, resendOrderApprovalEmail, transitionOrderStatus } from "../lib/api";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("es-PE", {
@@ -20,14 +20,20 @@ function formatDateTime(value: string) {
   }).format(new Date(value));
 }
 
-function orderTone(status: OrderStatus): "neutral" | "success" | "warning" | "danger" | "info" {
+function documentTypeLabel(value?: string) {
+  return CHECKOUT_DOCUMENT_TYPE_OPTIONS.find((option) => option.value === value)?.label ?? "Documento";
+}
+
+function orderTone(status?: OrderStatus): "neutral" | "success" | "warning" | "danger" | "info" {
+  if (!status) return "neutral";
   if (status === "paid" || status === "confirmed" || status === "completed") return "success";
   if (status === "cancelled" || status === "refunded" || status === "expired") return "danger";
   if (status === "payment_under_review" || status === "pending_payment") return "warning";
   return "info";
 }
 
-function paymentTone(status: PaymentStatus): "neutral" | "success" | "warning" | "danger" | "info" {
+function paymentTone(status?: PaymentStatus): "neutral" | "success" | "warning" | "danger" | "info" {
+  if (!status) return "neutral";
   if (status === "paid") return "success";
   if (status === "failed" || status === "expired") return "danger";
   return "warning";
@@ -40,7 +46,7 @@ function manualTone(status?: ManualPaymentRequestStatus): "neutral" | "success" 
   return "info";
 }
 
-function orderStatusLabel(status: OrderStatus) {
+function orderStatusLabel(status?: OrderStatus) {
   const labels: Record<OrderStatus, string> = {
     draft: "Borrador",
     pending_payment: "Pendiente de pago",
@@ -55,10 +61,10 @@ function orderStatusLabel(status: OrderStatus) {
     refunded: "Reembolsado",
     expired: "Expirado"
   };
-  return labels[status];
+  return status ? labels[status] : "Sin estado";
 }
 
-function paymentStatusLabel(status: PaymentStatus) {
+function paymentStatusLabel(status?: PaymentStatus) {
   const labels: Record<PaymentStatus, string> = {
     initiated: "Iniciado",
     pending: "Pendiente",
@@ -67,7 +73,7 @@ function paymentStatusLabel(status: PaymentStatus) {
     failed: "Fallido",
     expired: "Expirado"
   };
-  return labels[status];
+  return status ? labels[status] : "Sin estado";
 }
 
 function manualStatusLabel(status?: ManualPaymentRequestStatus) {
@@ -127,8 +133,29 @@ function crmFollowUpLabel(stage?: CrmStage) {
   return "Pendiente de resolución";
 }
 
+function hasOrderDetailPayload(order: unknown): order is AdminOrderDetail {
+  if (!order || typeof order !== "object") {
+    return false;
+  }
+
+  const candidate = order as Partial<AdminOrderDetail>;
+  return (
+    typeof candidate.orderNumber === "string" &&
+    typeof candidate.orderStatus === "string" &&
+    typeof candidate.paymentStatus === "string" &&
+    Array.isArray(candidate.items) &&
+    Array.isArray(candidate.statusHistory) &&
+    typeof candidate.customer === "object" &&
+    candidate.customer !== null &&
+    typeof candidate.address === "object" &&
+    candidate.address !== null &&
+    typeof candidate.payment === "object" &&
+    candidate.payment !== null
+  );
+}
+
 function availableOperationalStatuses(order?: AdminOrderDetail | null): OrderStatus[] {
-  if (!order) {
+  if (!order?.orderStatus) {
     return [];
   }
 
@@ -152,11 +179,12 @@ export function OrdersWorkspace() {
   const [selectedOrder, setSelectedOrder] = useState<AdminOrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"detalle" | "timeline">("detalle");
-  const [actionLoading, setActionLoading] = useState<"approve" | "reject" | "resend" | "transition" | "manual_payment" | null>(null);
+  const [actionLoading, setActionLoading] = useState<"approve" | "reject" | "resend" | "transition" | "manual_payment" | "online_payment" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [approveConfirmOpen, setApproveConfirmOpen] = useState(false);
@@ -173,6 +201,7 @@ export function OrdersWorkspace() {
   // Create order state
   const [createOpen, setCreateOpen] = useState(false);
   const [availableProducts, setAvailableProducts] = useState<ProductAdminSummary[]>([]);
+  const [availableVendors, setAvailableVendors] = useState<VendorSummary[]>([]);
   const [createForm, setCreateForm] = useState({
     firstName: "", lastName: "", email: "", phone: "",
     line1: "", city: "",
@@ -182,6 +211,7 @@ export function OrdersWorkspace() {
   const [createItems, setCreateItems] = useState<Array<{ slug: string; name: string; sku: string; variantId?: string; quantity: number; unitPrice: number }>>([]);
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const activeOrder = selectedOrder?.orderNumber === selectedOrderNumber ? selectedOrder : null;
 
   useEffect(() => {
     let active = true;
@@ -219,20 +249,33 @@ export function OrdersWorkspace() {
 
   useEffect(() => {
     const orderNumber = selectedOrderNumber;
-    if (!orderNumber) { setSelectedOrder(null); return; }
+    if (!orderNumber) {
+      setSelectedOrder(null);
+      setDetailError(null);
+      return;
+    }
+    const orderNumberToLoad = orderNumber;
 
     let active = true;
 
     async function loadSelectedOrder() {
       setDetailLoading(true);
+      setSelectedOrder(null);
+      setDetailError(null);
       try {
-        const response = await fetchOrder(orderNumber!);
+        const response = await fetchOrder(orderNumberToLoad);
         if (active) {
+          if (!hasOrderDetailPayload(response.data)) {
+            throw new Error(`El detalle del pedido ${orderNumberToLoad} llegó incompleto desde el API.`);
+          }
           setSelectedOrder(response.data);
           setActionError(null);
         }
       } catch (fetchError) {
-        if (active) setError(fetchError instanceof Error ? fetchError.message : "No pudimos cargar el detalle del pedido.");
+        if (active) {
+          setSelectedOrder(null);
+          setDetailError(fetchError instanceof Error ? fetchError.message : "No pudimos cargar el detalle del pedido.");
+        }
       } finally {
         if (active) setDetailLoading(false);
       }
@@ -252,34 +295,36 @@ export function OrdersWorkspace() {
 
   useEffect(() => {
     setActionNotice(null);
+    setActionError(null);
   }, [selectedOrderNumber]);
 
   useEffect(() => {
-    const available = availableOperationalStatuses(selectedOrder);
+    const available = availableOperationalStatuses(activeOrder);
     setNextOrderStatus(available[0] ?? "");
     setTransitionNote("Actualización operativa desde backoffice.");
-    setManualPaymentAmount(selectedOrder ? String(selectedOrder.total) : "");
-    setManualPaymentReference(selectedOrder?.providerReference ?? "");
+    setManualPaymentAmount(activeOrder ? String(activeOrder.total) : "");
+    setManualPaymentReference(activeOrder?.providerReference ?? "");
     setManualPaymentNotes("Pago confirmado manualmente desde backoffice.");
-  }, [selectedOrder]);
+  }, [activeOrder]);
 
   const reviewCount = useMemo(
     () => orders.filter((o) => o.orderStatus === "payment_under_review" || o.manualStatus === "under_review").length,
     [orders]
   );
-  const selectedOrderStage = selectedOrder?.crmStage;
-  const availableStatuses = useMemo(() => availableOperationalStatuses(selectedOrder), [selectedOrder]);
-  const canRegisterManualPayment = Boolean(selectedOrder && selectedOrder.paymentStatus !== "paid" && !selectedOrder.manualRequest);
+  const selectedOrderStage = activeOrder?.crmStage;
+  const availableStatuses = useMemo(() => availableOperationalStatuses(activeOrder), [activeOrder]);
+  const canRegisterManualPayment = Boolean(activeOrder && activeOrder.paymentStatus !== "paid" && !activeOrder.manualRequest);
+  const canConfirmOnlinePayment = Boolean(activeOrder && activeOrder.paymentMethod === "openpay" && activeOrder.paymentStatus !== "paid");
 
   function openApproveConfirm() {
-    if (!selectedOrder?.manualRequest) return;
+    if (!activeOrder?.manualRequest) return;
     setActionError(null);
     setActionNotice(null);
     setApproveConfirmOpen(true);
   }
 
   async function handleApproveConfirmed() {
-    if (!selectedOrder?.manualRequest) return;
+    if (!activeOrder?.manualRequest) return;
 
     setActionLoading("approve");
     setActionError(null);
@@ -293,7 +338,7 @@ export function OrdersWorkspace() {
         sendEmailNow: approveSendEmailNow
       };
 
-      const response = await approveManualPaymentRequest(selectedOrder.manualRequest.id, payload);
+      const response = await approveManualPaymentRequest(activeOrder.manualRequest.id, payload);
 
       setApproveConfirmOpen(false);
       setActionNotice(response.message);
@@ -310,12 +355,12 @@ export function OrdersWorkspace() {
   }
 
   async function handleReject() {
-    if (!selectedOrder?.manualRequest) return;
+    if (!activeOrder?.manualRequest) return;
     setActionLoading("reject");
     setActionError(null);
     setActionNotice(null);
     try {
-      await rejectManualPaymentRequest(selectedOrder.manualRequest.id, { reviewer: "admin", notes: "Rechazado desde backoffice." });
+      await rejectManualPaymentRequest(activeOrder.manualRequest.id, { reviewer: "admin", notes: "Rechazado desde backoffice." });
       setRefreshKey((k) => k + 1);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "No se pudo rechazar. Intenta de nuevo.");
@@ -325,7 +370,7 @@ export function OrdersWorkspace() {
   }
 
   async function handleResendApprovalEmail() {
-    if (!selectedOrder?.manualRequest || selectedOrder.manualRequest.status !== "approved") {
+    if (!activeOrder?.manualRequest || activeOrder.manualRequest.status !== "approved") {
       return;
     }
 
@@ -334,7 +379,7 @@ export function OrdersWorkspace() {
     setActionNotice(null);
 
     try {
-      const response = await resendOrderApprovalEmail(selectedOrder.orderNumber);
+      const response = await resendOrderApprovalEmail(activeOrder.orderNumber);
       setActionNotice(response.message);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "No se pudo reenviar el email al cliente.");
@@ -362,7 +407,7 @@ export function OrdersWorkspace() {
   }
 
   async function handleTransitionStatus() {
-    if (!selectedOrder || !nextOrderStatus) {
+    if (!activeOrder || !nextOrderStatus) {
       return;
     }
 
@@ -371,13 +416,12 @@ export function OrdersWorkspace() {
     setActionNotice(null);
 
     try {
-      const response = await transitionOrderStatus(selectedOrder.orderNumber, {
+      const response = await transitionOrderStatus(activeOrder.orderNumber, {
         status: nextOrderStatus,
         actor: "admin",
         note: transitionNote.trim() || "Actualización operativa desde backoffice."
       });
-      setSelectedOrder(response.data);
-      setActionNotice(`Pedido movido a ${orderStatusLabel(response.data.orderStatus)}.`);
+      setActionNotice(response.message);
       setRefreshKey((current) => current + 1);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "No se pudo actualizar el estado del pedido.");
@@ -387,7 +431,7 @@ export function OrdersWorkspace() {
   }
 
   async function handleRegisterManualPayment() {
-    if (!selectedOrder) {
+    if (!activeOrder) {
       return;
     }
 
@@ -396,17 +440,40 @@ export function OrdersWorkspace() {
     setActionNotice(null);
 
     try {
-      const response = await registerAdminManualPayment(selectedOrder.orderNumber, {
+      const response = await registerAdminManualPayment(activeOrder.orderNumber, {
         reviewer: "admin",
         amount: Number(manualPaymentAmount),
         reference: manualPaymentReference.trim() || undefined,
         notes: manualPaymentNotes.trim() || undefined
       });
-      setSelectedOrder(response.data);
-      setActionNotice("Pago manual registrado y pedido actualizado.");
+      setActionNotice(response.message);
       setRefreshKey((current) => current + 1);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "No se pudo registrar el pago manual.");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleConfirmOnlinePayment() {
+    if (!activeOrder) {
+      return;
+    }
+
+    setActionLoading("online_payment");
+    setActionError(null);
+    setActionNotice(null);
+
+    try {
+      const response = await confirmOnlinePayment(activeOrder.orderNumber, {
+        reviewer: "admin",
+        reference: manualPaymentReference.trim() || undefined,
+        notes: "Conciliacion manual de pago online desde backoffice."
+      });
+      setActionNotice(response.message);
+      setRefreshKey((current) => current + 1);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "No se pudo confirmar el pago online.");
     } finally {
       setActionLoading(null);
     }
@@ -417,10 +484,11 @@ export function OrdersWorkspace() {
     setCreateItems([]);
     setCreateError(null);
     setCreateOpen(true);
-    if (!availableProducts.length) {
+    if (!availableProducts.length || !availableVendors.length) {
       try {
-        const res = await fetchAdminProducts();
-        setAvailableProducts(res.data ?? []);
+        const [productsResponse, vendorsResponse] = await Promise.all([fetchAdminProducts(), fetchVendors()]);
+        setAvailableProducts(productsResponse.data ?? []);
+        setAvailableVendors(vendorsResponse.data ?? []);
       } catch { /* no-op */ }
     }
   }
@@ -487,7 +555,9 @@ export function OrdersWorkspace() {
         </div>,
         <div key={`${order.orderNumber}-customer`} className="space-y-0.5">
           <div className="font-medium text-[#132016]">{order.customerName}</div>
-          <div className="text-xs text-black/45">{order.paymentMethod === "manual" ? "Pago manual" : "Openpay"}</div>
+          <div className="text-xs text-black/45">
+            {order.salesChannel === "manual" ? "Canal manual" : "Canal web"} · {order.paymentMethod === "manual" ? "Pago manual" : "Openpay"}
+          </div>
         </div>,
         formatCurrency(order.total),
         <StatusBadge key={`${order.orderNumber}-status`} tone={orderTone(order.orderStatus)} label={orderStatusLabel(order.orderStatus)} />,
@@ -495,7 +565,7 @@ export function OrdersWorkspace() {
         order.manualStatus ? (
           <StatusBadge key={`${order.orderNumber}-manual`} tone={manualTone(order.manualStatus)} label={manualStatusLabel(order.manualStatus)} />
         ) : <span key={`${order.orderNumber}-manual`} className="text-xs text-black/35">—</span>,
-        order.vendorCode ?? <span className="text-black/35">—</span>
+        order.vendorName ? `${order.vendorName}${order.vendorCode ? ` (${order.vendorCode})` : ""}` : order.vendorCode ?? <span className="text-black/35">—</span>
       ]),
     [orders]
   );
@@ -640,11 +710,20 @@ export function OrdersWorkspace() {
                 </div>
                 <div>
                   <label className="mb-1 block text-[11px] text-black/50">Vendedor (opcional)</label>
-                  <input type="text" placeholder="VND-001"
+                  <select
                     value={createForm.vendorCode}
                     onChange={(e) => setCreateForm((f) => ({ ...f, vendorCode: e.target.value }))}
                     className="w-full rounded-[10px] border border-black/15 bg-white px-3 py-2 text-sm outline-none focus:border-[#52b788]"
-                  />
+                  >
+                    <option value="">Sin vendedor asociado</option>
+                    {availableVendors
+                      .filter((vendor) => vendor.status === "active")
+                      .map((vendor) => (
+                        <option key={vendor.code} value={vendor.code}>
+                          {vendor.code} · {vendor.name}
+                        </option>
+                      ))}
+                  </select>
                 </div>
               </div>
             </div>
@@ -715,7 +794,7 @@ export function OrdersWorkspace() {
                       : "text-black/50 hover:text-black/70"
                   }`}
                 >
-                  {tab === "detalle" ? "Detalle" : `Timeline${selectedOrder?.statusHistory.length ? ` (${selectedOrder.statusHistory.length})` : ""}`}
+                  {tab === "detalle" ? "Detalle" : `Timeline${activeOrder?.statusHistory?.length ? ` (${activeOrder.statusHistory.length})` : ""}`}
                 </button>
               ))}
             </div>
@@ -724,43 +803,53 @@ export function OrdersWorkspace() {
           <DialogBody>
             {detailLoading ? (
               <p className="text-sm text-black/55">Cargando detalle del pedido...</p>
-            ) : selectedOrder && activeTab === "detalle" ? (
+            ) : activeOrder && activeTab === "detalle" ? (
               <div className="space-y-4">
                 {/* Resumen de badges */}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex flex-wrap gap-2">
-                    <StatusBadge tone={orderTone(selectedOrder.orderStatus)} label={orderStatusLabel(selectedOrder.orderStatus)} />
-                    <StatusBadge tone={paymentTone(selectedOrder.paymentStatus)} label={paymentStatusLabel(selectedOrder.paymentStatus)} />
-                    {selectedOrder.manualStatus && (
-                      <StatusBadge tone={manualTone(selectedOrder.manualStatus)} label={manualStatusLabel(selectedOrder.manualStatus)} />
+                    <StatusBadge tone={orderTone(activeOrder.orderStatus)} label={orderStatusLabel(activeOrder.orderStatus)} />
+                    <StatusBadge tone={paymentTone(activeOrder.paymentStatus)} label={paymentStatusLabel(activeOrder.paymentStatus)} />
+                    {activeOrder.manualStatus && (
+                      <StatusBadge tone={manualTone(activeOrder.manualStatus)} label={manualStatusLabel(activeOrder.manualStatus)} />
                     )}
                     {selectedOrderStage && (
                       <StatusBadge tone={stageTone(selectedOrderStage)} label={formatStageLabel(selectedOrderStage)} />
                     )}
                   </div>
-                  <span className="text-lg font-semibold text-[#132016]">{formatCurrency(selectedOrder.total)}</span>
+                  <span className="text-lg font-semibold text-[#132016]">{formatCurrency(activeOrder.total)}</span>
                 </div>
 
                 {/* Cliente + Envío */}
                 <div className="grid gap-3 md:grid-cols-2">
                   <DetailBlock label="Cliente">
-                    <p className="font-medium text-[#132016]">{selectedOrder.customer.firstName} {selectedOrder.customer.lastName}</p>
-                    <p className="text-sm text-black/60">{selectedOrder.customer.email}</p>
-                    <p className="text-sm text-black/60">{selectedOrder.customer.phone}</p>
+                    <p className="font-medium text-[#132016]">{activeOrder.customer.firstName} {activeOrder.customer.lastName}</p>
+                    <p className="text-sm text-black/60">{activeOrder.customer.email}</p>
+                    <p className="text-sm text-black/60">{activeOrder.customer.phone}</p>
+                    {activeOrder.customer.documentNumber ? (
+                      <p className="text-sm text-black/60">{documentTypeLabel(activeOrder.customer.documentType)}: {activeOrder.customer.documentNumber}</p>
+                    ) : null}
                   </DetailBlock>
                   <DetailBlock label="Envío">
-                    <p className="font-medium text-[#132016]">{selectedOrder.address.recipientName}</p>
-                    <p className="text-sm text-black/60">{selectedOrder.address.line1}</p>
-                    {selectedOrder.address.line2 ? <p className="text-sm text-black/60">{selectedOrder.address.line2}</p> : null}
-                    <p className="text-sm text-black/60">{selectedOrder.address.city}, {selectedOrder.address.region}</p>
-                    <p className="text-sm text-black/60">{selectedOrder.address.countryCode}</p>
+                    <p className="font-medium text-[#132016]">{activeOrder.address.recipientName}</p>
+                    <p className="text-sm text-black/60">{activeOrder.address.line1}</p>
+                    {activeOrder.address.line2 ? <p className="text-sm text-black/60">{activeOrder.address.line2}</p> : null}
+                    <p className="text-sm text-black/60">{activeOrder.address.city}, {activeOrder.address.region}</p>
+                    <p className="text-sm text-black/60">{activeOrder.address.countryCode}</p>
+                    {activeOrder.address.deliveryMode === "province_shalom_pickup" ? (
+                      <>
+                        <p className="text-sm text-black/60">Modalidad: Provincia por Shalom</p>
+                        <p className="text-sm text-black/60">Sucursal: {activeOrder.address.agencyName ?? "Sin sucursal registrada"}</p>
+                        <p className="text-sm text-black/60">Flete: pago al recoger</p>
+                      </>
+                    ) : null}
                   </DetailBlock>
                 </div>
 
                 {/* Items */}
-                <DetailBlock label={`Items · ${selectedOrder.items.length}`}>
+                <DetailBlock label={`Items · ${activeOrder.items.length}`}>
                   <div className="space-y-2">
-                    {selectedOrder.items.map((item) => (
+                    {activeOrder.items.map((item) => (
                       <div key={item.slug} className="flex items-center justify-between gap-4">
                         <div>
                           <p className="font-medium text-[#132016]">{item.name}</p>
@@ -774,26 +863,28 @@ export function OrdersWorkspace() {
 
                 {/* Totales */}
                 <div className="space-y-2 rounded-[1.25rem] border border-black/10 bg-white p-4 text-sm text-[#132016]">
-                  <div className="flex justify-between"><span className="text-black/55">Subtotal</span><span>{formatCurrency(selectedOrder.subtotal)}</span></div>
-                  {selectedOrder.discount > 0 && (
-                    <div className="flex justify-between"><span className="text-black/55">Descuento</span><span>-{formatCurrency(selectedOrder.discount)}</span></div>
+                  <div className="flex justify-between"><span className="text-black/55">Subtotal</span><span>{formatCurrency(activeOrder.subtotal)}</span></div>
+                  {activeOrder.discount > 0 && (
+                    <div className="flex justify-between"><span className="text-black/55">Descuento</span><span>-{formatCurrency(activeOrder.discount)}</span></div>
                   )}
-                  <div className="flex justify-between"><span className="text-black/55">Envío</span><span>{formatCurrency(selectedOrder.shipping)}</span></div>
+                  <div className="flex justify-between"><span className="text-black/55">Envío</span><span>{formatCurrency(activeOrder.shipping)}</span></div>
                   <Separator />
-                  <div className="flex justify-between font-semibold"><span>Total</span><span>{formatCurrency(selectedOrder.total)}</span></div>
+                  <div className="flex justify-between font-semibold"><span>Total</span><span>{formatCurrency(activeOrder.total)}</span></div>
                 </div>
 
                 {/* Pago + referencia */}
-                <div className="grid gap-3 md:grid-cols-3 text-sm">
-                  <SummaryTile label="Proveedor" value={selectedOrder.payment.provider === "manual" ? "Pago manual" : "Openpay"} />
-                  <SummaryTile label="Referencia" value={selectedOrder.providerReference ?? "—"} />
-                  <SummaryTile label="Vendedor" value={selectedOrder.vendorCode ?? "—"} />
+                <div className="grid gap-3 md:grid-cols-4 text-sm">
+                  <SummaryTile label="Proveedor" value={activeOrder.payment.provider === "manual" ? "Pago manual" : "Openpay"} />
+                  <SummaryTile label="Canal" value={activeOrder.salesChannel === "manual" ? "Manual" : "Web"} />
+                  <SummaryTile label="Referencia" value={activeOrder.providerReference ?? "—"} />
+                  <SummaryTile label="Vendedor" value={activeOrder.vendorName ? `${activeOrder.vendorName}${activeOrder.vendorCode ? ` (${activeOrder.vendorCode})` : ""}` : activeOrder.vendorCode ?? "—"} />
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-3 text-sm">
-                  <SummaryTile label="Estado operativo" value={orderStatusLabel(selectedOrder.orderStatus)} />
-                  <SummaryTile label="Etapa CRM" value={formatStageLabel(selectedOrder.crmStage)} />
-                  <SummaryTile label="Seguimiento" value={crmFollowUpLabel(selectedOrder.crmStage)} />
+                <div className="grid gap-3 md:grid-cols-4 text-sm">
+                  <SummaryTile label="Estado operativo" value={orderStatusLabel(activeOrder.orderStatus)} />
+                  <SummaryTile label="Etapa CRM" value={formatStageLabel(activeOrder.crmStage)} />
+                  <SummaryTile label="Seguimiento" value={crmFollowUpLabel(activeOrder.crmStage)} />
+                  <SummaryTile label="Venta confirmada" value={activeOrder.confirmedAt ? formatDateTime(activeOrder.confirmedAt) : "Pendiente"} />
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-2">
@@ -862,25 +953,43 @@ export function OrdersWorkspace() {
                   </DetailBlock>
                 </div>
 
+                {activeOrder.paymentMethod === "openpay" ? (
+                  <DetailBlock label="Conciliación pago online">
+                    <div className="space-y-3">
+                      <p className="text-sm text-black/55">
+                        Usa esta acción cuando el pedido web ya tiene validación operativa del cobro online y falta consolidar venta, stock y reportes.
+                      </p>
+                      <Button onClick={() => void handleConfirmOnlinePayment()} disabled={!canConfirmOnlinePayment || !!actionLoading}>
+                        {actionLoading === "online_payment" ? "Confirmando..." : "Confirmar pago online"}
+                      </Button>
+                      {!canConfirmOnlinePayment ? (
+                        <p className="text-xs text-black/45">
+                          Disponible sólo para pedidos `openpay` aún no conciliados como pagados.
+                        </p>
+                      ) : null}
+                    </div>
+                  </DetailBlock>
+                ) : null}
+
                 {/* Solicitud manual con comprobante */}
-                {selectedOrder.manualRequest ? (
+                {activeOrder.manualRequest ? (
                   <div className="space-y-3 rounded-[1.25rem] border border-amber-200 bg-amber-50 p-4">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-semibold text-amber-950">Solicitud manual</p>
-                      <StatusBadge tone={manualTone(selectedOrder.manualRequest.status)} label={manualStatusLabel(selectedOrder.manualRequest.status)} />
+                      <StatusBadge tone={manualTone(activeOrder.manualRequest.status)} label={manualStatusLabel(activeOrder.manualRequest.status)} />
                     </div>
 
-                    {selectedOrder.manualRequest.evidenceImageUrl ? (
+                    {activeOrder.manualRequest.evidenceImageUrl ? (
                       <div className="space-y-2">
                         <div className="overflow-hidden rounded-[10px] border border-amber-200 bg-white">
                           <img
-                            src={selectedOrder.manualRequest.evidenceImageUrl}
+                            src={activeOrder.manualRequest.evidenceImageUrl}
                             alt="Comprobante de pago"
                             className="max-h-64 w-full object-contain"
                           />
                         </div>
                         <a
-                          href={selectedOrder.manualRequest.evidenceImageUrl}
+                          href={activeOrder.manualRequest.evidenceImageUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-block text-xs text-amber-800 underline underline-offset-2 hover:text-amber-950"
@@ -890,23 +999,23 @@ export function OrdersWorkspace() {
                       </div>
                     ) : (
                       <p className="text-sm text-amber-950/70">
-                        Referencia: {selectedOrder.manualRequest.evidenceReference ?? "Sin comprobante"}
+                        Referencia: {activeOrder.manualRequest.evidenceReference ?? "Sin comprobante"}
                       </p>
                     )}
 
-                    {selectedOrder.manualRequest.evidenceNotes ? (
-                      <p className="text-sm text-amber-950/70">{selectedOrder.manualRequest.evidenceNotes}</p>
+                    {activeOrder.manualRequest.evidenceNotes ? (
+                      <p className="text-sm text-amber-950/70">{activeOrder.manualRequest.evidenceNotes}</p>
                     ) : null}
 
-                    {selectedOrder.manualRequest.reviewer ? (
+                    {activeOrder.manualRequest.reviewer ? (
                       <p className="text-xs text-amber-900/60">
-                        Revisado por {selectedOrder.manualRequest.reviewer} · {selectedOrder.manualRequest.reviewedAt}
+                        Revisado por {activeOrder.manualRequest.reviewer} · {activeOrder.manualRequest.reviewedAt}
                       </p>
                     ) : (
                       <p className="text-xs text-amber-900/60">Pendiente de decisión.</p>
                     )}
 
-                    {selectedOrder.manualRequest.status === "approved" && selectedOrder.customer.email ? (
+                    {activeOrder.manualRequest.status === "approved" && activeOrder.customer.email ? (
                       <div className="flex flex-wrap items-center gap-2 pt-1">
                         <button
                           type="button"
@@ -916,14 +1025,16 @@ export function OrdersWorkspace() {
                         >
                           {actionLoading === "resend" ? "Reenviando email..." : "Reenviar email al cliente"}
                         </button>
-                        <span className="text-xs text-amber-900/60">{selectedOrder.customer.email}</span>
+                        <span className="text-xs text-amber-900/60">{activeOrder.customer.email}</span>
                       </div>
                     ) : null}
                   </div>
                 ) : null}
               </div>
-            ) : selectedOrder && activeTab === "timeline" ? (
-              <TimelinePedido items={selectedOrder.statusHistory} />
+            ) : activeOrder && activeTab === "timeline" ? (
+              <TimelinePedido items={activeOrder.statusHistory} />
+            ) : detailError ? (
+              <p className="text-sm text-red-600">{detailError}</p>
             ) : (
               <p className="text-sm text-black/55">Selecciona un pedido para ver su detalle.</p>
             )}
@@ -937,12 +1048,12 @@ export function OrdersWorkspace() {
             <button
               type="button"
               onClick={() => { setDeleteConfirmText(""); setDeleteConfirmOpen(true); }}
-              disabled={!!actionLoading || !selectedOrder}
+              disabled={!!actionLoading || !activeOrder}
               className="mr-auto rounded-[9px] border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-40"
             >
               Eliminar pedido
             </button>
-            {selectedOrder?.manualRequest?.status === "under_review" ? (
+            {activeOrder?.manualRequest?.status === "under_review" ? (
               <>
                 <Button
                   variant="secondary"
@@ -981,7 +1092,7 @@ export function OrdersWorkspace() {
           </DialogHeader>
           <DialogBody className="space-y-4">
             <p className="text-sm leading-6 text-[#132016]">
-              Vas a aprobar el pago manual de <span className="font-semibold">{selectedOrder?.orderNumber}</span> y dejar visible la nueva etapa operativa del pedido.
+              Vas a aprobar el pago manual de <span className="font-semibold">{activeOrder?.orderNumber}</span> y dejar visible la nueva etapa operativa del pedido.
             </p>
 
             <div className="rounded-[1.25rem] border border-black/10 bg-white p-4">

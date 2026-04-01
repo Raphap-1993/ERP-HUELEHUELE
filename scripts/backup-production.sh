@@ -4,9 +4,25 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+resolve_app_root_dir() {
+  local root_dir="$1"
+  local parent_dir
+  parent_dir="$(dirname "$root_dir")"
+
+  if [[ "$(basename "$parent_dir")" == "releases" ]]; then
+    dirname "$parent_dir"
+  else
+    printf '%s\n' "$parent_dir"
+  fi
+}
+
+APP_ROOT_DIR="${APP_ROOT_DIR:-$(resolve_app_root_dir "$ROOT_DIR")}"
+APP_SHARED_DIR_DEFAULT="${APP_SHARED_DIR:-$APP_ROOT_DIR/shared}"
+
 env_candidates=(
   ".env.production"
   "../shared/.env.production"
+  "$APP_SHARED_DIR_DEFAULT/.env.production"
 )
 
 for env_file in "${env_candidates[@]}"; do
@@ -55,7 +71,7 @@ if [[ "$pg_dump_url" == *\?* ]]; then
   fi
 fi
 
-BACKUP_DIR="${BACKUP_DIR:-$ROOT_DIR/backups}"
+BACKUP_DIR="${BACKUP_DIR:-$APP_ROOT_DIR/backups}"
 RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-14}"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 TARGET_DIR="$BACKUP_DIR/$TIMESTAMP"

@@ -440,6 +440,12 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
                     create: {
                       displayName
                     }
+                  },
+                  codes: {
+                    create: {
+                      code: `VEND-${randomBytes(3).toString("hex").toUpperCase()}`,
+                      status: VendorCodeStatus.active
+                    }
                   }
                 }
               }
