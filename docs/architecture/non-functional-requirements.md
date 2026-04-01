@@ -4,6 +4,33 @@
 
 Definir los requisitos no funcionales mínimos para que Huelegood sea operable, seguro y mantenible desde el inicio.
 
+## Diagrama de atributos no funcionales
+
+```mermaid
+flowchart TB
+  nfr["Huelegood NFR"] --> availability["Disponibilidad y operacion"]
+  nfr --> performance["Rendimiento"]
+  nfr --> scalability["Escalabilidad"]
+  nfr --> security["Seguridad"]
+  nfr --> integrity["Integridad de datos"]
+  nfr --> observability["Observabilidad"]
+  nfr --> maintainability["Mantenibilidad"]
+  nfr --> ux["UX y consistencia visual"]
+  nfr --> continuity["Recuperacion y continuidad"]
+  nfr --> compatibility["Compatibilidad"]
+
+  availability --> a1["PM2, Hestia y backups"]
+  performance --> p1["p95 y SEO"]
+  scalability --> s1["colas y separacion por procesos"]
+  security --> s2["RBAC, secretos y validacion"]
+  integrity --> i1["snapshots, idempotencia e historial"]
+  observability --> o1["logs, healthchecks y colas"]
+  maintainability --> m1["modularidad y contratos versionados"]
+  ux --> u1["tokens y componentes compartidos"]
+  continuity --> c1["RTO y RPO iniciales"]
+  compatibility --> c2["desktop, tablet y mobile"]
+```
+
 ## Disponibilidad y operación
 
 - El sistema debe poder desplegarse y recuperarse íntegramente dentro del VPS actual usando PM2 y Hestia/Nginx.

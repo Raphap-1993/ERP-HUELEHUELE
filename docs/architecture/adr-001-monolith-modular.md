@@ -29,6 +29,29 @@ Se adopta una arquitectura de monolito modular compuesta por:
 
 No se implementarán microservicios puros en esta etapa.
 
+## Diagrama de la decisión
+
+```mermaid
+flowchart LR
+  subgraph drivers["Drivers"]
+    d1["Velocidad de implementacion"]
+    d2["Bajo costo operativo"]
+    d3["Trazabilidad entre dominios"]
+    d4["Entorno inicial en un solo VPS"]
+  end
+
+  d1 --> decision["ADR-001: monolito modular"]
+  d2 --> decision
+  d3 --> decision
+  d4 --> decision
+
+  decision --> web["web"]
+  decision --> admin["admin"]
+  decision --> api["API unica"]
+  decision --> worker["worker separado"]
+  decision --> data["PostgreSQL y Redis compartidos"]
+```
+
 ## Razones
 
 ### A favor

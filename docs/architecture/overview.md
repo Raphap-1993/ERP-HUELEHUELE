@@ -22,6 +22,30 @@ Todos estos procesos comparten una misma plataforma de datos y operación:
 - PM2 como supervisor de procesos
 - Hestia/Nginx como reverse proxy y terminación HTTP(S)
 
+## Diagrama objetivo de alto nivel
+
+```mermaid
+flowchart TB
+  actors["Clientes, vendedores, mayoristas y admins"] --> fronts["Experiencias separadas"]
+
+  subgraph experiences["Frontends"]
+    web["web"]
+    admin["admin"]
+  end
+
+  fronts --> web
+  fronts --> admin
+
+  web --> api["API transaccional unica"]
+  admin --> api
+
+  api --> pg[("PostgreSQL")]
+  api --> redis[("Redis")]
+  api --> r2["Cloudflare R2"]
+  api <--> openpay["Openpay"]
+  redis --> worker["worker BullMQ"]
+```
+
 ## Contexto de negocio
 
 Huelegood necesita vender, operar y escalar una marca comercial con foco en:
@@ -67,25 +91,7 @@ La base PostgreSQL existente en el VPS será el origen de verdad. Redis se usa s
 
 ## Vista lógica de alto nivel
 
-```text
-Clientes / Vendedores / Mayoristas / Admins
-            |
-     +------+------+
-     |             |
- Next.js Web   Next.js Admin
-     |             |
-     +------+------+
-            |
-        NestJS API
-            |
-   +--------+--------+
-   |        |        |
- PostgreSQL Redis  Openpay
-            |
-         BullMQ
-            |
-         Worker
-```
+La vista objetivo queda resumida en el diagrama anterior: frontends desacoplados por experiencia, una API única como dueña de las reglas sensibles, datos centralizados en PostgreSQL y procesamiento diferido a través de Redis y worker.
 
 ## Módulos funcionales mínimos
 

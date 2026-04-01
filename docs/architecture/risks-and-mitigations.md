@@ -4,6 +4,19 @@
 
 Identificar riesgos técnicos y operativos previsibles en Huelegood y dejar definidas medidas de mitigación antes de implementar.
 
+## Diagrama de riesgos prioritarios
+
+```mermaid
+flowchart LR
+  states["Estados transaccionales complejos"] --> statesMit["Maquinas de estado e idempotencia"]
+  manual["Sobrecarga de pagos manuales"] --> manualMit["Cola de revision, SLA y filtros"]
+  seller["Atribucion incorrecta de vendedor"] --> sellerMit["Persistencia de codigo y auditoria"]
+  vps["Dependencia de un solo VPS"] --> vpsMit["Backups, PM2 y healthchecks"]
+  stock["Sobreventa o stock inconsistente"] --> stockMit["Control de disponibilidad y movimientos"]
+  campaigns["Campanas a segmentos errados"] --> campaignsMit["Preview, dry-run y recipients persistidos"]
+  adminPerf["Listados admin pesados"] --> adminPerfMit["Paginacion, indices y filtros"]
+```
+
 ## Riesgos principales
 
 | Riesgo | Impacto | Probabilidad | Mitigación propuesta |

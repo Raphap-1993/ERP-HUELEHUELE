@@ -39,6 +39,57 @@ Los diagramas Mermaid alineados al código viven en [module-diagrams.md](./modul
 - Comercial: `media`, `products`, `catalog`, `cms`, `coupons`, `inventory`, `orders`, `payments`, `commerce`
 - Growth: `vendors`, `commissions`, `loyalty`, `marketing`, `notifications`, `wholesale`, `core`
 
+## Diagrama de capas
+
+```mermaid
+flowchart LR
+  subgraph platform["Plataforma y operacion"]
+    health["health"]
+    observability["observability"]
+    auth["auth"]
+    security["security"]
+    audit["audit"]
+    customers["customers"]
+  end
+
+  subgraph commercial["Comercial"]
+    media["media"]
+    products["products"]
+    catalog["catalog"]
+    cms["cms"]
+    coupons["coupons"]
+    inventory["inventory"]
+    orders["orders"]
+    payments["payments"]
+    commerce["commerce"]
+  end
+
+  subgraph growth["Growth"]
+    vendors["vendors"]
+    commissions["commissions"]
+    loyalty["loyalty"]
+    marketing["marketing"]
+    notifications["notifications"]
+    wholesale["wholesale"]
+    core["core"]
+  end
+
+  auth -. soporte transversal .-> commerce
+  audit -. soporte transversal .-> orders
+  observability -. soporte transversal .-> payments
+  auth -. soporte transversal .-> vendors
+  audit -. soporte transversal .-> commissions
+  observability -. soporte transversal .-> notifications
+
+  products --> catalog
+  cms --> commerce
+  orders --> commissions
+  orders --> loyalty
+  orders --> notifications
+  wholesale --> core
+  commissions --> core
+```
+
 ## Reglas de interacción entre módulos
 
 ### Plataforma y operación
