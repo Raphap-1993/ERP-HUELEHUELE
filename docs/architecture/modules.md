@@ -2,123 +2,99 @@
 
 ## Criterio de modularidad
 
-Huelegood separa capacidades por dominio funcional. Cada módulo tiene una responsabilidad primaria, reglas propias y puntos de integración definidos con otros módulos.
+Huelegood separa capacidades por dominio funcional, pero la forma actual del backend ya no coincide 1:1 con el primer mapa conceptual. Hoy existe un corte real entre módulos funcionales, módulos de soporte operativo y módulos agregadores.
 
-## Mapa de módulos
+Los diagramas Mermaid alineados al código viven en [module-diagrams.md](./module-diagrams.md).
 
-| Módulo | Responsabilidad | Entidades núcleo | Integra con |
-| --- | --- | --- | --- |
-| Auth | identidad, login, sesiones, recuperación, guards | `users`, `roles`, `permissions`, `admins`, `customers` | todos |
-| CMS interno | contenido administrable del sitio | `site_settings`, `pages`, `page_blocks`, `faqs`, `banners`, `testimonials`, `seo_meta`, `navigation_items` | catálogo, marketing |
-| Catálogo | productos, variantes, imágenes, categorías | `categories`, `products`, `product_variants`, `product_images`, `inventory_movements` | promociones, carrito, pedidos |
-| Media | gestión de activos públicos y privados | `media_assets`, `media_usages`, `upload_jobs` | CMS, catálogo, pagos, mayoristas |
-| Promociones | ofertas y cupones | `promotions`, `coupons` | catálogo, carrito, pedidos, marketing |
-| Carrito | sesión de compra y preparación de checkout | `carts`, `cart_items` | catálogo, promociones, vendedores |
-| Pedidos | orden comercial y su ciclo de vida | `orders`, `order_items`, `order_addresses`, `order_status_history` | pagos, comisiones, fidelización, notificaciones |
-| Pagos | pagos online y manuales | `payments`, `payment_transactions`, `manual_payment_requests`, `payment_evidences` | pedidos, auditoría, notificaciones |
-| Clientes | cuentas y direcciones | `customers`, `customer_addresses` | auth, pedidos, marketing, fidelización |
-| Vendedores | onboarding, perfiles, códigos y estado | `vendor_applications`, `vendors`, `vendor_profiles`, `vendor_codes`, `vendor_bank_accounts`, `vendor_status_history` | comisiones, pedidos, marketing |
-| Comisiones | reglas, atribución y pago a vendedores | `commission_rules`, `commission_attributions`, `commissions`, `commission_payouts`, `payout_items` | vendedores, pedidos, pagos |
-| Mayoristas | leads, cotizaciones y tiers | `wholesale_leads`, `wholesale_quotes`, `wholesale_quote_items`, `wholesale_tiers` | CMS, marketing, notificaciones |
-| Fidelización | puntos y canjes | `loyalty_rules`, `loyalty_accounts`, `loyalty_movements`, `redemptions` | clientes, pedidos, promociones |
-| Marketing | segmentos, campañas, plantillas y eventos | `segments`, `campaigns`, `campaign_runs`, `campaign_recipients`, `templates`, `marketing_events` | clientes, CMS, promociones, notificaciones |
-| Notificaciones | entrega y trazabilidad de comunicaciones | `notifications`, `notification_logs` | pedidos, pagos, vendedores, marketing |
-| Auditoría | trazabilidad interna y acciones administrativas | `audit_logs`, `admin_actions` | todos |
+## Mapa actual de módulos implementados
+
+| Módulo | Capa | Estado | Responsabilidad actual | Persistencia dominante | Integra con |
+| --- | --- | --- | --- | --- | --- |
+| `health` | plataforma | implementado | liveness, readiness y chequeos operativos | `Prisma -> PostgreSQL` | operación |
+| `observability` | plataforma | implementado | telemetría HTTP y resumen de colas | `BullMQ -> Redis` | admin, worker |
+| `auth` | plataforma | implementado | login, sesiones, contexto de usuario y `RolesGuard` | `Prisma`, `ModuleState`, store de sesión | auditoría, web, admin, seller |
+| `security` | plataforma | implementado | postura de seguridad y resumen operativo | lectura sobre `audit` | admin |
+| `audit` | plataforma | implementado | logs de auditoría y acciones administrativas | `Prisma -> PostgreSQL` | todos |
+| `customers` | plataforma | esqueleto | reservado para dominio de cliente y self-service | pendiente | auth, pedidos, loyalty |
+| `media` | comercial | implementado | uploads públicos y privados, URLs y borrado de assets | `Cloudflare R2`, storage local | CMS, productos, checkout |
+| `products` | comercial | implementado | CRUD admin de productos, categorías e imágenes | `Prisma -> PostgreSQL` | media, catálogo, checkout |
+| `catalog` | comercial | implementado | read model público para storefront | delega en `products` | web |
+| `cms` | comercial | implementado | contenido editable, branding, navegación y páginas | `ModuleState -> PostgreSQL` | media, auditoría, marketing |
+| `coupons` | comercial | implementado | cupones y resolución de descuentos actual | `ModuleState -> PostgreSQL` | checkout |
+| `inventory` | comercial | implementado | reporte y asignaciones operativas de inventario | `Prisma`, `ModuleState` | pedidos, admin |
+| `orders` | comercial | implementado | agregado transaccional central y máquina de estados | `ModuleState -> PostgreSQL` | inventory, loyalty, notifications, audit |
+| `payments` | comercial | implementado | revisión manual, colas operativas y lectura de pagos | delega en `orders` + `BullMQ` | commissions, worker |
+| `commerce` | comercial | implementado | quote, checkout público y upload de evidencia | orquesta otros módulos | products, cms, coupons, orders, commissions, media |
+| `vendors` | growth | implementado | postulaciones, vendedores, códigos y onboarding | `ModuleState -> PostgreSQL` | commissions, admin, web |
+| `commissions` | growth | implementado | reglas, atribución, payout y conciliación | `ModuleState -> PostgreSQL`, `BullMQ` | vendors, orders, payments, worker |
+| `loyalty` | growth | implementado | puntos, movimientos y canjes | `ModuleState -> PostgreSQL` | orders, notifications |
+| `marketing` | growth | implementado | campañas, segmentos, templates y eventos | `ModuleState -> PostgreSQL` | wholesale, notifications |
+| `notifications` | growth | implementado | bandeja, logs y encolado de dispatch | `ModuleState -> PostgreSQL`, `BullMQ` | orders, loyalty, marketing, worker |
+| `wholesale` | growth | implementado | leads, quotes y tiers mayoristas | `ModuleState -> PostgreSQL` | marketing, audit |
+| `core` | growth | implementado | dashboards, reportes y seller panel agregados | sin fuente propia | orders, payments, vendors, commissions, wholesale, marketing, notifications, loyalty |
+
+## Capas reales del backend
+
+- Plataforma y operación: `health`, `observability`, `auth`, `security`, `audit`, `customers`
+- Comercial: `media`, `products`, `catalog`, `cms`, `coupons`, `inventory`, `orders`, `payments`, `commerce`
+- Growth: `vendors`, `commissions`, `loyalty`, `marketing`, `notifications`, `wholesale`, `core`
 
 ## Reglas de interacción entre módulos
 
-### Auth
+### Plataforma y operación
 
-- centraliza autenticación y contexto de usuario
-- expone autorización por permisos, no por checks ad hoc en controladores
+- `auth` centraliza autenticación, contexto y autorización por roles; no deben reaparecer checks ad hoc en controladores.
+- `audit` registra acciones sensibles y sirve como dependencia transversal para trazabilidad.
+- `observability` mide requests y colas; no debe convertirse en dueño del estado de negocio.
+- `security` resume postura y controles, pero no reemplaza a `auth` ni a `audit`.
+- `customers` sigue reservado; no debe fingirse como dominio cerrado mientras siga vacío.
 
-### CMS interno
+### Comercial
 
-- debe poder editar la web sin redeploy para cambios de contenido no estructural
-- no administra reglas comerciales sensibles
-- si referencia logo, hero o banners, debe hacerlo contra activos persistidos y no contra rutas hardcodeadas en código
+- `products` es la fuente real de catálogo administrable; `catalog` sólo expone la vista pública derivada.
+- `cms` debe editar la web sin redeploy para cambios no estructurales y resolver branding mediante `media`, no con assets hardcodeados.
+- `media` separa activos públicos del storefront y activos privados operativos; para media pública el destino vigente es `Cloudflare R2`.
+- `commerce` orquesta quote y checkout, pero no debe absorber la fuente de verdad de pedidos ni pagos.
+- `orders` es el agregado transaccional central y conserva snapshots de compra, direcciones, descuentos y atribución comercial.
+- `payments` administra revisión manual y asynchrony operativa, pero las transiciones finales deben respetar la máquina de estados de `orders`.
+- `inventory` ajusta disponibilidad y allocations operativas; no debe saltarse la lógica de `orders`.
 
-### Catálogo
+### Growth
 
-- controla disponibilidad comercial y consistencia de variantes
-- no ejecuta cobros ni descuentos finales por sí solo
-- debe ser fuente real de productos para storefront, checkout y secciones comerciales, no una copia estática en `shared`
+- `vendors` modela la relación comercial seller-first; un vendedor no controla catálogo, stock ni pricing base.
+- `commissions` monetiza la atribución una vez que la venta califica; payout y conciliación deben seguir reglas explícitas.
+- `loyalty` asigna o revierte puntos según elegibilidad del pedido.
+- `marketing` opera sobre campañas y segmentos tácticos; no sustituye un CRM enterprise.
+- `notifications` entrega y traza comunicaciones, pero depende de eventos emitidos por módulos dueños.
+- `wholesale` sigue siendo un funnel comercial de lead a quote, no un portal B2B autoservicio.
+- `core` agrega vistas y reportes; no debe convertirse en un módulo donde se reescriba lógica de dominio.
 
-### Media
+## Capacidades objetivo aún no separadas como módulo
 
-- centraliza logo, hero, banners, imágenes de producto y otros activos públicos del storefront
-- separa activos públicos de activos privados como evidencias operativas
-- para media pública del storefront, el destino vigente es `Cloudflare R2`
-- el delivery público debe resolverse con bucket público o dominio custom sobre R2
-- no debe obligar a escribir URLs manuales en el backoffice cuando el flujo esperado es upload y selección
-
-### Promociones
-
-- define compatibilidad, vigencia, audiencia y restricción de uso
-- resuelve validaciones antes de crear pago
-
-### Carrito
-
-- mantiene snapshot preliminar de precios, descuentos y código de vendedor
-- nunca es fuente definitiva de una venta; el pedido sí lo es
-
-### Pedidos
-
-- es el agregado transaccional central
-- conserva snapshot de productos, direcciones, precios, descuentos y atribuciones
-
-### Pagos
-
-- administra intentos, conciliación y evidencias
-- actualiza pedidos vía reglas explícitas de transición
-
-### Vendedores y Comisiones
-
-- `vendors` modela la relación comercial con personas que promueven la venta
-- `commissions` monetiza la atribución una vez que la venta califica
-- un vendedor no modifica catálogo, stock ni pricing base
-
-### Mayoristas
-
-- en MVP se trata como funnel comercial con lead, calificación y cotización
-- un portal B2B autoservicio completo queda fuera de alcance inicial
-
-### Fidelización
-
-- asigna puntos después de que el pedido alcanza el estado elegible
-- las reversas deben ejecutarse ante cancelaciones, devoluciones o fraude confirmado
-
-### Marketing
-
-- opera sobre segmentos, eventos y plantillas internas
-- no sustituye un CRM enterprise; cubre necesidades tácticas iniciales
-
-### Auditoría
-
-- toda acción sensible en admin debe generar registro
-- los logs de auditoría no deben depender de la capa visual
+| Capacidad objetivo | Estado actual en código | Brecha a cerrar |
+| --- | --- | --- |
+| `promotions` | descuentos resueltos por `coupons` y `commerce` | falta un módulo autónomo para vigencias, audiencias, stacking y reglas promocionales más ricas |
+| `cart` | quote y checkout directo en `commerce` | falta sesión persistente de carrito, aplicación incremental de códigos y lifecycle propio |
+| `customers` completo | existe `CustomersModule`, pero está vacío | faltan perfiles, direcciones, historial y self-service real |
+| webhooks Openpay | el flujo está documentado, pero no hay módulo/controlador dedicado | falta firma, idempotencia y trazabilidad explícita de webhooks |
+| jobs `orders`, `loyalty`, `marketing` | las colas existen en `QueueName`, pero el worker sólo procesa `payments`, `commissions` y `notifications` | faltan producers y processors dedicados |
 
 ## Dependencias permitidas
 
-- Pedidos depende de Catálogo, Promociones, Clientes y Vendedores para construir una orden válida.
-- Pagos depende de Pedidos para conocer monto y estado elegible.
-- Comisiones depende de Pedidos, Pagos y Vendedores para atribución y payout.
-- Fidelización depende de Pedidos para cálculo base.
-- Notificaciones depende de eventos emitidos por otros módulos.
-- CMS y Catálogo dependen de Media cuando necesitan resolver activos públicos persistidos.
+- `catalog` depende de `products` para storefront público.
+- `cms` y `products` dependen de `media` para resolver activos persistidos.
+- `commerce` depende de `products`, `cms`, `coupons`, `orders`, `commissions` y `media` para construir y despachar un checkout.
+- `orders` depende de `inventory`, `loyalty`, `notifications`, `audit` y `observability`.
+- `payments` depende de `orders`, `commissions` y `BullMQ`.
+- `commissions` depende de `orders`, `vendors`, `audit`, `ModuleState` y `BullMQ`.
+- `wholesale` depende de `marketing` y `audit`.
+- `core` depende de otros módulos para agregación, nunca al revés.
 
 ## Dependencias no deseadas
 
-- Admin consultando tablas directamente sin API.
-- CMS modificando reglas de negocio transaccional.
-- Worker escribiendo estados arbitrarios sin validar reglas del módulo dueño.
-- Vendedores gestionando entidades administrativas fuera de su dominio.
-- layout público leyendo branding estático desde código cuando el backoffice declara branding administrable.
-
-## Corte operacional recomendado
-
-Para efectos de implementación y ownership técnico, los módulos pueden agruparse en tres capas:
-
-- Comercial: catálogo, promociones, carrito, pedidos, pagos
-- Growth: vendedores, comisiones, mayoristas, fidelización, marketing
-- Plataforma: auth, CMS, media, notificaciones, auditoría
+- `web` o `admin` leyendo tablas o snapshots sin pasar por la API.
+- `cms` modificando reglas transaccionales de pedidos, pagos o comisiones.
+- `commerce` convirtiéndose en fuente de verdad del pedido.
+- `worker` escribiendo estados arbitrarios sin pasar por el módulo dueño.
+- `core` alojando lógica de dominio que debería vivir en módulos fuente.
+- branding público hardcodeado en frontend cuando el backoffice lo declara administrable.

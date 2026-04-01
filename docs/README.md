@@ -92,6 +92,7 @@ Como insumo funcional, se asume que la v1 de Huelegood ya comunica:
 - [overview.md](./architecture/overview.md)
 - [solution-architecture.md](./architecture/solution-architecture.md)
 - [modules.md](./architecture/modules.md)
+- [module-diagrams.md](./architecture/module-diagrams.md)
 - [non-functional-requirements.md](./architecture/non-functional-requirements.md)
 - [risks-and-mitigations.md](./architecture/risks-and-mitigations.md)
 - [adr-001-monolith-modular.md](./architecture/adr-001-monolith-modular.md)
