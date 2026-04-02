@@ -156,6 +156,7 @@ Ubicación efectiva en producción actual:
 ### local
 
 - credenciales sandbox
+- dependencias estándar via Docker según [local-docker-services.md](./local-docker-services.md)
 - uploads locales
 - base local o copia de desarrollo
 - `prisma/seed.ts` y `npm run prisma:seed` son la ruta local/demo; no deben usarse como bootstrap productivo

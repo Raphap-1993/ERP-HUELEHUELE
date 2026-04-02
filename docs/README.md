@@ -156,6 +156,7 @@ Nota:
 
 - [deployment-strategy.md](./infra/deployment-strategy.md)
 - [environments.md](./infra/environments.md)
+- [local-docker-services.md](./infra/local-docker-services.md)
 - [pm2-services.md](./infra/pm2-services.md)
 
 ## Orden recomendado de lectura

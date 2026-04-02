@@ -7,6 +7,10 @@
     "packages/*"
   ],
   "scripts": {
+    "docker:up": "bash scripts/docker-local.sh up",
+    "docker:down": "bash scripts/docker-local.sh down",
+    "docker:ps": "bash scripts/docker-local.sh ps",
+    "docker:logs": "bash scripts/docker-local.sh logs",
     "dev:web": "npm run dev -w @huelegood/web",
     "dev:admin": "npm run dev -w @huelegood/admin",
     "dev:api": "npm run start:dev -w @huelegood/api",

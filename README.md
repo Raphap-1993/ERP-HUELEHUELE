@@ -166,8 +166,7 @@ Pendientes estructurales señalados en la propia documentación:
 ### Requisitos
 
 - `Node.js` y `npm`
-- `PostgreSQL`
-- `Redis`
+- un daemon Docker operativo (`Docker Desktop` o equivalente)
 
 ### Setup básico
 
@@ -183,7 +182,20 @@ Pendientes estructurales señalados en la propia documentación:
    cp .env.example .env
    ```
 
-3. Con `PostgreSQL` y `Redis` locales ya levantados, preparar base de datos y seed demo:
+3. Levantar dependencias locales con Docker:
+
+   ```bash
+   npm run docker:up
+   ```
+
+   Este flujo usa [`docker-compose.local.yml`](./docker-compose.local.yml) y expone:
+
+   - `PostgreSQL` en `localhost:5433`
+   - `Redis` en `localhost:6380`
+
+   La elección de puertos evita chocar con servicios nativos ya instalados en la máquina.
+
+4. Con Docker arriba, preparar base de datos y seed demo:
 
    ```bash
    npm run local:demo
@@ -196,7 +208,7 @@ Pendientes estructurales señalados en la propia documentación:
 
    El seed carga un baseline demo para que `localhost` se parezca a la operación documentada sin depender de datos vivos.
 
-4. Levantar cada proceso en terminales separadas:
+5. Levantar cada proceso en terminales separadas:
 
    ```bash
    npm run dev:web
@@ -204,6 +216,11 @@ Pendientes estructurales señalados en la propia documentación:
    npm run dev:api
    npm run dev:worker
    ```
+
+Referencia operativa:
+
+- guía detallada de dependencias Docker locales: [`docs/infra/local-docker-services.md`](./docs/infra/local-docker-services.md)
+- si ya tienes un `.env` viejo apuntando a `5432`, `6379` o a sockets locales, alinéalos con [`.env.example`](./.env.example) antes de correr `npm run local:demo`
 
 ### URLs locales esperadas
 
@@ -230,6 +247,10 @@ Scripts raíz del monorepo:
 - `npm run dev:admin`
 - `npm run dev:api`
 - `npm run dev:worker`
+- `npm run docker:up`
+- `npm run docker:down`
+- `npm run docker:ps`
+- `npm run docker:logs`
 - `npm run build`
 - `npm run typecheck`
 - `npm run prisma:generate`
