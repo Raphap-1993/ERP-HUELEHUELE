@@ -8,6 +8,15 @@
 | `staging` o `preprod` | validación previa a producción | recomendado aunque se monte en el mismo VPS con aislamiento lógico |
 | `production` | operación real | usa dominios públicos y datos reales |
 
+## VPS actual
+
+Referencia canónica del VPS actual de este proyecto:
+
+- IP: `192.99.43.76`
+- Usuario operativo: `huelehuele`
+
+La documentación operativa que depende de ese VPS debe apuntar a esta sección en lugar de repetir el dato en otros archivos.
+
 ## Recomendación para el VPS actual
 
 Si solo existe un VPS:

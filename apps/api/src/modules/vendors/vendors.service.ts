@@ -1,16 +1,20 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
-  OnModuleInit
+  OnModuleInit,
+  forwardRef
 } from "@nestjs/common";
 import {
   VendorCollaborationType,
   VendorApplicationStatus,
   VendorStatus,
   type AdminVendorCreateInput,
+  type AdminVendorUpdateInput,
   type AuthUserSummary,
+  type VendorApplicationIntent,
   type VendorApplicationActionInput,
   type VendorApplicationInput,
   type VendorApplicationSummary,
@@ -19,6 +23,7 @@ import {
 } from "@huelegood/shared";
 import { actionResponse, wrapResponse } from "../../common/response";
 import { AuditService } from "../audit/audit.service";
+import { CommissionsService } from "../commissions/commissions.service";
 import { ModuleStateService } from "../../persistence/module-state.service";
 
 interface VendorApplicationRecord extends VendorApplicationSummary {
@@ -97,12 +102,84 @@ function normalizeText(value?: string) {
   return normalized ? normalized : undefined;
 }
 
+function normalizeInternationalPhone(value?: string) {
+  const normalized = value?.trim().replace(/\s+/g, " ");
+  if (!normalized) {
+    return undefined;
+  }
+
+  const compact = normalized.replace(/\s+/g, "");
+  return /^\+\d{8,15}$/.test(compact) ? normalized : undefined;
+}
+
+function parseApplicationIntent(value?: VendorApplicationIntent | string) {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === "affiliate" || normalized === "seller" || normalized === "content_creator" || normalized === "other") {
+    return normalized as VendorApplicationIntent;
+  }
+
+  return undefined;
+}
+
+function normalizeApplicationIntent(value?: VendorApplicationIntent | string) {
+  return parseApplicationIntent(value) ?? "seller";
+}
+
 function normalizeCode(value?: string) {
   return value?.trim().toUpperCase() || undefined;
 }
 
+function normalizePreferredVendorCode(value?: string) {
+  const normalized = value
+    ?.trim()
+    .toUpperCase()
+    .replace(/[\s_]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return normalized || undefined;
+}
+
 function normalizeCollaborationType(value?: VendorCollaborationType | string) {
   return value === VendorCollaborationType.Affiliate ? VendorCollaborationType.Affiliate : VendorCollaborationType.Seller;
+}
+
+function normalizeOptionalCollaborationType(value?: VendorCollaborationType | string) {
+  if (value === VendorCollaborationType.Affiliate) {
+    return VendorCollaborationType.Affiliate;
+  }
+
+  if (value === VendorCollaborationType.Seller) {
+    return VendorCollaborationType.Seller;
+  }
+
+  return undefined;
+}
+
+function normalizeVendorStatus(value?: VendorStatus | string) {
+  if (value === VendorStatus.Inactive) {
+    return VendorStatus.Inactive;
+  }
+
+  if (value === VendorStatus.Suspended) {
+    return VendorStatus.Suspended;
+  }
+
+  return VendorStatus.Active;
+}
+
+function buildVendorCode(collaborationType: VendorCollaborationType, sequence: number) {
+  const prefix = collaborationType === VendorCollaborationType.Affiliate ? "AFF" : "VEND";
+  return `${prefix}-${String(sequence).padStart(3, "0")}`;
+}
+
+function extractGeneratedVendorSequence(code?: string) {
+  const match = normalizeCode(code)?.match(/^(?:VEND|AFF)-(\d{3,})$/);
+  return match ? Number(match[1]) : undefined;
+}
+
+function suggestedCollaborationType(applicationIntent: VendorApplicationIntent) {
+  return applicationIntent === "affiliate" ? VendorCollaborationType.Affiliate : VendorCollaborationType.Seller;
 }
 
 function fullName(value: string) {
@@ -129,6 +206,16 @@ function vendorHistory(status: VendorStatus, actor: string, note: string, occurr
   };
 }
 
+function canRotateVendorCode(vendor: Pick<VendorRecord, "ordersCount" | "sales" | "commissions" | "pendingCommissions" | "paidCommissions">) {
+  return (
+    vendor.ordersCount === 0 &&
+    vendor.sales === 0 &&
+    vendor.commissions === 0 &&
+    vendor.pendingCommissions === 0 &&
+    vendor.paidCommissions === 0
+  );
+}
+
 @Injectable()
 export class VendorsService implements OnModuleInit {
   private readonly applications = new Map<string, VendorApplicationRecord>();
@@ -137,8 +224,11 @@ export class VendorsService implements OnModuleInit {
 
   private vendorSequence = 22;
 
+  private vendorIdSequence = 1;
+
   constructor(
     private readonly auditService: AuditService,
+    @Inject(forwardRef(() => CommissionsService)) private readonly commissionsService: CommissionsService,
     private readonly moduleStateService: ModuleStateService
   ) {
     if (demoDataEnabled()) {
@@ -146,6 +236,7 @@ export class VendorsService implements OnModuleInit {
       this.seedVendors();
     }
     this.syncApplicationLinks();
+    this.syncVendorIdSequence();
   }
 
   async onModuleInit() {
@@ -178,13 +269,23 @@ export class VendorsService implements OnModuleInit {
   }
 
   submitApplication(body: VendorApplicationInput) {
-    if (!body.name?.trim() || !body.email?.trim() || !body.city?.trim()) {
-      throw new BadRequestException("Nombre, email y ciudad son obligatorios.");
+    if (!body.name?.trim() || !body.email?.trim() || !body.city?.trim() || !body.phone?.trim()) {
+      throw new BadRequestException("Nombre, email, ciudad y teléfono son obligatorios.");
     }
 
     const email = normalizeEmail(body.email);
     if (!email) {
       throw new BadRequestException("Email inválido.");
+    }
+
+    const phone = normalizeText(body.phone);
+    if (!phone) {
+      throw new BadRequestException("Teléfono inválido.");
+    }
+
+    const applicationIntent = parseApplicationIntent(body.applicationIntent);
+    if (!applicationIntent) {
+      throw new BadRequestException("Debes indicar cómo quiere colaborar el postulante.");
     }
 
     if (this.findVendorByEmail(email)) {
@@ -203,9 +304,10 @@ export class VendorsService implements OnModuleInit {
       name: fullName(body.name),
       email,
       city: body.city.trim(),
+      phone,
+      applicationIntent,
       source: body.source?.trim() || "Formulario web",
       message: normalizeText(body.message),
-      phone: normalizeText(body.phone),
       status: VendorApplicationStatus.Submitted,
       createdAt,
       updatedAt: createdAt,
@@ -222,14 +324,16 @@ export class VendorsService implements OnModuleInit {
       actorName: application.name,
       payload: {
         email: application.email,
+        phone: application.phone,
         city: application.city,
-        source: application.source
+        source: application.source,
+        applicationIntent: application.applicationIntent
       }
     });
     void this.persistState();
 
     return {
-      ...actionResponse("queued", "La postulación fue registrada y quedará en screening.", id),
+      ...actionResponse("queued", "La postulación fue registrada para screening comercial.", id),
       application: this.toApplicationSummary(application)
     };
   }
@@ -250,33 +354,81 @@ export class VendorsService implements OnModuleInit {
 
   listVendorCodes() {
     return wrapResponse<VendorCodeSummary[]>(
-      Array.from(this.vendors.values()).map((vendor) => ({
-        code: vendor.code,
-        name: vendor.name,
-        collaborationType: vendor.collaborationType,
-        status: vendor.status,
-        approvedAt: vendor.approvedAt,
-        updatedAt: vendor.updatedAt
-      })),
+      Array.from(this.vendors.values())
+        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+        .map((vendor) => ({
+          code: vendor.code,
+          name: vendor.name,
+          collaborationType: vendor.collaborationType,
+          status: vendor.status,
+          approvedAt: vendor.approvedAt,
+          updatedAt: vendor.updatedAt
+        })),
       {
         total: this.vendors.size
       }
     );
   }
 
+  screenApplication(id: string, body: VendorApplicationActionInput = {}) {
+    const application = this.requireApplication(id);
+    this.ensureApplicationStatus(application, [VendorApplicationStatus.Submitted], "iniciar screening");
+
+    const now = nowIso();
+    const reviewer = normalizeText(body.reviewer) || "admin";
+    const notes = normalizeText(body.notes) || "Postulación enviada a screening comercial.";
+
+    application.status = VendorApplicationStatus.Screening;
+    application.updatedAt = now;
+    application.statusHistory.push(applicationHistory(VendorApplicationStatus.Screening, reviewer, notes, now));
+    this.auditService.recordAdminAction({
+      actionType: "vendors.application.screening_started",
+      targetType: "vendor_application",
+      targetId: application.id,
+      summary: `La postulación ${application.id} quedó en screening comercial.`,
+      actorName: reviewer,
+      metadata: {
+        reviewer,
+        notes,
+        applicationIntent: application.applicationIntent
+      }
+    });
+    void this.persistState();
+
+    return {
+      ...actionResponse("pending_review", "La postulación quedó en screening comercial.", id),
+      application: this.toApplicationSummary(application)
+    };
+  }
+
   approveApplication(id: string, body: VendorApplicationActionInput = {}) {
     const application = this.requireApplication(id);
+    this.ensureApplicationStatus(application, [VendorApplicationStatus.Screening], "aprobar");
+
     const now = nowIso();
     const reviewer = normalizeText(body.reviewer) || "admin";
     const notes = normalizeText(body.notes) || "Aprobado para onboarding comercial.";
+    const resolvedCollaborationType = normalizeOptionalCollaborationType(body.resolvedCollaborationType);
+
+    if (!resolvedCollaborationType) {
+      throw new BadRequestException("Debes confirmar el tipo comercial final antes de aprobar la postulación.");
+    }
 
     application.status = VendorApplicationStatus.Approved;
     application.reviewedBy = reviewer;
     application.reviewedAt = now;
+    application.resolvedCollaborationType = resolvedCollaborationType;
     application.updatedAt = now;
     application.statusHistory.push(applicationHistory(VendorApplicationStatus.Approved, reviewer, notes, now));
 
-    const vendor = this.upsertVendorFromApplication(application, reviewer, notes, now);
+    const vendor = this.upsertVendorFromApplication(
+      application,
+      reviewer,
+      notes,
+      now,
+      resolvedCollaborationType,
+      body.preferredCode
+    );
     application.vendorCode = vendor.code;
     application.vendorId = vendor.id;
     this.auditService.recordAdminAction({
@@ -288,7 +440,9 @@ export class VendorsService implements OnModuleInit {
       metadata: {
         vendorCode: vendor.code,
         reviewer,
-        notes
+        notes,
+        applicationIntent: application.applicationIntent,
+        resolvedCollaborationType
       }
     });
     void this.persistState();
@@ -302,6 +456,8 @@ export class VendorsService implements OnModuleInit {
 
   rejectApplication(id: string, body: VendorApplicationActionInput = {}) {
     const application = this.requireApplication(id);
+    this.ensureApplicationStatus(application, [VendorApplicationStatus.Screening], "rechazar");
+
     const now = nowIso();
     const reviewer = normalizeText(body.reviewer) || "admin";
     const notes = normalizeText(body.notes) || "No aprobado para onboarding comercial.";
@@ -319,7 +475,8 @@ export class VendorsService implements OnModuleInit {
       actorName: reviewer,
       metadata: {
         reviewer,
-        notes
+        notes,
+        applicationIntent: application.applicationIntent
       }
     });
     void this.persistState();
@@ -331,14 +488,21 @@ export class VendorsService implements OnModuleInit {
   }
 
   createManualVendor(body: AdminVendorCreateInput) {
-    if (!body.name?.trim() || !body.email?.trim() || !body.city?.trim()) {
-      throw new BadRequestException("Nombre, email y ciudad son obligatorios.");
+    if (!body.name?.trim() || !body.email?.trim() || !body.city?.trim() || !body.phone?.trim()) {
+      throw new BadRequestException("Nombre, email, ciudad y WhatsApp son obligatorios.");
     }
 
     const email = normalizeEmail(body.email);
     if (!email) {
       throw new BadRequestException("Email inválido.");
     }
+
+    const phone = normalizeInternationalPhone(body.phone);
+    if (!phone) {
+      throw new BadRequestException("WhatsApp inválido. Usa formato internacional con código de país, por ejemplo +51 998906481.");
+    }
+
+    const preferredCode = this.resolvePreferredVendorCode(body.preferredCode);
 
     if (this.findVendorByEmail(email)) {
       throw new ConflictException("Ya existe una postulación o vendedor con ese email.");
@@ -353,15 +517,14 @@ export class VendorsService implements OnModuleInit {
     const actor = "admin";
     const note = normalizeText(body.notes) || "Alta manual desde backoffice.";
     const collaborationType = normalizeCollaborationType(body.collaborationType);
-    const id = `ven-${String(this.vendors.size + 1).padStart(3, "0")}`;
-    const codePrefix = collaborationType === VendorCollaborationType.Affiliate ? "AFF" : "VEND";
-    const code = `${codePrefix}-${String(this.vendorSequence).padStart(3, "0")}`;
-    this.vendorSequence += 1;
+    const id = this.reserveVendorId();
+    const code = preferredCode ?? this.reserveGeneratedVendorCode(collaborationType);
 
     const vendor: VendorRecord = {
       id,
       name: fullName(body.name),
       email,
+      phone,
       code,
       collaborationType,
       city: body.city.trim(),
@@ -389,6 +552,8 @@ export class VendorsService implements OnModuleInit {
       metadata: {
         code: vendor.code,
         email: vendor.email,
+        phone,
+        preferredCode: preferredCode ?? null,
         collaborationType: vendor.collaborationType
       }
     });
@@ -398,6 +563,125 @@ export class VendorsService implements OnModuleInit {
       ...actionResponse("ok", "El perfil comercial quedó creado.", vendor.id),
       vendor: this.toVendorSummary(vendor)
     };
+  }
+
+  updateVendor(id: string, body: AdminVendorUpdateInput) {
+    const vendor = this.requireVendor(id);
+
+    if (!body.name?.trim() || !body.email?.trim() || !body.city?.trim() || !body.phone?.trim()) {
+      throw new BadRequestException("Nombre, email, ciudad y WhatsApp son obligatorios.");
+    }
+
+    const email = normalizeEmail(body.email);
+    if (!email) {
+      throw new BadRequestException("Email inválido.");
+    }
+
+    const phone = normalizeInternationalPhone(body.phone);
+    if (!phone) {
+      throw new BadRequestException("WhatsApp inválido. Usa formato internacional con código de país, por ejemplo +51 998906481.");
+    }
+
+    const existingVendorByEmail = this.findVendorByEmail(email);
+    if (existingVendorByEmail && existingVendorByEmail.id !== vendor.id) {
+      throw new ConflictException("Ya existe una postulación o vendedor con ese email.");
+    }
+
+    const blockingApplication = this.findBlockingApplicationByEmail(email);
+    if (blockingApplication && !vendor.applicationIds.includes(blockingApplication.id) && email !== normalizeEmail(vendor.email)) {
+      throw new ConflictException("Ya existe una postulación activa con ese email.");
+    }
+
+    const now = nowIso();
+    const actor = "admin";
+    const note = normalizeText(body.notes) || "Perfil comercial actualizado desde backoffice.";
+    const nextStatus = normalizeVendorStatus(body.status);
+    const nextCode = this.resolveVendorCodeForUpdate(body.preferredCode, vendor);
+    const codeChanged = nextCode !== vendor.code;
+
+    if (codeChanged && !canRotateVendorCode(vendor)) {
+      throw new BadRequestException(
+        "Solo puedes cambiar el código de vendedores sin pedidos, ventas ni comisiones históricas."
+      );
+    }
+
+    const previousCode = vendor.code;
+
+    vendor.name = fullName(body.name);
+    vendor.email = email;
+    vendor.phone = phone;
+    vendor.city = body.city.trim();
+    vendor.source = normalizeText(body.source) || vendor.source || "Alta manual admin";
+    vendor.collaborationType = normalizeCollaborationType(body.collaborationType);
+    vendor.status = nextStatus;
+    vendor.updatedAt = now;
+    vendor.statusHistory.push(vendorHistory(nextStatus, actor, note, now));
+
+    if (codeChanged) {
+      this.vendors.delete(previousCode);
+      vendor.code = nextCode;
+      this.syncVendorCodeInApplications(vendor.id, previousCode, nextCode, now);
+      this.commissionsService.replaceVendorCodeReferences(previousCode, nextCode, actor);
+      this.vendors.set(vendor.code, vendor);
+    }
+
+    this.auditService.recordAdminAction({
+      actionType: "vendors.updated",
+      targetType: "vendor",
+      targetId: vendor.id,
+      summary: `Se actualizó el vendedor ${vendor.code}.`,
+      actorName: actor,
+      metadata: {
+        code: vendor.code,
+        previousCode: codeChanged ? previousCode : null,
+        email: vendor.email,
+        phone: vendor.phone,
+        city: vendor.city,
+        source: vendor.source,
+        collaborationType: vendor.collaborationType,
+        status: vendor.status
+      }
+    });
+    void this.persistState();
+
+    return {
+      ...actionResponse("ok", "El vendedor fue actualizado.", vendor.id),
+      vendor: this.toVendorSummary(vendor)
+    };
+  }
+
+  deleteVendor(id: string) {
+    const vendor = this.requireVendor(id);
+
+    if (
+      vendor.ordersCount > 0 ||
+      vendor.sales > 0 ||
+      vendor.commissions > 0 ||
+      vendor.pendingCommissions > 0 ||
+      vendor.paidCommissions > 0 ||
+      vendor.applicationIds.length > 0 ||
+      vendor.applicationsCount > 0
+    ) {
+      throw new BadRequestException(
+        "Solo puedes eliminar vendedores sin ventas, comisiones ni postulaciones vinculadas."
+      );
+    }
+
+    this.vendors.delete(vendor.code);
+    this.auditService.recordAdminAction({
+      actionType: "vendors.deleted",
+      targetType: "vendor",
+      targetId: vendor.id,
+      summary: `Se eliminó el vendedor ${vendor.code}.`,
+      actorName: "admin",
+      metadata: {
+        code: vendor.code,
+        email: vendor.email
+      }
+    });
+    void this.persistState();
+
+    return actionResponse("ok", "El vendedor fue eliminado.", vendor.id);
   }
 
   findVendorByCode(code?: string) {
@@ -439,14 +723,29 @@ export class VendorsService implements OnModuleInit {
     return this.toVendorSummary(vendor);
   }
 
-  private upsertVendorFromApplication(application: VendorApplicationRecord, actor: string, note: string, occurredAt: string) {
+  private upsertVendorFromApplication(
+    application: VendorApplicationRecord,
+    actor: string,
+    note: string,
+    occurredAt: string,
+    collaborationType: VendorCollaborationType,
+    preferredCodeInput?: string
+  ) {
+    const preferredCode = this.resolvePreferredVendorCode(preferredCodeInput);
     const existing = this.findVendorByEmail(application.email) ?? this.findVendorByName(application.name);
 
     if (existing) {
-      existing.collaborationType = existing.collaborationType ?? VendorCollaborationType.Seller;
+      if (preferredCode && normalizeCode(existing.code) !== preferredCode) {
+        throw new ConflictException(
+          `La postulación ya está vinculada al vendedor ${existing.code}. No se puede reemplazar por ${preferredCode}.`
+        );
+      }
+
+      existing.collaborationType = collaborationType;
       existing.status = VendorStatus.Active;
       existing.city = application.city;
       existing.email = application.email;
+      existing.phone = application.phone;
       existing.source = application.source;
       existing.updatedAt = occurredAt;
       existing.approvedAt = existing.approvedAt ?? occurredAt;
@@ -455,16 +754,16 @@ export class VendorsService implements OnModuleInit {
       return existing;
     }
 
-    const id = `ven-${String(this.vendors.size + 1).padStart(3, "0")}`;
-    const code = `VEND-${String(this.vendorSequence).padStart(3, "0")}`;
-    this.vendorSequence += 1;
+    const id = this.reserveVendorId();
+    const code = preferredCode ?? this.reserveGeneratedVendorCode(collaborationType);
 
     const vendor: VendorRecord = {
       id,
       name: application.name,
       email: application.email,
+      phone: application.phone,
       code,
-      collaborationType: VendorCollaborationType.Seller,
+      collaborationType,
       city: application.city,
       source: application.source,
       status: VendorStatus.Active,
@@ -484,6 +783,75 @@ export class VendorsService implements OnModuleInit {
     return vendor;
   }
 
+  private resolvePreferredVendorCode(value?: string) {
+    const preferredCode = normalizePreferredVendorCode(value);
+    if (!preferredCode) {
+      return undefined;
+    }
+
+    if (preferredCode.length < 3 || preferredCode.length > 24) {
+      throw new BadRequestException("El código comercial debe tener entre 3 y 24 caracteres.");
+    }
+
+    if (!/^[A-Z0-9]+(?:-[A-Z0-9]+)*$/.test(preferredCode)) {
+      throw new BadRequestException("El código comercial solo puede usar letras, números y guiones intermedios.");
+    }
+
+    if (this.vendors.has(preferredCode)) {
+      throw new ConflictException(`Ya existe un vendedor con el código ${preferredCode}.`);
+    }
+
+    return preferredCode;
+  }
+
+  private resolveVendorCodeForUpdate(value: string | undefined, vendor: VendorRecord) {
+    const preferredCode = normalizePreferredVendorCode(value) ?? vendor.code;
+
+    if (preferredCode.length < 3 || preferredCode.length > 24) {
+      throw new BadRequestException("El código comercial debe tener entre 3 y 24 caracteres.");
+    }
+
+    if (!/^[A-Z0-9]+(?:-[A-Z0-9]+)*$/.test(preferredCode)) {
+      throw new BadRequestException("El código comercial solo puede usar letras, números y guiones intermedios.");
+    }
+
+    const existing = this.vendors.get(preferredCode);
+    if (existing && existing.id !== vendor.id) {
+      throw new ConflictException(`Ya existe un vendedor con el código ${preferredCode}.`);
+    }
+
+    return preferredCode;
+  }
+
+  private syncVendorCodeInApplications(vendorId: string, previousCode: string, nextCode: string, occurredAt: string) {
+    for (const application of this.applications.values()) {
+      if (application.vendorId !== vendorId && normalizeCode(application.vendorCode) !== previousCode) {
+        continue;
+      }
+
+      application.vendorId = vendorId;
+      application.vendorCode = nextCode;
+      application.updatedAt = occurredAt;
+    }
+  }
+
+  private reserveGeneratedVendorCode(collaborationType: VendorCollaborationType) {
+    while (true) {
+      const code = buildVendorCode(collaborationType, this.vendorSequence);
+      this.vendorSequence += 1;
+
+      if (!this.vendors.has(code)) {
+        return code;
+      }
+    }
+  }
+
+  private reserveVendorId() {
+    const id = `ven-${String(this.vendorIdSequence).padStart(3, "0")}`;
+    this.vendorIdSequence += 1;
+    return id;
+  }
+
   private requireApplication(id: string) {
     const application = this.applications.get(id.trim());
     if (!application) {
@@ -491,6 +859,27 @@ export class VendorsService implements OnModuleInit {
     }
 
     return application;
+  }
+
+  private requireVendor(id: string) {
+    const vendor = this.findVendorById(id);
+    if (!vendor) {
+      throw new NotFoundException(`No encontramos un vendedor con id ${id}.`);
+    }
+
+    return vendor;
+  }
+
+  private ensureApplicationStatus(
+    application: VendorApplicationRecord,
+    allowedStatuses: VendorApplicationStatus[],
+    actionLabel: string
+  ) {
+    if (allowedStatuses.includes(application.status)) {
+      return;
+    }
+
+    throw new BadRequestException(`No se puede ${actionLabel} una postulación en estado ${application.status}.`);
   }
 
   private findApplicationByEmail(email?: string) {
@@ -521,6 +910,14 @@ export class VendorsService implements OnModuleInit {
     return Array.from(this.vendors.values()).find((vendor) => vendor.email === email) ?? null;
   }
 
+  private findVendorById(id?: string) {
+    if (!id) {
+      return null;
+    }
+
+    return Array.from(this.vendors.values()).find((vendor) => vendor.id === id.trim()) ?? null;
+  }
+
   private findVendorByName(name?: string) {
     if (!name) {
       return null;
@@ -536,6 +933,7 @@ export class VendorsService implements OnModuleInit {
       if (vendor) {
         application.vendorCode = vendor.code;
         application.vendorId = vendor.id;
+        application.resolvedCollaborationType = application.resolvedCollaborationType ?? vendor.collaborationType;
       }
     }
   }
@@ -552,7 +950,14 @@ export class VendorsService implements OnModuleInit {
 
       applications.push({
         ...application,
-        statusHistory: application.statusHistory.map((entry) => ({ ...entry }))
+        phone: normalizeText(application.phone),
+        applicationIntent: normalizeApplicationIntent(application.applicationIntent),
+        resolvedCollaborationType:
+          normalizeOptionalCollaborationType(application.resolvedCollaborationType) ??
+          (application.status === VendorApplicationStatus.Approved
+            ? suggestedCollaborationType(normalizeApplicationIntent(application.applicationIntent))
+            : undefined),
+        statusHistory: (application.statusHistory ?? []).map((entry) => ({ ...entry }))
       });
     }
 
@@ -578,9 +983,11 @@ export class VendorsService implements OnModuleInit {
       vendors.push({
         ...vendor,
         collaborationType: normalizeCollaborationType(vendor.collaborationType),
+        phone: normalizeInternationalPhone(vendor.phone) ?? normalizeText(vendor.phone),
+        source: normalizeText(vendor.source),
         applicationIds,
         applicationsCount,
-        statusHistory: vendor.statusHistory.map((entry) => ({ ...entry }))
+        statusHistory: (vendor.statusHistory ?? []).map((entry) => ({ ...entry }))
       });
     }
 
@@ -617,20 +1024,28 @@ export class VendorsService implements OnModuleInit {
     for (const seed of seeds) {
       this.applications.set(seed.id, {
         ...seed,
+        phone: seed.id === "va-001" ? "+51 999 111 222" : "+51 999 333 444",
+        applicationIntent: "seller",
         message: undefined,
         reviewedBy: seed.status === VendorApplicationStatus.Approved ? "admin" : undefined,
         reviewedAt: seed.status === VendorApplicationStatus.Approved ? "2026-03-18T09:15:00.000Z" : undefined,
         vendorCode: undefined,
         vendorId: undefined,
+        resolvedCollaborationType:
+          seed.status === VendorApplicationStatus.Approved ? VendorCollaborationType.Seller : undefined,
         createdAt,
         updatedAt: createdAt,
         statusHistory:
           seed.status === VendorApplicationStatus.Approved
             ? [
                 applicationHistory(VendorApplicationStatus.Submitted, "Cliente", "Postulación recibida.", createdAt),
+                applicationHistory(VendorApplicationStatus.Screening, "seller_manager", "Postulación en screening.", "2026-03-18T09:10:00.000Z"),
                 applicationHistory(VendorApplicationStatus.Approved, "admin", "Aprobada en onboarding.", "2026-03-18T09:15:00.000Z")
               ]
-            : [applicationHistory(VendorApplicationStatus.Submitted, "Cliente", "Postulación recibida.", createdAt)]
+            : [
+                applicationHistory(VendorApplicationStatus.Submitted, "Cliente", "Postulación recibida.", createdAt),
+                applicationHistory(VendorApplicationStatus.Screening, "seller_manager", "Postulación en screening.", "2026-03-18T09:10:00.000Z")
+              ]
       });
     }
   }
@@ -695,12 +1110,13 @@ export class VendorsService implements OnModuleInit {
         seed.code === "VEND-014" ? ["va-001"] : seed.code === "VEND-007" ? ["va-002"] : [];
       this.vendors.set(seed.code, {
         ...seed,
+        phone: seed.code === "VEND-021" ? "+51 999 555 666" : seed.code === "VEND-007" ? "+51 999 333 444" : "+51 999 111 222",
         source: seed.code === "VEND-021" ? "Referencia comercial" : "Formulario web",
         applicationIds,
         statusHistory: [vendorHistory(VendorStatus.Active, "admin", "Vendedor activo.", seed.approvedAt ?? seed.updatedAt)]
       });
-      const numericCode = Number(seed.code.replace(/[^\d]/g, ""));
-      if (Number.isFinite(numericCode)) {
+      const numericCode = extractGeneratedVendorSequence(seed.code);
+      if (typeof numericCode === "number") {
         this.vendorSequence = Math.max(this.vendorSequence, numericCode + 1);
       }
     }
@@ -711,27 +1127,45 @@ export class VendorsService implements OnModuleInit {
     this.vendors.clear();
 
     for (const application of snapshot.applications ?? []) {
-      this.applications.set(application.id, application);
+      this.applications.set(application.id, {
+        ...application,
+        phone: normalizeText(application.phone),
+        applicationIntent: normalizeApplicationIntent(application.applicationIntent),
+        resolvedCollaborationType: normalizeOptionalCollaborationType(application.resolvedCollaborationType),
+        statusHistory: (application.statusHistory ?? []).map((entry) => ({ ...entry }))
+      });
     }
 
     for (const vendor of snapshot.vendors ?? []) {
       this.vendors.set(vendor.code, {
         ...vendor,
-        collaborationType: normalizeCollaborationType(vendor.collaborationType)
+        collaborationType: normalizeCollaborationType(vendor.collaborationType),
+        phone: normalizeInternationalPhone(vendor.phone) ?? normalizeText(vendor.phone),
+        source: normalizeText(vendor.source)
       });
     }
 
     this.syncApplicationLinks();
     this.syncVendorSequence();
+    this.syncVendorIdSequence();
   }
 
   private syncVendorSequence() {
     const sequence = Array.from(this.vendors.values()).reduce((max, vendor) => {
-      const numeric = Number(vendor.code.replace(/[^\d]/g, ""));
-      return Number.isFinite(numeric) ? Math.max(max, numeric) : max;
+      const numeric = extractGeneratedVendorSequence(vendor.code);
+      return typeof numeric === "number" ? Math.max(max, numeric) : max;
     }, 0);
 
     this.vendorSequence = Math.max(sequence + 1, 1);
+  }
+
+  private syncVendorIdSequence() {
+    const sequence = Array.from(this.vendors.values()).reduce((max, vendor) => {
+      const match = vendor.id.match(/^ven-(\d+)$/);
+      return match ? Math.max(max, Number(match[1])) : max;
+    }, 0);
+
+    this.vendorIdSequence = Math.max(sequence + 1, 1);
   }
 
   private async persistState() {
@@ -758,13 +1192,15 @@ export class VendorsService implements OnModuleInit {
       name: application.name,
       email: application.email,
       city: application.city,
+      phone: application.phone,
+      applicationIntent: application.applicationIntent,
       source: application.source,
       status: application.status,
-      phone: application.phone,
       message: application.message,
       reviewedBy: application.reviewedBy,
       reviewedAt: application.reviewedAt,
       vendorCode: application.vendorCode,
+      resolvedCollaborationType: application.resolvedCollaborationType,
       createdAt: application.createdAt,
       updatedAt: application.updatedAt
     };
@@ -779,9 +1215,11 @@ export class VendorsService implements OnModuleInit {
       id: vendor.id,
       name: vendor.name,
       email: vendor.email,
+      phone: vendor.phone,
       code: vendor.code,
       collaborationType: vendor.collaborationType ?? VendorCollaborationType.Seller,
       city: vendor.city,
+      source: vendor.source,
       status: vendor.status,
       sales: vendor.sales,
       commissions: vendor.commissions,

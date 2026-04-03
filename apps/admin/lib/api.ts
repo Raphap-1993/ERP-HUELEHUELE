@@ -4,6 +4,7 @@ import type {
   AdminRoleDashboardSummary,
   AdminOrderStatusTransitionInput,
   AdminVendorCreateInput,
+  AdminVendorUpdateInput,
   AuthSessionSummary,
   CmsActionEnvelope,
   CmsBannerInput,
@@ -27,6 +28,9 @@ import type {
   CommissionSummary,
   CouponInput,
   CouponSummary,
+  CustomerDetail,
+  CustomerSummary,
+  CustomerUpsertInput,
   LoyaltyMovementSummary,
   LoyaltyPointsInput,
   LoyaltyRedemptionInput,
@@ -38,6 +42,8 @@ import type {
   MarketingEventSummary,
   MarketingSegmentSummary,
   MarketingTemplateSummary,
+  MediaAssetKindValue,
+  MediaAssetSummary,
   NotificationInput,
   NotificationLogSummary,
   NotificationSummary,
@@ -315,6 +321,13 @@ export async function fetchVendorApplications() {
   return requestJson<VendorApplicationsEnvelope>("/admin/vendor-applications");
 }
 
+export async function screenVendorApplication(id: string, body: VendorApplicationActionInput) {
+  return requestJson<VendorActionEnvelope>(`/admin/vendor-applications/${encodeURIComponent(id)}/screen`, {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
 export async function approveVendorApplication(id: string, body: VendorApplicationActionInput) {
   return requestJson<VendorActionEnvelope>(`/admin/vendor-applications/${encodeURIComponent(id)}/approve`, {
     method: "POST",
@@ -340,8 +353,49 @@ export async function createVendor(body: AdminVendorCreateInput) {
   });
 }
 
+export async function updateVendor(id: string, body: AdminVendorUpdateInput) {
+  return requestJson<VendorActionEnvelope>(`/admin/vendors/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function deleteVendor(id: string) {
+  return requestJson<VendorActionEnvelope>(`/admin/vendors/${encodeURIComponent(id)}`, {
+    method: "DELETE"
+  });
+}
+
 export async function fetchVendorCodes() {
   return requestJson<VendorCodesEnvelope>("/admin/vendors/codes");
+}
+
+export async function fetchCustomers() {
+  return requestJson<CustomersEnvelope>("/admin/customers");
+}
+
+export async function fetchCustomer(id: string) {
+  return requestJson<CustomerEnvelope>(`/admin/customers/${encodeURIComponent(id)}`);
+}
+
+export async function createCustomer(body: CustomerUpsertInput) {
+  return requestJson<CustomerEnvelope>("/admin/customers", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function updateCustomer(id: string, body: CustomerUpsertInput) {
+  return requestJson<CustomerEnvelope>(`/admin/customers/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function deleteCustomer(id: string) {
+  return requestJson<CustomerActionEnvelope>(`/admin/customers/${encodeURIComponent(id)}`, {
+    method: "DELETE"
+  });
 }
 
 export async function fetchWholesaleLeads() {
@@ -437,6 +491,18 @@ export async function uploadCmsFavicon(file: File) {
   const formData = new FormData();
   formData.append("file", file);
   return requestFormData<CmsActionEnvelope>("/admin/cms/site-settings/favicon", formData);
+}
+
+export async function fetchAdminMediaAssets(kind?: MediaAssetKindValue, limit = 80) {
+  const params = new URLSearchParams();
+  if (kind) {
+    params.set("kind", kind);
+  }
+  params.set("limit", String(limit));
+
+  return requestJson<{ data: MediaAssetSummary[]; meta?: Record<string, unknown> }>(
+    `/admin/media/assets?${params.toString()}`
+  );
 }
 
 export async function updateCmsHeroCopy(body: CmsHeroCopyInput) {
@@ -778,6 +844,22 @@ export type VendorsEnvelope = {
 export type VendorCodesEnvelope = {
   data: VendorCodeSummary[];
   meta?: Record<string, unknown>;
+};
+
+export type CustomersEnvelope = {
+  data: CustomerSummary[];
+  meta?: Record<string, unknown>;
+};
+
+export type CustomerEnvelope = {
+  data: CustomerDetail;
+  meta?: Record<string, unknown>;
+};
+
+export type CustomerActionEnvelope = {
+  status: string;
+  message: string;
+  referenceId?: string;
 };
 
 export type WholesaleLeadsEnvelope = {

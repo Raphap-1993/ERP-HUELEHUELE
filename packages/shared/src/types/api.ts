@@ -133,13 +133,16 @@ export interface AuthRegisterInput extends AuthCredentialsInput {
   phone?: string;
 }
 
+export type VendorApplicationIntent = "affiliate" | "seller" | "content_creator" | "other";
+
 export interface VendorApplicationInput {
   name: string;
   email: string;
   city: string;
+  phone: string;
+  applicationIntent: VendorApplicationIntent;
   source?: string;
   message?: string;
-  phone?: string;
 }
 
 export interface VendorApplicationSummary {
@@ -147,13 +150,15 @@ export interface VendorApplicationSummary {
   name: string;
   email: string;
   city: string;
+  phone?: string;
+  applicationIntent: VendorApplicationIntent;
   source: string;
   status: VendorApplicationStatus;
-  phone?: string;
   message?: string;
   reviewedBy?: string;
   reviewedAt?: string;
   vendorCode?: string;
+  resolvedCollaborationType?: VendorCollaborationType;
   createdAt: string;
   updatedAt: string;
 }
@@ -162,9 +167,11 @@ export interface VendorSummary {
   id: string;
   name: string;
   email?: string;
+  phone?: string;
   code: string;
   collaborationType?: VendorCollaborationType;
   city?: string;
+  source?: string;
   status: VendorStatus;
   sales: number;
   commissions: number;
@@ -174,6 +181,70 @@ export interface VendorSummary {
   applicationsCount: number;
   approvedAt?: string;
   updatedAt: string;
+}
+
+export type CustomerStatusValue = "pending" | "active" | "inactive" | "suspended";
+
+export interface CustomerAddressSummary {
+  id: string;
+  label: string;
+  recipientName: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  region: string;
+  postalCode: string;
+  countryCode: string;
+  isDefault: boolean;
+}
+
+export interface CustomerAddressInput {
+  id?: string;
+  label: string;
+  recipientName: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  region: string;
+  postalCode: string;
+  countryCode?: string;
+  isDefault?: boolean;
+}
+
+export interface CustomerSummary {
+  id: string;
+  userId: string;
+  email: string;
+  phone?: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  documentNumber?: string;
+  marketingOptIn: boolean;
+  status: CustomerStatusValue;
+  addressesCount: number;
+  defaultAddressSummary?: string;
+  ordersCount: number;
+  lastOrderAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CustomerDetail extends CustomerSummary {
+  addresses: CustomerAddressSummary[];
+  recentOrders: AdminOrderSummary[];
+}
+
+export interface CustomerUpsertInput {
+  email: string;
+  phone?: string;
+  password?: string;
+  firstName: string;
+  lastName: string;
+  documentNumber?: string;
+  marketingOptIn?: boolean;
+  status?: CustomerStatusValue;
+  addresses?: CustomerAddressInput[];
 }
 
 export interface VendorCodeSummary {
@@ -534,6 +605,8 @@ export interface CommissionPayoutSummary {
 export interface VendorApplicationActionInput {
   reviewer?: string;
   notes?: string;
+  resolvedCollaborationType?: VendorCollaborationType;
+  preferredCode?: string;
 }
 
 export interface CommissionPayoutInput {
@@ -704,13 +777,18 @@ export interface ProductImageUploadInput {
   variantId?: string;
 }
 
+export type MediaAssetKindValue = "product" | "hero" | "banner" | "logo" | "evidence";
+
 export interface MediaAssetSummary {
+  kind?: MediaAssetKindValue;
+  filename?: string;
   objectKey: string;
   url: string;
   contentType: string;
   width?: number;
   height?: number;
   sizeBytes: number;
+  uploadedAt?: string;
 }
 
 export interface ProductImageUploadSummary {
@@ -991,10 +1069,23 @@ export interface AdminVendorCreateInput {
   email: string;
   city: string;
   collaborationType?: VendorCollaborationType;
-  phone?: string;
+  phone: string;
+  preferredCode?: string;
   source?: string;
   notes?: string;
   enableCommission?: boolean;
+}
+
+export interface AdminVendorUpdateInput {
+  name: string;
+  email: string;
+  city: string;
+  collaborationType?: VendorCollaborationType;
+  status: VendorStatus;
+  phone: string;
+  preferredCode?: string;
+  source?: string;
+  notes?: string;
 }
 
 export interface InventoryReportRow {

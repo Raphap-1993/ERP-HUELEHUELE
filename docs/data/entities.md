@@ -72,7 +72,7 @@ Listar las entidades principales del modelo de datos, su propósito y relaciones
 
 | Entidad | Propósito | Campos clave sugeridos | Relaciones y notas |
 | --- | --- | --- | --- |
-| `vendor_applications` | postulaciones | `email`, `phone`, `full_name`, `source`, `status`, `notes_json` | previo a crear vendedor |
+| `vendor_applications` | postulaciones | `email`, `phone`, `full_name`, `source`, `application_intent`, `status`, `notes_json` | previo a crear vendedor; `application_intent` conserva la intención original de web |
 | `vendors` | actor comercial aprobado | `user_id`, `code_prefix`, `status`, `approved_at`, `approved_by_admin_id` | puede existir con o sin login inmediato |
 | `vendor_profiles` | datos extendidos | `vendor_id`, `display_name`, `bio`, `region`, `social_handles_json`, `metadata_json` | perfil público o semiprivado |
 | `vendor_codes` | códigos atribuibles | `vendor_id`, `code`, `status`, `start_at`, `end_at`, `campaign_tag` | único por vigencia efectiva |

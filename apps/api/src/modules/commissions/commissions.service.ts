@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException, OnModuleInit } from "@nestjs/common";
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException, OnModuleInit, forwardRef } from "@nestjs/common";
 import {
   CommissionPayoutStatus,
   CommissionStatus,
@@ -238,7 +238,7 @@ export class CommissionsService implements OnModuleInit {
   constructor(
     private readonly auditService: AuditService,
     private readonly ordersService: OrdersService,
-    private readonly vendorsService: VendorsService,
+    @Inject(forwardRef(() => VendorsService)) private readonly vendorsService: VendorsService,
     private readonly moduleStateService: ModuleStateService,
     private readonly bullMqService: BullMqService
   ) {
@@ -420,6 +420,46 @@ export class CommissionsService implements OnModuleInit {
     void this.persistState();
 
     return actionResponse("ok", "La regla de comisión quedó actualizada.", current.id);
+  }
+
+  replaceVendorCodeReferences(oldCode: string, nextCode: string, actor = "admin") {
+    const previousCode = normalizeCode(oldCode);
+    const updatedCode = normalizeCode(nextCode);
+
+    if (!previousCode || !updatedCode || previousCode === updatedCode) {
+      return { rulesUpdated: 0 };
+    }
+
+    const now = nowIso();
+    let rulesUpdated = 0;
+
+    for (const rule of this.rules.values()) {
+      if (rule.appliesToVendorCode !== previousCode) {
+        continue;
+      }
+
+      rule.appliesToVendorCode = updatedCode;
+      rule.updatedAt = now;
+      rulesUpdated += 1;
+    }
+
+    if (rulesUpdated > 0) {
+      this.auditService.recordAdminAction({
+        actionType: "commissions.vendor_code_relinked",
+        targetType: "commission_rule",
+        targetId: previousCode,
+        summary: `Se actualizaron ${rulesUpdated} regla(s) de comisión del código ${previousCode} a ${updatedCode}.`,
+        actorName: actor,
+        metadata: {
+          previousCode,
+          updatedCode,
+          rulesUpdated
+        }
+      });
+      void this.persistState();
+    }
+
+    return { rulesUpdated };
   }
 
   listPayouts() {
@@ -825,7 +865,7 @@ export class CommissionsService implements OnModuleInit {
       return false;
     }
 
-    if (rule.scope === "wholesale" && !order.vendorCode?.startsWith("VEND-")) {
+    if (rule.scope === "wholesale" && normalizeCollaborationType(vendor?.collaborationType) !== "seller") {
       return false;
     }
 

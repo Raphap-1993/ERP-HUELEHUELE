@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
   MetricCard,
+  SectionHeader,
   StatusBadge
 } from "@huelegood/ui";
 import type {
@@ -168,6 +169,11 @@ export function ObservabilityWorkspace() {
 
   return (
     <div className="space-y-6 pb-8">
+      <SectionHeader
+        title="Observabilidad"
+        description="Requests, colas, eventos y rutas críticas visibles desde operación."
+      />
+
       <div className="flex flex-wrap items-center gap-3">
         <Button onClick={() => setRefreshKey((current) => current + 1)} variant="secondary" disabled={loading}>
           {loading ? "Actualizando..." : "Actualizar telemetría"}

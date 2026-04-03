@@ -1,11 +1,12 @@
-import { Module } from "@nestjs/common";
+import { Module, forwardRef } from "@nestjs/common";
 import { AuditModule } from "../audit/audit.module";
-import { AdminVendorApplicationsController, VendorApplicationsController } from "./vendor-applications.controller";
+import { CommissionsModule } from "../commissions/commissions.module";
+import { AdminVendorApplicationsController, AdminVendorsController, VendorApplicationsController } from "./vendor-applications.controller";
 import { VendorsService } from "./vendors.service";
 
 @Module({
-  imports: [AuditModule],
-  controllers: [VendorApplicationsController, AdminVendorApplicationsController],
+  imports: [AuditModule, forwardRef(() => CommissionsModule)],
+  controllers: [VendorApplicationsController, AdminVendorApplicationsController, AdminVendorsController],
   providers: [VendorsService],
   exports: [VendorsService]
 })

@@ -3,7 +3,7 @@
 **Fecha:** 2026-03-23
 **Versión:** 2.0 (basada en auditoría técnica previa — no requiere re-análisis del código)
 **Autor:** Agente /grasp + Orquestador
-**Estado:** Propuesto — pendiente aprobación para implementación
+**Estado:** Implementación incremental en curso
 
 ---
 
@@ -121,10 +121,11 @@ Todo al mismo nivel de scroll vertical, sin jerarquía.
 │     Admin Panel                     │
 ├─────────────────────────────────────┤
 │                                     │
-│  OPERACIONES                        │
+│  OPERACIÓN DIARIA                   │
 │  ├── 📊 Dashboard          [default]│
 │  ├── 📦 Pedidos             [badge] │
-│  └── 💳 Pagos               [badge] │
+│  ├── 💳 Pagos               [badge] │
+│  └── 📈 Reportes                    │
 │                                     │
 │  CATÁLOGO                           │
 │  ├── 🏷️  Productos                  │
@@ -138,7 +139,8 @@ Todo al mismo nivel de scroll vertical, sin jerarquía.
 │  CLIENTES                           │
 │  ├── 👤 CRM                         │
 │  ├── ⭐ Fidelización                │
-│  └── 📣 Marketing                   │
+│  ├── 📣 Marketing                   │
+│  └── 🎟️  Cupones                   │
 │                                     │
 │  SISTEMA                            │
 │  ├── 🔔 Notificaciones      [badge] │
@@ -155,16 +157,18 @@ Todo al mismo nivel de scroll vertical, sin jerarquía.
 
 | Grupo | Módulos | Lógica de agrupación |
 |---|---|---|
-| **Operaciones** | Dashboard, Pedidos, Pagos | El flujo diario del negocio. Lo que el operador revisa cada mañana |
+| **Operación diaria** | Dashboard, Pedidos, Pagos, Reportes | El flujo diario del negocio. Lo que el operador revisa apenas entra al panel |
 | **Catálogo** | Productos, CMS | Todo lo que se muestra en el storefront. Contenido + productos |
 | **Comercial** | Vendedores, Comisiones, Mayoristas | La red de distribución y sus compensaciones |
-| **Clientes** | CRM, Fidelización, Marketing | Relación con el cliente final: historial, puntos, campañas |
+| **Clientes** | CRM, Fidelización, Marketing, Cupones | Relación con el cliente final: historial, retención y activación comercial |
 | **Sistema** | Notificaciones, Observabilidad, Auditoría, Config | Operación técnica del sistema. Raramente usado en el día a día |
 
 ### Comportamiento del sidebar
 
-- **Grupos con label** (`OPERACIONES`, `CATÁLOGO`, etc.) — no son links, son separadores visuales
+- **Jerarquía compacta en desktop** — headers de grupo más densos, menos cards altas y un único grupo expandido por defecto
+- **Grupos con label** (`OPERACIÓN DIARIA`, `CATÁLOGO`, etc.) — no son links, son separadores visuales
 - **Active state** — highlight verde del ítem actual + resaltado del grupo
+- **Preview colapsado** — cada grupo cerrado muestra un resumen corto de sus módulos para escanear sin abrir todo
 - **Badges** — circulito rojo con número para Pedidos pendientes, Pagos por revisar, Notificaciones
 - **Collapse mode** — en ≤1280px el sidebar colapsa a solo iconos; los grupos desaparecen
 - **Hover tooltips** — en modo colapsado, el nombre del módulo aparece como tooltip
@@ -174,6 +178,13 @@ Todo al mismo nivel de scroll vertical, sin jerarquía.
 ## 4. Patrón de módulo estándar (todos los mantenedores)
 
 Todos los 14 workspaces seguirán esta estructura sin excepción:
+
+### Regla para selectores operativos
+
+- selectores de alta cardinalidad como productos, vendedores o clientes no deben resolverse con grids largas de cards
+- usar `combobox` o selector buscable con lupa, búsqueda por nombre, SKU, código o slug y lista scrollable dentro del modal
+- en selectores con múltiples agregados, las sugerencias deben quedarse contenidas dentro de la caja y la selección acumulada debe seguir visible arriba como resumen del pedido
+- si una fuente secundaria falla, el selector debe seguir funcionando con los datos principales y mostrar el error de forma visible
 
 ### Layout de página (full-width, una sola columna)
 
@@ -281,10 +292,15 @@ Para módulos complejos como Productos que tienen imágenes, la gestión de imá
 ### COMERCIAL
 
 #### Vendedores
-- **Layout:** Métricas + tabla paginada (nombre, ventas, estado, comisión)
-- **Modal de detalle:** Datos del vendedor + historial de ventas
-- **Modal de edición:** Datos básicos + estado de aprobación
-- **Scroll:** No
+- **Layout:** Métricas + tabla de vendedores con columna de acciones + bandeja de postulaciones en una sola superficie con toolbar compacto de filtros por estado
+- **Tabla principal:** Identidad comercial, código, tipo, estado, ciudad y acciones; ventas y comisiones viven en sus módulos/detalles, no en el listado base
+- **Modal de alta:** Creación manual de seller o afiliado desde backoffice
+- **Modal de detalle:** Resumen operativo del vendedor y su código comercial
+- **Acciones de tabla:** Iconos con tooltip para ver, editar, copiar código y eliminar
+- **Modal de edición:** Datos base, WhatsApp, tipo comercial, estado, origen y edición condicionada del código comercial
+- **Confirmación de eliminación:** Solo habilitada cuando el vendedor no tiene actividad ni postulaciones ligadas
+- **Modal de revisión:** Screening, decisión final y tipo comercial resueltos por caso, sin formulario inline global
+- **Scroll:** Solo dentro de modales cuando el contenido crece
 
 #### Comisiones
 - **Layout:** Tabla paginada con filtros por período y vendedor
@@ -337,6 +353,8 @@ Para módulos complejos como Productos que tienen imágenes, la gestión de imá
 #### Configuración
 - **Layout:** Tabs por sección (General, Branding, Integraciones, Seguridad)
 - **Patrón:** Cada tab tiene su propio formulario con botón Guardar — NO modal
+- **Branding:** Logo del menú, loading e ícono del sitio deben poder cargarse desde configuración y reflejarse en web/admin
+- **Biblioteca de medios:** Cuando branding ya existe en `Cloudflare R2`, el panel debe abrir un modal de selección para reutilizar assets existentes sin re-subir archivos
 - **Scroll:** Vertical en la sección, permitido
 
 ---

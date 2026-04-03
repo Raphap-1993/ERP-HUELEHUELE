@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { extname } from "node:path";
 import { BadRequestException, Injectable, InternalServerErrorException } from "@nestjs/common";
-import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import sharp from "sharp";
+import { type MediaAssetKindValue, type MediaAssetSummary } from "@huelegood/shared";
 import { isConfigured } from "../../common/env";
 
-type MediaAssetKind = "product" | "hero" | "banner" | "logo" | "evidence";
+type MediaAssetKind = MediaAssetKindValue;
 
 interface UploadFileInput {
   buffer: Buffer;
@@ -61,6 +62,27 @@ function buildObjectKey(kind: MediaAssetKind, slug: string) {
 function buildSvgObjectKey(kind: MediaAssetKind, slug: string, originalname?: string) {
   const extension = extname(originalname ?? "").toLowerCase() || ".svg";
   return `${kind}/${sanitizeSlug(slug)}/${Date.now()}-${randomUUID()}${extension}`;
+}
+
+function inferContentTypeFromKey(key: string) {
+  const extension = extname(key).toLowerCase();
+
+  switch (extension) {
+    case ".svg":
+      return "image/svg+xml";
+    case ".png":
+      return "image/png";
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".ico":
+      return "image/x-icon";
+    case ".avif":
+      return "image/avif";
+    case ".webp":
+    default:
+      return "image/webp";
+  }
 }
 
 @Injectable()
@@ -124,6 +146,26 @@ export class MediaService {
       height: prepared.height,
       sizeBytes: prepared.sizeBytes
     };
+  }
+
+  async listAssets(options: { kind?: MediaAssetKind; limit?: number } = {}) {
+    this.assertConfigured();
+
+    const limit = Math.min(Math.max(options.limit ?? 60, 1), 200);
+    const response = await this.client!.send(
+      new ListObjectsV2Command({
+        Bucket: this.bucket,
+        Prefix: options.kind ? `${options.kind}/` : undefined,
+        MaxKeys: limit
+      })
+    );
+
+    const assets = (response.Contents ?? [])
+      .filter((item) => item.Key && !item.Key.endsWith("/"))
+      .map((item) => this.mapListedAsset(item.Key!, item.Size ?? 0, item.LastModified, options.kind))
+      .sort((left, right) => (right.uploadedAt ?? "").localeCompare(left.uploadedAt ?? ""));
+
+    return assets;
   }
 
   async deleteByPublicUrl(url: string) {
@@ -263,6 +305,26 @@ export class MediaService {
     }
 
     return url.slice(this.publicBaseUrl!.length).replace(/^\/+/, "");
+  }
+
+  private mapListedAsset(
+    objectKey: string,
+    sizeBytes: number,
+    lastModified?: Date,
+    fallbackKind?: MediaAssetKind
+  ): MediaAssetSummary {
+    const [kindSegment = "logo"] = objectKey.split("/");
+    const filename = objectKey.split("/").at(-1) ?? objectKey;
+
+    return {
+      kind: (fallbackKind ?? kindSegment) as MediaAssetKind,
+      filename,
+      objectKey,
+      url: `${this.publicBaseUrl!.replace(/\/$/, "")}/${objectKey}`,
+      contentType: inferContentTypeFromKey(objectKey),
+      sizeBytes,
+      uploadedAt: lastModified?.toISOString()
+    };
   }
 
   private assertConfigured() {

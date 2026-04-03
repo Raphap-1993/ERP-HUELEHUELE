@@ -20,6 +20,27 @@ function formatDateTime(value: string) {
   }).format(new Date(value));
 }
 
+function normalizeSearchValue(value: string) {
+  return value.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function getProductSearchRank(product: ProductAdminSummary, query: string) {
+  const name = normalizeSearchValue(product.name);
+  const sku = normalizeSearchValue(product.sku);
+  const slug = normalizeSearchValue(product.slug);
+  const category = normalizeSearchValue(product.categoryName ?? "");
+
+  if (name.startsWith(query)) return 0;
+  if (sku.startsWith(query)) return 1;
+  if (slug.startsWith(query)) return 2;
+  if (category.startsWith(query)) return 3;
+  if (name.includes(query)) return 4;
+  if (sku.includes(query)) return 5;
+  if (slug.includes(query)) return 6;
+  if (category.includes(query)) return 7;
+  return 99;
+}
+
 function documentTypeLabel(value?: string) {
   return CHECKOUT_DOCUMENT_TYPE_OPTIONS.find((option) => option.value === value)?.label ?? "Documento";
 }
@@ -211,6 +232,9 @@ export function OrdersWorkspace() {
   const [createItems, setCreateItems] = useState<Array<{ slug: string; name: string; sku: string; variantId?: string; quantity: number; unitPrice: number }>>([]);
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [createOptionsLoading, setCreateOptionsLoading] = useState(false);
+  const [createOptionsNotice, setCreateOptionsNotice] = useState<string | null>(null);
+  const [productSearch, setProductSearch] = useState("");
   const activeOrder = selectedOrder?.orderNumber === selectedOrderNumber ? selectedOrder : null;
 
   useEffect(() => {
@@ -315,6 +339,43 @@ export function OrdersWorkspace() {
   const availableStatuses = useMemo(() => availableOperationalStatuses(activeOrder), [activeOrder]);
   const canRegisterManualPayment = Boolean(activeOrder && activeOrder.paymentStatus !== "paid" && !activeOrder.manualRequest);
   const canConfirmOnlinePayment = Boolean(activeOrder && activeOrder.paymentMethod === "openpay" && activeOrder.paymentStatus !== "paid");
+  const selectableProducts = availableProducts.filter((product) => product.status === "active" || product.status === "draft");
+  const selectedQuantityBySlug = useMemo(
+    () => new Map(createItems.map((item) => [item.slug, item.quantity])),
+    [createItems]
+  );
+  const filteredSelectableProducts = useMemo(() => {
+    const query = normalizeSearchValue(productSearch);
+    const sortedProducts = [...selectableProducts].sort((left, right) => left.name.localeCompare(right.name, "es"));
+
+    if (!query) {
+      return sortedProducts;
+    }
+
+    return sortedProducts
+      .filter((product) => getProductSearchRank(product, query) < 99)
+      .sort((left, right) => {
+        const rankDifference = getProductSearchRank(left, query) - getProductSearchRank(right, query);
+        if (rankDifference !== 0) {
+          return rankDifference;
+        }
+
+        return left.name.localeCompare(right.name, "es");
+      });
+  }, [productSearch, selectableProducts]);
+  const visibleSelectableProducts = useMemo(
+    () => filteredSelectableProducts.slice(0, productSearch.trim() ? 12 : 8),
+    [filteredSelectableProducts, productSearch]
+  );
+  const hiddenSelectableProductsCount = Math.max(filteredSelectableProducts.length - visibleSelectableProducts.length, 0);
+  const createItemsCount = useMemo(
+    () => createItems.reduce((sum, item) => sum + item.quantity, 0),
+    [createItems]
+  );
+  const createItemsTotal = useMemo(
+    () => createItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0),
+    [createItems]
+  );
 
   function openApproveConfirm() {
     if (!activeOrder?.manualRequest) return;
@@ -483,13 +544,43 @@ export function OrdersWorkspace() {
     setCreateForm({ firstName: "", lastName: "", email: "", phone: "", line1: "", city: "", notes: "", vendorCode: "", initialStatus: "pending_payment" });
     setCreateItems([]);
     setCreateError(null);
+    setCreateOptionsNotice(null);
+    setProductSearch("");
     setCreateOpen(true);
-    if (!availableProducts.length || !availableVendors.length) {
-      try {
-        const [productsResponse, vendorsResponse] = await Promise.all([fetchAdminProducts(), fetchVendors()]);
-        setAvailableProducts(productsResponse.data ?? []);
-        setAvailableVendors(vendorsResponse.data ?? []);
-      } catch { /* no-op */ }
+    const shouldLoadProducts = availableProducts.length === 0;
+    const shouldLoadVendors = availableVendors.length === 0;
+
+    if (!shouldLoadProducts && !shouldLoadVendors) {
+      return;
+    }
+
+    setCreateOptionsLoading(true);
+
+    try {
+      const [productsResponse, vendorsResponse] = await Promise.allSettled([
+        shouldLoadProducts ? fetchAdminProducts() : Promise.resolve({ data: availableProducts }),
+        shouldLoadVendors ? fetchVendors() : Promise.resolve({ data: availableVendors })
+      ]);
+
+      const notices: string[] = [];
+
+      if (productsResponse.status === "fulfilled") {
+        setAvailableProducts(productsResponse.value.data ?? []);
+      } else {
+        setAvailableProducts([]);
+        notices.push("No pudimos cargar productos.");
+      }
+
+      if (vendorsResponse.status === "fulfilled") {
+        setAvailableVendors(vendorsResponse.value.data ?? []);
+      } else {
+        setAvailableVendors([]);
+        notices.push("No pudimos cargar vendedores. Puedes continuar sin vendedor asociado.");
+      }
+
+      setCreateOptionsNotice(notices.length ? notices.join(" ") : null);
+    } finally {
+      setCreateOptionsLoading(false);
     }
   }
 
@@ -616,51 +707,141 @@ export function OrdersWorkspace() {
             {/* Productos */}
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-black/45">Productos</p>
-              {createItems.length > 0 && (
-                <div className="mb-3 space-y-2">
-                  {createItems.map((item) => (
-                    <div key={item.slug} className="flex items-center gap-3 rounded-[10px] border border-black/10 bg-white px-3 py-2 text-sm">
-                      <div className="flex-1">
-                        <div className="font-medium text-[#132016]">{item.name}</div>
-                        <div className="text-xs text-black/45">{item.sku}</div>
-                      </div>
-                      <input type="number" min={1} value={item.quantity}
-                        onChange={(e) => updateItem(item.slug, "quantity", Math.max(1, Number(e.target.value)))}
-                        className="w-14 rounded-[8px] border border-black/15 px-2 py-1 text-center text-sm"
-                      />
-                      <span className="text-black/45">×</span>
-                      <input type="number" min={0} step={0.5} value={item.unitPrice}
-                        onChange={(e) => updateItem(item.slug, "unitPrice", Number(e.target.value))}
-                        className="w-20 rounded-[8px] border border-black/15 px-2 py-1 text-right text-sm"
-                      />
-                      <span className="w-16 text-right text-sm font-semibold text-[#132016]">
-                        S/ {(item.unitPrice * item.quantity).toFixed(0)}
-                      </span>
-                      <button type="button" onClick={() => removeItem(item.slug)} className="text-red-400 hover:text-red-600">✕</button>
-                    </div>
-                  ))}
-                  <div className="flex justify-end border-t border-black/10 pt-2 text-sm font-semibold text-[#132016]">
-                    Total: S/ {createItems.reduce((s, i) => s + i.unitPrice * i.quantity, 0).toFixed(0)}
-                  </div>
-                </div>
-              )}
               <div>
-                <p className="mb-1.5 text-[11px] text-black/40">Agregar producto</p>
-                <div className="grid gap-1.5 md:grid-cols-2">
-                  {availableProducts.filter((p) => p.status === "active" || p.status === "draft").map((product) => (
-                    <button key={product.id} type="button" onClick={() => addItem(product)}
-                      className="flex items-center justify-between gap-2 rounded-[10px] border border-black/10 bg-[#f9f9f7] px-3 py-2 text-left text-sm transition hover:border-[#52b788] hover:bg-[#f0faf4]"
-                    >
-                      <div>
-                        <div className="font-medium text-[#132016]">{product.name}</div>
-                        <div className="text-xs text-black/40">{product.sku} · S/ {product.price}</div>
+                <p className="mb-1.5 text-[11px] text-black/40">Buscar y agregar producto</p>
+                <div className="overflow-hidden rounded-[16px] border border-black/10 bg-[#fbfbf8] p-2.5">
+                  {createItems.length > 0 ? (
+                    <div className="mb-3 rounded-[12px] border border-[#d9e9df] bg-white p-3">
+                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#2d6a4f]">Seleccionados</p>
+                          <p className="mt-1 text-xs text-black/50">
+                            {createItems.length} producto(s) distintos · {createItemsCount} item(s) en el pedido
+                          </p>
+                        </div>
+                        <div className="rounded-full bg-[#eef7f1] px-3 py-1 text-xs font-semibold text-[#2d6a4f]">
+                          Total S/ {createItemsTotal.toFixed(0)}
+                        </div>
                       </div>
-                      <span className="text-[#52b788]">+</span>
-                    </button>
-                  ))}
-                  {!availableProducts.length && (
-                    <p className="col-span-2 text-xs text-black/40">Cargando productos...</p>
-                  )}
+                      <div className="space-y-2">
+                        {createItems.map((item) => (
+                          <div key={item.slug} className="flex items-center gap-3 rounded-[10px] border border-black/10 bg-[#fbfbf8] px-3 py-2 text-sm">
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate font-medium text-[#132016]">{item.name}</div>
+                              <div className="text-xs text-black/45">{item.sku}</div>
+                            </div>
+                            <input type="number" min={1} value={item.quantity}
+                              onChange={(e) => updateItem(item.slug, "quantity", Math.max(1, Number(e.target.value)))}
+                              className="w-14 rounded-[8px] border border-black/15 bg-white px-2 py-1 text-center text-sm"
+                            />
+                            <span className="text-black/45">×</span>
+                            <input type="number" min={0} step={0.5} value={item.unitPrice}
+                              onChange={(e) => updateItem(item.slug, "unitPrice", Number(e.target.value))}
+                              className="w-20 rounded-[8px] border border-black/15 bg-white px-2 py-1 text-right text-sm"
+                            />
+                            <span className="w-16 text-right text-sm font-semibold text-[#132016]">
+                              S/ {(item.unitPrice * item.quantity).toFixed(0)}
+                            </span>
+                            <button type="button" onClick={() => removeItem(item.slug)} className="text-red-400 transition hover:text-red-600">✕</button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#6f8679]">
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <circle cx="11" cy="11" r="7" />
+                        <path d="m20 20-3.5-3.5" />
+                      </svg>
+                    </span>
+                    <input
+                      type="text"
+                      value={productSearch}
+                      onChange={(event) => setProductSearch(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && visibleSelectableProducts[0]) {
+                          event.preventDefault();
+                          addItem(visibleSelectableProducts[0]);
+                        }
+                      }}
+                      placeholder="Busca por nombre, SKU o slug"
+                      className="w-full rounded-[10px] border border-black/10 bg-white pl-9 pr-3 py-2 text-sm outline-none transition focus:border-[#52b788] focus:ring-2 focus:ring-[#52b788]/15"
+                    />
+                  </div>
+
+                  <div className="mt-2 flex items-center justify-between gap-2 px-1 text-[11px] text-black/45">
+                    <span>
+                      {createOptionsLoading
+                        ? "Cargando catálogo..."
+                        : productSearch.trim()
+                          ? `${filteredSelectableProducts.length} resultado(s)`
+                          : `${selectableProducts.length} producto(s) disponibles`}
+                    </span>
+                    {hiddenSelectableProductsCount > 0 ? (
+                      <span>Mostrando {visibleSelectableProducts.length}; sigue escribiendo para refinar</span>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-2 overflow-hidden rounded-[12px] border border-black/8 bg-white">
+                    <div className="max-h-56 space-y-1.5 overflow-y-auto p-2 pr-1">
+                    {createOptionsLoading ? (
+                      <p className="rounded-[10px] border border-dashed border-black/10 bg-white px-3 py-3 text-xs text-black/45">
+                        Cargando productos...
+                      </p>
+                    ) : null}
+                    {!createOptionsLoading && !selectableProducts.length ? (
+                      <p className="rounded-[10px] border border-dashed border-black/10 bg-white px-3 py-3 text-xs text-black/45">
+                        {createOptionsNotice?.includes("productos")
+                          ? "No pudimos cargar productos."
+                          : "No hay productos disponibles todavía."}
+                      </p>
+                    ) : null}
+                    {!createOptionsLoading && selectableProducts.length > 0 && !visibleSelectableProducts.length ? (
+                      <p className="rounded-[10px] border border-dashed border-black/10 bg-white px-3 py-3 text-xs text-black/45">
+                        No encontramos coincidencias para esa búsqueda.
+                      </p>
+                    ) : null}
+                    {visibleSelectableProducts.map((product) => {
+                      const selectedQuantity = selectedQuantityBySlug.get(product.slug) ?? 0;
+
+                      return (
+                        <button
+                          key={product.id}
+                          type="button"
+                          onClick={() => addItem(product)}
+                          className="flex w-full items-center justify-between gap-3 rounded-[10px] border border-black/10 bg-white px-3 py-2.5 text-left text-sm transition hover:border-[#52b788] hover:bg-[#f0faf4]"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate font-medium text-[#132016]">{product.name}</div>
+                            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-black/45">
+                              <span>{product.sku}</span>
+                              <span>{product.categoryName ?? "Sin categoría"}</span>
+                              <span>S/ {product.price}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {selectedQuantity > 0 ? (
+                              <span className="rounded-full bg-[#e8f4ec] px-2 py-1 text-[11px] font-medium text-[#2d6a4f]">
+                                x{selectedQuantity} en pedido
+                              </span>
+                            ) : null}
+                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#eef7f1] text-[#52b788]">
+                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path d="M12 5v14" />
+                                <path d="M5 12h14" />
+                              </svg>
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                    </div>
+                  </div>
+                  {createOptionsNotice ? (
+                    <p className="mt-2 px-1 text-xs text-amber-700">{createOptionsNotice}</p>
+                  ) : null}
                 </div>
               </div>
             </div>

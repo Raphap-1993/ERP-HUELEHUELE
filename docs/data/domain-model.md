@@ -68,8 +68,15 @@ Campos aditivos vigentes:
 
 Campos aditivos vigentes:
 
+- `vendor_applications.application_intent`: `affiliate | seller | content_creator | other`
 - `vendors.collaboration_type`: `seller | affiliate`
 - `commission_rules.applies_to_collaboration_type`
+
+Regla vigente de fase 1:
+
+- la intención pública vive en `vendor_application`
+- el `collaborationType` final del vendedor se confirma recién al aprobar la postulación
+- `content_creator` y `other` se resuelven como `seller` salvo decisión operativa explícita distinta
 
 ### CMS
 

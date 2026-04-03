@@ -12,6 +12,17 @@ const labelStyle = "text-[11px] font-semibold uppercase tracking-[0.07em] text-b
 const inputLight =
   "w-full px-3.5 py-3 bg-white border border-[rgba(26,58,46,0.15)] rounded-[11px] text-[#1c1c1c] text-sm placeholder:text-[#6b7280] outline-none focus:border-[#52b788] transition";
 
+const applicationIntentOptions: Array<{
+  id: VendorApplicationDraft["applicationIntent"];
+  label: string;
+  messageLabel: string;
+}> = [
+  { id: "affiliate", label: "🔗 Afiliado/a", messageLabel: "Afiliado/a" },
+  { id: "content_creator", label: "📱 Contenido", messageLabel: "Creador/a de contenido" },
+  { id: "seller", label: "🛍️ Vendedor/a", messageLabel: "Vendedor/a" },
+  { id: "other", label: "✨ Otra idea", messageLabel: "Otra idea" },
+];
+
 export function VendorApplicationForm({
   source = "Trabaja con nosotros",
   submitLabel = "✦ Enviar mi postulación",
@@ -26,7 +37,7 @@ export function VendorApplicationForm({
   const [city, setCity] = useState("");
   const [phone, setPhone] = useState("");
   const [age, setAge] = useState("");
-  const [colaboracion, setColaboracion] = useState("afiliado");
+  const [applicationIntent, setApplicationIntent] = useState<VendorApplicationDraft["applicationIntent"]>("affiliate");
   const [instagram, setInstagram] = useState("");
   const [messageText, setMessageText] = useState("");
   const [errors, setErrors] = useState<VendorApplicationErrors>({});
@@ -37,8 +48,9 @@ export function VendorApplicationForm({
     event.preventDefault();
     setFeedback(null);
 
+    const selectedIntent = applicationIntentOptions.find((option) => option.id === applicationIntent);
     const fullMessage = [
-      colaboracion ? `Modalidad: ${colaboracion}` : null,
+      selectedIntent ? `Modalidad: ${selectedIntent.messageLabel}` : null,
       age ? `Edad: ${age}` : null,
       instagram ? `Instagram: ${instagram}` : null,
       messageText.trim() ? messageText.trim() : null,
@@ -51,6 +63,7 @@ export function VendorApplicationForm({
       email: email.trim(),
       city: city.trim(),
       phone: phone.trim(),
+      applicationIntent,
       message: fullMessage,
     };
 
@@ -72,7 +85,7 @@ export function VendorApplicationForm({
           setAge("");
           setInstagram("");
           setMessageText("");
-          setColaboracion("afiliado");
+          setApplicationIntent("affiliate");
           setErrors({});
         } catch (error) {
           setFeedback({
@@ -181,19 +194,14 @@ export function VendorApplicationForm({
           <div className="space-y-1.5">
             <span className={labelStyle}>¿Cómo te gustaría colaborar? *</span>
             <div className="flex gap-2 flex-wrap">
-              {[
-                { id: "afiliado", label: "🔗 Afiliado/a" },
-                { id: "contenido", label: "📱 Contenido" },
-                { id: "vendedor", label: "🛍️ Vendedor/a" },
-                { id: "otro", label: "✨ Otra idea" },
-              ].map((opt) => (
+              {applicationIntentOptions.map((opt) => (
                 <button
                   key={opt.id}
                   type="button"
-                  onClick={() => setColaboracion(opt.id)}
+                  onClick={() => setApplicationIntent(opt.id)}
                   className={`px-3.5 py-2 rounded-[9px] border text-xs font-medium transition
                     ${
-                      colaboracion === opt.id
+                      applicationIntent === opt.id
                         ? "border-[#2d6a4f] bg-[#d8f3dc] text-[#1a3a2e]"
                         : "border-[rgba(26,58,46,0.18)] text-[#6b7280] hover:border-[rgba(45,106,79,0.4)]"
                     }`}
@@ -217,9 +225,8 @@ export function VendorApplicationForm({
 
           {/* Cuéntanos */}
           <label className="block space-y-1.5">
-            <span className={labelStyle}>Cuéntanos sobre ti *</span>
+            <span className={labelStyle}>Cuéntanos sobre ti</span>
             <textarea
-              required
               value={messageText}
               onChange={(e) => setMessageText(e.target.value)}
               placeholder="¿Por qué te interesa Huele Huele? ¿Qué experiencia tienes en ventas o contenido?"

@@ -5,8 +5,8 @@ import { adminAccessRoles } from "@huelegood/shared";
 export default function CrmPage() {
   return (
     <AdminAuthGate
-      title="CRM"
-      description="Campañas, segmentos y eventos de comunicación comercial."
+      title="Clientes"
+      description="CRUD operativo de clientes, direcciones y lectura reciente de pedidos."
       allowedRoles={adminAccessRoles.crm}
     >
       <CrmWorkspace />

@@ -4,6 +4,11 @@
 
 Permitir compras mediante pago manual, con carga de comprobante y revisión operativa antes de confirmar el pedido.
 
+Nota operativa vigente:
+
+- la UI pública actual de `/checkout` no expone cupones, códigos de vendedor ni mensajes de descuento
+- la API conserva soporte técnico para esos campos si se reactiva la experiencia promocional más adelante
+
 ## Actores
 
 - cliente
@@ -116,6 +121,7 @@ Reglas:
 ## Observaciones de implementación
 
 - La UI de revisión debe exponer contexto del pedido, historial y evidencias en una sola vista.
+- El checkout público actual se presenta sin superficie promocional; cualquier reactivación de cupones o código de vendedor debe volver a documentarse.
 - La API debe separar claramente el concepto de solicitud manual de la transacción de pago.
 - La resolución operativa debe encolar un job con `jobId` estable para evitar doble conciliación.
 - La decisión del operador debe ser idempotente: una solicitud ya aprobada o rechazada no se procesa dos veces.

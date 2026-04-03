@@ -4,6 +4,8 @@
 
 Definir cómo publicar Huelegood en el VPS actual usando Hestia, Nginx, PM2, PostgreSQL existente y Redis.
 
+La referencia canónica del VPS actual vive en [environments.md](./environments.md#vps-actual).
+
 ## Estrategia base
 
 Huelegood se despliega como cuatro procesos de aplicación supervisados por PM2 detrás de Nginx:
@@ -42,7 +44,7 @@ Decisión vigente de media pública:
 - `Cloudflare R2` es el storage objetivo para logo, hero, banners e imágenes de producto en storefront
 - el VPS sigue reteniendo uploads privados y evidencias operativas
 
-En el VPS actual, el archivo de entorno efectivo vive fuera del repo en:
+En el VPS actual documentado en [environments.md](./environments.md#vps-actual), el archivo de entorno efectivo vive fuera del repo en:
 
 - `/home/huelehuele/apps/huelegood.com/shared/.env.production`
 

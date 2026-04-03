@@ -43,11 +43,17 @@ Formalizar cómo se atribuye una venta a un vendedor y cómo esa atribución evo
 
 - Un pedido solo admite un código de vendedor efectivo.
 - El código debe persistir en el pedido aunque luego el carrito cambie.
+- El código comercial de un vendedor solo puede editarse desde backoffice si no tiene pedidos, ventas ni comisiones históricas.
+- Si el código cambia antes de tener historial, la API sincroniza también las postulaciones ligadas y cualquier regla de comisión apuntada al código anterior.
 - La atribución puede convivir con promociones solo si la regla comercial lo permite.
 - El vendedor no controla el precio final del pedido.
 - `vendors` puede ser `seller` o `affiliate` mediante `collaborationType`.
 - una regla puede aplicar por `vendorCode` o por `collaborationType`.
 - el alta manual de afiliado desde admin puede crear una regla automática del `10%`.
+- el alta manual desde admin debe registrar WhatsApp en formato internacional, incluyendo código de país antes del número.
+- operación puede definir un `preferredCode` friendly tanto al dar de alta manualmente como al aprobar una postulación; el código sigue siendo único.
+- admin puede editar datos base del vendedor, su `status` y, cuando todavía no existe historial comercial, también su código.
+- admin solo puede eliminar el perfil si no tiene pedidos, comisiones ni postulaciones ligadas.
 
 ## Subflujo B: maduración y liquidación de comisión
 

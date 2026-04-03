@@ -1,5 +1,11 @@
-import { Body, Controller, Get, Param, Post } from "@nestjs/common";
-import { adminAccessRoles, type AdminVendorCreateInput, type VendorApplicationActionInput, type VendorApplicationInput } from "@huelegood/shared";
+import { Body, Controller, Delete, Get, Param, Patch, Post } from "@nestjs/common";
+import {
+  adminAccessRoles,
+  type AdminVendorCreateInput,
+  type AdminVendorUpdateInput,
+  type VendorApplicationActionInput,
+  type VendorApplicationInput
+} from "@huelegood/shared";
 import { RequireRoles } from "../auth/auth-rbac";
 import { VendorsService } from "./vendors.service";
 
@@ -21,6 +27,11 @@ export class AdminVendorApplicationsController {
   @Get()
   list() {
     return this.vendorsService.listApplications();
+  }
+
+  @Post(":id/screen")
+  screen(@Param("id") id: string, @Body() body: VendorApplicationActionInput) {
+    return this.vendorsService.screenApplication(id, body);
   }
 
   @Post(":id/approve")
@@ -47,6 +58,16 @@ export class AdminVendorsController {
   @Post()
   create(@Body() body: AdminVendorCreateInput) {
     return this.vendorsService.createManualVendor(body);
+  }
+
+  @Patch(":id")
+  update(@Param("id") id: string, @Body() body: AdminVendorUpdateInput) {
+    return this.vendorsService.updateVendor(id, body);
+  }
+
+  @Delete(":id")
+  remove(@Param("id") id: string) {
+    return this.vendorsService.deleteVendor(id);
   }
 
   @Get("codes")

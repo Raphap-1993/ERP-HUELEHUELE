@@ -16,7 +16,6 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
-  MetricCard,
   SectionHeader,
   Separator,
   StatusBadge,
@@ -161,36 +160,6 @@ export function WholesaleWorkspace() {
     [leads, selectedLeadId]
   );
 
-  const metrics = useMemo(
-    () => [
-      {
-        label: "Leads",
-        value: String(leads.length),
-        detail: "Oportunidades capturadas."
-      },
-      {
-        label: "Calificados",
-        value: String(leads.filter((lead) => lead.status === WholesaleLeadStatus.Qualified).length),
-        detail: "Listos para cotizar."
-      },
-      {
-        label: "Cotizados",
-        value: String(
-          leads.filter(
-            (lead) => lead.status === WholesaleLeadStatus.Quoted || lead.status === WholesaleLeadStatus.Negotiating
-          ).length
-        ),
-        detail: "En seguimiento comercial."
-      },
-      {
-        label: "Ganados",
-        value: String(leads.filter((lead) => lead.status === WholesaleLeadStatus.Won).length),
-        detail: "Convertidos a oportunidad cerrada."
-      }
-    ],
-    [leads]
-  );
-
   function refresh() {
     setRefreshKey((current) => current + 1);
   }
@@ -243,12 +212,6 @@ export function WholesaleWorkspace() {
         title="Mayoristas"
         description="Lead B2B, cotizaciones y reglas operativas con trazabilidad en tiempo real."
       />
-
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-        {metrics.map((metric) => (
-          <MetricCard key={metric.label} metric={metric} />
-        ))}
-      </div>
 
       <Card>
         <CardHeader>

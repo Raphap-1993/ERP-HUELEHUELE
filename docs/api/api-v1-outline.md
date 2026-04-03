@@ -122,6 +122,12 @@ Notas operativas:
 - `POST /store/vendor-applications`
 - `POST /store/wholesale-leads`
 
+Notas operativas:
+
+- `POST /store/vendor-applications` exige `name`, `email`, `city`, `phone` y `applicationIntent`.
+- `applicationIntent` admite `affiliate`, `seller`, `content_creator` y `other`.
+- `message` se mantiene como texto libre para contexto comercial adicional.
+
 ## Endpoints admin
 
 ### Access y dashboard
@@ -144,6 +150,10 @@ Notas operativas:
 - `GET /admin/banners`
 - `POST /admin/banners`
 
+### Media
+
+- `GET /admin/media/assets`
+
 ### Catálogo y promociones
 
 - `GET /admin/categories`
@@ -158,6 +168,14 @@ Notas operativas:
 - `GET /admin/coupons`
 - `POST /admin/coupons`
 
+### Clientes
+
+- `GET /admin/customers`
+- `GET /admin/customers/:id`
+- `POST /admin/customers`
+- `PATCH /admin/customers/:id`
+- `DELETE /admin/customers/:id`
+
 ### Pedidos y pagos
 
 - `GET /admin/orders`
@@ -171,11 +189,14 @@ Notas operativas:
 ### Vendedores y comisiones
 
 - `GET /admin/vendor-applications`
+- `POST /admin/vendor-applications/:id/screen`
 - `POST /admin/vendor-applications/:id/approve`
 - `POST /admin/vendor-applications/:id/reject`
 - `GET /admin/vendors`
+- `POST /admin/vendors`
 - `PATCH /admin/vendors/:id`
-- `POST /admin/vendors/:id/codes`
+- `DELETE /admin/vendors/:id`
+- `GET /admin/vendors/codes`
 - `GET /admin/commission-rules`
 - `POST /admin/commission-rules`
 - `GET /admin/commissions`
@@ -237,3 +258,13 @@ Notas operativas:
 - Los endpoints administrativos deben registrar `admin_actions` y `audit_logs` cuando corresponda.
 - Los listados admin deben aceptar `page`, `page_size`, `sort`, `filters`.
 - La API v1 debe exponer estados de negocio como enums estables compartidos con frontend.
+- `POST /admin/vendor-applications/:id/approve` debe recibir `resolvedCollaborationType` para confirmar el tipo final del vendedor antes de generar el código.
+- `POST /admin/vendor-applications/:id/approve` puede recibir `preferredCode` para fijar un código comercial friendly; si no llega, la API genera uno automático.
+- `POST /admin/vendors` exige `name`, `email`, `city` y `phone`; el `phone` debe llegar en formato internacional con código de país, por ejemplo `+51 998906481`.
+- `POST /admin/vendors` puede recibir `preferredCode` para fijar un código comercial friendly; si no llega, la API genera uno automático.
+- `GET /admin/media/assets` lista assets ya persistidos en `Cloudflare R2` para reutilizarlos desde backoffice sin volver a subirlos.
+- `GET /admin/media/assets` acepta `kind` opcional (`product`, `hero`, `banner`, `logo`, `evidence`) y `limit`.
+- `PATCH /admin/vendors/:id` permite editar datos base del perfil comercial (`name`, `email`, `city`, `phone`, `source`, `collaborationType`, `status`) y también `preferredCode` cuando el vendedor todavía no tiene pedidos, ventas ni comisiones históricas.
+- Si `preferredCode` cambia en `PATCH /admin/vendors/:id`, la API sincroniza postulaciones ligadas y reglas de comisión que apuntaban al código anterior.
+- `DELETE /admin/vendors/:id` solo se permite cuando el vendedor no tiene ventas, pedidos, comisiones ni postulaciones vinculadas.
+- `GET /admin/vendors/codes` es una proyección de solo lectura de los códigos actuales de vendedores; no expone CRUD independiente de códigos todavía.

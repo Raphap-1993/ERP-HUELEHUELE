@@ -1,4 +1,4 @@
-import type { VendorApplicationInput } from "@huelegood/shared";
+import type { VendorApplicationInput, VendorApplicationIntent } from "@huelegood/shared";
 import { submitVendorApplication } from "../../../lib/api";
 
 export interface VendorApplicationDraft {
@@ -6,6 +6,7 @@ export interface VendorApplicationDraft {
   email: string;
   city: string;
   phone: string;
+  applicationIntent: VendorApplicationIntent;
   message: string;
 }
 
@@ -30,6 +31,10 @@ export function validateVendorApplicationDraft(draft: VendorApplicationDraft) {
     errors.city = "Ciudad obligatoria.";
   }
 
+  if (!draft.phone.trim()) {
+    errors.phone = "WhatsApp obligatorio.";
+  }
+
   return errors;
 }
 
@@ -38,7 +43,8 @@ export function toVendorApplicationInput(draft: VendorApplicationDraft, source: 
     name: draft.name.trim(),
     email: draft.email.trim(),
     city: draft.city.trim(),
-    phone: draft.phone.trim() || undefined,
+    phone: draft.phone.trim(),
+    applicationIntent: draft.applicationIntent,
     message: draft.message.trim() || undefined,
     source
   };

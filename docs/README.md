@@ -136,6 +136,7 @@ Como insumo funcional, se asume que la v1 de Huelegood ya comunica:
 ### API
 
 - [api-v1-outline.md](./api/api-v1-outline.md)
+- [implemented-endpoints-inventory.md](./api/implemented-endpoints-inventory.md)
 
 ### UX
 

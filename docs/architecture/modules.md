@@ -15,8 +15,8 @@ Los diagramas Mermaid alineados al código viven en [module-diagrams.md](./modul
 | `auth` | plataforma | implementado | login, sesiones, contexto de usuario y `RolesGuard` | `Prisma`, `ModuleState`, store de sesión | auditoría, web, admin, seller |
 | `security` | plataforma | implementado | postura de seguridad y resumen operativo | lectura sobre `audit` | admin |
 | `audit` | plataforma | implementado | logs de auditoría y acciones administrativas | `Prisma -> PostgreSQL` | todos |
-| `customers` | plataforma | esqueleto | reservado para dominio de cliente y self-service | pendiente | auth, pedidos, loyalty |
-| `media` | comercial | implementado | uploads públicos y privados, URLs y borrado de assets | `Cloudflare R2`, storage local | CMS, productos, checkout |
+| `customers` | plataforma | implementado parcial | perfiles, direcciones y lectura operativa de historial reciente | `Prisma`, `ModuleState` | auth, pedidos, loyalty |
+| `media` | comercial | implementado | uploads públicos y privados, listado reutilizable de assets, URLs y borrado de assets | `Cloudflare R2`, storage local | CMS, productos, checkout |
 | `products` | comercial | implementado | CRUD admin de productos, categorías e imágenes | `Prisma -> PostgreSQL` | media, catálogo, checkout |
 | `catalog` | comercial | implementado | read model público para storefront | delega en `products` | web |
 | `cms` | comercial | implementado | contenido editable, branding, navegación y páginas | `ModuleState -> PostgreSQL` | media, auditoría, marketing |
@@ -98,13 +98,14 @@ flowchart LR
 - `audit` registra acciones sensibles y sirve como dependencia transversal para trazabilidad.
 - `observability` mide requests y colas; no debe convertirse en dueño del estado de negocio.
 - `security` resume postura y controles, pero no reemplaza a `auth` ni a `audit`.
-- `customers` sigue reservado; no debe fingirse como dominio cerrado mientras siga vacío.
+- `customers` ya expone perfil y direcciones del cliente, y cruza snapshots operativos de pedidos para lectura de historial; aún no cubre self-service completo ni un portal de cliente terminado.
 
 ### Comercial
 
 - `products` es la fuente real de catálogo administrable; `catalog` sólo expone la vista pública derivada.
 - `cms` debe editar la web sin redeploy para cambios no estructurales y resolver branding mediante `media`, no con assets hardcodeados.
 - `media` separa activos públicos del storefront y activos privados operativos; para media pública el destino vigente es `Cloudflare R2`.
+- `media` también debe exponer una biblioteca administrable para reutilizar assets ya existentes en R2 desde backoffice, en vez de obligar reuploads.
 - `commerce` orquesta quote y checkout, pero no debe absorber la fuente de verdad de pedidos ni pagos.
 - `orders` es el agregado transaccional central y conserva snapshots de compra, direcciones, descuentos y atribución comercial.
 - `payments` administra revisión manual y asynchrony operativa, pero las transiciones finales deben respetar la máquina de estados de `orders`.
@@ -126,7 +127,7 @@ flowchart LR
 | --- | --- | --- |
 | `promotions` | descuentos resueltos por `coupons` y `commerce` | falta un módulo autónomo para vigencias, audiencias, stacking y reglas promocionales más ricas |
 | `cart` | quote y checkout directo en `commerce` | falta sesión persistente de carrito, aplicación incremental de códigos y lifecycle propio |
-| `customers` completo | existe `CustomersModule`, pero está vacío | faltan perfiles, direcciones, historial y self-service real |
+| `customers` completo | existe `CustomersModule` con CRUD admin parcial y lectura operativa | falta self-service real, sesiones de cliente y experiencia pública completa |
 | webhooks Openpay | el flujo está documentado, pero no hay módulo/controlador dedicado | falta firma, idempotencia y trazabilidad explícita de webhooks |
 | jobs `orders`, `loyalty`, `marketing` | las colas existen en `QueueName`, pero el worker sólo procesa `payments`, `commissions` y `notifications` | faltan producers y processors dedicados |
 

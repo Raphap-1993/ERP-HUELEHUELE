@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@huelegood/shared": "^0.1.0",
-    "@huelegood/ui": "^0.1.0"
+    "@huelegood/ui": "^0.1.0",
+    "react-international-phone": "^4.8.0"
   }
 }

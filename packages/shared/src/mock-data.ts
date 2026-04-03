@@ -85,17 +85,12 @@ export const webNavigation: WebNavigationGroup[] = [
 
 export const adminNavigation: AdminNavigationGroup[] = [
   {
-    title: "Resumen",
+    title: "Operación diaria",
     items: [
       { label: "Dashboard", href: "/", requiredRoles: adminAccessRoles.dashboard },
-      { label: "Reportes", href: "/reportes", requiredRoles: adminAccessRoles.dashboard }
-    ]
-  },
-  {
-    title: "Operación",
-    items: [
       { label: "Pedidos", href: "/pedidos", requiredRoles: adminAccessRoles.orders },
-      { label: "Pagos", href: "/pagos", requiredRoles: adminAccessRoles.payments }
+      { label: "Pagos", href: "/pagos", requiredRoles: adminAccessRoles.payments },
+      { label: "Reportes", href: "/reportes", requiredRoles: adminAccessRoles.dashboard }
     ]
   },
   {
@@ -116,16 +111,16 @@ export const adminNavigation: AdminNavigationGroup[] = [
   {
     title: "Clientes",
     items: [
-      { label: "CRM", href: "/crm", requiredRoles: adminAccessRoles.crm },
+      { label: "Clientes", href: "/crm", requiredRoles: adminAccessRoles.crm },
+      { label: "Fidelización", href: "/loyalty", requiredRoles: adminAccessRoles.loyalty },
       { label: "Marketing", href: "/marketing", requiredRoles: adminAccessRoles.marketing },
-      { label: "Notificaciones", href: "/notificaciones", requiredRoles: adminAccessRoles.notifications },
-      { label: "Cupones", href: "/cupones", requiredRoles: adminAccessRoles.coupons },
-      { label: "Fidelización", href: "/loyalty", requiredRoles: adminAccessRoles.loyalty }
+      { label: "Cupones", href: "/cupones", requiredRoles: adminAccessRoles.coupons }
     ]
   },
   {
     title: "Sistema",
     items: [
+      { label: "Notificaciones", href: "/notificaciones", requiredRoles: adminAccessRoles.notifications },
       { label: "Observabilidad", href: "/observabilidad", requiredRoles: adminAccessRoles.observability },
       { label: "Auditoría", href: "/auditoria", requiredRoles: adminAccessRoles.audit },
       { label: "Configuración", href: "/configuracion", requiredRoles: adminAccessRoles.configuration }

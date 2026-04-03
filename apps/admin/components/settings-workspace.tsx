@@ -9,6 +9,13 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Input,
   MetricCard,
   SectionHeader,
@@ -23,10 +30,22 @@ import {
   type CmsSnapshotResponse,
   type CmsSiteSettingsInput,
   type HeroCopy,
+  type MediaAssetKindValue,
+  type MediaAssetSummary,
   type SiteSetting,
   type WebNavigationGroup
 } from "@huelegood/shared";
-import { fetchCmsOverview, updateCmsHeroCopy, updateCmsNavigation, updateCmsSiteSettings, uploadCmsHeaderLogo, uploadCmsHeroProductImage, uploadCmsLoadingImage, uploadCmsFavicon } from "../lib/api";
+import {
+  fetchAdminMediaAssets,
+  fetchCmsOverview,
+  updateCmsHeroCopy,
+  updateCmsNavigation,
+  updateCmsSiteSettings,
+  uploadCmsFavicon,
+  uploadCmsHeaderLogo,
+  uploadCmsHeroProductImage,
+  uploadCmsLoadingImage
+} from "../lib/api";
 
 function formatDate(value?: string) {
   if (!value) {
@@ -93,6 +112,54 @@ function normalizeSiteSetting(value: SiteSetting): CmsSiteSettingsInput {
   };
 }
 
+type SiteAssetField = "headerLogoUrl" | "heroProductImageUrl" | "loadingImageUrl" | "faviconUrl";
+
+const siteAssetPickerConfig: Record<
+  SiteAssetField,
+  {
+    label: string;
+    libraryLabel: string;
+    kind: MediaAssetKindValue;
+  }
+> = {
+  headerLogoUrl: {
+    label: "Logo del menú",
+    libraryLabel: "logos e íconos",
+    kind: "logo"
+  },
+  heroProductImageUrl: {
+    label: "Imagen del hero",
+    libraryLabel: "imágenes hero",
+    kind: "hero"
+  },
+  loadingImageUrl: {
+    label: "Imagen de loading",
+    libraryLabel: "logos y assets compactos",
+    kind: "logo"
+  },
+  faviconUrl: {
+    label: "Ícono del sitio",
+    libraryLabel: "íconos y logos livianos",
+    kind: "logo"
+  }
+};
+
+function formatFileSize(sizeBytes?: number) {
+  if (!sizeBytes) {
+    return "Sin tamaño";
+  }
+
+  if (sizeBytes < 1024) {
+    return `${sizeBytes} B`;
+  }
+
+  if (sizeBytes < 1024 * 1024) {
+    return `${(sizeBytes / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function SettingsWorkspace() {
   const [snapshot, setSnapshot] = useState<CmsSnapshotResponse>({
     siteSetting: defaultSiteSetting,
@@ -119,6 +186,12 @@ export function SettingsWorkspace() {
   const [loadingImageUploading, setLoadingImageUploading] = useState(false);
   const [faviconFile, setFaviconFile] = useState<File | null>(null);
   const [faviconUploading, setFaviconUploading] = useState(false);
+  const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
+  const [mediaPickerField, setMediaPickerField] = useState<SiteAssetField | null>(null);
+  const [mediaAssets, setMediaAssets] = useState<MediaAssetSummary[]>([]);
+  const [mediaAssetsLoading, setMediaAssetsLoading] = useState(false);
+  const [mediaAssetsError, setMediaAssetsError] = useState<string | null>(null);
+  const [mediaSearch, setMediaSearch] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -181,8 +254,63 @@ export function SettingsWorkspace() {
     [snapshot]
   );
 
+  const mediaPickerConfig = mediaPickerField ? siteAssetPickerConfig[mediaPickerField] : null;
+
+  const filteredMediaAssets = useMemo(() => {
+    const query = mediaSearch.trim().toLowerCase();
+
+    if (!query) {
+      return mediaAssets;
+    }
+
+    return mediaAssets.filter((asset) => {
+      const haystack = [asset.filename, asset.objectKey, asset.url, asset.kind].filter(Boolean).join(" ").toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [mediaAssets, mediaSearch]);
+
   function refresh() {
     setRefreshKey((current) => current + 1);
+  }
+
+  async function openMediaPicker(field: SiteAssetField) {
+    setMediaPickerField(field);
+    setMediaPickerOpen(true);
+    setMediaSearch("");
+    setMediaAssets([]);
+    setMediaAssetsError(null);
+    setMediaAssetsLoading(true);
+
+    try {
+      const response = await fetchAdminMediaAssets(siteAssetPickerConfig[field].kind, 120);
+      setMediaAssets(response.data);
+    } catch (fetchError) {
+      setMediaAssetsError(fetchError instanceof Error ? fetchError.message : "No pudimos leer tu biblioteca en R2.");
+    } finally {
+      setMediaAssetsLoading(false);
+    }
+  }
+
+  function closeMediaPicker() {
+    setMediaPickerOpen(false);
+    setMediaPickerField(null);
+    setMediaAssets([]);
+    setMediaAssetsError(null);
+    setMediaAssetsLoading(false);
+    setMediaSearch("");
+  }
+
+  function handleSelectMediaAsset(asset: MediaAssetSummary) {
+    if (!mediaPickerField) {
+      return;
+    }
+
+    const field = mediaPickerField;
+    setSiteForm((current) => ({
+      ...current,
+      [field]: asset.url
+    }));
+    closeMediaPicker();
   }
 
   async function handleSaveSiteSettings() {
@@ -352,6 +480,12 @@ export function SettingsWorkspace() {
                 value={siteForm.headerLogoUrl ?? ""}
                 onChange={(event) => setSiteForm({ ...siteForm, headerLogoUrl: event.target.value || undefined })}
               />
+              {siteForm.headerLogoUrl ? (
+                <div className="rounded-[1.2rem] border border-black/8 bg-[#f7f8f4] p-3">
+                  <p className="mb-2 text-[11px] uppercase tracking-[0.24em] text-black/40">Logo actual</p>
+                  <img src={siteForm.headerLogoUrl} alt="Logo actual del sitio" className="h-14 w-auto max-w-[220px] object-contain" />
+                </div>
+              ) : null}
               <div className="flex flex-col gap-2 md:flex-row md:items-center">
                 <input
                   id="site-logo-upload"
@@ -361,12 +495,17 @@ export function SettingsWorkspace() {
                   disabled={logoUploading}
                   className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm outline-none"
                 />
-                <Button type="button" variant="secondary" onClick={handleUploadLogo} disabled={logoUploading || !logoFile}>
-                  {logoUploading ? "Subiendo..." : "Subir logo"}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="secondary" onClick={handleUploadLogo} disabled={logoUploading || !logoFile}>
+                    {logoUploading ? "Subiendo..." : "Subir logo"}
+                  </Button>
+                  <Button type="button" variant="ghost" onClick={() => void openMediaPicker("headerLogoUrl")} disabled={logoUploading}>
+                    Elegir desde biblioteca
+                  </Button>
+                </div>
               </div>
               <p className="text-xs leading-5 text-black/55">
-                Si defines una imagen, la cabecera pública reemplaza el texto de marca. Si lo dejas vacío, vuelve al nombre en texto.
+                Si defines una imagen, la cabecera pública reemplaza el texto de marca. También puedes reutilizar un logo que ya exista en R2 sin volver a subirlo.
               </p>
             </div>
             <div className="space-y-2 md:col-span-2">
@@ -379,8 +518,19 @@ export function SettingsWorkspace() {
                 value={siteForm.heroProductImageUrl ?? ""}
                 onChange={(event) => setSiteForm({ ...siteForm, heroProductImageUrl: event.target.value || undefined })}
               />
+              {siteForm.heroProductImageUrl ? (
+                <div className="rounded-[1.2rem] border border-black/8 bg-[#f7f8f4] p-3">
+                  <p className="mb-2 text-[11px] uppercase tracking-[0.24em] text-black/40">Imagen actual</p>
+                  <img src={siteForm.heroProductImageUrl} alt="Imagen hero actual" className="max-h-40 rounded-xl object-contain" />
+                </div>
+              ) : null}
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="ghost" onClick={() => void openMediaPicker("heroProductImageUrl")}>
+                  Elegir desde biblioteca
+                </Button>
+              </div>
               <p className="text-xs leading-5 text-black/55">
-                Define aquí la imagen principal del home. También puedes subir una nueva desde el bloque de hero y luego guardar.
+                Define aquí la imagen principal del home. Puedes pegar una URL directa o elegir una imagen ya guardada en R2.
               </p>
             </div>
             <div className="space-y-2 md:col-span-2">
@@ -413,21 +563,24 @@ export function SettingsWorkspace() {
                 >
                   {loadingImageUploading ? "Subiendo..." : "Subir loading"}
                 </Button>
+                <Button type="button" variant="ghost" onClick={() => void openMediaPicker("loadingImageUrl")} disabled={loadingImageUploading}>
+                  Elegir desde biblioteca
+                </Button>
               </div>
               <p className="text-xs leading-5 text-black/55">
-                WebP, PNG o JPG. Se muestra centrado a 150 × 150 px al cargar la web pública.
+                WebP, PNG o JPG. Se muestra centrado a 150 × 150 px al cargar la web pública. También puedes reutilizar un asset ya disponible en R2.
               </p>
             </div>
             <div className="space-y-2 md:col-span-2">
               <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42">
-                Favicon del navegador
+                Ícono del sitio
               </label>
               {siteForm.faviconUrl ? (
                 <div className="rounded-[1.2rem] border border-black/8 bg-[#f7f8f4] p-3">
-                  <p className="mb-2 text-[11px] uppercase tracking-[0.24em] text-black/40">Favicon actual</p>
+                  <p className="mb-2 text-[11px] uppercase tracking-[0.24em] text-black/40">Ícono actual</p>
                   <img
                     src={siteForm.faviconUrl}
-                    alt="Favicon actual"
+                    alt="Ícono actual del sitio"
                     className="h-8 w-8 rounded object-contain"
                   />
                 </div>
@@ -441,11 +594,14 @@ export function SettingsWorkspace() {
                   className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm outline-none"
                 />
                 <Button type="button" variant="secondary" onClick={handleUploadFavicon} disabled={faviconUploading || !faviconFile}>
-                  {faviconUploading ? "Subiendo..." : "Subir favicon"}
+                  {faviconUploading ? "Subiendo..." : "Subir ícono"}
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => void openMediaPicker("faviconUrl")} disabled={faviconUploading}>
+                  Elegir desde biblioteca
                 </Button>
               </div>
               <p className="text-xs leading-5 text-black/55">
-                SVG (recomendado), PNG o ICO. Se usa como ícono en la pestaña del navegador. Máx. 2 MB.
+                SVG, PNG, ICO o WebP. Se aplica a la pestaña del navegador tanto en la web pública como en el panel admin. Máx. 2 MB.
               </p>
             </div>
             <div className="space-y-2">
@@ -648,9 +804,12 @@ export function SettingsWorkspace() {
                 >
                   {heroImageUploading ? "Subiendo..." : "Subir imagen hero"}
                 </Button>
+                <Button type="button" variant="ghost" onClick={() => void openMediaPicker("heroProductImageUrl")} disabled={heroImageUploading}>
+                  Elegir desde biblioteca
+                </Button>
               </div>
               <p className="text-xs leading-5 text-black/55">
-                PNG, JPG o WebP. Reemplaza la imagen del producto en la sección hero del inicio.
+                PNG, JPG o WebP. Reemplaza la imagen del producto en la sección hero del inicio o reutiliza una imagen ya guardada en R2.
               </p>
             </div>
           </CardContent>
@@ -717,6 +876,102 @@ export function SettingsWorkspace() {
           />
         </div>
       </section>
+
+      <Dialog open={mediaPickerOpen} onClose={closeMediaPicker} size="xl">
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Biblioteca de medios</DialogTitle>
+            <DialogDescription>
+              {mediaPickerConfig
+                ? `Selecciona un asset ya guardado en R2 para ${mediaPickerConfig.label.toLowerCase()}.`
+                : "Selecciona un asset ya guardado en R2."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="space-y-5">
+            <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+              <div className="space-y-2">
+                <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="media-picker-search">
+                  Buscar en R2
+                </label>
+                <Input
+                  id="media-picker-search"
+                  placeholder="Busca por nombre, carpeta o URL"
+                  value={mediaSearch}
+                  onChange={(event) => setMediaSearch(event.target.value)}
+                />
+              </div>
+              <div className="rounded-[1.25rem] border border-black/8 bg-[#f7f8f4] px-4 py-3">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-black/40">Mostrando</p>
+                <p className="mt-1 text-sm text-[#132016]">
+                  {mediaPickerConfig ? mediaPickerConfig.libraryLabel : "assets existentes"} en tu bucket público
+                </p>
+              </div>
+            </div>
+
+            {mediaAssetsError ? (
+              <div className="rounded-[1.25rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {mediaAssetsError}
+              </div>
+            ) : null}
+
+            {mediaAssetsLoading ? <p className="text-sm text-black/55">Cargando assets desde R2...</p> : null}
+
+            {!mediaAssetsLoading && !mediaAssetsError && filteredMediaAssets.length === 0 ? (
+              <div className="rounded-[1.5rem] border border-dashed border-black/10 bg-[#fbfbf8] px-5 py-8 text-sm text-black/58">
+                No encontramos assets para este filtro. Prueba otra búsqueda o sube una imagen nueva.
+              </div>
+            ) : null}
+
+            {filteredMediaAssets.length ? (
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {filteredMediaAssets.map((asset) => {
+                  const selectedUrl = mediaPickerField ? siteForm[mediaPickerField] ?? "" : "";
+                  const isSelected = selectedUrl === asset.url;
+
+                  return (
+                    <div
+                      key={asset.objectKey}
+                      className={`space-y-4 rounded-[1.5rem] border p-4 ${
+                        isSelected ? "border-[#2f6f4f] bg-[#f4fbf6]" : "border-black/8 bg-white"
+                      }`}
+                    >
+                      <div className="flex h-40 items-center justify-center overflow-hidden rounded-[1.2rem] border border-black/8 bg-[#f7f8f4] p-3">
+                        <img
+                          src={asset.url}
+                          alt={asset.filename ?? asset.objectKey}
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <p className="truncate text-sm font-semibold text-[#132016]">
+                          {asset.filename ?? asset.objectKey.split("/").pop() ?? asset.objectKey}
+                        </p>
+                        <p className="line-clamp-2 text-xs leading-5 text-black/52">{asset.objectKey}</p>
+                        <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.18em] text-black/38">
+                          <span>{asset.kind ?? "asset"}</span>
+                          <span>{formatFileSize(asset.sizeBytes)}</span>
+                          <span>{formatDate(asset.uploadedAt)}</span>
+                        </div>
+                      </div>
+                      <Button type="button" variant={isSelected ? "primary" : "secondary"} onClick={() => handleSelectMediaAsset(asset)}>
+                        {isSelected ? "Ya está seleccionada" : "Usar esta imagen"}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+          </DialogBody>
+          <DialogFooter className="justify-between">
+            <p className="max-w-2xl text-xs leading-5 text-black/45">
+              Al elegir una imagen, solo cambiamos la URL del campo actual. No se sube un archivo nuevo ni se duplica el asset en R2.
+            </p>
+            <Button type="button" variant="secondary" onClick={closeMediaPicker}>
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {error ? <p className="text-sm text-rose-700">{error}</p> : null}
       {loading ? <p className="text-sm text-black/55">Cargando configuración...</p> : null}

@@ -4,12 +4,8 @@ import { siteSetting } from "@huelegood/shared";
 import { AdminSessionProvider } from "../components/admin-session-provider";
 import { AdminShell } from "../components/admin-shell";
 import { fetchCmsSiteSettings } from "../lib/api";
+import "react-international-phone/style.css";
 import "./globals.css";
-
-export const metadata = {
-  title: `${siteSetting.brandName} Admin`,
-  description: "Panel operativo Huelegood"
-};
 
 async function resolveRuntimeSettings() {
   try {
@@ -18,6 +14,23 @@ async function resolveRuntimeSettings() {
   } catch {
     return siteSetting;
   }
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await resolveRuntimeSettings();
+  const siteIconUrl = settings.faviconUrl?.trim() || settings.headerLogoUrl?.trim() || undefined;
+
+  return {
+    title: `${settings.brandName} Admin`,
+    description: "Panel operativo Huelegood",
+    icons: siteIconUrl
+      ? {
+          icon: [{ url: siteIconUrl }],
+          shortcut: [{ url: siteIconUrl }],
+          apple: [{ url: siteIconUrl }]
+        }
+      : undefined
+  };
 }
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {

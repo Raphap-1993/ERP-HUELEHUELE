@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ConflictException } from "@nestjs/common";
+import { BadRequestException, ConflictException } from "@nestjs/common";
 import {
   OrderStatus,
   PaymentStatus,
@@ -270,6 +270,7 @@ function buildManualVendor(overrides: Partial<Parameters<VendorsService["createM
     name: "Vendedor Test",
     email: "seller@test.local",
     city: "Lima",
+    phone: "+51 999111222",
     collaborationType: VendorCollaborationType.Seller,
     source: "QA",
     notes: "Creado desde prueba automatizada.",
@@ -409,7 +410,14 @@ test("permite registrar un vendedor despues de rechazar una postulacion previa",
     name: "Ana Canal",
     email: "ana.canal@test.local",
     city: "Lima",
+    phone: "+51 999 777 111",
+    applicationIntent: "seller",
     source: "Formulario"
+  });
+
+  context.vendors.screenApplication(applicationResult.application!.id, {
+    reviewer: "qa",
+    notes: "Pasa a revisión comercial."
   });
 
   context.vendors.rejectApplication(applicationResult.application!.id, {
@@ -428,6 +436,181 @@ test("permite registrar un vendedor despues de rechazar una postulacion previa",
   assert.ok(vendorResult.vendor);
   assert.equal(vendorResult.vendor.status, "active");
   assert.match(vendorResult.vendor.code, /^VEND-/);
+});
+
+test("permite registrar un vendedor con código comercial friendly", async () => {
+  const context = await createContext();
+
+  const vendorResult = context.vendors.createManualVendor(
+    buildManualVendor({
+      preferredCode: "rapha lima"
+    })
+  );
+
+  assert.equal(vendorResult.status, "ok");
+  assert.ok(vendorResult.vendor);
+  assert.equal(vendorResult.vendor.code, "RAPHA-LIMA");
+});
+
+test("rechaza alta manual con código comercial duplicado", async () => {
+  const context = await createContext();
+
+  context.vendors.createManualVendor(
+    buildManualVendor({
+      email: "seller.one@test.local",
+      preferredCode: "RAPHA-LIMA"
+    })
+  );
+
+  assert.throws(
+    () =>
+      context.vendors.createManualVendor(
+        buildManualVendor({
+          email: "seller.two@test.local",
+          preferredCode: "rapha-lima"
+        })
+      ),
+    (error: unknown) => error instanceof ConflictException && error.message === "Ya existe un vendedor con el código RAPHA-LIMA."
+  );
+});
+
+test("rechaza alta manual con WhatsApp sin código de país", async () => {
+  const context = await createContext();
+
+  assert.throws(
+    () =>
+      context.vendors.createManualVendor(
+        buildManualVendor({
+          phone: "999111222"
+        })
+      ),
+    (error: unknown) =>
+      error instanceof BadRequestException &&
+      error.message === "WhatsApp inválido. Usa formato internacional con código de país, por ejemplo +51 998906481."
+  );
+});
+
+test("una postulación válida queda submitted y bloquea duplicados activos", async () => {
+  const context = await createContext();
+
+  const first = context.vendors.submitApplication({
+    name: "Camila Growth",
+    email: "camila.growth@test.local",
+    city: "Lima",
+    phone: "+51 999 222 444",
+    applicationIntent: "content_creator",
+    source: "Landing"
+  });
+
+  assert.equal(first.application?.status, "submitted");
+  assert.equal(first.application?.applicationIntent, "content_creator");
+
+  assert.throws(
+    () =>
+      context.vendors.submitApplication({
+        name: "Camila Growth",
+        email: "camila.growth@test.local",
+        city: "Lima",
+        phone: "+51 999 222 444",
+        applicationIntent: "content_creator",
+        source: "Landing"
+      }),
+    (error: unknown) => error instanceof ConflictException && error.message.includes("postulación activa")
+  )
+});
+
+test("screening y aprobación generan el vendedor con el tipo final confirmado", async () => {
+  const context = await createContext();
+
+  const application = context.vendors.submitApplication({
+    name: "Lucia Afiliada",
+    email: "lucia.afiliada@test.local",
+    city: "Cusco",
+    phone: "+51 999 555 888",
+    applicationIntent: "affiliate",
+    source: "Landing"
+  }).application!;
+
+  const screening = context.vendors.screenApplication(application.id, {
+    reviewer: "seller_manager",
+    notes: "Perfil con fit comercial."
+  });
+  assert.equal(screening.application?.status, "screening");
+
+  const approved = context.vendors.approveApplication(application.id, {
+    reviewer: "seller_manager",
+    notes: "Aprobada como afiliada.",
+    resolvedCollaborationType: VendorCollaborationType.Affiliate
+  });
+
+  assert.equal(approved.application?.status, "approved");
+  assert.equal(approved.application?.resolvedCollaborationType, VendorCollaborationType.Affiliate);
+  assert.ok(approved.vendor);
+  assert.equal(approved.vendor.collaborationType, VendorCollaborationType.Affiliate);
+  assert.match(approved.vendor.code, /^AFF-/);
+});
+
+test("la aprobación permite fijar un código comercial friendly", async () => {
+  const context = await createContext();
+
+  const application = context.vendors.submitApplication({
+    name: "Lucia Friendly",
+    email: "lucia.friendly@test.local",
+    city: "Cusco",
+    phone: "+51 999 555 123",
+    applicationIntent: "seller",
+    source: "Landing"
+  }).application!;
+
+  context.vendors.screenApplication(application.id, {
+    reviewer: "seller_manager",
+    notes: "Lista para aprobar."
+  });
+
+  const approved = context.vendors.approveApplication(application.id, {
+    reviewer: "seller_manager",
+    notes: "Aprobada con código editable.",
+    resolvedCollaborationType: VendorCollaborationType.Seller,
+    preferredCode: "lucia-cusco"
+  });
+
+  assert.ok(approved.vendor);
+  assert.equal(approved.vendor.code, "LUCIA-CUSCO");
+});
+
+test("la aprobación exige screening previo y tipo comercial final", async () => {
+  const context = await createContext();
+
+  const application = context.vendors.submitApplication({
+    name: "Rocio Canal",
+    email: "rocio.canal@test.local",
+    city: "Arequipa",
+    phone: "+51 999 101 202",
+    applicationIntent: "seller",
+    source: "Landing"
+  }).application!;
+
+  assert.throws(
+    () =>
+      context.vendors.approveApplication(application.id, {
+        reviewer: "qa",
+        resolvedCollaborationType: VendorCollaborationType.Seller
+      }),
+    (error: unknown) => error instanceof BadRequestException && error.message.includes("aprobar")
+  )
+
+  context.vendors.screenApplication(application.id, {
+    reviewer: "qa",
+    notes: "Pasa a revisión."
+  });
+
+  assert.throws(
+    () =>
+      context.vendors.approveApplication(application.id, {
+        reviewer: "qa"
+      }),
+    (error: unknown) => error instanceof BadRequestException && error.message.includes("tipo comercial final")
+  )
 });
 
 test("una venta manual confirmada guarda vendedor, canal y fecha de venta", async () => {

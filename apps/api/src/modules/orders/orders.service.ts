@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException, OnModuleInit } from "@nestjs/common";
+import { BadRequestException, ConflictException, Inject, Injectable, InternalServerErrorException, NotFoundException, OnModuleInit, forwardRef } from "@nestjs/common";
 import { createHash } from "node:crypto";
 import {
   type AdminManualPaymentCreateInput,
@@ -390,7 +390,7 @@ export class OrdersService implements OnModuleInit {
     private readonly loyaltyService: LoyaltyService,
     private readonly notificationsService: NotificationsService,
     private readonly observabilityService: ObservabilityService,
-    private readonly vendorsService: VendorsService,
+    @Inject(forwardRef(() => VendorsService)) private readonly vendorsService: VendorsService,
     private readonly moduleStateService: ModuleStateService
   ) {
     if (demoRuntimeEnabled()) {

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
@@ -25,12 +26,6 @@ const navigationGroups = webNavigation;
 const links = navigationGroups.flatMap((group) => group.items);
 const currentYear = new Date().getFullYear();
 
-export const metadata = {
-  title: "Huele Huele | Inhalador Herbal Aromático — Frescura Natural para el Perú",
-  description:
-    "Huele Huele: el inhalador herbal aromático que alivia el soroche, los mareos y la fatiga mental. 100% natural, de bolsillo y acción doble. Envíos a todo el Perú."
-};
-
 function isExternal(item: NavigationItem) {
   return Boolean(item.external) || /^https?:\/\//.test(item.href);
 }
@@ -57,6 +52,24 @@ async function resolveRuntimeSettings() {
   } catch {
     return fallbackSetting;
   }
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await resolveRuntimeSettings();
+  const siteIconUrl = settings.faviconUrl?.trim() || settings.headerLogoUrl?.trim() || undefined;
+
+  return {
+    title: "Huele Huele | Inhalador Herbal Aromático — Frescura Natural para el Perú",
+    description:
+      "Huele Huele: el inhalador herbal aromático que alivia el soroche, los mareos y la fatiga mental. 100% natural, de bolsillo y acción doble. Envíos a todo el Perú.",
+    icons: siteIconUrl
+      ? {
+          icon: [{ url: siteIconUrl }],
+          shortcut: [{ url: siteIconUrl }],
+          apple: [{ url: siteIconUrl }]
+        }
+      : undefined
+  };
 }
 
 export default async function RootLayout({ children }: { children: ReactNode }) {

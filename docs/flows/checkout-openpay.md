@@ -4,6 +4,11 @@
 
 Permitir que un cliente complete una compra online usando Openpay, preservando trazabilidad del pedido, descuentos, código de vendedor y transacciones de pago.
 
+Nota operativa vigente:
+
+- la UI pública actual de `/checkout` no expone cupones, códigos de vendedor ni mensajes de descuento
+- la API mantiene soporte técnico para `couponCode` y `vendorCode` para una reactivación futura controlada
+
 ## Actores
 
 - cliente
@@ -17,26 +22,24 @@ Permitir que un cliente complete una compra online usando Openpay, preservando t
 
 - existe al menos un producto publicable y disponible
 - el carrito contiene items válidos
-- la promoción o cupón aplicado fue validado
-- si existe código de vendedor, ya fue normalizado y asociado al carrito
+- si existe una atribución comercial o beneficio promocional por otro canal, ya fue validado por la API antes de crear el pedido
 - Openpay está configurado con credenciales válidas
 
 ## Pasos
 
 1. El cliente navega catálogo y agrega productos al carrito.
-2. El cliente aplica, si corresponde, un cupón y/o un código de vendedor.
-3. El sistema recalcula subtotal, descuentos, shipping si aplica y total.
-4. El cliente completa datos de contacto y dirección.
-5. Si el cliente marca envío a provincia, el checkout exige tipo y número de documento compatible con `SUNAT`, fuerza carrier `Shalom`, solicita la sucursal más cercana y deja el flete como pago contra recojo.
-6. La web solicita a la API la creación del pedido desde el carrito.
-7. La API crea `order`, `order_items`, `order_addresses` y snapshot comercial.
-8. La API crea un registro `payment` en estado inicial y genera el intento con Openpay.
-9. La web redirige o embebe el flujo de Openpay según la modalidad elegida.
-10. Openpay responde resultado inmediato o diferido.
-11. La API registra `payment_transactions`.
-12. El webhook de Openpay confirma el resultado final.
-13. La API actualiza `payments` y transiciona `orders` a estado elegible.
-14. Se disparan procesos asíncronos post-pago: notificación, atribución de comisión, evaluación de puntos y auditoría.
+2. El sistema cotiza subtotal, shipping si aplica y total con las reglas comerciales vigentes.
+3. El cliente completa datos de contacto y dirección.
+4. Si el cliente marca envío a provincia, el checkout exige tipo y número de documento compatible con `SUNAT`, fuerza carrier `Shalom`, solicita la sucursal más cercana y deja el flete como pago contra recojo.
+5. La web solicita a la API la creación del pedido desde el carrito.
+6. La API crea `order`, `order_items`, `order_addresses` y snapshot comercial.
+7. La API crea un registro `payment` en estado inicial y genera el intento con Openpay.
+8. La web redirige o embebe el flujo de Openpay según la modalidad elegida.
+9. Openpay responde resultado inmediato o diferido.
+10. La API registra `payment_transactions`.
+11. El webhook de Openpay confirma el resultado final.
+12. La API actualiza `payments` y transiciona `orders` a estado elegible.
+13. Se disparan procesos asíncronos post-pago: notificación, atribución de comisión, evaluación de puntos y auditoría.
 
 ## Estados involucrados
 

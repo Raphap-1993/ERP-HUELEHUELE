@@ -90,8 +90,6 @@ export function CheckoutWorkspace() {
   const [session, setSession] = useState<AuthSessionSummary | null>(null);
   const [siteSettings, setSiteSettings] = useState<SiteSetting | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("manual");
-  const [vendorCode, setVendorCode] = useState("");
-  const [couponCode, setCouponCode] = useState("");
   const [notes, setNotes] = useState("");
   const [customer, setCustomer] = useState<CustomerForm>({
     fullName: "",
@@ -239,11 +237,9 @@ export function CheckoutWorkspace() {
     customer.phone,
     customer.documentType,
     customer.documentNumber,
-    couponCode,
     notes,
     paymentMethod,
-    provinceShalomPickup,
-    vendorCode
+    provinceShalomPickup
   ]);
 
   useEffect(() => {
@@ -262,8 +258,6 @@ export function CheckoutWorkspace() {
         const response = await fetchCheckoutQuote({
           items: activeItems,
           paymentMethod,
-          vendorCode: vendorCode.trim() || undefined,
-          couponCode: couponCode.trim() || undefined,
           shipping: provinceShalomPickup
             ? {
                 deliveryMode: "province_shalom_pickup",
@@ -297,7 +291,7 @@ export function CheckoutWorkspace() {
     return () => {
       active = false;
     };
-  }, [activeItems, address.agencyName, couponCode, paymentMethod, provinceShalomPickup, vendorCode]);
+  }, [activeItems, address.agencyName, paymentMethod, provinceShalomPickup]);
 
   const resolvedProducts = useMemo(() => {
     return products;
@@ -350,8 +344,6 @@ export function CheckoutWorkspace() {
     const request: CheckoutRequestInput = {
       items: activeItems,
       paymentMethod,
-      vendorCode: vendorCode.trim() || undefined,
-      couponCode: couponCode.trim() || undefined,
       notes,
       customer: {
         firstName: nameParts.firstName,
@@ -799,20 +791,10 @@ export function CheckoutWorkspace() {
                 </div>
               </div>
 
-              {/* Cupón y código */}
+              {/* Indicaciones */}
               <div className="rounded-[22px] border border-[rgba(26,58,46,0.1)] bg-white p-8">
-                <h3 className="mb-1 font-serif text-xl font-bold text-[#1a3a2e]">Códigos de descuento</h3>
-                <p className="mb-6 text-sm leading-relaxed text-[#6b7280]">Aplica un cupón promocional o el código de tu vendedor.</p>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Cupón de descuento</label>
-                    <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Ej: ROSA5, CUPON10" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Código de vendedor</label>
-                    <input className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" type="text" placeholder="Opcional" value={vendorCode} onChange={(e) => setVendorCode(e.target.value)} />
-                  </div>
-                </div>
+                <h3 className="mb-1 font-serif text-xl font-bold text-[#1a3a2e]">Indicaciones del pedido</h3>
+                <p className="mb-6 text-sm leading-relaxed text-[#6b7280]">Si quieres, deja una referencia corta para la entrega o alguna precisión operativa.</p>
                 <div className="mt-4">
                   <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Indicaciones del pedido</label>
                   <textarea className="w-full resize-none rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f4f4f0] px-4 py-3 text-sm text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white" rows={3} placeholder="Indicaciones opcionales para tu pedido" value={notes} onChange={(e) => setNotes(e.target.value)} />
@@ -865,12 +847,6 @@ export function CheckoutWorkspace() {
                     <span>Subtotal</span>
                     <strong className="text-[#1c1c1c]">S/ {summary.subtotal.toFixed(2)}</strong>
                   </div>
-                  {summary.discount > 0 ? (
-                    <div className="flex justify-between text-[13px] text-[#52b788]">
-                      <span>Descuento</span>
-                      <strong>− S/ {summary.discount.toFixed(2)}</strong>
-                    </div>
-                  ) : null}
                   <div className="flex justify-between text-[13px] text-[#6b7280]">
                     <span>{provinceShalomPickup ? "Envío Shalom" : "Envío"}</span>
                     <strong className="text-[#1c1c1c]">{provinceShalomPickup ? "Pago al recoger" : `S/ ${summary.shipping.toFixed(2)}`}</strong>

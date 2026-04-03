@@ -11,12 +11,11 @@ type AdminSidebarProps = {
 };
 
 const NAV_GROUP_META: Record<string, string> = {
-  Resumen: "Dashboard y lectura ejecutiva",
-  "Operación": "Pedidos, pagos y seguimiento diario",
+  "Operación diaria": "Dashboard, pedidos, pagos y lectura rápida",
   "Catálogo": "Productos y contenido publicado",
-  Comercial: "Canales, vendedores y mayoristas",
-  Clientes: "CRM, campañas y retención",
-  Sistema: "Control interno y configuración"
+  Comercial: "Canales, comisiones y mayoristas",
+  Clientes: "Clientes, fidelización y campañas",
+  Sistema: "Alertas, observabilidad y configuración"
 };
 
 const NAV_ICONS: Record<string, React.ReactNode> = {
@@ -32,7 +31,7 @@ const NAV_ICONS: Record<string, React.ReactNode> = {
   "/mayoristas": <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>,
   "/loyalty": <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
   "/marketing": <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,
-  "/crm": <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>,
+  "/crm": <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
   "/notificaciones": <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>,
   "/observabilidad": <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
   "/auditoria": <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
@@ -45,24 +44,14 @@ function isNavigationItemActive(pathname: string, href: string) {
 
 function getDefaultExpandedGroups(
   groups: { title: string }[],
-  variant: AdminSidebarProps["variant"],
   activeGroupTitle?: string
 ) {
-  if (variant === "mobile") {
-    return Array.from(new Set([activeGroupTitle ?? groups[0]?.title].filter(Boolean))) as string[];
-  }
-
-  const activeIndex = activeGroupTitle ? groups.findIndex((group) => group.title === activeGroupTitle) : -1;
-  if (activeIndex === -1) {
-    return Array.from(new Set(groups.slice(0, 2).map((group) => group.title).filter(Boolean))) as string[];
-  }
-
-  const adjacentTitle = groups[activeIndex + 1]?.title ?? groups[activeIndex - 1]?.title ?? groups[0]?.title;
-  return Array.from(new Set([activeGroupTitle, adjacentTitle].filter(Boolean))) as string[];
+  const fallbackTitle = activeGroupTitle ?? groups[0]?.title;
+  return fallbackTitle ? [fallbackTitle] : [];
 }
 
 function getCollapsedGroupPreview(items: { label: string }[]) {
-  return items.slice(0, 2).map((item) => item.label).join(" · ");
+  return items.slice(0, 3).map((item) => item.label).join(" · ");
 }
 
 export function AdminSidebar({ variant = "desktop", open = false, onClose }: AdminSidebarProps) {
@@ -102,7 +91,7 @@ export function AdminSidebar({ variant = "desktop", open = false, onClose }: Adm
       return;
     }
 
-    const defaultGroups = getDefaultExpandedGroups(visibleNavigation, variant, activeGroupTitle);
+    const defaultGroups = getDefaultExpandedGroups(visibleNavigation, activeGroupTitle);
     setExpandedGroups((current) => {
       const availableGroups = new Set(visibleNavigation.map((group) => group.title));
       const next = current.filter((title) => availableGroups.has(title));
@@ -111,12 +100,12 @@ export function AdminSidebar({ variant = "desktop", open = false, onClose }: Adm
         return defaultGroups;
       }
 
-      if (variant === "desktop" && next.length < Math.min(defaultGroups.length, visibleNavigation.length)) {
-        return Array.from(new Set([...next, ...defaultGroups]));
+      if (variant === "mobile") {
+        return activeGroupTitle ? [activeGroupTitle] : [next[0]];
       }
 
       if (activeGroupTitle && !next.includes(activeGroupTitle)) {
-        return variant === "mobile" ? [activeGroupTitle] : [...next, activeGroupTitle];
+        return [activeGroupTitle];
       }
 
       return next.length === current.length && next.every((title, index) => title === current[index]) ? current : next;
@@ -145,77 +134,66 @@ export function AdminSidebar({ variant = "desktop", open = false, onClose }: Adm
     <div className="flex h-full min-h-0 flex-col">
 
       {/* Header: logo */}
-      <div className="flex items-center gap-2.5 border-b border-white/[0.06] px-4 py-5">
+      <div className="flex items-center gap-2.5 border-b border-white/[0.06] px-4 py-4">
         <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[9px] bg-[#52b788] font-bold text-[13px] text-[#1a3a2e]">
           HH
         </div>
-        <div>
-          <div className="text-[15px] font-semibold text-white leading-tight">{siteSetting.brandName}</div>
-          <div className="text-[10px] text-[#9db5a8]">Admin Panel</div>
+        <div className="min-w-0">
+          <div className="truncate text-[15px] font-semibold leading-tight text-white">{siteSetting.brandName}</div>
+          <div className="text-[10px] text-[#9db5a8]">Panel operativo</div>
         </div>
       </div>
 
       {/* Nav */}
       <div className="relative min-h-0 flex-1">
-        <div className="pointer-events-none absolute inset-x-2.5 top-0 z-10 h-4 bg-gradient-to-b from-[#17352a] via-[#17352a]/92 to-transparent" />
-        <nav className="admin-sidebar-scroll h-full overflow-y-auto overscroll-contain px-2.5 py-3 pr-2 [scrollbar-gutter:stable]">
+        <div className="pointer-events-none absolute inset-x-2 top-0 z-10 h-4 bg-gradient-to-b from-[#17352a] via-[#17352a]/92 to-transparent" />
+        <nav className="admin-sidebar-scroll h-full overflow-y-auto overscroll-contain px-2 py-2.5 pr-1.5 [scrollbar-gutter:stable]">
           {session && visibleNavigation.length ? (
             visibleNavigation.map((group) => {
               const isExpanded = expandedGroups.includes(group.title);
               const isGroupActive = group.title === activeGroupTitle;
               const collapsedPreview = getCollapsedGroupPreview(group.items);
-              const groupSummary = isExpanded
-                ? (NAV_GROUP_META[group.title] ?? collapsedPreview)
-                : collapsedPreview;
+              const groupSummary = NAV_GROUP_META[group.title] ?? collapsedPreview;
+              const showExpandedContainer = isExpanded || isGroupActive;
               const groupContainerClass = isDesktop
-                ? isExpanded || isGroupActive
-                  ? "border border-white/[0.06] bg-[#203f33]"
-                  : "border border-white/[0.04] bg-[#1d3a2f]"
-                : isExpanded || isGroupActive
-                  ? "border border-white/[0.05] bg-[#203f33]"
+                ? showExpandedContainer
+                  ? "border border-white/[0.06] bg-[#1f3d31]"
+                  : "border border-transparent bg-transparent"
+                : showExpandedContainer
+                  ? "border border-white/[0.05] bg-[#1f3d31]"
                   : "border border-transparent bg-transparent";
-              const groupHeaderClass = isDesktop
-                ? isExpanded || isGroupActive
-                  ? "bg-[#26493b]"
-                  : "bg-[#214133] hover:bg-[#254738]"
-                : isExpanded || isGroupActive
-                  ? "bg-[#244638]"
-                  : "hover:bg-[#1e3c30]";
-              const groupSummaryClass = isDesktop
-                ? isExpanded
-                  ? "text-[12px] text-[#b8cec1]"
-                  : "text-[12px] text-[#adc5b8]"
-                : "text-[12px] text-[#b4c8bc]";
-              const groupTitleClass = isDesktop
-                ? "text-[15px] font-semibold tracking-[-0.01em] text-[#f4f8f5]"
-                : "text-[14px] font-semibold tracking-[0.01em] text-white/92";
-              const chevronClass = isDesktop
-                ? isExpanded || isGroupActive
-                  ? "text-white/54"
-                  : "text-white/46"
-                : "text-white/36";
 
               return (
-                <div
-                  key={group.title}
-                  className={`mb-2 overflow-hidden rounded-[10px] ${groupContainerClass}`}
-                >
+                <div key={group.title} className={`mb-2 rounded-[12px] ${groupContainerClass}`}>
                   <button
                     type="button"
                     onClick={() => toggleGroup(group.title)}
                     aria-expanded={isExpanded}
-                    className={`flex w-full items-start justify-between gap-3 px-4 py-3 text-left transition-colors ${groupHeaderClass}`}
+                    className={`flex w-full items-start gap-2.5 rounded-[11px] px-3 py-2.5 text-left transition-colors ${
+                      showExpandedContainer ? "bg-[#244638]" : "hover:bg-white/[0.03]"
+                    }`}
                   >
-                    <div className="flex min-w-0 flex-1 flex-col gap-1">
-                      <span className={`truncate ${groupTitleClass}`}>{group.title}</span>
-                      {groupSummary ? (
-                        <span className={`truncate leading-[1.35] ${groupSummaryClass}`}>
-                          {groupSummary}
-                        </span>
+                    <span
+                      className={`mt-[0.45rem] h-1.5 w-1.5 flex-shrink-0 rounded-full ${
+                        isGroupActive ? "bg-[#8fdcb0]" : isExpanded ? "bg-[#b9ccbf]" : "bg-[#6f897d]"
+                      }`}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div
+                        className={`truncate text-[11px] font-semibold uppercase tracking-[0.18em] ${
+                          showExpandedContainer ? "text-[#edf5f0]" : "text-[#d7e5dd]"
+                        }`}
+                      >
+                        {group.title}
+                      </div>
+                      {isExpanded ? (
+                        <div className="pt-1 text-[11px] leading-4 text-[#c7d8cf]">{groupSummary}</div>
+                      ) : collapsedPreview ? (
+                        <div className="truncate pt-1 text-[11px] leading-4 text-[#bccdc4]">{collapsedPreview}</div>
                       ) : null}
                     </div>
                     <svg
-                      className={`mt-0.5 h-4 w-4 flex-shrink-0 transition-transform ${chevronClass} ${
+                      className={`mt-[0.2rem] h-3.5 w-3.5 flex-shrink-0 text-[#b8cbc1] transition-transform ${
                         isExpanded ? "rotate-180" : ""
                       }`}
                       fill="none"
@@ -228,8 +206,8 @@ export function AdminSidebar({ variant = "desktop", open = false, onClose }: Adm
                   </button>
 
                   {isExpanded ? (
-                    <div className="px-4 pb-2 pt-1.5">
-                      <div className="ml-1 border-l border-white/[0.07] pl-3">
+                    <div className="px-2.5 pb-2 pt-1">
+                      <div className="space-y-1 border-l border-white/[0.06] pl-2.5">
                         {group.items.map((item) => {
                           const isActive = isNavigationItemActive(pathname, item.href);
                           return (
@@ -238,13 +216,23 @@ export function AdminSidebar({ variant = "desktop", open = false, onClose }: Adm
                               href={item.href}
                               onClick={handleNavigate}
                               aria-current={isActive ? "page" : undefined}
-                              className={`mb-1 flex items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-[14px] transition-colors [&_svg]:h-4 [&_svg]:w-4 [&_svg]:flex-shrink-0
-                                ${isActive
-                                  ? "border border-[#8fdcb0]/[0.12] bg-[#2a4c3d] text-white [&_svg]:opacity-100 [&_svg]:text-[#90dcb0]"
-                                  : "text-white/70 hover:bg-[#213e32] hover:text-white/90 [&_svg]:opacity-70 [&_svg]:text-white/44"
-                                }`}
+                              className={`flex items-center gap-2 rounded-[10px] px-2.5 py-2 text-[13px] font-medium transition-colors ${
+                                isActive
+                                  ? "bg-[#2a4c3d] text-white shadow-[inset_0_0_0_1px_rgba(143,220,176,0.12)]"
+                                  : "text-[#dbe8e0] hover:bg-[#223f33] hover:text-white"
+                              }`}
                             >
-                              {NAV_ICONS[item.href] ?? <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="3"/></svg>}
+                              <span
+                                className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-[8px] ${
+                                  isActive ? "bg-[#214032] text-[#90dcb0]" : "bg-white/[0.06] text-[#c6d7ce]"
+                                }`}
+                              >
+                                {NAV_ICONS[item.href] ?? (
+                                  <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <circle cx="12" cy="12" r="3" />
+                                  </svg>
+                                )}
+                              </span>
                               <span className="truncate">{item.label}</span>
                             </a>
                           );
@@ -257,17 +245,17 @@ export function AdminSidebar({ variant = "desktop", open = false, onClose }: Adm
             })
           ) : null}
         </nav>
-        <div className="pointer-events-none absolute inset-x-2.5 bottom-0 z-10 h-5 bg-gradient-to-t from-[#17352a] via-[#17352a]/96 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-2 bottom-0 z-10 h-5 bg-gradient-to-t from-[#17352a] via-[#17352a]/96 to-transparent" />
       </div>
 
       {/* User card */}
-      <div className="flex items-center gap-2.5 border-t border-white/[0.06] px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#234234] text-[11px] font-semibold text-white/88">
+      <div className="flex items-center gap-2.5 border-t border-white/[0.06] px-3 py-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))]">
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#234234] text-[11px] font-semibold text-white">
           {initials}
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-[12px] font-semibold text-white truncate">{session?.user.name ?? "Admin"}</div>
-          <div className="text-[10px] text-[#9db5a8] truncate">
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[12px] font-semibold text-white">{session?.user.name ?? "Admin"}</div>
+          <div className="truncate text-[10px] text-[#bed0c6]">
             {session?.user.roles[0]?.label ?? ""}
           </div>
         </div>
