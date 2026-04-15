@@ -122,7 +122,7 @@ Implicacion:
 - `vendors-workspace` permite alta manual, aprobacion/rechazo de postulaciones y listado de codigos.
 - `orders-workspace` permite crear pedidos manuales, revisar detalle, cambiar estado, registrar pago manual y eliminar pedidos.
 - `products-workspace` ya muestra un reporte de inventario resumido.
-- `reports-workspace` solo expone metricas generales por periodo.
+- `reports-workspace` ya expone metricas generales por periodo, tablas por vendedor y producto, y detalle de ventas confirmadas.
 
 ### Web
 
@@ -202,8 +202,9 @@ Limitacion actual:
 
 ## Pruebas existentes
 
-- No se encontraron archivos `*.spec.ts`, `*.test.ts` ni carpetas `__tests__`.
-- El proyecto depende hoy de `build`, `typecheck` y validacion manual.
+- Existe la suite [`apps/api/test/erp-sales-flow.test.ts`](../apps/api/test/erp-sales-flow.test.ts), ejecutable con `npm run test:erp-sales`.
+- La suite cubre vendedores, trazabilidad comercial, inventario, idempotencia, reportes y reversa de stock.
+- No existe todavia cobertura browser end-to-end para `web` o `admin`; la validacion UI sigue dependiendo de build, typecheck y chequeo manual.
 
 ## Documentacion existente
 
@@ -216,26 +217,6 @@ La base documental es amplia y util, con foco en:
 - outline de API
 - UX
 - infraestructura
-- sistema interno de agentes
-
-## Agentes y prompts existentes
-
-El repositorio incluye un sistema interno de agentes en `.agents/`.
-
-Resumen de responsabilidades:
-
-- `product-manager`: convierte necesidad de negocio en alcance priorizable.
-- `system-analyst`: define actores, estados, reglas y flujos.
-- `software-architect`: cuida modularidad, limites y tradeoffs.
-- `tech-lead`: baja arquitectura a plan de implementacion.
-- `backend-lead`: servicios, endpoints, reglas transaccionales, colas.
-- `frontend-lead`: paginas, componentes, integracion API y estados UI.
-- `ui-ux-agent`: patron visual y usabilidad, especialmente admin.
-- `data-agent`: entidades, relaciones, Prisma, indices y trazabilidad.
-- `qa-lead`: criterios de aceptacion, edge cases y riesgos de regresion.
-- `devops-agent`: PM2, Nginx, envs, rollout y rollback.
-- `security-agent`: auth, permisos, uploads, webhooks y riesgos.
-- `documentation-agent`: consolida y persiste decisiones en `docs/`.
 
 ## Mapa de dominio actual
 
@@ -262,10 +243,10 @@ Fuente: `CommerceService` + `OrdersService`
 1. La web cotiza con `ProductsService`.
 2. `CommerceService` crea pedido `openpay` o `manual`.
 3. `OrdersService.createCheckoutOrder` persiste el pedido en snapshot.
-4. Se guarda `vendorCode`, pero no `vendorId`.
+4. Cuando corresponde, el pedido ya guarda `vendorId`, `vendorCode`, `vendorName`, `salesChannel` y luego `confirmedAt`.
 5. Para `manual`, el pedido nace en `payment_under_review`.
 6. Para `openpay`, el pedido nace en `pending_payment`.
-7. No existe webhook online implementado para confirmar pago `openpay`.
+7. No existe webhook online dedicado para confirmar pago `openpay`, pero si existe conciliacion administrativa controlada con `confirmOnlinePayment`.
 
 ### Venta o pedido manual desde admin
 
@@ -302,30 +283,31 @@ Brechas:
 - Existe UI/API para postulacion y alta manual.
 - Existe modelo Prisma para vendedores.
 - El runtime de `VendorsService` opera sobre snapshot, no sobre lectura/escritura relacional consolidada.
-- El alta no deja una relacion reutilizable y consistente entre `vendor`, `vendor_code`, `user` y futuros reportes.
+- El alta ya deja codigo operativo utilizable y una relacion reutilizable para atribucion comercial, pero no una relacion relacional consolidada entre `vendor`, `vendor_code`, `user` y reporting historico.
 
 ### 2. Quien vendio y cuando vendio
 
-- El pedido guarda `vendorCode`.
-- No guarda `vendorId`.
-- No guarda `vendorName`.
-- No guarda `salesChannel` explicito.
-- No guarda una fecha de confirmacion comercial reutilizable para reportes; solo `createdAt`, `updatedAt` y `statusHistory`.
+- El pedido ya guarda `vendorId`, `vendorCode`, `vendorName`, `salesChannel` y `confirmedAt` en el snapshot operativo.
+- `confirmedAt` ya alimenta reportes y detalle administrativo.
+- La brecha vigente no es de ausencia del dato, sino de persistencia relacional consolidada y homologacion completa entre snapshot, Prisma y reporting historico.
 
 ### 3. Reportes por vendedor
 
-- No existen endpoints ni vistas dedicadas.
-- El seller panel consulta pedidos por `vendorCode`, pero eso no equivale a un reporte admin filtrable y homologado.
+- Ya existe lectura administrativa en `GET /admin/reports` y visibilidad en `reports-workspace`.
+- El reporte agrega ventas confirmadas por vendedor, canal, monto total y ultima venta.
+- La brecha vigente es que la vista sigue entrando por un reporte general de periodo; faltan filtros y endpoints mas dedicados para drill-down por vendedor, canal y estado.
 
 ### 4. Reportes por producto
 
-- Solo existe un reporte de inventario resumido en `products-workspace`, basado en `InventoryService`.
-- No existe reporte de ventas por producto y rango de fechas como artefacto de reporteria administrativa.
+- Ya existe agregacion de ventas por producto dentro de `GET /admin/reports`.
+- `reports-workspace` muestra unidades vendidas, ingresos y ultima fecha de venta por producto.
+- La brecha vigente es la misma del punto anterior: faltan filtros dedicados y una capa de reporting mas especializada si se quiere explotacion analitica mas profunda.
 
 ### 5. Cuándo se vendieron los productos
 
-- Se puede inferir parcialmente desde `createdAt` o `statusHistory`.
-- No hay un campo operativo normalizado para la fecha de venta confirmada.
+- El runtime ya usa `confirmedAt` como fecha operativa normalizada de venta confirmada.
+- La fecha ya se usa para reportes y exportacion CSV.
+- La brecha vigente es asegurar que toda confirmacion online futura siga poblando el mismo campo de forma canonica.
 
 ### 6. Descuento de stock
 
@@ -354,16 +336,16 @@ Conclusión:
 - reportes basados en inferencias y no en campos operativos homologados
 - ausencia de webhook online para confirmar ventas web
 - datos comerciales criticos viviendo fuera de tablas relacionales dedicadas
-- falta de pruebas automatizadas en modulos transaccionales
+- falta de cobertura browser end-to-end para validar UX operativa sobre `web` y `admin`
 - riesgo de regresion por cambios sobre un worktree ya modificado por el usuario
 
 ## Deuda tecnica relevante
 
 - migracion incompleta desde snapshots a entidades relacionales del dominio
 - falta de migraciones Prisma versionadas
-- falta de suite de pruebas automatizadas
+- falta de cobertura automatizada de interfaz y recorridos operativos end-to-end
 - falta de endpoint o webhook canónico para confirmacion online de pedidos web
-- falta de una capa formal de reportes por vendedor, producto y fecha
+- falta de una capa mas dedicada de filtros y drill-down para reportes por vendedor, producto y fecha
 
 ## Conclusiones
 

@@ -28,8 +28,6 @@ Referencias base:
 - documentación principal: [`docs/README.md`](./docs/README.md)
 - arquitectura general: [`docs/architecture/overview.md`](./docs/architecture/overview.md)
 - despliegue: [`docs/infra/deployment-strategy.md`](./docs/infra/deployment-strategy.md)
-- guía principal para agentes en este workspace: [`AGENTS.md`](./AGENTS.md)
-- sistema interno de agentes y automatización: [`.agents/AGENTS.md`](./.agents/AGENTS.md)
 
 ## Si Necesitas Encontrar Algo Rápido
 
@@ -190,7 +188,7 @@ Pendientes estructurales señalados en la propia documentación:
 
    Este flujo usa [`docker-compose.local.yml`](./docker-compose.local.yml) y expone:
 
-   - `PostgreSQL` en `localhost:5433`
+   - `PostgreSQL` en `localhost:55436`
    - `Redis` en `localhost:6380`
 
    La elección de puertos evita chocar con servicios nativos ya instalados en la máquina.
@@ -220,7 +218,7 @@ Pendientes estructurales señalados en la propia documentación:
 Referencia operativa:
 
 - guía detallada de dependencias Docker locales: [`docs/infra/local-docker-services.md`](./docs/infra/local-docker-services.md)
-- si ya tienes un `.env` viejo apuntando a `5432`, `6379` o a sockets locales, alinéalos con [`.env.example`](./.env.example) antes de correr `npm run local:demo`
+- si ya tienes un `.env` viejo apuntando a `5432`, `5433`, `6379` o a sockets locales, alinéalos con [`.env.example`](./.env.example) antes de correr `npm run local:demo`
 
 ### URLs locales esperadas
 
