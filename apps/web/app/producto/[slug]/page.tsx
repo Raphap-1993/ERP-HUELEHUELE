@@ -28,6 +28,43 @@ function resolveProductImageSrc(slug: string, src?: string) {
   return resolveStorefrontMediaSrc(src ?? fallback);
 }
 
+type StockAwareProduct = {
+  availableStock?: number;
+  isPurchasable?: boolean;
+  stockStatus?: "available" | "low_stock" | "out_of_stock";
+  stockLabel?: string;
+};
+
+function isPurchasable(product: StockAwareProduct) {
+  if (typeof product.isPurchasable === "boolean") {
+    return product.isPurchasable;
+  }
+
+  if (typeof product.availableStock === "number") {
+    return product.availableStock > 0;
+  }
+
+  return true;
+}
+
+function resolveStockBadge(product: StockAwareProduct) {
+  if (product.stockStatus === "out_of_stock") {
+    return {
+      label: product.stockLabel ?? "Sin stock",
+      className: "bg-rose-50 text-rose-700"
+    };
+  }
+
+  if (product.stockStatus === "low_stock") {
+    return {
+      label: product.stockLabel ?? "Pocas unidades",
+      className: "bg-[#fff7e8] text-[#8c6331]"
+    };
+  }
+
+  return null;
+}
+
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const envelope = await fetchProductBySlug(slug).catch(() => null);
@@ -61,17 +98,13 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const variants = (product.variants ?? []).filter((variant) => variant.status === "active");
   const hasMultipleVariants = variants.length > 1;
-  const resolvedDefaultVariantId =
-    variants.find((variant) => variant.id === product.defaultVariantId)?.id ??
-    variants[0]?.id ??
-    product.defaultVariantId;
-  const checkoutHref = resolvedDefaultVariantId
-    ? `/checkout?producto=${encodeURIComponent(product.slug)}&variantId=${encodeURIComponent(resolvedDefaultVariantId)}`
-    : `/checkout?producto=${encodeURIComponent(product.slug)}`;
+  const checkoutHref = "/checkout";
   const bundleComponents = product.bundleComponents ?? [];
+  const purchasable = isPurchasable(product);
+  const stockBadge = resolveStockBadge(product);
 
   return (
-    <main className="bg-[#faf8f3] py-10">
+    <main className="bg-[hsl(var(--background))] py-10">
       <div className="mx-auto max-w-[1120px] px-6">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-sm text-[#6b7280]">
@@ -85,12 +118,21 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             <span>/</span>
             <span className="text-[#1a3a2e]">{product.name}</span>
           </div>
-          <Link
-            href={checkoutHref}
-            className="rounded-full bg-[#2d6a4f] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1a3a2e]"
-          >
-            Comprar ahora
-          </Link>
+          {purchasable ? (
+            <Link
+              href={checkoutHref}
+              className="rounded-full bg-[#61a740] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#577e2f]"
+            >
+              Comprar ahora
+            </Link>
+          ) : (
+            <span
+              aria-disabled="true"
+              className="cursor-not-allowed rounded-full bg-[#ece9e1] px-5 py-2.5 text-sm font-semibold text-[#7a8179]"
+            >
+              Sin stock
+            </span>
+          )}
         </div>
 
         <div className="grid gap-10 lg:grid-cols-2 lg:items-start">
@@ -131,7 +173,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
           <section className="space-y-6">
             <div>
-              <span className="inline-flex items-center gap-2 rounded-full bg-[#d8f3dc] px-4 py-2 text-xs font-semibold uppercase tracking-widest text-[#2d6a4f]">
+              <span className="inline-flex items-center gap-2 rounded-full bg-[#eef6e8] px-4 py-2 text-xs font-semibold uppercase tracking-widest text-[#61a740]">
                 {product.badge}
               </span>
               <h1 className="mt-4 font-serif text-5xl font-black leading-tight text-[#1a3a2e]">
@@ -147,12 +189,17 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                 <div className="font-serif text-4xl font-black text-[#1a3a2e]">{price}</div>
                 {compareAtPrice ? <div className="text-base text-[#6b7280] line-through">{compareAtPrice}</div> : null}
                 {savings ? (
-                  <span className="rounded-full bg-[#d8f3dc] px-3 py-1 text-xs font-bold text-[#2d6a4f]">
+                  <span className="rounded-full bg-[#eef6e8] px-3 py-1 text-xs font-bold text-[#61a740]">
                     {savings}
                   </span>
                 ) : null}
               </div>
               <p className="mt-4 text-sm leading-relaxed text-[#6b7280]">{product.description}</p>
+              {stockBadge ? (
+                <span className={`mt-4 inline-flex rounded-full px-3 py-1 text-xs font-bold ${stockBadge.className}`}>
+                  {stockBadge.label}
+                </span>
+              ) : null}
 
               <div className="mt-5 flex flex-wrap gap-2">
                 {product.benefits.map((benefit) => (
@@ -166,15 +213,24 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               </div>
 
               <div className="mt-6 flex flex-wrap gap-3">
-                <Link
-                  href={checkoutHref}
-                  className="rounded-full bg-[#2d6a4f] px-7 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#1a3a2e]"
-                >
-                  Comprar ahora
-                </Link>
+                {purchasable ? (
+                  <Link
+                    href={checkoutHref}
+                    className="rounded-full bg-[#61a740] px-7 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#577e2f]"
+                  >
+                    Comprar ahora
+                  </Link>
+                ) : (
+                  <span
+                    aria-disabled="true"
+                    className="cursor-not-allowed rounded-full bg-[#ece9e1] px-7 py-3 text-sm font-semibold text-[#7a8179]"
+                  >
+                    Sin stock
+                  </span>
+                )}
                 <Link
                   href="/catalogo"
-                  className="rounded-full border-2 border-[rgba(45,106,79,0.25)] px-7 py-3 text-sm font-semibold text-[#1a3a2e] transition hover:bg-[#d8f3dc]"
+                  className="rounded-full border-2 border-[rgba(97,167,64,0.25)] px-7 py-3 text-sm font-semibold text-[#1a3a2e] transition hover:bg-[#eef6e8]"
                 >
                   Ver catálogo
                 </Link>
@@ -225,12 +281,21 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-sm font-bold text-[#1a3a2e]">{formatPrice(variant.price, currencyCode)}</div>
-                        <Link
-                          href={`/checkout?producto=${encodeURIComponent(product.slug)}&variantId=${encodeURIComponent(variant.id)}`}
-                          className="rounded-full bg-[#1a3a2e] px-4 py-2 text-xs font-semibold text-white transition hover:bg-black"
-                        >
-                          Comprar
-                        </Link>
+                        {isPurchasable(variant) ? (
+                          <Link
+                            href="/checkout"
+                            className="rounded-full bg-[#577e2f] px-4 py-2 text-xs font-semibold text-white transition hover:bg-black"
+                          >
+                            Comprar
+                          </Link>
+                        ) : (
+                          <span
+                            aria-disabled="true"
+                            className="cursor-not-allowed rounded-full bg-[#ece9e1] px-4 py-2 text-xs font-semibold text-[#7a8179]"
+                          >
+                            Sin stock
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}

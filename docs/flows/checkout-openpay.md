@@ -8,6 +8,8 @@ Nota operativa vigente:
 
 - la UI pública actual de `/checkout` no expone cupones, códigos de vendedor ni mensajes de descuento
 - la API mantiene soporte técnico para `couponCode` y `vendorCode` para una reactivación futura controlada
+- para este corte, la confirmación final del pago online se resuelve por conciliación manual controlada desde backoffice, no por webhook productivo
+- esa conciliación se ejecuta desde `Pedidos > Operación`, no desde la bandeja de `Pagos`
 
 ## Actores
 
@@ -29,17 +31,21 @@ Nota operativa vigente:
 
 1. El cliente navega catálogo y agrega productos al carrito.
 2. El sistema cotiza subtotal, shipping si aplica y total con las reglas comerciales vigentes.
-3. El cliente completa datos de contacto y dirección.
-4. Si el cliente marca envío a provincia, el checkout exige tipo y número de documento compatible con `SUNAT`, fuerza carrier `Shalom`, solicita la sucursal más cercana y deja el flete como pago contra recojo.
-5. La web solicita a la API la creación del pedido desde el carrito.
-6. La API crea `order`, `order_items`, `order_addresses` y snapshot comercial.
-7. La API crea un registro `payment` en estado inicial y genera el intento con Openpay.
-8. La web redirige o embebe el flujo de Openpay según la modalidad elegida.
-9. Openpay responde resultado inmediato o diferido.
-10. La API registra `payment_transactions`.
-11. El webhook de Openpay confirma el resultado final.
-12. La API actualiza `payments` y transiciona `orders` a estado elegible.
-13. Se disparan procesos asíncronos post-pago: notificación, atribución de comisión, evaluación de puntos y auditoría.
+3. El cliente completa primero tipo y número de documento, luego contacto y dirección.
+4. La web consulta primero a la API de Huelegood para recuperar un cliente previo por `documentType + documentNumber` y evitar duplicidad cuando ya existe coincidencia canónica.
+5. Si no existe coincidencia local y el documento es `DNI`, la API consulta `ApiPeru` para validar el número y autocompletar el nombre.
+6. La dirección se captura con ubigeo normalizado de Perú: departamento, provincia y distrito.
+7. Si el cliente elige `delivery` estándar, el checkout solo permite ubigeo de la provincia de Lima y Callao.
+8. Si el cliente marca envío a provincia, el checkout fuerza carrier `Shalom`, solicita la sucursal más cercana y deja el flete como pago contra recojo.
+9. La web solicita a la API la creación del pedido desde el carrito.
+10. La API crea `order`, `order_items`, `order_addresses` y snapshot comercial.
+11. La API crea un registro `payment` en estado inicial y genera el intento con Openpay.
+12. La web redirige o embebe el flujo de Openpay según la modalidad elegida.
+13. Openpay responde resultado inmediato o diferido.
+14. La API registra `payment_transactions`.
+15. Operación abre el pedido en `Pedidos > Operación`, registra referencia y nota del cobro validado y ejecuta la confirmación controlada desde backoffice.
+16. La API actualiza `payments` y transiciona `orders` a `confirmed`, dejándolo elegible para el flujo operativo y de despacho.
+17. Se disparan procesos asíncronos post-pago: notificación, atribución de comisión, evaluación de puntos y auditoría.
 
 ## Estados involucrados
 
@@ -70,8 +76,13 @@ Si Openpay utiliza un estado intermedio distinto al modelo local, se persiste en
 - Un pedido conserva snapshot de precios y descuentos aunque luego cambie el catálogo.
 - La comisión no se paga en este flujo; solo se deja lista la atribución.
 - La asignación de puntos no debe quedar disponible hasta que el pedido alcance estado elegible definido por el dominio.
+- Todo checkout web exige tipo y número de documento válidos del cliente.
+- El checkout intenta recuperar clientes previos por documento antes de depender de `ApiPeru`.
+- Si el documento es `DNI` y no existe coincidencia local, el checkout valida contra `ApiPeru` y autocompleta el nombre desde la API backend de Huelegood.
+- La dirección pública del checkout se guarda con departamento, provincia y distrito normalizados para Perú.
+- Si el cliente elige `delivery` estándar, el checkout solo permite ubigeo de la provincia de Lima y Callao.
 - Si el cliente elige envío a provincia, el checkout solo permite `Shalom`.
-- El envío a provincia requiere tipo y número de documento válido del cliente, además del nombre de sucursal de recojo.
+- El envío a provincia requiere además el nombre de sucursal de recojo.
 - El costo del envío a provincia no se cobra en el checkout; se paga al momento de recoger en agencia.
 
 ## Errores posibles
@@ -82,7 +93,7 @@ Si Openpay utiliza un estado intermedio distinto al modelo local, se persiste en
 | cupón inválido o vencido | se rechaza validación antes de crear pedido |
 | código de vendedor inválido o inactivo | se ignora o rechaza según política comercial |
 | error de comunicación con Openpay | `payment` queda `pending` o `failed` según contexto; se informa al cliente |
-| webhook duplicado | se ignora por idempotencia |
+| webhook o callback no disponible en este corte | la orden permanece pendiente hasta conciliación manual operativa |
 | total alterado entre carrito y pedido | la API recalcula y responde error de consistencia |
 | timeout de proveedor | pedido queda `pending_payment` hasta reconciliación o expiración |
 
@@ -99,7 +110,7 @@ Si Openpay utiliza un estado intermedio distinto al modelo local, se persiste en
 
 ## Procesos asíncronos involucrados
 
-- conciliación de webhook Openpay
+- conciliación manual controlada del pago online
 - notificación de confirmación de pedido
 - creación o actualización de atribución de comisión
 - evaluación de asignación de puntos
@@ -108,5 +119,7 @@ Si Openpay utiliza un estado intermedio distinto al modelo local, se persiste en
 ## Observaciones de implementación
 
 - El endpoint de creación de pedido usa una clave de idempotencia para devolver el mismo pedido ante reintentos del frontend.
-- El webhook debe validar firma y registrar payload bruto para trazabilidad.
+- La conciliación online vigente se hace desde backoffice y debe dejar actor, referencia y `confirmedAt`.
+- La UI admin debe impedir que un pedido `openpay` se confirme por la ruta de `registro manual directo`.
+- La vista canonica para seguir la trazabilidad comercial del pedido es `Pedidos > Operación`; `Pagos` solo resuelve comprobantes manuales.
 - Si el pago no se confirma dentro de la ventana operativa, el pedido debe transicionar a `expired`.

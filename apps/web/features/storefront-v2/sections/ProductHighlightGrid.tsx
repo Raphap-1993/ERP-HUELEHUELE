@@ -111,10 +111,7 @@ export function ProductHighlightGrid({
                     <Button href={`/producto/${product.slug}`} variant="secondary" size="sm">
                       Detalles
                     </Button>
-                    <Button
-                      href={`/checkout?producto=${encodeURIComponent(product.slug)}${product.defaultVariantId ? `&variantId=${encodeURIComponent(product.defaultVariantId)}` : ""}`}
-                      size="sm"
-                    >
+                    <Button href="/checkout" size="sm">
                       Comprar
                     </Button>
                   </div>

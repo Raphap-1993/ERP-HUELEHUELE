@@ -116,6 +116,20 @@ Preline no reemplaza la arquitectura visual del proyecto ni las primitivas de `s
 
 Para efectos de planeación visual, se asume Preline como una librería con más de 300 componentes y ejemplos reutilizables, además de temas y plantillas que sirven como base de composición.
 
+### Motion de la home oficial
+
+La home pública en `/` debe usar motion editorial breve y utilitario, no animación ornamental sostenida.
+
+Reglas homologadas:
+
+- `HeroSection` entra con reveal escalonado entre copy y bloque visual para marcar jerarquía sin retrasar la lectura
+- `BenefitsSection`, `PricingSection`, `TestimonialsSection`, `WholesaleB2BSection`, `FaqAccordionSection` e `InstagramSection` usan reveals por bloque o por grilla cuando entran al viewport
+- `ComparisonSection` mantiene un reveal de tabla y filas al entrar en vista
+- `StickyBarClient` conserva su aparición por scroll como único patrón fijo persistente
+- si el usuario declara `prefers-reduced-motion: reduce`, los reveals se desactivan, el scroll vuelve a comportamiento normal y los elementos flotantes del hero dejan de animarse
+
+El criterio de calidad es que el motion ayude a escanear, comparar y decidir, no a distraer ni a hacer más lenta la compra.
+
 ## Routing y rollout
 
 ### Ruta segura
@@ -222,6 +236,8 @@ Mensajes clave:
 - no usa humo ni vapor
 - cabe en bolsillo
 - mantiene una propuesta natural y discreta
+- la tabla debe vivir sobre superficie clara con contraste alto; no debe resolverse como bloque verde sobre verde
+- el color de marca funciona como acento en badges, checks y headers, no como fondo dominante de toda la comparativa
 
 ### `PricingSection`
 
@@ -301,6 +317,7 @@ Campos enviados:
 5. Probar assets locales y remotos.
 6. Confirmar que home y catálogo sólo muestran `Clásico Verde`, `Premium Negro` y `Combo Dúo Perfecto`.
 7. Enviar una postulación válida en `trabaja-con-nosotros`.
+8. Validar que con `prefers-reduced-motion` los reveals no corran y el hero no mantenga animaciones flotantes.
 
 ### Riesgos vigilados
 

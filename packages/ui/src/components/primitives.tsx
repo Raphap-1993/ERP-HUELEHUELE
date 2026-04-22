@@ -1,4 +1,12 @@
-import type { ButtonHTMLAttributes, HTMLAttributes, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from "react";
+import type {
+  ButtonHTMLAttributes,
+  HTMLAttributes,
+  InputHTMLAttributes,
+  ReactNode,
+  TdHTMLAttributes,
+  TextareaHTMLAttributes,
+  ThHTMLAttributes
+} from "react";
 import { cn } from "../lib/cn";
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
@@ -12,7 +20,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 export function Button({ href, variant = "primary", size = "md", className, children, ...props }: ButtonProps) {
   const base = "inline-flex items-center justify-center rounded-full font-medium transition-colors";
   const variants: Record<ButtonVariant, string> = {
-    primary: "bg-[#132016] text-white hover:bg-[#1b2d1f]",
+    primary: "bg-[#61a740] text-[#163126] hover:bg-[#577e2f] hover:text-white",
     secondary: "bg-white text-[#132016] border border-black/10 hover:bg-black/5",
     ghost: "bg-transparent text-[#132016] hover:bg-black/5",
     danger: "bg-[#7c2d12] text-white hover:bg-[#9a3412]"
@@ -127,11 +135,10 @@ export function TableRow({ className, ...props }: HTMLAttributes<HTMLTableRowEle
   return <tr className={cn("border-b border-black/5", className)} {...props} />;
 }
 
-export function TableHead({ className, ...props }: HTMLAttributes<HTMLTableCellElement>) {
+export function TableHead({ className, ...props }: ThHTMLAttributes<HTMLTableCellElement>) {
   return <th className={cn("px-4 py-3 font-medium", className)} {...props} />;
 }
 
-export function TableCell({ className, ...props }: HTMLAttributes<HTMLTableCellElement>) {
+export function TableCell({ className, ...props }: TdHTMLAttributes<HTMLTableCellElement>) {
   return <td className={cn("border-t border-black/5 px-4 py-4 align-top", className)} {...props} />;
 }
-

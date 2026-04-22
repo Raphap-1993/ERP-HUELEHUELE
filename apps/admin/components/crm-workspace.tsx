@@ -22,11 +22,23 @@ import {
   StatusBadge
 } from "@huelegood/ui";
 import {
+  CHECKOUT_DOCUMENT_TYPE_OPTIONS,
+  type CheckoutDocumentType,
+  type CustomerIdentityConflictSummary,
   type CustomerDetail,
   type CustomerStatusValue,
   type CustomerSummary
 } from "@huelegood/shared";
-import { createCustomer, deleteCustomer, fetchCustomer, fetchCustomers, updateCustomer } from "../lib/api";
+import {
+  createCustomer,
+  deleteCustomer,
+  fetchCustomer,
+  fetchCustomerConflicts,
+  fetchCustomers,
+  mergeCustomers,
+  resolveCustomerConflict,
+  updateCustomer
+} from "../lib/api";
 
 function formatDate(value?: string) {
   if (!value) {
@@ -66,8 +78,57 @@ function customerStatusLabel(status: CustomerStatusValue) {
   return labels[status];
 }
 
+function conflictTone(status: CustomerIdentityConflictSummary["status"]): "neutral" | "success" | "warning" | "danger" | "info" {
+  if (status === "open") {
+    return "warning";
+  }
+
+  if (status === "merged") {
+    return "info";
+  }
+
+  if (status === "resolved") {
+    return "success";
+  }
+
+  return "neutral";
+}
+
+function conflictStatusLabel(status: CustomerIdentityConflictSummary["status"]) {
+  const labels: Record<CustomerIdentityConflictSummary["status"], string> = {
+    open: "Abierto",
+    resolved: "Resuelto",
+    ignored: "Ignorado",
+    merged: "Fusionado"
+  };
+
+  return labels[status];
+}
+
+function conflictSignalsLabel(conflict: CustomerIdentityConflictSummary) {
+  const values = [
+    conflict.documentNumber ? `${documentTypeLabel(conflict.documentType)} ${conflict.documentNumber}` : null,
+    conflict.email,
+    conflict.phone
+  ].filter(Boolean);
+
+  return values.length ? values.join(" · ") : "Sin señal fuerte";
+}
+
+function documentTypeLabel(value?: CheckoutDocumentType) {
+  return CHECKOUT_DOCUMENT_TYPE_OPTIONS.find((option) => option.value === value)?.label ?? "Documento";
+}
+
 function normalizeSearchValue(value: string) {
   return value.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function isSyntheticCustomerEmail(value?: string) {
+  return Boolean(value?.trim().toLowerCase().endsWith("@customers.huelegood.local"));
+}
+
+function customerEmailLabel(value?: string) {
+  return value && !isSyntheticCustomerEmail(value) ? value : "Sin email";
 }
 
 function toErrorMessage(error: unknown, fallback: string) {
@@ -80,6 +141,7 @@ type CustomerFormState = {
   password: string;
   firstName: string;
   lastName: string;
+  documentType: CheckoutDocumentType | "";
   documentNumber: string;
   marketingOptIn: boolean;
   status: CustomerStatusValue;
@@ -100,6 +162,7 @@ function createEmptyCustomerForm(): CustomerFormState {
     password: "",
     firstName: "",
     lastName: "",
+    documentType: "",
     documentNumber: "",
     marketingOptIn: false,
     status: "active",
@@ -135,6 +198,7 @@ function formFromCustomer(customer: CustomerDetail): CustomerFormState {
     password: "",
     firstName: customer.firstName,
     lastName: customer.lastName,
+    documentType: customer.documentType ?? "",
     documentNumber: customer.documentNumber ?? "",
     marketingOptIn: customer.marketingOptIn,
     status: customer.status,
@@ -158,6 +222,7 @@ function buildCustomerPayload(form: CustomerFormState, mode: "create" | "edit") 
     password: mode === "create" || form.password.trim() ? form.password.trim() : undefined,
     firstName: form.firstName.trim(),
     lastName: form.lastName.trim(),
+    documentType: form.documentType || undefined,
     documentNumber: form.documentNumber.trim() || undefined,
     marketingOptIn: form.marketingOptIn,
     status: form.status,
@@ -181,23 +246,39 @@ function buildCustomerPayload(form: CustomerFormState, mode: "create" | "edit") 
 
 export function CrmWorkspace() {
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
+  const [conflicts, setConflicts] = useState<CustomerIdentityConflictSummary[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerDetail | null>(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [conflictLoading, setConflictLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [resolvingConflict, setResolvingConflict] = useState(false);
+  const [merging, setMerging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [conflictError, setConflictError] = useState<string | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [conflictFormError, setConflictFormError] = useState<string | null>(null);
+  const [mergeError, setMergeError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
+  const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [editingCustomerId, setEditingCustomerId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CustomerSummary | null>(null);
+  const [selectedConflict, setSelectedConflict] = useState<CustomerIdentityConflictSummary | null>(null);
+  const [conflictAction, setConflictAction] = useState<"assign_existing" | "merge" | "ignore">("assign_existing");
+  const [conflictWinnerId, setConflictWinnerId] = useState("");
+  const [conflictMergeSourceId, setConflictMergeSourceId] = useState("");
+  const [conflictNotes, setConflictNotes] = useState("");
+  const [mergeSourceCustomer, setMergeSourceCustomer] = useState<CustomerSummary | null>(null);
+  const [mergeTargetId, setMergeTargetId] = useState("");
+  const [mergeNotes, setMergeNotes] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [form, setForm] = useState<CustomerFormState>(() => createEmptyCustomerForm());
 
@@ -206,23 +287,28 @@ export function CrmWorkspace() {
 
     async function loadData() {
       setLoading(true);
+      setConflictLoading(true);
 
       try {
-        const customersResponse = await fetchCustomers();
+        const [customersResponse, conflictsResponse] = await Promise.all([fetchCustomers(), fetchCustomerConflicts()]);
 
         if (!active) {
           return;
         }
 
         setCustomers(customersResponse.data);
+        setConflicts(conflictsResponse.data);
         setError(null);
+        setConflictError(null);
       } catch (fetchError) {
         if (active) {
           setError(toErrorMessage(fetchError, "No pudimos cargar clientes."));
+          setConflictError(toErrorMessage(fetchError, "No pudimos cargar conflictos de identidad."));
         }
       } finally {
         if (active) {
           setLoading(false);
+          setConflictLoading(false);
         }
       }
     }
@@ -253,6 +339,11 @@ export function CrmWorkspace() {
     );
   }, [customers, search]);
 
+  const openConflicts = useMemo(
+    () => conflicts.filter((conflict) => conflict.status === "open"),
+    [conflicts]
+  );
+
   const metrics = useMemo(
     () => [
       {
@@ -271,12 +362,17 @@ export function CrmWorkspace() {
         detail: "Con historial reciente."
       },
       {
+        label: "Conflictos",
+        value: String(openConflicts.length),
+        detail: "Pendientes de resolución."
+      },
+      {
         label: "Opt-in marketing",
         value: String(customers.filter((customer) => customer.marketingOptIn).length),
         detail: "Aceptaron comunicaciones."
       }
     ],
-    [customers]
+    [customers, openConflicts.length]
   );
 
   async function openCustomerDetail(id: string) {
@@ -395,6 +491,106 @@ export function CrmWorkspace() {
     }
   }
 
+  function openConflictDialog(conflict: CustomerIdentityConflictSummary) {
+    setSelectedConflict(conflict);
+    setConflictAction("assign_existing");
+    setConflictWinnerId(conflict.candidateCustomers[0]?.id ?? "");
+    setConflictMergeSourceId(conflict.candidateCustomers[1]?.id ?? "");
+    setConflictNotes("");
+    setConflictFormError(null);
+    setConflictDialogOpen(true);
+  }
+
+  function openMergeDialog(customer: CustomerSummary) {
+    setMergeSourceCustomer(customer);
+    setMergeTargetId("");
+    setMergeNotes("");
+    setMergeError(null);
+  }
+
+  async function handleResolveConflict() {
+    if (!selectedConflict) {
+      return;
+    }
+
+    if (conflictAction === "assign_existing" && !conflictWinnerId) {
+      setConflictFormError("Selecciona el cliente canónico que debe quedarse con el pedido.");
+      return;
+    }
+
+    if (conflictAction === "merge") {
+      if (!conflictWinnerId || !conflictMergeSourceId) {
+        setConflictFormError("Selecciona cliente destino y cliente fuente para la fusión.");
+        return;
+      }
+
+      if (conflictWinnerId === conflictMergeSourceId) {
+        setConflictFormError("La fusión requiere dos clientes distintos.");
+        return;
+      }
+    }
+
+    setResolvingConflict(true);
+    setConflictFormError(null);
+
+    try {
+      const response = await resolveCustomerConflict(selectedConflict.id, {
+        action: conflictAction,
+        winnerCustomerId: conflictAction === "ignore" ? undefined : conflictWinnerId || undefined,
+        mergeSourceCustomerId: conflictAction === "merge" ? conflictMergeSourceId : undefined,
+        notes: conflictNotes.trim() || undefined,
+        actor: "admin"
+      });
+
+      setNotice(response.message);
+      setConflictDialogOpen(false);
+      setSelectedConflict(null);
+      setRefreshKey((current) => current + 1);
+    } catch (resolveError) {
+      setConflictFormError(toErrorMessage(resolveError, "No pudimos resolver el conflicto."));
+    } finally {
+      setResolvingConflict(false);
+    }
+  }
+
+  async function handleMergeCustomers() {
+    if (!mergeSourceCustomer) {
+      return;
+    }
+
+    if (!mergeTargetId) {
+      setMergeError("Selecciona el cliente destino de la fusión.");
+      return;
+    }
+
+    if (mergeTargetId === mergeSourceCustomer.id) {
+      setMergeError("El cliente destino debe ser distinto del cliente fuente.");
+      return;
+    }
+
+    setMerging(true);
+    setMergeError(null);
+
+    try {
+      const response = await mergeCustomers({
+        sourceCustomerId: mergeSourceCustomer.id,
+        targetCustomerId: mergeTargetId,
+        notes: mergeNotes.trim() || undefined,
+        actor: "admin"
+      });
+
+      setSelectedCustomer(response.data);
+      setDetailOpen(true);
+      setMergeSourceCustomer(null);
+      setNotice("Clientes fusionados correctamente.");
+      setRefreshKey((current) => current + 1);
+    } catch (mergeFailure) {
+      setMergeError(toErrorMessage(mergeFailure, "No pudimos fusionar los clientes."));
+    } finally {
+      setMerging(false);
+    }
+  }
+
   return (
     <div className="space-y-6 pb-8">
       <SectionHeader
@@ -411,7 +607,7 @@ export function CrmWorkspace() {
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="max-w-xl">
           <p className="text-sm text-black/55">
-            Usa este módulo para crear o corregir clientes del backoffice y revisar su historial reciente de pedidos sin depender del snapshot del pedido abierto.
+            Usa este módulo para crear o corregir clientes del backoffice, revisar conflictos de identidad y operar el perfil canónico sin depender del snapshot del pedido abierto.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -428,14 +624,62 @@ export function CrmWorkspace() {
       </div>
 
       <AdminDataTable
+        title="Conflictos de identidad"
+        description={
+          openConflicts.length
+            ? `${openConflicts.length} conflicto(s) abierto(s) esperando decisión operativa.`
+            : "No hay conflictos abiertos en este momento."
+        }
+        headers={["Pedido", "Cliente detectado", "Señales", "Candidatos", "Acciones"]}
+        rows={openConflicts.map((conflict) => [
+          <div key={`${conflict.id}-order`} className="space-y-1">
+            <div className="font-semibold text-[#132016]">{conflict.orderNumber}</div>
+            <div className="text-xs text-black/45">{formatDate(conflict.createdAt)}</div>
+          </div>,
+          <div key={`${conflict.id}-identity`} className="space-y-1">
+            <div className="font-semibold text-[#132016]">{conflict.customerName}</div>
+            <div className="text-xs text-black/45">{conflict.reason}</div>
+          </div>,
+          <div key={`${conflict.id}-signals`} className="space-y-2">
+            <div className="text-sm text-[#132016]">{conflictSignalsLabel(conflict)}</div>
+            <StatusBadge label={conflictStatusLabel(conflict.status)} tone={conflictTone(conflict.status)} />
+          </div>,
+          <div key={`${conflict.id}-candidates`} className="space-y-2">
+            {conflict.candidateCustomers.length ? conflict.candidateCustomers.map((candidate) => (
+              <div key={candidate.id} className="rounded-[10px] border border-black/10 bg-[#fbfbf8] px-3 py-2">
+                <p className="text-sm font-semibold text-[#132016]">{candidate.fullName}</p>
+                <p className="text-xs text-black/45">{customerEmailLabel(candidate.email)}</p>
+                <p className="text-xs text-black/40">
+                  {candidate.documentNumber
+                    ? `${documentTypeLabel(candidate.documentType)} · ${candidate.documentNumber}`
+                    : candidate.phone ?? "Sin documento ni teléfono"}
+                </p>
+              </div>
+            )) : <p className="text-sm text-black/45">Sin candidatos disponibles.</p>}
+          </div>,
+          <div key={`${conflict.id}-actions`} className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => openConflictDialog(conflict)}
+              className="rounded-[8px] bg-[#1a3a2e] px-3 py-1.5 text-xs font-medium text-white transition hover:bg-[#2d6a4f]"
+            >
+              Resolver
+            </button>
+          </div>
+        ])}
+      />
+
+      <AdminDataTable
         title="Base de clientes"
         description={`${filteredCustomers.length} cliente(s) visibles${search.trim() ? " para la búsqueda actual" : ""}.`}
         headers={["Cliente", "Contacto", "Estado", "Pedidos", "Dirección", "Acciones"]}
         rows={filteredCustomers.map((customer) => [
           <div key={`${customer.id}-identity`} className="space-y-1">
             <div className="font-semibold text-[#132016]">{customer.fullName}</div>
-            <div className="text-xs text-black/45">{customer.email}</div>
-            {customer.documentNumber ? <div className="text-xs text-black/40">Doc. {customer.documentNumber}</div> : null}
+            <div className="text-xs text-black/45">{customerEmailLabel(customer.email)}</div>
+            {customer.documentNumber ? (
+              <div className="text-xs text-black/40">{documentTypeLabel(customer.documentType)} · {customer.documentNumber}</div>
+            ) : null}
           </div>,
           <div key={`${customer.id}-contact`} className="space-y-1">
             <div className="text-sm text-[#132016]">{customer.phone ?? "Sin teléfono"}</div>
@@ -474,6 +718,13 @@ export function CrmWorkspace() {
             </button>
             <button
               type="button"
+              onClick={() => openMergeDialog(customer)}
+              className="rounded-[8px] border border-[#d9e7dd] bg-[#eef7f1] px-3 py-1.5 text-xs font-medium text-[#1a3a2e] transition hover:bg-[#e3f2e8]"
+            >
+              Fusionar
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 setDeleteError(null);
                 setDeleteTarget(customer);
@@ -492,15 +743,17 @@ export function CrmWorkspace() {
           <CardDescription>Cómo se usa este módulo dentro del backoffice.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 text-sm leading-6 text-black/65">
-          <p>1. El perfil del cliente vive en PostgreSQL con email, teléfono, estado y direcciones base.</p>
-          <p>2. El historial reciente se enriquece leyendo snapshots operativos de pedidos para dar contexto comercial.</p>
-          <p>3. Crear y editar aquí evita reescribir manualmente datos del cliente en cada pedido nuevo.</p>
+          <p>1. El perfil del cliente vive en PostgreSQL y se normaliza desde los pedidos para evitar duplicidad.</p>
+          <p>2. Cuando existe documento, CRM prioriza esa identidad; email y teléfono quedan como señales secundarias.</p>
+          <p>3. Crear y editar aquí corrige el perfil canónico sin reescribir el snapshot histórico de cada pedido.</p>
         </CardContent>
       </Card>
 
       {notice ? <p className="text-sm text-emerald-700">{notice}</p> : null}
       {error ? <p className="text-sm text-rose-700">{error}</p> : null}
+      {conflictError ? <p className="text-sm text-rose-700">{conflictError}</p> : null}
       {loading ? <p className="text-sm text-black/55">Cargando clientes...</p> : null}
+      {conflictLoading ? <p className="text-sm text-black/55">Cargando conflictos de identidad...</p> : null}
 
       <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} size="lg">
         <DialogContent>
@@ -515,7 +768,7 @@ export function CrmWorkspace() {
               <div className="space-y-5">
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                   {[
-                    { label: "Email", value: selectedCustomer.email },
+                    { label: "Email", value: customerEmailLabel(selectedCustomer.email) },
                     { label: "Teléfono", value: selectedCustomer.phone ?? "Sin teléfono" },
                     { label: "Estado", value: customerStatusLabel(selectedCustomer.status) },
                     { label: "Pedidos", value: String(selectedCustomer.ordersCount) }
@@ -540,7 +793,11 @@ export function CrmWorkspace() {
                       </div>
                       <div>
                         <p className="text-[11px] uppercase tracking-[0.18em] text-black/40">Documento</p>
-                        <p className="mt-1">{selectedCustomer.documentNumber ?? "Sin documento"}</p>
+                        <p className="mt-1">
+                          {selectedCustomer.documentNumber
+                            ? `${documentTypeLabel(selectedCustomer.documentType)} · ${selectedCustomer.documentNumber}`
+                            : "Sin documento"}
+                        </p>
                       </div>
                       <div>
                         <p className="text-[11px] uppercase tracking-[0.18em] text-black/40">Marketing</p>
@@ -636,7 +893,6 @@ export function CrmWorkspace() {
                     { key: "lastName", label: "Apellido *", type: "text", placeholder: "García" },
                     { key: "email", label: "Email *", type: "email", placeholder: "pedro@example.com" },
                     { key: "phone", label: "Teléfono", type: "text", placeholder: "+51 999 000 000" },
-                    { key: "documentNumber", label: "Documento", type: "text", placeholder: "12345678" },
                     { key: "password", label: formMode === "create" ? "Contraseña temporal *" : "Nueva contraseña", type: "text", placeholder: formMode === "create" ? "Min. 6 caracteres" : "Déjala vacía para mantenerla" }
                   ].map(({ key, label, type, placeholder }) => (
                     <div key={key}>
@@ -649,6 +905,29 @@ export function CrmWorkspace() {
                       />
                     </div>
                   ))}
+                  <div>
+                    <label className="mb-1 block text-[11px] text-black/50">Tipo de documento</label>
+                    <select
+                      value={form.documentType}
+                      onChange={(event) => setForm((current) => ({ ...current, documentType: event.target.value as CheckoutDocumentType | "" }))}
+                      className="w-full rounded-[10px] border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-[#52b788]"
+                    >
+                      <option value="">Sin documento</option>
+                      {CHECKOUT_DOCUMENT_TYPE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[11px] text-black/50">Número de documento</label>
+                    <Input
+                      value={form.documentNumber}
+                      onChange={(event) => setForm((current) => ({ ...current, documentNumber: event.target.value }))}
+                      placeholder="12345678"
+                    />
+                  </div>
                   <div>
                     <label className="mb-1 block text-[11px] text-black/50">Estado</label>
                     <select
@@ -706,6 +985,164 @@ export function CrmWorkspace() {
             </Button>
             <Button type="button" onClick={() => void handleSaveCustomer()} disabled={saving || formLoading}>
               {saving ? "Guardando..." : formMode === "create" ? "Crear cliente" : "Guardar cambios"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={conflictDialogOpen} onClose={() => !resolvingConflict && setConflictDialogOpen(false)} size="lg">
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Resolver conflicto de identidad</DialogTitle>
+            <DialogDescription>
+              Decide qué cliente debe quedar asociado al pedido o marca el conflicto como ignorado.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="space-y-5">
+            {selectedConflict ? (
+              <>
+                <div className="grid gap-3 md:grid-cols-3">
+                  {[
+                    { label: "Pedido", value: selectedConflict.orderNumber },
+                    { label: "Cliente detectado", value: selectedConflict.customerName },
+                    { label: "Señales", value: conflictSignalsLabel(selectedConflict) }
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-[14px] border border-black/10 bg-[#fbfbf8] p-4">
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-black/40">{item.label}</p>
+                      <p className="mt-2 text-sm font-semibold text-[#132016]">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="mb-1 block text-[11px] text-black/50">Acción</label>
+                    <select
+                      value={conflictAction}
+                      onChange={(event) => setConflictAction(event.target.value as "assign_existing" | "merge" | "ignore")}
+                      className="w-full rounded-[10px] border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-[#52b788]"
+                    >
+                      <option value="assign_existing">Asignar a cliente existente</option>
+                      <option value="merge">Fusionar clientes y asignar</option>
+                      <option value="ignore">Ignorar conflicto</option>
+                    </select>
+                  </div>
+
+                  {conflictAction !== "ignore" ? (
+                    <div>
+                      <label className="mb-1 block text-[11px] text-black/50">Cliente destino</label>
+                      <select
+                        value={conflictWinnerId}
+                        onChange={(event) => setConflictWinnerId(event.target.value)}
+                        className="w-full rounded-[10px] border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-[#52b788]"
+                      >
+                        <option value="">Selecciona un cliente</option>
+                        {selectedConflict.candidateCustomers.map((candidate) => (
+                          <option key={candidate.id} value={candidate.id}>
+                            {candidate.fullName} · {candidate.documentNumber ?? candidate.phone ?? customerEmailLabel(candidate.email)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : null}
+
+                  {conflictAction === "merge" ? (
+                    <div>
+                      <label className="mb-1 block text-[11px] text-black/50">Cliente fuente</label>
+                      <select
+                        value={conflictMergeSourceId}
+                        onChange={(event) => setConflictMergeSourceId(event.target.value)}
+                        className="w-full rounded-[10px] border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-[#52b788]"
+                      >
+                        <option value="">Selecciona un cliente a fusionar</option>
+                        {selectedConflict.candidateCustomers
+                          .filter((candidate) => candidate.id !== conflictWinnerId)
+                          .map((candidate) => (
+                            <option key={candidate.id} value={candidate.id}>
+                              {candidate.fullName} · {candidate.documentNumber ?? candidate.phone ?? customerEmailLabel(candidate.email)}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  ) : null}
+
+                  <div>
+                    <label className="mb-1 block text-[11px] text-black/50">Notas operativas</label>
+                    <Input
+                      value={conflictNotes}
+                      onChange={(event) => setConflictNotes(event.target.value)}
+                      placeholder="Opcional. Deja contexto de la decisión."
+                    />
+                  </div>
+                </div>
+              </>
+            ) : null}
+            {conflictFormError ? <p className="text-sm text-rose-700">{conflictFormError}</p> : null}
+          </DialogBody>
+          <DialogFooter className="justify-between">
+            <Button type="button" variant="secondary" onClick={() => setConflictDialogOpen(false)} disabled={resolvingConflict}>
+              Cancelar
+            </Button>
+            <Button type="button" onClick={() => void handleResolveConflict()} disabled={resolvingConflict}>
+              {resolvingConflict ? "Guardando..." : "Guardar decisión"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(mergeSourceCustomer)} onClose={() => !merging && setMergeSourceCustomer(null)} size="lg">
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Fusionar clientes</DialogTitle>
+            <DialogDescription>
+              Fusiona el cliente fuente dentro de un cliente canónico y mueve sus referencias operativas.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="space-y-5">
+            {mergeSourceCustomer ? (
+              <>
+                <div className="rounded-[14px] border border-black/10 bg-[#fbfbf8] p-4">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-black/40">Cliente fuente</p>
+                  <p className="mt-2 text-sm font-semibold text-[#132016]">{mergeSourceCustomer.fullName}</p>
+                  <p className="mt-1 text-xs text-black/45">{customerEmailLabel(mergeSourceCustomer.email)}</p>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-[11px] text-black/50">Cliente destino</label>
+                  <select
+                    value={mergeTargetId}
+                    onChange={(event) => setMergeTargetId(event.target.value)}
+                    className="w-full rounded-[10px] border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-[#52b788]"
+                  >
+                    <option value="">Selecciona el cliente canónico</option>
+                    {customers
+                      .filter((customer) => customer.id !== mergeSourceCustomer.id)
+                      .map((customer) => (
+                        <option key={customer.id} value={customer.id}>
+                          {customer.fullName} · {customer.documentNumber ?? customer.phone ?? customerEmailLabel(customer.email)}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-[11px] text-black/50">Notas operativas</label>
+                  <Input
+                    value={mergeNotes}
+                    onChange={(event) => setMergeNotes(event.target.value)}
+                    placeholder="Opcional. Explica por qué estás fusionando."
+                  />
+                </div>
+              </>
+            ) : null}
+            {mergeError ? <p className="text-sm text-rose-700">{mergeError}</p> : null}
+          </DialogBody>
+          <DialogFooter className="justify-between">
+            <Button type="button" variant="secondary" onClick={() => setMergeSourceCustomer(null)} disabled={merging}>
+              Cancelar
+            </Button>
+            <Button type="button" onClick={() => void handleMergeCustomers()} disabled={merging}>
+              {merging ? "Fusionando..." : "Fusionar clientes"}
             </Button>
           </DialogFooter>
         </DialogContent>

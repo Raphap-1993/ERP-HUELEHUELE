@@ -52,6 +52,7 @@ export const siteSetting: SiteSetting = {
   walletType: "Yape",
   walletOwnerName: "",
   headerLogoUrl: undefined,
+  adminSidebarLogoUrl: undefined,
   heroProductImageUrl: undefined
 };
 
@@ -89,7 +90,16 @@ export const adminNavigation: AdminNavigationGroup[] = [
     items: [
       { label: "Dashboard", href: "/", requiredRoles: adminAccessRoles.dashboard },
       { label: "Pedidos", href: "/pedidos", requiredRoles: adminAccessRoles.orders },
-      { label: "Pagos", href: "/pagos", requiredRoles: adminAccessRoles.payments },
+      { label: "Despachos", href: "/despachos", requiredRoles: adminAccessRoles.dispatch },
+      { label: "Pagos", href: "/pagos", requiredRoles: adminAccessRoles.payments }
+    ]
+  },
+  {
+    title: "Inventario y reportes",
+    items: [
+      { label: "Inventario", href: "/inventario", requiredRoles: adminAccessRoles.inventory },
+      { label: "Transferencias", href: "/transferencias", requiredRoles: adminAccessRoles.transfers },
+      { label: "Almacenes", href: "/almacenes", requiredRoles: adminAccessRoles.warehouses },
       { label: "Reportes", href: "/reportes", requiredRoles: adminAccessRoles.dashboard }
     ]
   },

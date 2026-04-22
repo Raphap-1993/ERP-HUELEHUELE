@@ -1,9 +1,47 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { AdminDataTable, Badge, Button, Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator, StatusBadge, TimelinePedido } from "@huelegood/ui";
-import { CHECKOUT_DOCUMENT_TYPE_OPTIONS, CrmStage, type AdminOrderDetail, type AdminOrderSummary, type ManualReviewActionInput, type OrderStatus, type PaymentStatus, type ManualPaymentRequestStatus, type ProductAdminSummary, type VendorSummary } from "@huelegood/shared";
-import { approveManualPaymentRequest, confirmOnlinePayment, createBackofficeOrder, deleteOrder, fetchAdminProducts, fetchOrder, fetchOrders, fetchVendors, registerAdminManualPayment, rejectManualPaymentRequest, resendOrderApprovalEmail, transitionOrderStatus } from "../lib/api";
+import { AdminDataTable, Badge, Button, Combobox, Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Separator, StatusBadge, TimelinePedido, type ComboboxOption } from "@huelegood/ui";
+import {
+  CHECKOUT_DOCUMENT_TYPE_OPTIONS,
+  CrmStage,
+  OrderStatus,
+  adminAccessRoles,
+  hasAdminAccess,
+  type AdminOrderDetail,
+  type AdminOrderSummary,
+  type ManualPaymentRequestStatus,
+  type ManualReviewActionInput,
+  type OrderCommercialTraceRoute,
+  type OrderCommercialTraceStatus,
+  type PaymentStatus,
+  type PeruDepartmentSummary,
+  type PeruDistrictSummary,
+  type PeruProvinceSummary,
+  type ProductAdminSummary,
+  type AdminOrderVendorOption
+} from "@huelegood/shared";
+import {
+  approveManualPaymentRequest,
+  assignOrderFulfillment,
+  confirmOnlinePayment,
+  createBackofficeOrder,
+  deleteOrder,
+  fetchAdminProducts,
+  fetchOrder,
+  fetchOrderVendorOptions,
+  fetchOrders,
+  fetchPeruDepartments,
+  fetchPeruDistricts,
+  fetchPeruProvinces,
+  registerAdminManualPayment,
+  rejectManualPaymentRequest,
+  resendOrderApprovalEmail,
+  suggestOrderFulfillment,
+  transitionOrderStatus,
+  updateOrderVendor
+} from "../lib/api";
+import { useAdminSession } from "./admin-session-provider";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("es-PE", {
@@ -38,6 +76,23 @@ function getProductSearchRank(product: ProductAdminSummary, query: string) {
   if (sku.includes(query)) return 5;
   if (slug.includes(query)) return 6;
   if (category.includes(query)) return 7;
+  return 99;
+}
+
+function getVendorSearchRank(vendor: AdminOrderVendorOption, query: string) {
+  const code = normalizeSearchValue(vendor.code);
+  const name = normalizeSearchValue(vendor.name);
+  const city = normalizeSearchValue(vendor.city ?? "");
+  const email = normalizeSearchValue(vendor.email ?? "");
+
+  if (code.startsWith(query)) return 0;
+  if (name.startsWith(query)) return 1;
+  if (city.startsWith(query)) return 2;
+  if (email.startsWith(query)) return 3;
+  if (code.includes(query)) return 4;
+  if (name.includes(query)) return 5;
+  if (city.includes(query)) return 6;
+  if (email.includes(query)) return 7;
   return 99;
 }
 
@@ -108,6 +163,135 @@ function manualStatusLabel(status?: ManualPaymentRequestStatus) {
   return status ? labels[status] : "Sin solicitud";
 }
 
+function paymentMethodLabel(value?: "openpay" | "manual") {
+  if (value === "openpay") {
+    return "Openpay";
+  }
+
+  if (value === "manual") {
+    return "Pago manual";
+  }
+
+  return "Sin método";
+}
+
+function commercialTraceStatusLabel(status?: OrderCommercialTraceStatus) {
+  const labels: Record<OrderCommercialTraceStatus, string> = {
+    pending: "Pendiente",
+    confirmed: "Confirmada",
+    rejected: "Cerrada sin confirmar"
+  };
+
+  return status ? labels[status] : "Sin traza";
+}
+
+function commercialTraceTone(status?: OrderCommercialTraceStatus): "neutral" | "success" | "warning" | "danger" | "info" {
+  if (status === "confirmed") {
+    return "success";
+  }
+
+  if (status === "rejected") {
+    return "danger";
+  }
+
+  if (status === "pending") {
+    return "warning";
+  }
+
+  return "neutral";
+}
+
+function commercialTraceRouteLabel(route?: OrderCommercialTraceRoute) {
+  const labels: Record<OrderCommercialTraceRoute, string> = {
+    manual_direct: "Registro manual directo",
+    manual_request: "Solicitud con comprobante",
+    openpay_backoffice: "Conciliación Openpay desde backoffice",
+    openpay_provider: "Confirmación del proveedor"
+  };
+
+  return route ? labels[route] : "Sin ruta";
+}
+
+type PaymentOperationGuide = {
+  tone: "neutral" | "success" | "warning" | "danger" | "info";
+  title: string;
+  description: string;
+  impact: string;
+  nextStep: string;
+};
+
+function resolvePaymentOperationGuide(
+  order?: Pick<AdminOrderDetail, "manualRequest" | "paymentMethod" | "paymentStatus">
+): PaymentOperationGuide {
+  if (!order) {
+    return {
+      tone: "neutral",
+      title: "Sin pedido seleccionado",
+      description: "Abre un pedido para revisar la ruta de conciliación activa.",
+      impact: "No hay impacto operativo mientras no exista un pedido cargado.",
+      nextStep: "Selecciona un pedido desde el listado."
+    };
+  }
+
+  if (order.manualRequest?.status === "under_review" || order.manualRequest?.status === "submitted") {
+    return {
+      tone: "warning",
+      title: "Revisión de comprobante activa",
+      description: "Este pedido ya entró al circuito de comprobante manual. No mezcles esta ruta con registro directo ni conciliación Openpay.",
+      impact: "Aprobar confirma la venta, consolida stock y mantiene la trazabilidad. Rechazar cancela el pedido con auditoría.",
+      nextStep: "Revisa evidencia, referencia y notas antes de decidir."
+    };
+  }
+
+  if (order.manualRequest?.status === "approved") {
+    return {
+      tone: "success",
+      title: "Solicitud manual ya conciliada",
+      description: "El comprobante ya fue aprobado operativamente y el pedido quedó confirmado.",
+      impact: "No hace falta una nueva conciliación; solo sigue con despacho, CRM o comunicación al cliente.",
+      nextStep: "Continúa el pedido por su flujo operativo normal."
+    };
+  }
+
+  if (order.manualRequest?.status === "rejected") {
+    return {
+      tone: "danger",
+      title: "Solicitud manual cerrada por rechazo",
+      description: "La revisión del comprobante ya fue resuelta y quedó cerrada para auditoría.",
+      impact: "El pedido sale del flujo de conciliación activa y no debe reaprobarse por esta vista.",
+      nextStep: "Abre un caso nuevo solo si operación decide reingresar un pago válido."
+    };
+  }
+
+  if (order.paymentMethod === "openpay" && order.paymentStatus !== "paid") {
+    return {
+      tone: "info",
+      title: "Conciliación manual de pago online",
+      description: "Este pedido web todavía requiere confirmación controlada desde backoffice.",
+      impact: "La conciliación mantiene la ruta Openpay del pedido y confirma venta, stock, reportes y seguimiento CRM.",
+      nextStep: "Registra referencia del cobro validado y una nota operativa antes de confirmar."
+    };
+  }
+
+  if (order.paymentMethod === "manual" && order.paymentStatus !== "paid") {
+    return {
+      tone: "info",
+      title: "Registro manual directo",
+      description: "Usa esta ruta solo cuando el pago completo ya fue validado por operación y no existe solicitud manual activa.",
+      impact: "El registro deja el pago cobrado, confirma la venta y mantiene la trazabilidad de auditoría.",
+      nextStep: "Registra monto completo, referencia y nota explícita del cobro."
+    };
+  }
+
+  return {
+    tone: "success",
+    title: "Pago ya conciliado",
+    description: "La venta ya tiene confirmación comercial vigente.",
+    impact: "No hace falta otra conciliación sobre este pedido.",
+    nextStep: "Usa solo transiciones operativas, despacho o comunicación al cliente."
+  };
+}
+
 function formatStageLabel(stage?: string) {
   if (!stage) {
     return "Sin etapa";
@@ -154,6 +338,29 @@ function crmFollowUpLabel(stage?: CrmStage) {
   return "Pendiente de resolución";
 }
 
+function fulfillmentStrategyLabel(strategy?: string) {
+  const labels: Record<string, string> = {
+    warehouse_default: "Almacén por defecto",
+    coverage_priority: "Cobertura + prioridad",
+    stock_priority: "Stock + prioridad",
+    fallback: "Fallback operativo",
+    manual: "Asignación manual"
+  };
+
+  return strategy ? labels[strategy] ?? strategy : "Sin estrategia";
+}
+
+function coverageScopeLabel(scope?: string) {
+  const labels: Record<string, string> = {
+    district: "distrito",
+    province: "provincia",
+    department: "departamento",
+    zone: "zona"
+  };
+
+  return scope ? labels[scope] ?? scope : "cobertura";
+}
+
 function hasOrderDetailPayload(order: unknown): order is AdminOrderDetail {
   if (!order || typeof order !== "object") {
     return false;
@@ -194,7 +401,43 @@ function availableOperationalStatuses(order?: AdminOrderDetail | null): OrderSta
   return transitions[order.orderStatus] ?? [];
 }
 
+function dispatchLabelActionText(order?: AdminOrderDetail | null) {
+  const fallbackLabel = "Imprimir sticker";
+
+  if (!order) {
+    return fallbackLabel;
+  }
+
+  const actionLabel = order.dispatchLabel?.actionLabel?.trim();
+  if (!actionLabel) {
+    return fallbackLabel;
+  }
+
+  return actionLabel.replace(/etiqueta/gi, "sticker");
+}
+
+const ORDER_DETAIL_TABS = [
+  { value: "resumen", label: "Resumen", description: "Cliente, envío, items y total del pedido." },
+  { value: "despacho", label: "Origen y despacho", description: "Origen confirmado, sugerencia y sticker operativo." },
+  { value: "operacion", label: "Operación", description: "Trazabilidad comercial, pagos, vendedor y acciones manuales." },
+  { value: "timeline", label: "Timeline", description: "Trazabilidad completa y cambios de estado." }
+] as const;
+
+type OrderDetailTab = (typeof ORDER_DETAIL_TABS)[number]["value"];
+
+type ProductPickerOption = ComboboxOption & {
+  product: ProductAdminSummary;
+  selectedQuantity: number;
+  categoryLabel: string;
+  priceLabel: string;
+};
+
+type VendorPickerOption = ComboboxOption & {
+  vendor: AdminOrderVendorOption;
+};
+
 export function OrdersWorkspace() {
+  const { session } = useAdminSession();
   const [orders, setOrders] = useState<AdminOrderSummary[]>([]);
   const [selectedOrderNumber, setSelectedOrderNumber] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<AdminOrderDetail | null>(null);
@@ -204,8 +447,8 @@ export function OrdersWorkspace() {
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"detalle" | "timeline">("detalle");
-  const [actionLoading, setActionLoading] = useState<"approve" | "reject" | "resend" | "transition" | "manual_payment" | "online_payment" | null>(null);
+  const [activeTab, setActiveTab] = useState<OrderDetailTab>("resumen");
+  const [actionLoading, setActionLoading] = useState<"approve" | "reject" | "resend" | "transition" | "manual_payment" | "online_payment" | "vendor" | "suggest_fulfillment" | "assign_fulfillment" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [approveConfirmOpen, setApproveConfirmOpen] = useState(false);
@@ -218,14 +461,21 @@ export function OrdersWorkspace() {
   const [manualPaymentAmount, setManualPaymentAmount] = useState("");
   const [manualPaymentReference, setManualPaymentReference] = useState("");
   const [manualPaymentNotes, setManualPaymentNotes] = useState("Pago confirmado manualmente desde backoffice.");
+  const [onlinePaymentReference, setOnlinePaymentReference] = useState("");
+  const [onlinePaymentNotes, setOnlinePaymentNotes] = useState("Conciliacion manual de pago online desde backoffice.");
+  const [vendorDraftCode, setVendorDraftCode] = useState("");
+  const [vendorOptionsLoading, setVendorOptionsLoading] = useState(false);
 
   // Create order state
   const [createOpen, setCreateOpen] = useState(false);
   const [availableProducts, setAvailableProducts] = useState<ProductAdminSummary[]>([]);
-  const [availableVendors, setAvailableVendors] = useState<VendorSummary[]>([]);
+  const [availableVendors, setAvailableVendors] = useState<AdminOrderVendorOption[]>([]);
   const [createForm, setCreateForm] = useState({
     firstName: "", lastName: "", email: "", phone: "",
-    line1: "", city: "",
+    line1: "", line2: "",
+    departmentCode: "", departmentName: "",
+    provinceCode: "", provinceName: "",
+    districtCode: "", districtName: "",
     notes: "", vendorCode: "",
     initialStatus: "pending_payment" as "paid" | "pending_payment"
   });
@@ -234,7 +484,11 @@ export function OrdersWorkspace() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [createOptionsLoading, setCreateOptionsLoading] = useState(false);
   const [createOptionsNotice, setCreateOptionsNotice] = useState<string | null>(null);
+  const [createDepartments, setCreateDepartments] = useState<PeruDepartmentSummary[]>([]);
+  const [createProvinces, setCreateProvinces] = useState<PeruProvinceSummary[]>([]);
+  const [createDistricts, setCreateDistricts] = useState<PeruDistrictSummary[]>([]);
   const [productSearch, setProductSearch] = useState("");
+  const [vendorSearch, setVendorSearch] = useState("");
   const activeOrder = selectedOrder?.orderNumber === selectedOrderNumber ? selectedOrder : null;
 
   useEffect(() => {
@@ -329,7 +583,97 @@ export function OrdersWorkspace() {
     setManualPaymentAmount(activeOrder ? String(activeOrder.total) : "");
     setManualPaymentReference(activeOrder?.providerReference ?? "");
     setManualPaymentNotes("Pago confirmado manualmente desde backoffice.");
+    setOnlinePaymentReference(activeOrder?.providerReference ?? "");
+    setOnlinePaymentNotes("Conciliacion manual de pago online desde backoffice.");
+    setVendorDraftCode(activeOrder?.vendorCode ?? "");
   }, [activeOrder]);
+
+  useEffect(() => {
+    if (!modalOpen || !activeOrder || availableVendors.length > 0) {
+      return;
+    }
+
+    let active = true;
+    setVendorOptionsLoading(true);
+
+    void fetchOrderVendorOptions()
+      .then((response) => {
+        if (!active) {
+          return;
+        }
+
+        setAvailableVendors(response.data ?? []);
+      })
+      .catch(() => {
+        if (active) {
+          setActionNotice((current) => current ?? "No pudimos cargar la lista de vendedores.");
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setVendorOptionsLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [activeOrder, availableVendors.length, modalOpen]);
+
+  useEffect(() => {
+    if (!createOpen || !createForm.departmentCode) {
+      setCreateProvinces([]);
+      setCreateDistricts([]);
+      return;
+    }
+
+    let active = true;
+
+    void fetchPeruProvinces(createForm.departmentCode)
+      .then((response) => {
+        if (!active) {
+          return;
+        }
+
+        setCreateProvinces(response.data ?? []);
+      })
+      .catch((loadError) => {
+        if (active) {
+          setCreateError(loadError instanceof Error ? loadError.message : "No pudimos cargar las provincias.");
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [createForm.departmentCode, createOpen]);
+
+  useEffect(() => {
+    if (!createOpen || !createForm.provinceCode) {
+      setCreateDistricts([]);
+      return;
+    }
+
+    let active = true;
+
+    void fetchPeruDistricts(createForm.provinceCode)
+      .then((response) => {
+        if (!active) {
+          return;
+        }
+
+        setCreateDistricts(response.data ?? []);
+      })
+      .catch((loadError) => {
+        if (active) {
+          setCreateError(loadError instanceof Error ? loadError.message : "No pudimos cargar los distritos.");
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [createForm.provinceCode, createOpen]);
 
   const reviewCount = useMemo(
     () => orders.filter((o) => o.orderStatus === "payment_under_review" || o.manualStatus === "under_review").length,
@@ -337,9 +681,36 @@ export function OrdersWorkspace() {
   );
   const selectedOrderStage = activeOrder?.crmStage;
   const availableStatuses = useMemo(() => availableOperationalStatuses(activeOrder), [activeOrder]);
-  const canRegisterManualPayment = Boolean(activeOrder && activeOrder.paymentStatus !== "paid" && !activeOrder.manualRequest);
+  const paymentOperationGuide = useMemo(() => resolvePaymentOperationGuide(activeOrder ?? undefined), [activeOrder]);
+  const canRegisterManualPayment = Boolean(
+    activeOrder &&
+      activeOrder.paymentMethod === "manual" &&
+      activeOrder.paymentStatus !== "paid" &&
+      !activeOrder.manualRequest
+  );
   const canConfirmOnlinePayment = Boolean(activeOrder && activeOrder.paymentMethod === "openpay" && activeOrder.paymentStatus !== "paid");
+  const canAccessDispatchModule = useMemo(() => {
+    const roleCodes = session?.user.roles.map((role) => role.code) ?? [];
+    return hasAdminAccess(roleCodes, adminAccessRoles.dispatch);
+  }, [session]);
+  const canOpenDispatchLabel = canAccessDispatchModule && Boolean(activeOrder?.dispatchLabel?.available);
+  const dispatchLabelBlockReason =
+    canAccessDispatchModule && activeOrder && !activeOrder.dispatchLabel?.available
+      ? activeOrder.dispatchLabel?.blockReason?.replace(/etiqueta/gi, "sticker")
+      : null;
+  const vendorAssignmentDirty = (activeOrder?.vendorCode ?? "") !== vendorDraftCode.trim();
+  const suggestedWarehouseId = activeOrder?.fulfillmentSuggestion?.status === "suggested" ? activeOrder.fulfillmentSuggestion.warehouseId : undefined;
+  const assignedWarehouseId = activeOrder?.fulfillmentAssignment?.warehouseId;
+  const canAssignSuggestedFulfillment = Boolean(
+    activeOrder &&
+      suggestedWarehouseId &&
+      suggestedWarehouseId !== assignedWarehouseId
+  );
   const selectableProducts = availableProducts.filter((product) => product.status === "active" || product.status === "draft");
+  const selectableVendors = useMemo(
+    () => availableVendors.filter((vendor) => vendor.status === "active"),
+    [availableVendors]
+  );
   const selectedQuantityBySlug = useMemo(
     () => new Map(createItems.map((item) => [item.slug, item.quantity])),
     [createItems]
@@ -368,6 +739,30 @@ export function OrdersWorkspace() {
     [filteredSelectableProducts, productSearch]
   );
   const hiddenSelectableProductsCount = Math.max(filteredSelectableProducts.length - visibleSelectableProducts.length, 0);
+  const filteredSelectableVendors = useMemo(() => {
+    const query = normalizeSearchValue(vendorSearch);
+    const sortedVendors = [...selectableVendors].sort((left, right) => left.name.localeCompare(right.name, "es"));
+
+    if (!query) {
+      return sortedVendors;
+    }
+
+    return sortedVendors
+      .filter((vendor) => getVendorSearchRank(vendor, query) < 99)
+      .sort((left, right) => {
+        const rankDifference = getVendorSearchRank(left, query) - getVendorSearchRank(right, query);
+        if (rankDifference !== 0) {
+          return rankDifference;
+        }
+
+        return left.name.localeCompare(right.name, "es");
+      });
+  }, [selectableVendors, vendorSearch]);
+  const visibleSelectableVendors = useMemo(
+    () => filteredSelectableVendors.slice(0, vendorSearch.trim() ? 8 : 6),
+    [filteredSelectableVendors, vendorSearch]
+  );
+  const hiddenSelectableVendorsCount = Math.max(filteredSelectableVendors.length - visibleSelectableVendors.length, 0);
   const createItemsCount = useMemo(
     () => createItems.reduce((sum, item) => sum + item.quantity, 0),
     [createItems]
@@ -375,6 +770,33 @@ export function OrdersWorkspace() {
   const createItemsTotal = useMemo(
     () => createItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0),
     [createItems]
+  );
+  const selectedVendor = useMemo(
+    () => availableVendors.find((vendor) => vendor.code === createForm.vendorCode) ?? null,
+    [availableVendors, createForm.vendorCode]
+  );
+  const productPickerOptions = useMemo<ProductPickerOption[]>(
+    () =>
+      visibleSelectableProducts.map((product) => ({
+        value: product.id,
+        label: product.name,
+        description: product.sku,
+        product,
+        selectedQuantity: selectedQuantityBySlug.get(product.slug) ?? 0,
+        categoryLabel: product.categoryName ?? "Sin categoría",
+        priceLabel: formatCurrency(product.price)
+      })),
+    [selectedQuantityBySlug, visibleSelectableProducts]
+  );
+  const vendorPickerOptions = useMemo<VendorPickerOption[]>(
+    () =>
+      visibleSelectableVendors.map((vendor) => ({
+        value: vendor.code,
+        label: vendor.name,
+        description: vendor.code,
+        vendor
+      })),
+    [visibleSelectableVendors]
   );
 
   function openApproveConfirm() {
@@ -528,8 +950,8 @@ export function OrdersWorkspace() {
     try {
       const response = await confirmOnlinePayment(activeOrder.orderNumber, {
         reviewer: "admin",
-        reference: manualPaymentReference.trim() || undefined,
-        notes: "Conciliacion manual de pago online desde backoffice."
+        reference: onlinePaymentReference.trim() || undefined,
+        notes: onlinePaymentNotes.trim() || undefined
       });
       setActionNotice(response.message);
       setRefreshKey((current) => current + 1);
@@ -540,26 +962,131 @@ export function OrdersWorkspace() {
     }
   }
 
+  async function handleSaveVendor() {
+    if (!activeOrder) {
+      return;
+    }
+
+    setActionLoading("vendor");
+    setActionError(null);
+    setActionNotice(null);
+
+    try {
+      const response = await updateOrderVendor(activeOrder.orderNumber, {
+        actor: "admin",
+        vendorCode: vendorDraftCode.trim()
+      });
+      setActionNotice(response.message);
+      setRefreshKey((current) => current + 1);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "No se pudo actualizar el vendedor del pedido.");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleSuggestFulfillment() {
+    if (!activeOrder) {
+      return;
+    }
+
+    setActionLoading("suggest_fulfillment");
+    setActionError(null);
+    setActionNotice(null);
+
+    try {
+      const response = await suggestOrderFulfillment(activeOrder.orderNumber);
+      setActionNotice(response.message);
+      if (response.order) {
+        setSelectedOrder(response.order);
+      }
+      setRefreshKey((current) => current + 1);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "No se pudo recalcular la sugerencia de origen.");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleAssignSuggestedFulfillment() {
+    if (!activeOrder?.fulfillmentSuggestion || activeOrder.fulfillmentSuggestion.status !== "suggested" || !activeOrder.fulfillmentSuggestion.warehouseId) {
+      return;
+    }
+
+    setActionLoading("assign_fulfillment");
+    setActionError(null);
+    setActionNotice(null);
+
+    try {
+      const response = await assignOrderFulfillment(activeOrder.orderNumber, {
+        warehouseId: activeOrder.fulfillmentSuggestion.warehouseId,
+        strategy: activeOrder.fulfillmentSuggestion.strategy,
+        status: "assigned",
+        notes: `Confirmado desde backoffice a partir de la sugerencia: ${activeOrder.fulfillmentSuggestion.reason}`
+      });
+      setActionNotice(response.message);
+      if (response.order) {
+        setSelectedOrder(response.order);
+      }
+      setRefreshKey((current) => current + 1);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "No se pudo confirmar el origen sugerido.");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  function handleOpenDispatchLabel() {
+    if (!activeOrder) {
+      return;
+    }
+
+    const href = `/pedidos/${encodeURIComponent(activeOrder.orderNumber)}/etiqueta?from=pedidos`;
+    const labelWindow = window.open(href, "_blank", "noopener,noreferrer");
+    if (!labelWindow) {
+      window.location.href = href;
+    }
+  }
+
   async function openCreateModal() {
-    setCreateForm({ firstName: "", lastName: "", email: "", phone: "", line1: "", city: "", notes: "", vendorCode: "", initialStatus: "pending_payment" });
+    setCreateForm({
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      line1: "",
+      line2: "",
+      departmentCode: "",
+      departmentName: "",
+      provinceCode: "",
+      provinceName: "",
+      districtCode: "",
+      districtName: "",
+      notes: "",
+      vendorCode: "",
+      initialStatus: "pending_payment"
+    });
     setCreateItems([]);
     setCreateError(null);
     setCreateOptionsNotice(null);
     setProductSearch("");
+    setVendorSearch("");
     setCreateOpen(true);
     const shouldLoadProducts = availableProducts.length === 0;
     const shouldLoadVendors = availableVendors.length === 0;
+    const shouldLoadDepartments = createDepartments.length === 0;
 
-    if (!shouldLoadProducts && !shouldLoadVendors) {
+    if (!shouldLoadProducts && !shouldLoadVendors && !shouldLoadDepartments) {
       return;
     }
 
     setCreateOptionsLoading(true);
 
     try {
-      const [productsResponse, vendorsResponse] = await Promise.allSettled([
+      const [productsResponse, vendorsResponse, departmentsResponse] = await Promise.allSettled([
         shouldLoadProducts ? fetchAdminProducts() : Promise.resolve({ data: availableProducts }),
-        shouldLoadVendors ? fetchVendors() : Promise.resolve({ data: availableVendors })
+        shouldLoadVendors ? fetchOrderVendorOptions() : Promise.resolve({ data: availableVendors }),
+        shouldLoadDepartments ? fetchPeruDepartments() : Promise.resolve({ data: createDepartments })
       ]);
 
       const notices: string[] = [];
@@ -576,6 +1103,13 @@ export function OrdersWorkspace() {
       } else {
         setAvailableVendors([]);
         notices.push("No pudimos cargar vendedores. Puedes continuar sin vendedor asociado.");
+      }
+
+      if (departmentsResponse.status === "fulfilled") {
+        setCreateDepartments(departmentsResponse.value.data ?? []);
+      } else {
+        setCreateDepartments([]);
+        notices.push("No pudimos cargar el ubigeo de Perú.");
       }
 
       setCreateOptionsNotice(notices.length ? notices.join(" ") : null);
@@ -600,16 +1134,66 @@ export function OrdersWorkspace() {
     setCreateItems((prev) => prev.map((i) => i.slug === slug ? { ...i, [field]: value } : i));
   }
 
+  function handleCreateDepartmentChange(nextCode: string) {
+    const department = createDepartments.find((item) => item.code === nextCode);
+
+    setCreateForm((current) => ({
+      ...current,
+      departmentCode: nextCode,
+      departmentName: department?.name ?? "",
+      provinceCode: "",
+      provinceName: "",
+      districtCode: "",
+      districtName: ""
+    }));
+  }
+
+  function handleCreateProvinceChange(nextCode: string) {
+    const province = createProvinces.find((item) => item.code === nextCode);
+
+    setCreateForm((current) => ({
+      ...current,
+      provinceCode: nextCode,
+      provinceName: province?.name ?? "",
+      districtCode: "",
+      districtName: ""
+    }));
+  }
+
+  function handleCreateDistrictChange(nextCode: string) {
+    const district = createDistricts.find((item) => item.code === nextCode);
+
+    setCreateForm((current) => ({
+      ...current,
+      districtCode: nextCode,
+      districtName: district?.name ?? ""
+    }));
+  }
+
   async function handleCreate() {
     if (!createItems.length) { setCreateError("Agrega al menos un producto."); return; }
     if (!createForm.firstName.trim()) { setCreateError("El nombre del cliente es obligatorio."); return; }
-    if (!createForm.line1.trim() || !createForm.city.trim()) { setCreateError("La dirección y ciudad son obligatorias."); return; }
+    if (!createForm.line1.trim()) { setCreateError("La dirección de entrega es obligatoria."); return; }
+    if (!createForm.departmentCode || !createForm.provinceCode || !createForm.districtCode) {
+      setCreateError("Selecciona departamento, provincia y distrito para el pedido manual.");
+      return;
+    }
     setCreateLoading(true);
     setCreateError(null);
     try {
       const res = await createBackofficeOrder({
         customer: { firstName: createForm.firstName.trim(), lastName: createForm.lastName.trim(), email: createForm.email.trim(), phone: createForm.phone.trim() },
-        address: { line1: createForm.line1.trim(), city: createForm.city.trim() },
+        address: {
+          line1: createForm.line1.trim(),
+          line2: createForm.line2.trim() || undefined,
+          countryCode: "PE",
+          departmentCode: createForm.departmentCode,
+          departmentName: createForm.departmentName,
+          provinceCode: createForm.provinceCode,
+          provinceName: createForm.provinceName,
+          districtCode: createForm.districtCode,
+          districtName: createForm.districtName
+        },
         items: createItems,
         initialStatus: createForm.initialStatus,
         notes: createForm.notes.trim() || undefined,
@@ -619,7 +1203,7 @@ export function OrdersWorkspace() {
       setRefreshKey((k) => k + 1);
       // Open the new order's detail
       setSelectedOrderNumber(res.orderNumber);
-      setActiveTab("detalle");
+      setActiveTab("resumen");
       setModalOpen(true);
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : "No se pudo crear el pedido.");
@@ -638,7 +1222,7 @@ export function OrdersWorkspace() {
           <div className="text-xs text-black/45">{formatDateTime(order.createdAt)}</div>
           <button
             type="button"
-            onClick={() => { setSelectedOrderNumber(order.orderNumber); setActiveTab("detalle"); setModalOpen(true); }}
+            onClick={() => { setSelectedOrderNumber(order.orderNumber); setActiveTab("resumen"); setModalOpen(true); }}
             className="inline-flex items-center gap-1 rounded-[8px] bg-[#1a3a2e] px-2.5 py-1 text-[11px] font-medium text-white transition hover:bg-[#2d6a4f] active:scale-95"
           >
             Ver detalles →
@@ -647,7 +1231,7 @@ export function OrdersWorkspace() {
         <div key={`${order.orderNumber}-customer`} className="space-y-0.5">
           <div className="font-medium text-[#132016]">{order.customerName}</div>
           <div className="text-xs text-black/45">
-            {order.salesChannel === "manual" ? "Canal manual" : "Canal web"} · {order.paymentMethod === "manual" ? "Pago manual" : "Openpay"}
+            {order.salesChannel === "manual" ? "Canal manual" : "Canal web"} · {paymentMethodLabel(order.paymentMethod)}
           </div>
         </div>,
         formatCurrency(order.total),
@@ -710,135 +1294,110 @@ export function OrdersWorkspace() {
               <div>
                 <p className="mb-1.5 text-[11px] text-black/40">Buscar y agregar producto</p>
                 <div className="overflow-hidden rounded-[16px] border border-black/10 bg-[#fbfbf8] p-2.5">
-                  {createItems.length > 0 ? (
-                    <div className="mb-3 rounded-[12px] border border-[#d9e9df] bg-white p-3">
-                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                        <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#2d6a4f]">Seleccionados</p>
-                          <p className="mt-1 text-xs text-black/50">
-                            {createItems.length} producto(s) distintos · {createItemsCount} item(s) en el pedido
-                          </p>
-                        </div>
-                        <div className="rounded-full bg-[#eef7f1] px-3 py-1 text-xs font-semibold text-[#2d6a4f]">
-                          Total S/ {createItemsTotal.toFixed(0)}
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        {createItems.map((item) => (
-                          <div key={item.slug} className="flex items-center gap-3 rounded-[10px] border border-black/10 bg-[#fbfbf8] px-3 py-2 text-sm">
-                            <div className="min-w-0 flex-1">
-                              <div className="truncate font-medium text-[#132016]">{item.name}</div>
-                              <div className="text-xs text-black/45">{item.sku}</div>
-                            </div>
-                            <input type="number" min={1} value={item.quantity}
-                              onChange={(e) => updateItem(item.slug, "quantity", Math.max(1, Number(e.target.value)))}
-                              className="w-14 rounded-[8px] border border-black/15 bg-white px-2 py-1 text-center text-sm"
-                            />
-                            <span className="text-black/45">×</span>
-                            <input type="number" min={0} step={0.5} value={item.unitPrice}
-                              onChange={(e) => updateItem(item.slug, "unitPrice", Number(e.target.value))}
-                              className="w-20 rounded-[8px] border border-black/15 bg-white px-2 py-1 text-right text-sm"
-                            />
-                            <span className="w-16 text-right text-sm font-semibold text-[#132016]">
-                              S/ {(item.unitPrice * item.quantity).toFixed(0)}
-                            </span>
-                            <button type="button" onClick={() => removeItem(item.slug)} className="text-red-400 transition hover:text-red-600">✕</button>
+                  <Combobox<ProductPickerOption>
+                    value={productSearch}
+                    onValueChange={setProductSearch}
+                    onSelect={(option) => {
+                      addItem(option.product);
+                      setProductSearch("");
+                    }}
+                    options={productPickerOptions}
+                    ariaLabel="Buscar productos para el pedido manual"
+                    placeholder="Busca por nombre, SKU o slug"
+                    alwaysOpen
+                    summary={createItems.length > 0 ? (
+                      <div className="rounded-[12px] border border-[#d9e9df] bg-white p-3">
+                        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#2d6a4f]">Seleccionados</p>
+                            <p className="mt-1 text-xs text-black/50">
+                              {createItems.length} producto(s) distintos · {createItemsCount} item(s) en el pedido
+                            </p>
                           </div>
-                        ))}
+                          <div className="rounded-full bg-[#eef7f1] px-3 py-1 text-xs font-semibold text-[#2d6a4f]">
+                            Total S/ {createItemsTotal.toFixed(0)}
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          {createItems.map((item) => (
+                            <div key={item.slug} className="flex items-center gap-3 rounded-[10px] border border-black/10 bg-[#fbfbf8] px-3 py-2 text-sm">
+                              <div className="min-w-0 flex-1">
+                                <div className="truncate font-medium text-[#132016]">{item.name}</div>
+                                <div className="text-xs text-black/45">{item.sku}</div>
+                              </div>
+                              <input type="number" min={1} value={item.quantity}
+                                onChange={(e) => updateItem(item.slug, "quantity", Math.max(1, Number(e.target.value)))}
+                                className="w-14 rounded-[8px] border border-black/15 bg-white px-2 py-1 text-center text-sm"
+                              />
+                              <span className="text-black/45">×</span>
+                              <input type="number" min={0} step={0.5} value={item.unitPrice}
+                                onChange={(e) => updateItem(item.slug, "unitPrice", Number(e.target.value))}
+                                className="w-20 rounded-[8px] border border-black/15 bg-white px-2 py-1 text-right text-sm"
+                              />
+                              <span className="w-16 text-right text-sm font-semibold text-[#132016]">
+                                S/ {(item.unitPrice * item.quantity).toFixed(0)}
+                              </span>
+                              <button type="button" onClick={() => removeItem(item.slug)} className="text-red-400 transition hover:text-red-600">✕</button>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ) : null}
-
-                  <div className="relative">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#6f8679]">
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <circle cx="11" cy="11" r="7" />
-                        <path d="m20 20-3.5-3.5" />
-                      </svg>
-                    </span>
-                    <input
-                      type="text"
-                      value={productSearch}
-                      onChange={(event) => setProductSearch(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" && visibleSelectableProducts[0]) {
-                          event.preventDefault();
-                          addItem(visibleSelectableProducts[0]);
-                        }
-                      }}
-                      placeholder="Busca por nombre, SKU o slug"
-                      className="w-full rounded-[10px] border border-black/10 bg-white pl-9 pr-3 py-2 text-sm outline-none transition focus:border-[#52b788] focus:ring-2 focus:ring-[#52b788]/15"
-                    />
-                  </div>
-
-                  <div className="mt-2 flex items-center justify-between gap-2 px-1 text-[11px] text-black/45">
-                    <span>
-                      {createOptionsLoading
-                        ? "Cargando catálogo..."
-                        : productSearch.trim()
-                          ? `${filteredSelectableProducts.length} resultado(s)`
-                          : `${selectableProducts.length} producto(s) disponibles`}
-                    </span>
-                    {hiddenSelectableProductsCount > 0 ? (
-                      <span>Mostrando {visibleSelectableProducts.length}; sigue escribiendo para refinar</span>
                     ) : null}
-                  </div>
-
-                  <div className="mt-2 overflow-hidden rounded-[12px] border border-black/8 bg-white">
-                    <div className="max-h-56 space-y-1.5 overflow-y-auto p-2 pr-1">
-                    {createOptionsLoading ? (
+                    status={(
+                      <div className="flex items-center justify-between gap-2 px-1 text-[11px] text-black/45">
+                        <span>
+                          {createOptionsLoading
+                            ? "Cargando catálogo..."
+                            : productSearch.trim()
+                              ? `${filteredSelectableProducts.length} resultado(s)`
+                              : `${selectableProducts.length} producto(s) disponibles`}
+                        </span>
+                        {hiddenSelectableProductsCount > 0 ? (
+                          <span>Mostrando {visibleSelectableProducts.length}; sigue escribiendo para refinar</span>
+                        ) : null}
+                      </div>
+                    )}
+                    loading={createOptionsLoading}
+                    loadingState={(
                       <p className="rounded-[10px] border border-dashed border-black/10 bg-white px-3 py-3 text-xs text-black/45">
                         Cargando productos...
                       </p>
-                    ) : null}
-                    {!createOptionsLoading && !selectableProducts.length ? (
+                    )}
+                    emptyState={(
                       <p className="rounded-[10px] border border-dashed border-black/10 bg-white px-3 py-3 text-xs text-black/45">
-                        {createOptionsNotice?.includes("productos")
-                          ? "No pudimos cargar productos."
-                          : "No hay productos disponibles todavía."}
+                        {!selectableProducts.length
+                          ? createOptionsNotice?.includes("productos")
+                            ? "No pudimos cargar productos."
+                            : "No hay productos disponibles todavía."
+                          : "No encontramos coincidencias para esa búsqueda."}
                       </p>
-                    ) : null}
-                    {!createOptionsLoading && selectableProducts.length > 0 && !visibleSelectableProducts.length ? (
-                      <p className="rounded-[10px] border border-dashed border-black/10 bg-white px-3 py-3 text-xs text-black/45">
-                        No encontramos coincidencias para esa búsqueda.
-                      </p>
-                    ) : null}
-                    {visibleSelectableProducts.map((product) => {
-                      const selectedQuantity = selectedQuantityBySlug.get(product.slug) ?? 0;
-
-                      return (
-                        <button
-                          key={product.id}
-                          type="button"
-                          onClick={() => addItem(product)}
-                          className="flex w-full items-center justify-between gap-3 rounded-[10px] border border-black/10 bg-white px-3 py-2.5 text-left text-sm transition hover:border-[#52b788] hover:bg-[#f0faf4]"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate font-medium text-[#132016]">{product.name}</div>
-                            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-black/45">
-                              <span>{product.sku}</span>
-                              <span>{product.categoryName ?? "Sin categoría"}</span>
-                              <span>S/ {product.price}</span>
-                            </div>
+                    )}
+                    renderOption={(option) => (
+                      <>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-medium text-[#132016]">{option.label}</div>
+                          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-black/45">
+                            <span>{option.product.sku}</span>
+                            <span>{option.categoryLabel}</span>
+                            <span>{option.priceLabel}</span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            {selectedQuantity > 0 ? (
-                              <span className="rounded-full bg-[#e8f4ec] px-2 py-1 text-[11px] font-medium text-[#2d6a4f]">
-                                x{selectedQuantity} en pedido
-                              </span>
-                            ) : null}
-                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#eef7f1] text-[#52b788]">
-                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path d="M12 5v14" />
-                                <path d="M5 12h14" />
-                              </svg>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {option.selectedQuantity > 0 ? (
+                            <span className="rounded-full bg-[#e8f4ec] px-2 py-1 text-[11px] font-medium text-[#2d6a4f]">
+                              x{option.selectedQuantity} en pedido
                             </span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                    </div>
-                  </div>
+                          ) : null}
+                          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#eef7f1] text-[#52b788]">
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path d="M12 5v14" />
+                              <path d="M5 12h14" />
+                            </svg>
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  />
                   {createOptionsNotice ? (
                     <p className="mt-2 px-1 text-xs text-amber-700">{createOptionsNotice}</p>
                   ) : null}
@@ -882,29 +1441,147 @@ export function OrdersWorkspace() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-[11px] text-black/50">Distrito / Ciudad *</label>
-                  <input type="text" placeholder="Miraflores"
-                    value={createForm.city}
-                    onChange={(e) => setCreateForm((f) => ({ ...f, city: e.target.value }))}
+                  <label className="mb-1 block text-[11px] text-black/50">Dirección adicional</label>
+                  <input type="text" placeholder="Piso, referencia o interior"
+                    value={createForm.line2}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, line2: e.target.value }))}
                     className="w-full rounded-[10px] border border-black/15 bg-white px-3 py-2 text-sm outline-none focus:border-[#52b788]"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-[11px] text-black/50">Vendedor (opcional)</label>
+                  <label className="mb-1 block text-[11px] text-black/50">Departamento *</label>
                   <select
-                    value={createForm.vendorCode}
-                    onChange={(e) => setCreateForm((f) => ({ ...f, vendorCode: e.target.value }))}
+                    value={createForm.departmentCode}
+                    onChange={(event) => handleCreateDepartmentChange(event.target.value)}
                     className="w-full rounded-[10px] border border-black/15 bg-white px-3 py-2 text-sm outline-none focus:border-[#52b788]"
                   >
-                    <option value="">Sin vendedor asociado</option>
-                    {availableVendors
-                      .filter((vendor) => vendor.status === "active")
-                      .map((vendor) => (
-                        <option key={vendor.code} value={vendor.code}>
-                          {vendor.code} · {vendor.name}
-                        </option>
-                      ))}
+                    <option value="">Selecciona un departamento</option>
+                    {createDepartments.map((department) => (
+                      <option key={department.code} value={department.code}>
+                        {department.name}
+                      </option>
+                    ))}
                   </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] text-black/50">Provincia *</label>
+                  <select
+                    value={createForm.provinceCode}
+                    onChange={(event) => handleCreateProvinceChange(event.target.value)}
+                    disabled={!createForm.departmentCode}
+                    className="w-full rounded-[10px] border border-black/15 bg-white px-3 py-2 text-sm outline-none focus:border-[#52b788] disabled:cursor-not-allowed disabled:bg-black/5"
+                  >
+                    <option value="">Selecciona una provincia</option>
+                    {createProvinces.map((province) => (
+                      <option key={province.code} value={province.code}>
+                        {province.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] text-black/50">Distrito *</label>
+                  <select
+                    value={createForm.districtCode}
+                    onChange={(event) => handleCreateDistrictChange(event.target.value)}
+                    disabled={!createForm.provinceCode}
+                    className="w-full rounded-[10px] border border-black/15 bg-white px-3 py-2 text-sm outline-none focus:border-[#52b788] disabled:cursor-not-allowed disabled:bg-black/5"
+                  >
+                    <option value="">Selecciona un distrito</option>
+                    {createDistricts.map((district) => (
+                      <option key={district.code} value={district.code}>
+                        {district.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="mb-1 block text-[11px] text-black/50">Vendedor (opcional)</label>
+                  <Combobox<VendorPickerOption>
+                    value={vendorSearch}
+                    onValueChange={setVendorSearch}
+                    onSelect={(option) => {
+                      setCreateForm((current) => ({ ...current, vendorCode: option.vendor.code }));
+                      setVendorSearch("");
+                    }}
+                    options={vendorPickerOptions}
+                    ariaLabel="Buscar vendedor para el pedido manual"
+                    placeholder="Busca por código, nombre, ciudad o email"
+                    alwaysOpen
+                    summary={selectedVendor ? (
+                      <div className="rounded-[12px] border border-[#d9e9df] bg-[#f8fcf9] px-3 py-3">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#2d6a4f]">Vendedor asociado</p>
+                            <p className="mt-1 text-sm font-medium text-[#132016]">
+                              {selectedVendor.code} · {selectedVendor.name}
+                            </p>
+                            <p className="mt-1 text-xs text-black/50">
+                              {selectedVendor.city ?? "Sin ciudad"}{selectedVendor.email ? ` · ${selectedVendor.email}` : ""}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setCreateForm((current) => ({ ...current, vendorCode: "" }))}
+                            className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-[#132016] transition hover:border-[#52b788] hover:bg-[#f5fbf7]"
+                          >
+                            Quitar
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                    status={(
+                      <div className="flex items-center justify-between gap-2 px-1 text-[11px] text-black/45">
+                        <span>
+                          {createOptionsLoading
+                            ? "Cargando vendedores..."
+                            : vendorSearch.trim()
+                              ? `${filteredSelectableVendors.length} resultado(s)`
+                              : `${selectableVendors.length} vendedor(es) activo(s)`}
+                        </span>
+                        {hiddenSelectableVendorsCount > 0 ? (
+                          <span>Mostrando {visibleSelectableVendors.length}; sigue escribiendo para refinar</span>
+                        ) : null}
+                      </div>
+                    )}
+                    loading={createOptionsLoading}
+                    loadingState={(
+                      <p className="rounded-[10px] border border-dashed border-black/10 bg-white px-3 py-3 text-xs text-black/45">
+                        Cargando vendedores...
+                      </p>
+                    )}
+                    emptyState={(
+                      <p className="rounded-[10px] border border-dashed border-black/10 bg-white px-3 py-3 text-xs text-black/45">
+                        {!selectableVendors.length
+                          ? createOptionsNotice?.includes("vendedores")
+                            ? "No pudimos cargar vendedores."
+                            : "No hay vendedores activos para asociar."
+                          : "No encontramos coincidencias para esa búsqueda."}
+                      </p>
+                    )}
+                    renderOption={(option) => (
+                      <>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-medium text-[#132016]">{option.vendor.name}</div>
+                          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-black/45">
+                            <span>{option.vendor.code}</span>
+                            <span>{option.vendor.city ?? "Sin ciudad"}</span>
+                            {option.vendor.email ? <span>{option.vendor.email}</span> : null}
+                          </div>
+                        </div>
+                        {createForm.vendorCode === option.vendor.code ? (
+                          <span className="rounded-full bg-[#e8f4ec] px-2 py-1 text-[11px] font-medium text-[#2d6a4f]">
+                            Seleccionado
+                          </span>
+                        ) : null}
+                      </>
+                    )}
+                  />
+                </div>
+                <div className="md:col-span-2 rounded-[12px] border border-dashed border-black/10 bg-[#f7f5ef] px-3 py-3 text-xs text-black/55">
+                  {createForm.districtName
+                    ? `Destino normalizado: ${createForm.districtName}, ${createForm.provinceName}, ${createForm.departmentName}`
+                    : "Selecciona el ubigeo de Perú para que el motor de origen pueda sugerir el almacén correcto."}
                 </div>
               </div>
             </div>
@@ -958,262 +1635,542 @@ export function OrdersWorkspace() {
 
       {/* Modal de detalle */}
       <Dialog open={modalOpen} onClose={() => { setApproveConfirmOpen(false); setActionNotice(null); setModalOpen(false); }} size="xl">
-        <DialogContent>
+        <DialogContent className="overflow-hidden">
           <DialogHeader>
             <DialogTitle>
               {detailLoading ? "Cargando..." : selectedSummary ? `${selectedSummary.orderNumber} · ${selectedSummary.customerName}` : "Detalle del pedido"}
             </DialogTitle>
-            <div className="mt-3 flex gap-1 border-b border-black/10">
-              {(["detalle", "timeline"] as const).map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setActiveTab(tab)}
-                  className={`rounded-t-xl px-4 py-2 text-sm font-medium transition ${
-                    activeTab === tab
-                      ? "border-b-2 border-[#132016] text-[#132016]"
-                      : "text-black/50 hover:text-black/70"
-                  }`}
-                >
-                  {tab === "detalle" ? "Detalle" : `Timeline${activeOrder?.statusHistory?.length ? ` (${activeOrder.statusHistory.length})` : ""}`}
-                </button>
-              ))}
-            </div>
+            <DialogDescription className="mt-2 text-sm text-black/55">
+              Revisa contexto comercial, logística y acciones operativas sin salir del listado.
+            </DialogDescription>
           </DialogHeader>
 
-          <DialogBody>
+          <DialogBody className="max-h-[78vh] overflow-y-auto">
             {detailLoading ? (
               <p className="text-sm text-black/55">Cargando detalle del pedido...</p>
-            ) : activeOrder && activeTab === "detalle" ? (
+            ) : activeOrder ? (
               <div className="space-y-4">
-                {/* Resumen de badges */}
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex flex-wrap gap-2">
-                    <StatusBadge tone={orderTone(activeOrder.orderStatus)} label={orderStatusLabel(activeOrder.orderStatus)} />
-                    <StatusBadge tone={paymentTone(activeOrder.paymentStatus)} label={paymentStatusLabel(activeOrder.paymentStatus)} />
-                    {activeOrder.manualStatus && (
-                      <StatusBadge tone={manualTone(activeOrder.manualStatus)} label={manualStatusLabel(activeOrder.manualStatus)} />
-                    )}
-                    {selectedOrderStage && (
-                      <StatusBadge tone={stageTone(selectedOrderStage)} label={formatStageLabel(selectedOrderStage)} />
-                    )}
-                  </div>
-                  <span className="text-lg font-semibold text-[#132016]">{formatCurrency(activeOrder.total)}</span>
-                </div>
-
-                {/* Cliente + Envío */}
-                <div className="grid gap-3 md:grid-cols-2">
-                  <DetailBlock label="Cliente">
-                    <p className="font-medium text-[#132016]">{activeOrder.customer.firstName} {activeOrder.customer.lastName}</p>
-                    <p className="text-sm text-black/60">{activeOrder.customer.email}</p>
-                    <p className="text-sm text-black/60">{activeOrder.customer.phone}</p>
-                    {activeOrder.customer.documentNumber ? (
-                      <p className="text-sm text-black/60">{documentTypeLabel(activeOrder.customer.documentType)}: {activeOrder.customer.documentNumber}</p>
-                    ) : null}
-                  </DetailBlock>
-                  <DetailBlock label="Envío">
-                    <p className="font-medium text-[#132016]">{activeOrder.address.recipientName}</p>
-                    <p className="text-sm text-black/60">{activeOrder.address.line1}</p>
-                    {activeOrder.address.line2 ? <p className="text-sm text-black/60">{activeOrder.address.line2}</p> : null}
-                    <p className="text-sm text-black/60">{activeOrder.address.city}, {activeOrder.address.region}</p>
-                    <p className="text-sm text-black/60">{activeOrder.address.countryCode}</p>
-                    {activeOrder.address.deliveryMode === "province_shalom_pickup" ? (
-                      <>
-                        <p className="text-sm text-black/60">Modalidad: Provincia por Shalom</p>
-                        <p className="text-sm text-black/60">Sucursal: {activeOrder.address.agencyName ?? "Sin sucursal registrada"}</p>
-                        <p className="text-sm text-black/60">Flete: pago al recoger</p>
-                      </>
-                    ) : null}
-                  </DetailBlock>
-                </div>
-
-                {/* Items */}
-                <DetailBlock label={`Items · ${activeOrder.items.length}`}>
-                  <div className="space-y-2">
-                    {activeOrder.items.map((item) => (
-                      <div key={item.slug} className="flex items-center justify-between gap-4">
-                        <div>
-                          <p className="font-medium text-[#132016]">{item.name}</p>
-                          <p className="text-xs text-black/50">{item.sku} · x{item.quantity}</p>
-                        </div>
-                        <p className="text-sm font-semibold text-[#132016]">{formatCurrency(item.lineTotal)}</p>
+                <div className="rounded-[1.25rem] border border-black/10 bg-[#f7f5ef] p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        <StatusBadge tone={orderTone(activeOrder.orderStatus)} label={orderStatusLabel(activeOrder.orderStatus)} />
+                        <StatusBadge tone={paymentTone(activeOrder.paymentStatus)} label={paymentStatusLabel(activeOrder.paymentStatus)} />
+                        {activeOrder.manualStatus ? (
+                          <StatusBadge tone={manualTone(activeOrder.manualStatus)} label={manualStatusLabel(activeOrder.manualStatus)} />
+                        ) : null}
+                        {selectedOrderStage ? (
+                          <StatusBadge tone={stageTone(selectedOrderStage)} label={formatStageLabel(selectedOrderStage)} />
+                        ) : null}
                       </div>
-                    ))}
-                  </div>
-                </DetailBlock>
-
-                {/* Totales */}
-                <div className="space-y-2 rounded-[1.25rem] border border-black/10 bg-white p-4 text-sm text-[#132016]">
-                  <div className="flex justify-between"><span className="text-black/55">Subtotal</span><span>{formatCurrency(activeOrder.subtotal)}</span></div>
-                  {activeOrder.discount > 0 && (
-                    <div className="flex justify-between"><span className="text-black/55">Descuento</span><span>-{formatCurrency(activeOrder.discount)}</span></div>
-                  )}
-                  <div className="flex justify-between"><span className="text-black/55">Envío</span><span>{formatCurrency(activeOrder.shipping)}</span></div>
-                  <Separator />
-                  <div className="flex justify-between font-semibold"><span>Total</span><span>{formatCurrency(activeOrder.total)}</span></div>
-                </div>
-
-                {/* Pago + referencia */}
-                <div className="grid gap-3 md:grid-cols-4 text-sm">
-                  <SummaryTile label="Proveedor" value={activeOrder.payment.provider === "manual" ? "Pago manual" : "Openpay"} />
-                  <SummaryTile label="Canal" value={activeOrder.salesChannel === "manual" ? "Manual" : "Web"} />
-                  <SummaryTile label="Referencia" value={activeOrder.providerReference ?? "—"} />
-                  <SummaryTile label="Vendedor" value={activeOrder.vendorName ? `${activeOrder.vendorName}${activeOrder.vendorCode ? ` (${activeOrder.vendorCode})` : ""}` : activeOrder.vendorCode ?? "—"} />
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-4 text-sm">
-                  <SummaryTile label="Estado operativo" value={orderStatusLabel(activeOrder.orderStatus)} />
-                  <SummaryTile label="Etapa CRM" value={formatStageLabel(activeOrder.crmStage)} />
-                  <SummaryTile label="Seguimiento" value={crmFollowUpLabel(activeOrder.crmStage)} />
-                  <SummaryTile label="Venta confirmada" value={activeOrder.confirmedAt ? formatDateTime(activeOrder.confirmedAt) : "Pendiente"} />
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-2">
-                  <DetailBlock label="Transición operativa">
-                    <div className="space-y-3">
-                      <select
-                        value={nextOrderStatus}
-                        onChange={(event) => setNextOrderStatus(event.target.value as OrderStatus | "")}
-                        className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm text-[#132016]"
-                        disabled={!availableStatuses.length || !!actionLoading}
+                      {dispatchLabelBlockReason ? (
+                        <p className="text-xs text-black/45">{dispatchLabelBlockReason}</p>
+                      ) : null}
+                      {!canAccessDispatchModule ? (
+                        <p className="text-xs text-black/45">
+                          Tu sesión no tiene permisos para generar stickers operativos de despacho.
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={handleOpenDispatchLabel}
+                        disabled={!canOpenDispatchLabel}
                       >
-                        {availableStatuses.length ? null : <option value="">Sin transición disponible</option>}
-                        {availableStatuses.map((status) => (
-                          <option key={status} value={status}>
-                            {orderStatusLabel(status)}
-                          </option>
-                        ))}
-                      </select>
-                      <textarea
-                        value={transitionNote}
-                        onChange={(event) => setTransitionNote(event.target.value)}
-                        rows={3}
-                        className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-[#132016]"
-                        placeholder="Nota operativa"
-                      />
-                      <Button onClick={() => void handleTransitionStatus()} disabled={!nextOrderStatus || !!actionLoading}>
-                        {actionLoading === "transition" ? "Actualizando..." : "Aplicar transición"}
+                        {dispatchLabelActionText(activeOrder)}
                       </Button>
+                      <span className="text-lg font-semibold text-[#132016]">{formatCurrency(activeOrder.total)}</span>
                     </div>
-                  </DetailBlock>
-
-                  <DetailBlock label="Pago manual directo">
-                    <div className="space-y-3">
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        value={manualPaymentAmount}
-                        onChange={(event) => setManualPaymentAmount(event.target.value)}
-                        className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm text-[#132016]"
-                        placeholder="Monto"
-                      />
-                      <input
-                        type="text"
-                        value={manualPaymentReference}
-                        onChange={(event) => setManualPaymentReference(event.target.value)}
-                        className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm text-[#132016]"
-                        placeholder="Referencia u operación"
-                      />
-                      <textarea
-                        value={manualPaymentNotes}
-                        onChange={(event) => setManualPaymentNotes(event.target.value)}
-                        rows={3}
-                        className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-[#132016]"
-                        placeholder="Notas del registro manual"
-                      />
-                      <Button onClick={() => void handleRegisterManualPayment()} disabled={!canRegisterManualPayment || !!actionLoading}>
-                        {actionLoading === "manual_payment" ? "Registrando..." : "Registrar pago manual"}
-                      </Button>
-                      {!canRegisterManualPayment ? (
-                        <p className="text-xs text-black/45">
-                          Disponible sólo para pedidos impagos sin solicitud manual en revisión.
-                        </p>
-                      ) : null}
-                    </div>
-                  </DetailBlock>
+                  </div>
                 </div>
 
-                {activeOrder.paymentMethod === "openpay" ? (
-                  <DetailBlock label="Conciliación pago online">
-                    <div className="space-y-3">
-                      <p className="text-sm text-black/55">
-                        Usa esta acción cuando el pedido web ya tiene validación operativa del cobro online y falta consolidar venta, stock y reportes.
-                      </p>
-                      <Button onClick={() => void handleConfirmOnlinePayment()} disabled={!canConfirmOnlinePayment || !!actionLoading}>
-                        {actionLoading === "online_payment" ? "Confirmando..." : "Confirmar pago online"}
-                      </Button>
-                      {!canConfirmOnlinePayment ? (
-                        <p className="text-xs text-black/45">
-                          Disponible sólo para pedidos `openpay` aún no conciliados como pagados.
-                        </p>
-                      ) : null}
+                <div className="grid gap-2 rounded-[1.25rem] border border-black/10 bg-[#f7f5ef] p-2 md:grid-cols-2 xl:grid-cols-4">
+                  {ORDER_DETAIL_TABS.map((tab) => {
+                    const isActive = tab.value === activeTab;
+
+                    return (
+                      <button
+                        key={tab.value}
+                        type="button"
+                        onClick={() => setActiveTab(tab.value)}
+                        className={`rounded-[1rem] px-4 py-3 text-left transition ${
+                          isActive
+                            ? "bg-[#61a740] text-white shadow-soft"
+                            : "text-black/55 hover:bg-white/70 hover:text-[#132016]"
+                        }`}
+                      >
+                        <div className="text-sm font-semibold">
+                          {tab.value === "timeline" && activeOrder.statusHistory.length
+                            ? `${tab.label} (${activeOrder.statusHistory.length})`
+                            : tab.label}
+                        </div>
+                        <div className={`mt-1 text-xs ${isActive ? "text-white/85" : ""}`}>{tab.description}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {activeTab === "resumen" ? (
+                  <div className="space-y-4">
+                    <div className="grid gap-3 md:grid-cols-4 text-sm">
+                      <SummaryTile label="Proveedor" value={paymentMethodLabel(activeOrder.payment.provider)} />
+                      <SummaryTile label="Canal" value={activeOrder.salesChannel === "manual" ? "Manual" : "Web"} />
+                      <SummaryTile label="Referencia" value={activeOrder.providerReference ?? "—"} />
+                      <SummaryTile
+                        label="Vendedor"
+                        value={
+                          activeOrder.vendorName
+                            ? `${activeOrder.vendorName}${activeOrder.vendorCode ? ` (${activeOrder.vendorCode})` : ""}`
+                            : activeOrder.vendorCode ?? "Sin vendedor asociado"
+                        }
+                      />
                     </div>
-                  </DetailBlock>
+
+                    <div className="grid gap-3 md:grid-cols-4 text-sm">
+                      <SummaryTile label="Estado operativo" value={orderStatusLabel(activeOrder.orderStatus)} />
+                      <SummaryTile label="Etapa CRM" value={formatStageLabel(activeOrder.crmStage)} />
+                      <SummaryTile label="Seguimiento" value={crmFollowUpLabel(activeOrder.crmStage)} />
+                      <SummaryTile label="Venta confirmada" value={activeOrder.confirmedAt ? formatDateTime(activeOrder.confirmedAt) : "Pendiente"} />
+                    </div>
+
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <DetailBlock label="Cliente">
+                        <p className="font-medium text-[#132016]">{activeOrder.customer.firstName} {activeOrder.customer.lastName}</p>
+                        <p className="text-sm text-black/60">{activeOrder.customer.email}</p>
+                        <p className="text-sm text-black/60">{activeOrder.customer.phone}</p>
+                        {activeOrder.customer.documentNumber ? (
+                          <p className="text-sm text-black/60">{documentTypeLabel(activeOrder.customer.documentType)}: {activeOrder.customer.documentNumber}</p>
+                        ) : null}
+                      </DetailBlock>
+                      <DetailBlock label="Envío">
+                        <p className="font-medium text-[#132016]">{activeOrder.address.recipientName}</p>
+                        <p className="text-sm text-black/60">{activeOrder.address.line1}</p>
+                        {activeOrder.address.line2 ? <p className="text-sm text-black/60">{activeOrder.address.line2}</p> : null}
+                        <p className="text-sm text-black/60">{activeOrder.address.city}, {activeOrder.address.region}</p>
+                        {activeOrder.address.districtName || activeOrder.address.provinceName || activeOrder.address.departmentName ? (
+                          <p className="text-sm text-black/60">
+                            {[activeOrder.address.districtName, activeOrder.address.provinceName, activeOrder.address.departmentName].filter(Boolean).join(", ")}
+                          </p>
+                        ) : null}
+                        <p className="text-sm text-black/60">{activeOrder.address.countryCode}</p>
+                        {activeOrder.address.deliveryMode === "province_shalom_pickup" ? (
+                          <>
+                            <p className="text-sm text-black/60">Modalidad: Provincia por Shalom</p>
+                            <p className="text-sm text-black/60">Sucursal: {activeOrder.address.agencyName ?? "Sin sucursal registrada"}</p>
+                            <p className="text-sm text-black/60">Flete: pago al recoger</p>
+                          </>
+                        ) : null}
+                      </DetailBlock>
+                    </div>
+
+                    <div className="grid gap-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
+                      <DetailBlock label={`Items · ${activeOrder.items.length}`}>
+                        <div className="space-y-2">
+                          {activeOrder.items.map((item) => (
+                            <div key={item.slug} className="flex items-center justify-between gap-4">
+                              <div>
+                                <p className="font-medium text-[#132016]">{item.name}</p>
+                                <p className="text-xs text-black/50">{item.sku} · x{item.quantity}</p>
+                              </div>
+                              <p className="text-sm font-semibold text-[#132016]">{formatCurrency(item.lineTotal)}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </DetailBlock>
+
+                      <div className="space-y-2 rounded-[1.25rem] border border-black/10 bg-white p-4 text-sm text-[#132016]">
+                        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-black/40">Totales</div>
+                        <div className="flex justify-between"><span className="text-black/55">Subtotal</span><span>{formatCurrency(activeOrder.subtotal)}</span></div>
+                        {activeOrder.discount > 0 ? (
+                          <div className="flex justify-between"><span className="text-black/55">Descuento</span><span>-{formatCurrency(activeOrder.discount)}</span></div>
+                        ) : null}
+                        <div className="flex justify-between"><span className="text-black/55">Envío</span><span>{formatCurrency(activeOrder.shipping)}</span></div>
+                        <Separator />
+                        <div className="flex justify-between font-semibold"><span>Total</span><span>{formatCurrency(activeOrder.total)}</span></div>
+                      </div>
+                    </div>
+                  </div>
                 ) : null}
 
-                {/* Solicitud manual con comprobante */}
-                {activeOrder.manualRequest ? (
-                  <div className="space-y-3 rounded-[1.25rem] border border-amber-200 bg-amber-50 p-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-semibold text-amber-950">Solicitud manual</p>
-                      <StatusBadge tone={manualTone(activeOrder.manualRequest.status)} label={manualStatusLabel(activeOrder.manualRequest.status)} />
+                {activeTab === "despacho" ? (
+                  <div className="space-y-4">
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <DetailBlock label="Origen confirmado">
+                        {activeOrder.fulfillmentAssignment ? (
+                          <div className="space-y-2">
+                            <p className="font-medium text-[#132016]">{activeOrder.fulfillmentAssignment.warehouseName}</p>
+                            <p className="text-sm text-black/60">
+                              {fulfillmentStrategyLabel(activeOrder.fulfillmentAssignment.strategy)} · {formatDateTime(activeOrder.fulfillmentAssignment.assignedAt)}
+                            </p>
+                            <p className="text-xs text-black/45">
+                              {activeOrder.fulfillmentAssignment.districtNameSnapshot ?? activeOrder.fulfillmentAssignment.districtCodeSnapshot},{" "}
+                              {activeOrder.fulfillmentAssignment.provinceNameSnapshot ?? activeOrder.fulfillmentAssignment.provinceCodeSnapshot}
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-black/55">Todavía no hay un origen confirmado para este pedido.</p>
+                        )}
+                      </DetailBlock>
+
+                      <DetailBlock label="Origen sugerido">
+                        {activeOrder.fulfillmentSuggestion ? (
+                          <div className="space-y-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <StatusBadge
+                                tone={activeOrder.fulfillmentSuggestion.status === "suggested" ? "info" : "warning"}
+                                label={activeOrder.fulfillmentSuggestion.status === "suggested" ? "Sugerido" : "Revisión operativa"}
+                              />
+                              {activeOrder.fulfillmentSuggestion.strategy ? (
+                                <Badge tone="neutral">{fulfillmentStrategyLabel(activeOrder.fulfillmentSuggestion.strategy)}</Badge>
+                              ) : null}
+                            </div>
+
+                            {activeOrder.fulfillmentSuggestion.warehouseName ? (
+                              <p className="font-medium text-[#132016]">{activeOrder.fulfillmentSuggestion.warehouseName}</p>
+                            ) : null}
+
+                            <p className="text-sm text-black/60">{activeOrder.fulfillmentSuggestion.reason}</p>
+
+                            {activeOrder.fulfillmentSuggestion.missingLines?.length ? (
+                              <div className="rounded-[12px] border border-amber-200 bg-amber-50 px-3 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">Líneas bloqueadas</p>
+                                <div className="mt-2 space-y-1 text-sm text-amber-900">
+                                  {activeOrder.fulfillmentSuggestion.missingLines.map((line) => (
+                                    <p key={`${line.warehouseId}-${line.variantId}`}>
+                                      {line.sku} · disponible {line.availableQuantity} / solicitado {line.requestedQuantity}
+                                    </p>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : null}
+
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-black/45">
+                              <span>{formatDateTime(activeOrder.fulfillmentSuggestion.suggestedAt)}</span>
+                              <span>{activeOrder.fulfillmentSuggestion.candidateCount} candidato(s)</span>
+                              {activeOrder.fulfillmentSuggestion.coverageScope ? (
+                                <span>Cobertura por {coverageScopeLabel(activeOrder.fulfillmentSuggestion.coverageScope)}</span>
+                              ) : null}
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                onClick={() => void handleSuggestFulfillment()}
+                                disabled={!!actionLoading}
+                              >
+                                {actionLoading === "suggest_fulfillment" ? "Recalculando..." : "Recalcular sugerencia"}
+                              </Button>
+                              <Button
+                                type="button"
+                                onClick={() => void handleAssignSuggestedFulfillment()}
+                                disabled={!canAssignSuggestedFulfillment || !!actionLoading}
+                              >
+                                {actionLoading === "assign_fulfillment" ? "Confirmando..." : activeOrder.fulfillmentAssignment ? "Reasignar origen sugerido" : "Confirmar origen sugerido"}
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <p className="text-sm text-black/55">Todavía no existe una sugerencia persistida para este pedido.</p>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              onClick={() => void handleSuggestFulfillment()}
+                              disabled={!!actionLoading}
+                            >
+                              {actionLoading === "suggest_fulfillment" ? "Calculando..." : "Calcular sugerencia"}
+                            </Button>
+                          </div>
+                        )}
+                      </DetailBlock>
                     </div>
 
-                    {activeOrder.manualRequest.evidenceImageUrl ? (
-                      <div className="space-y-2">
-                        <div className="overflow-hidden rounded-[10px] border border-amber-200 bg-white">
-                          <img
-                            src={activeOrder.manualRequest.evidenceImageUrl}
-                            alt="Comprobante de pago"
-                            className="max-h-64 w-full object-contain"
-                          />
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <DetailBlock label="Entrega">
+                        <p className="font-medium text-[#132016]">{activeOrder.address.recipientName}</p>
+                        <p className="text-sm text-black/60">{activeOrder.address.line1}</p>
+                        {activeOrder.address.line2 ? <p className="text-sm text-black/60">{activeOrder.address.line2}</p> : null}
+                        <p className="text-sm text-black/60">
+                          {[activeOrder.address.districtName, activeOrder.address.provinceName, activeOrder.address.departmentName].filter(Boolean).join(", ") || `${activeOrder.address.city}, ${activeOrder.address.region}`}
+                        </p>
+                        <p className="text-sm text-black/60">Modo: {activeOrder.address.deliveryMode === "province_shalom_pickup" ? "Provincia por Shalom" : "Despacho estándar"}</p>
+                      </DetailBlock>
+
+                      <DetailBlock label="Sticker operativo">
+                        <div className="space-y-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <StatusBadge tone={canOpenDispatchLabel ? "success" : "warning"} label={canOpenDispatchLabel ? "Listo para imprimir" : "Bloqueado"} />
+                            {activeOrder.dispatchLabel?.available ? <Badge tone="neutral">Caja</Badge> : null}
+                          </div>
+                          <p className="text-sm text-black/60">
+                            {dispatchLabelBlockReason ?? "El sticker de caja ya está habilitado para preparar o despachar este pedido."}
+                          </p>
+                          <p className="text-xs text-black/45">Documento operativo. No reemplaza la guía de remisión cuando aplique.</p>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={handleOpenDispatchLabel}
+                            disabled={!canOpenDispatchLabel}
+                          >
+                            {dispatchLabelActionText(activeOrder)}
+                          </Button>
                         </div>
-                        <a
-                          href={activeOrder.manualRequest.evidenceImageUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-block text-xs text-amber-800 underline underline-offset-2 hover:text-amber-950"
-                        >
-                          Ver imagen completa →
-                        </a>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-amber-950/70">
-                        Referencia: {activeOrder.manualRequest.evidenceReference ?? "Sin comprobante"}
-                      </p>
-                    )}
+                      </DetailBlock>
+                    </div>
+                  </div>
+                ) : null}
 
-                    {activeOrder.manualRequest.evidenceNotes ? (
-                      <p className="text-sm text-amber-950/70">{activeOrder.manualRequest.evidenceNotes}</p>
-                    ) : null}
+                {activeTab === "operacion" ? (
+                  <div className="space-y-4">
+                    <div className="grid gap-3 md:grid-cols-4 text-sm">
+                      <SummaryTile label="Estado operativo" value={orderStatusLabel(activeOrder.orderStatus)} />
+                      <SummaryTile label="Etapa CRM" value={formatStageLabel(activeOrder.crmStage)} />
+                      <SummaryTile label="Seguimiento" value={crmFollowUpLabel(activeOrder.crmStage)} />
+                      <SummaryTile label="Venta confirmada" value={activeOrder.confirmedAt ? formatDateTime(activeOrder.confirmedAt) : "Pendiente"} />
+                    </div>
 
-                    {activeOrder.manualRequest.reviewer ? (
-                      <p className="text-xs text-amber-900/60">
-                        Revisado por {activeOrder.manualRequest.reviewer} · {activeOrder.manualRequest.reviewedAt}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-amber-900/60">Pendiente de decisión.</p>
-                    )}
+                    <OperationGuideCard guide={paymentOperationGuide} />
+                    <CommercialTraceCard order={activeOrder} />
 
-                    {activeOrder.manualRequest.status === "approved" && activeOrder.customer.email ? (
-                      <div className="flex flex-wrap items-center gap-2 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => { void handleResendApprovalEmail(); }}
-                          disabled={!!actionLoading}
-                          className="rounded-[9px] border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-900 transition hover:bg-amber-100 disabled:opacity-40"
-                        >
-                          {actionLoading === "resend" ? "Reenviando email..." : "Reenviar email al cliente"}
-                        </button>
-                        <span className="text-xs text-amber-900/60">{activeOrder.customer.email}</span>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <DetailBlock label="Vendedor asociado">
+                        <div className="space-y-3">
+                          <p className="text-sm text-black/60">
+                            {activeOrder.vendorName ? `${activeOrder.vendorName}${activeOrder.vendorCode ? ` (${activeOrder.vendorCode})` : ""}` : "Sin vendedor asociado"}
+                          </p>
+                          <select
+                            value={vendorDraftCode}
+                            onChange={(event) => setVendorDraftCode(event.target.value)}
+                            disabled={vendorOptionsLoading || actionLoading === "vendor"}
+                            className="w-full rounded-[10px] border border-black/15 bg-white px-3 py-2 text-sm outline-none focus:border-[#52b788] disabled:cursor-not-allowed disabled:bg-black/[0.03]"
+                          >
+                            <option value="">Sin vendedor asociado</option>
+                            {availableVendors
+                              .filter((vendor) => vendor.status === "active")
+                              .map((vendor) => (
+                                <option key={vendor.code} value={vendor.code}>
+                                  {vendor.code} · {vendor.name}
+                                </option>
+                              ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => void handleSaveVendor()}
+                            disabled={!vendorAssignmentDirty || vendorOptionsLoading || actionLoading === "vendor"}
+                            className="rounded-[9px] border border-[#2d6a4f]/20 px-3 py-1.5 text-xs font-medium text-[#2d6a4f] transition hover:bg-[#eef7f1] disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            {actionLoading === "vendor" ? "Guardando..." : "Guardar vendedor"}
+                          </button>
+                        </div>
+                      </DetailBlock>
+
+                      <DetailBlock label="Transición operativa">
+                        <div className="space-y-3">
+                          <select
+                            value={nextOrderStatus}
+                            onChange={(event) => setNextOrderStatus(event.target.value as OrderStatus | "")}
+                            className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm text-[#132016]"
+                            disabled={!availableStatuses.length || !!actionLoading}
+                          >
+                            {availableStatuses.length ? null : <option value="">Sin transición disponible</option>}
+                            {availableStatuses.map((status) => (
+                              <option key={status} value={status}>
+                                {orderStatusLabel(status)}
+                              </option>
+                            ))}
+                          </select>
+                          <textarea
+                            value={transitionNote}
+                            onChange={(event) => setTransitionNote(event.target.value)}
+                            rows={3}
+                            className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-[#132016]"
+                            placeholder="Nota operativa"
+                          />
+                          <Button onClick={() => void handleTransitionStatus()} disabled={!nextOrderStatus || !!actionLoading}>
+                            {actionLoading === "transition" ? "Actualizando..." : "Aplicar transición"}
+                          </Button>
+                        </div>
+                      </DetailBlock>
+                    </div>
+
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <DetailBlock label="Registro manual directo">
+                        <div className="space-y-3">
+                          <p className="text-sm text-black/55">
+                            Ruta válida solo para pedidos con método <span className="font-medium text-[#132016]">pago manual</span> y sin solicitud de comprobante activa.
+                          </p>
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={manualPaymentAmount}
+                            onChange={(event) => setManualPaymentAmount(event.target.value)}
+                            className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm text-[#132016]"
+                            placeholder="Monto"
+                          />
+                          <input
+                            type="text"
+                            value={manualPaymentReference}
+                            onChange={(event) => setManualPaymentReference(event.target.value)}
+                            className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm text-[#132016]"
+                            placeholder="Referencia u operación"
+                          />
+                          <textarea
+                            value={manualPaymentNotes}
+                            onChange={(event) => setManualPaymentNotes(event.target.value)}
+                            rows={3}
+                            className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-[#132016]"
+                            placeholder="Notas del registro manual"
+                          />
+                          <Button onClick={() => void handleRegisterManualPayment()} disabled={!canRegisterManualPayment || !!actionLoading}>
+                            {actionLoading === "manual_payment" ? "Registrando..." : "Registrar pago manual"}
+                          </Button>
+                          {!canRegisterManualPayment ? (
+                            <p className="text-xs text-black/45">
+                              Disponible solo para pedidos `manual` impagos sin solicitud manual asociada.
+                            </p>
+                          ) : null}
+                        </div>
+                      </DetailBlock>
+
+                      {activeOrder.paymentMethod === "openpay" ? (
+                        <DetailBlock label="Conciliación Openpay desde backoffice">
+                          <div className="space-y-3">
+                            <p className="text-sm text-black/55">
+                              Usa esta acción cuando el pedido web ya tiene validación operativa del cobro online y falta consolidar venta, stock y reportes.
+                            </p>
+                            <input
+                              type="text"
+                              value={onlinePaymentReference}
+                              onChange={(event) => setOnlinePaymentReference(event.target.value)}
+                              className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm text-[#132016]"
+                              placeholder="Referencia del cobro Openpay"
+                            />
+                            <textarea
+                              value={onlinePaymentNotes}
+                              onChange={(event) => setOnlinePaymentNotes(event.target.value)}
+                              rows={3}
+                              className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-[#132016]"
+                              placeholder="Nota operativa de conciliación"
+                            />
+                            <Button onClick={() => void handleConfirmOnlinePayment()} disabled={!canConfirmOnlinePayment || !!actionLoading}>
+                              {actionLoading === "online_payment" ? "Confirmando..." : "Confirmar pago online"}
+                            </Button>
+                            {!canConfirmOnlinePayment ? (
+                              <p className="text-xs text-black/45">
+                                Disponible sólo para pedidos `openpay` aún no conciliados como pagados.
+                              </p>
+                            ) : null}
+                          </div>
+                        </DetailBlock>
+                      ) : (
+                        <DetailBlock label="Pago online">
+                          <p className="text-sm text-black/55">Este pedido no usa conciliación Openpay directa.</p>
+                        </DetailBlock>
+                      )}
+                    </div>
+
+                    {activeOrder.manualRequest ? (
+                      <div className="space-y-3 rounded-[1.25rem] border border-amber-200 bg-amber-50 p-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-semibold text-amber-950">Solicitud con comprobante</p>
+                          <StatusBadge tone={manualTone(activeOrder.manualRequest.status)} label={manualStatusLabel(activeOrder.manualRequest.status)} />
+                        </div>
+
+                        {activeOrder.manualRequest.evidenceImageUrl ? (
+                          <div className="space-y-2">
+                            <div className="overflow-hidden rounded-[10px] border border-amber-200 bg-white">
+                              <img
+                                src={activeOrder.manualRequest.evidenceImageUrl}
+                                alt="Comprobante de pago"
+                                className="max-h-64 w-full object-contain"
+                              />
+                            </div>
+                            <a
+                              href={activeOrder.manualRequest.evidenceImageUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-block text-xs text-amber-800 underline underline-offset-2 hover:text-amber-950"
+                            >
+                              Ver imagen completa →
+                            </a>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-amber-950/70">
+                            Referencia: {activeOrder.manualRequest.evidenceReference ?? "Sin comprobante"}
+                          </p>
+                        )}
+
+                        {activeOrder.manualRequest.evidenceNotes ? (
+                          <p className="text-sm text-amber-950/70">{activeOrder.manualRequest.evidenceNotes}</p>
+                        ) : null}
+
+                        {activeOrder.manualRequest.notes ? (
+                          <div className="rounded-[10px] border border-amber-200 bg-white/80 px-3 py-3">
+                            <p className="text-xs uppercase tracking-[0.18em] text-amber-900/60">Nota operativa registrada</p>
+                            <p className="mt-2 text-sm text-amber-950/75">{activeOrder.manualRequest.notes}</p>
+                          </div>
+                        ) : null}
+
+                        {activeOrder.manualRequest.reviewer ? (
+                          <p className="text-xs text-amber-900/60">
+                            Revisado por {activeOrder.manualRequest.reviewer} · {activeOrder.manualRequest.reviewedAt ? formatDateTime(activeOrder.manualRequest.reviewedAt) : "sin fecha"}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-amber-900/60">Pendiente de decisión.</p>
+                        )}
+
+                        {activeOrder.manualRequest.status === "under_review" || activeOrder.manualRequest.status === "submitted" ? (
+                          <div className="rounded-[10px] border border-amber-300 bg-white/85 px-3 py-3">
+                            <p className="text-sm font-medium text-amber-950">Impacto de la decisión</p>
+                            <p className="mt-1 text-sm leading-6 text-amber-950/75">
+                              Aprobar confirma el pedido, consolida inventario y deja la venta lista para seguimiento. Rechazar cierra la solicitud y cancela el pedido con auditoría.
+                            </p>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <Button
+                                variant="secondary"
+                                onClick={() => void handleReject()}
+                                disabled={!!actionLoading}
+                                className="border-red-200 text-red-700 hover:bg-red-50"
+                              >
+                                {actionLoading === "reject" ? "Rechazando..." : "Rechazar solicitud"}
+                              </Button>
+                              <Button
+                                onClick={openApproveConfirm}
+                                disabled={!!actionLoading}
+                                className="bg-[#1a3a2e] text-white hover:bg-[#2d6a4f]"
+                              >
+                                {actionLoading === "approve" ? "Aprobando..." : "Aprobar comprobante"}
+                              </Button>
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {activeOrder.manualRequest.status === "approved" && activeOrder.customer.email ? (
+                          <div className="flex flex-wrap items-center gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => { void handleResendApprovalEmail(); }}
+                              disabled={!!actionLoading}
+                              className="rounded-[9px] border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-900 transition hover:bg-amber-100 disabled:opacity-40"
+                            >
+                              {actionLoading === "resend" ? "Reenviando email..." : "Reenviar email al cliente"}
+                            </button>
+                            <span className="text-xs text-amber-900/60">{activeOrder.customer.email}</span>
+                          </div>
+                        ) : null}
                       </div>
                     ) : null}
                   </div>
+                ) : null}
+
+                {activeTab === "timeline" ? (
+                  <TimelinePedido items={activeOrder.statusHistory} />
                 ) : null}
               </div>
-            ) : activeOrder && activeTab === "timeline" ? (
-              <TimelinePedido items={activeOrder.statusHistory} />
             ) : detailError ? (
               <p className="text-sm text-red-600">{detailError}</p>
             ) : (
@@ -1226,6 +2183,16 @@ export function OrdersWorkspace() {
               {actionError && <p className="text-sm text-red-600">{actionError}</p>}
               {actionNotice && <p className="text-sm text-[#2d6a4f]">{actionNotice}</p>}
             </div>
+            {canAccessDispatchModule ? (
+              <button
+                type="button"
+                onClick={handleOpenDispatchLabel}
+                disabled={!canOpenDispatchLabel}
+                className="rounded-[9px] border border-[#2d6a4f]/20 px-3 py-1.5 text-xs font-medium text-[#2d6a4f] transition hover:bg-[#eef7f1] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {dispatchLabelActionText(activeOrder)}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => { setDeleteConfirmText(""); setDeleteConfirmOpen(true); }}
@@ -1234,34 +2201,7 @@ export function OrdersWorkspace() {
             >
               Eliminar pedido
             </button>
-            {activeOrder?.manualRequest?.status === "under_review" ? (
-              <>
-                <Button
-                  variant="secondary"
-                  onClick={() => { setApproveConfirmOpen(false); setActionNotice(null); setModalOpen(false); }}
-                  disabled={!!actionLoading}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={handleReject}
-                  disabled={!!actionLoading}
-                  className="border-red-200 text-red-700 hover:bg-red-50"
-                >
-                  {actionLoading === "reject" ? "Rechazando..." : "Rechazar"}
-                </Button>
-                <Button
-                  onClick={openApproveConfirm}
-                  disabled={!!actionLoading}
-                  className="bg-[#1a3a2e] text-white hover:bg-[#2d6a4f]"
-                >
-                  {actionLoading === "approve" ? "Aprobando..." : "Aprobar pago ✓"}
-                </Button>
-              </>
-            ) : (
-              <Button variant="secondary" onClick={() => { setApproveConfirmOpen(false); setActionNotice(null); setModalOpen(false); }}>Cerrar</Button>
-            )}
+            <Button variant="secondary" onClick={() => { setApproveConfirmOpen(false); setActionNotice(null); setModalOpen(false); }}>Cerrar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1375,6 +2315,100 @@ function DetailBlock({ label, children }: { label: string; children: ReactNode }
     <div className="rounded-[1.25rem] border border-black/10 bg-white p-4">
       <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-black/40">{label}</p>
       <div className="space-y-0.5">{children}</div>
+    </div>
+  );
+}
+
+function OperationGuideCard({ guide }: { guide: PaymentOperationGuide }) {
+  return (
+    <div className="rounded-[1.25rem] border border-black/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(244,247,241,0.96)_100%)] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-black/40">Ruta de conciliación activa</p>
+          <h3 className="text-lg font-semibold text-[#132016]">{guide.title}</h3>
+        </div>
+        <Badge tone={guide.tone}>{guide.title}</Badge>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <div className="rounded-[1rem] border border-black/8 bg-white/85 px-3 py-3">
+          <p className="text-xs uppercase tracking-[0.16em] text-black/40">Lectura</p>
+          <p className="mt-2 text-sm leading-6 text-black/62">{guide.description}</p>
+        </div>
+        <div className="rounded-[1rem] border border-black/8 bg-white/85 px-3 py-3">
+          <p className="text-xs uppercase tracking-[0.16em] text-black/40">Impacto</p>
+          <p className="mt-2 text-sm leading-6 text-black/62">{guide.impact}</p>
+        </div>
+        <div className="rounded-[1rem] border border-black/8 bg-white/85 px-3 py-3">
+          <p className="text-xs uppercase tracking-[0.16em] text-black/40">Siguiente paso</p>
+          <p className="mt-2 text-sm leading-6 text-black/62">{guide.nextStep}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CommercialTraceCard({ order }: { order: AdminOrderDetail }) {
+  const trace = order.commercialTrace;
+  const evidenceReference = trace?.evidenceReference ?? order.manualRequest?.evidenceReference ?? order.manualEvidenceReference;
+  const evidenceNotes = trace?.evidenceNotes ?? order.manualRequest?.evidenceNotes ?? order.manualEvidenceNotes;
+  const evidenceImageUrl = trace?.evidenceImageUrl ?? order.manualRequest?.evidenceImageUrl ?? order.evidenceImageUrl;
+  const traceDate = trace?.occurredAt ?? order.confirmedAt;
+  const actorLabel = trace?.actor ?? (trace?.status === "pending" ? "Pendiente de resolución" : "Sin actor registrado");
+  const noteLabel =
+    trace?.note ??
+    (trace?.status === "pending"
+      ? "Todavía no hay una nota operativa definitiva para esta ruta."
+      : "No se registró una nota operativa adicional.");
+
+  return (
+    <div className="rounded-[1.25rem] border border-black/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.99)_0%,rgba(246,248,242,0.96)_100%)] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-black/40">Trazabilidad comercial canónica</p>
+          <h3 className="text-lg font-semibold text-[#132016]">{commercialTraceRouteLabel(trace?.route)}</h3>
+        </div>
+        <StatusBadge tone={commercialTraceTone(trace?.status)} label={commercialTraceStatusLabel(trace?.status)} />
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4 text-sm">
+        <SummaryTile label="Ruta" value={commercialTraceRouteLabel(trace?.route)} />
+        <SummaryTile label="Actor" value={actorLabel} />
+        <SummaryTile label="Referencia" value={trace?.reference ?? order.providerReference ?? "—"} />
+        <SummaryTile
+          label={trace?.status === "confirmed" ? "Confirmación" : trace?.status === "rejected" ? "Cierre" : "Último hito"}
+          value={traceDate ? formatDateTime(traceDate) : "Pendiente"}
+        />
+      </div>
+
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
+        <div className="rounded-[1rem] border border-black/8 bg-white/85 px-4 py-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-black/40">Nota operativa</p>
+          <p className="mt-2 text-sm leading-6 text-black/62">{noteLabel}</p>
+          <div className="mt-3 flex flex-wrap gap-3 text-xs text-black/45">
+            <span>Pago: {paymentMethodLabel(order.payment.provider)}</span>
+            <span>Actualizado: {formatDateTime(order.payment.updatedAt)}</span>
+            {order.confirmedAt ? <span>Venta confirmada: {formatDateTime(order.confirmedAt)}</span> : null}
+          </div>
+        </div>
+
+        <div className="rounded-[1rem] border border-black/8 bg-white/85 px-4 py-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-black/40">Evidencia y respaldo</p>
+          <div className="mt-2 space-y-2 text-sm text-black/62">
+            <p>Comprobante: {evidenceReference ?? "Sin comprobante adjunto"}</p>
+            <p>Detalle: {evidenceNotes ?? "Sin nota de respaldo adicional"}</p>
+            {evidenceImageUrl ? (
+              <a
+                href={evidenceImageUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block text-xs font-medium text-[#2d6a4f] underline underline-offset-2 hover:text-[#1a3a2e]"
+              >
+                Ver evidencia completa →
+              </a>
+            ) : null}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -22,6 +22,8 @@ import {
   OrdersModule,
   PaymentsModule,
   ProductsModule,
+  TransfersModule,
+  WarehousesModule,
   SecurityModule,
   VendorsModule,
   WholesaleModule
@@ -35,6 +37,8 @@ import {
     ObservabilityModule,
     MediaModule,
     ProductsModule,
+    TransfersModule,
+    WarehousesModule,
     CatalogModule,
     CmsModule,
     CoreModule,

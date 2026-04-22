@@ -31,11 +31,11 @@ export function PublicPageHero({
   return (
     <section className="grid gap-8 xl:grid-cols-[1.05fr_0.95fr]">
       <div className="relative overflow-hidden rounded-[2rem] border border-black/6 bg-[linear-gradient(180deg,rgba(250,248,243,0.98)_0%,rgba(245,242,232,0.93)_100%)] px-6 py-7 shadow-[0_18px_44px_rgba(26,58,46,0.04)] md:px-10 md:py-10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(201,168,76,0.12),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(82,183,136,0.12),transparent_32%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(201,168,76,0.12),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(97,167,64,0.12),transparent_32%)]" />
         <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(26,58,46,0.12),transparent)]" />
         <div className="relative space-y-7">
           <div className="space-y-5">
-            <Badge className="rounded-full bg-[#1a3a2e] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-white shadow-none">
+            <Badge className="rounded-full bg-[#577e2f] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-white shadow-none">
               {eyebrow}
             </Badge>
             <div className="space-y-4">
@@ -139,7 +139,7 @@ export function PublicInfoCard({
       className={cn(
         "rounded-[1.85rem] border-black/6",
         dark
-          ? "bg-[linear-gradient(180deg,rgba(26,58,46,1)_0%,rgba(45,106,79,0.96)_100%)] text-white shadow-[0_18px_52px_rgba(26,58,46,0.18)]"
+          ? "bg-[linear-gradient(180deg,rgba(26,58,46,1)_0%,rgba(97,167,64,0.96)_100%)] text-white shadow-[0_18px_52px_rgba(26,58,46,0.18)]"
           : "bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(245,248,245,0.96)_100%)]"
       )}
     >
@@ -178,7 +178,7 @@ export function PublicChecklist({
           <span
             className={cn(
               "mt-1 h-2 w-2 rounded-full",
-              dark ? "bg-[#d8f3dc]" : "bg-[#2d6a4f]"
+              dark ? "bg-[#eef6e8]" : "bg-[#61a740]"
             )}
           />
           <span>{item}</span>

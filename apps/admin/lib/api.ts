@@ -1,8 +1,13 @@
 import type {
   AuthCredentialsInput,
+  AdminReportFiltersInput,
+  AdminDispatchLabelPrintInput,
+  AdminDispatchLabelSummary,
+  AdminDispatchOrderSummary,
   AdminManualPaymentCreateInput,
   AdminRoleDashboardSummary,
   AdminOrderStatusTransitionInput,
+  AdminOrderVendorAssignmentInput,
   AdminVendorCreateInput,
   AdminVendorUpdateInput,
   AuthSessionSummary,
@@ -29,6 +34,9 @@ import type {
   CouponInput,
   CouponSummary,
   CustomerDetail,
+  CustomerIdentityConflictSummary,
+  CustomerConflictResolveInput,
+  CustomerMergeInput,
   CustomerSummary,
   CustomerUpsertInput,
   LoyaltyMovementSummary,
@@ -49,12 +57,34 @@ import type {
   NotificationSummary,
   AdminManualPaymentRequestSummary,
   InventoryReportEnvelope,
+  InventoryStockAdjustmentEnvelope,
+  InventoryStockAdjustmentInput,
+  OrderFulfillmentActionEnvelope,
+  OrderFulfillmentAssignmentInput,
+  AdminOrderVendorOption,
   ProductAdminDetail,
   ProductAdminSummary,
   ProductCategorySummary,
   ProductImageUploadInput,
   ProductImageUploadSummary,
   ProductUpsertInput,
+  PeruDepartmentSummary,
+  PeruDistrictSummary,
+  PeruProvinceSummary,
+  WarehouseActionEnvelope,
+  WarehouseTransferActionEnvelope,
+  WarehouseTransferCancelInput,
+  WarehouseTransferCreateInput,
+  WarehouseTransferDispatchInput,
+  WarehouseTransferGuideInput,
+  WarehouseTransferEnvelope,
+  WarehouseTransferPackageSnapshotInput,
+  WarehouseTransferReconcileInput,
+  WarehouseTransferReceiveInput,
+  WarehouseTransferStickerInput,
+  WarehouseTransfersEnvelope,
+  WarehouseUpsertInput,
+  WarehousesEnvelope,
   ObservabilityOverviewEnvelope,
   ObservabilityOverviewSummary,
   AdminOrderDetail,
@@ -185,10 +215,22 @@ export async function fetchDashboardOverview() {
   return requestJson<DashboardOverviewEnvelope>("/admin/dashboard/overview");
 }
 
-export async function fetchAdminReport(from?: string, to?: string) {
+function appendAdminReportFilters(params: URLSearchParams, filters?: AdminReportFiltersInput) {
+  if (!filters) {
+    return;
+  }
+
+  if (filters.salesChannel) params.set("salesChannel", filters.salesChannel);
+  if (filters.vendorCode) params.set("vendorCode", filters.vendorCode);
+  if (filters.productSlug) params.set("productSlug", filters.productSlug);
+  if (filters.sku) params.set("sku", filters.sku);
+}
+
+export async function fetchAdminReport(from?: string, to?: string, filters?: AdminReportFiltersInput) {
   const params = new URLSearchParams();
   if (from) params.set("from", from);
   if (to) params.set("to", to);
+  appendAdminReportFilters(params, filters);
   const query = params.toString();
   return requestJson<AdminReportEnvelope>(`/admin/reports${query ? `?${query}` : ""}`);
 }
@@ -219,8 +261,9 @@ export async function deleteCoupon(code: string) {
   });
 }
 
-export async function downloadAdminReportCsv(from: string, to: string): Promise<void> {
+export async function downloadAdminReportCsv(from: string, to: string, filters?: AdminReportFiltersInput): Promise<void> {
   const params = new URLSearchParams({ from, to });
+  appendAdminReportFilters(params, filters);
   const url = `${getApiBaseUrl()}/admin/reports/export?${params.toString()}`;
   const headers = getSessionHeaders();
   const res = await fetch(url, { headers });
@@ -248,6 +291,48 @@ export async function fetchOrder(orderNumber: string) {
   return requestJson<OrderEnvelope>(`/admin/orders/${encodeURIComponent(orderNumber)}`);
 }
 
+export async function fetchOrderVendorOptions() {
+  return requestJson<OrderVendorOptionsEnvelope>("/admin/orders/vendor-options");
+}
+
+export async function suggestOrderFulfillment(orderNumber: string) {
+  return requestJson<OrderFulfillmentActionEnvelope>(`/admin/orders/${encodeURIComponent(orderNumber)}/fulfillment/suggest`, {
+    method: "POST"
+  });
+}
+
+export async function assignOrderFulfillment(orderNumber: string, body: OrderFulfillmentAssignmentInput) {
+  return requestJson<OrderFulfillmentActionEnvelope>(`/admin/orders/${encodeURIComponent(orderNumber)}/fulfillment`, {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function updateOrderVendor(orderNumber: string, body: AdminOrderVendorAssignmentInput) {
+  return requestJson<{ status: string; message: string; orderNumber: string; order: AdminOrderSummary }>(
+    `/admin/orders/${encodeURIComponent(orderNumber)}/vendor`,
+    {
+      method: "POST",
+      body: JSON.stringify(body)
+    }
+  );
+}
+
+export async function fetchDispatchLabel(orderNumber: string) {
+  return requestJson<DispatchLabelEnvelope>(`/admin/orders/${encodeURIComponent(orderNumber)}/dispatch-label`);
+}
+
+export async function recordDispatchLabelPrint(orderNumber: string, body: AdminDispatchLabelPrintInput) {
+  return requestJson<OrderNotificationActionEnvelope>(`/admin/orders/${encodeURIComponent(orderNumber)}/dispatch-label/print`, {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function fetchDispatchOrders() {
+  return requestJson<DispatchOrdersEnvelope>("/admin/dispatch/orders");
+}
+
 export async function resendOrderApprovalEmail(orderNumber: string) {
   return requestJson<OrderNotificationActionEnvelope>(`/admin/orders/${encodeURIComponent(orderNumber)}/resend-approval-email`, {
     method: "POST"
@@ -256,7 +341,19 @@ export async function resendOrderApprovalEmail(orderNumber: string) {
 
 export async function createBackofficeOrder(body: {
   customer: { firstName: string; lastName: string; email: string; phone: string };
-  address: { line1: string; city: string; region?: string };
+  address: {
+    line1: string;
+    line2?: string;
+    city?: string;
+    region?: string;
+    countryCode?: string;
+    departmentCode?: string;
+    departmentName?: string;
+    provinceCode?: string;
+    provinceName?: string;
+    districtCode?: string;
+    districtName?: string;
+  };
   items: Array<{ slug: string; name: string; sku: string; variantId?: string; quantity: number; unitPrice: number }>;
   initialStatus: "paid" | "pending_payment";
   notes?: string;
@@ -374,6 +471,10 @@ export async function fetchCustomers() {
   return requestJson<CustomersEnvelope>("/admin/customers");
 }
 
+export async function fetchCustomerConflicts() {
+  return requestJson<CustomerConflictsEnvelope>("/admin/customers/conflicts");
+}
+
 export async function fetchCustomer(id: string) {
   return requestJson<CustomerEnvelope>(`/admin/customers/${encodeURIComponent(id)}`);
 }
@@ -395,6 +496,20 @@ export async function updateCustomer(id: string, body: CustomerUpsertInput) {
 export async function deleteCustomer(id: string) {
   return requestJson<CustomerActionEnvelope>(`/admin/customers/${encodeURIComponent(id)}`, {
     method: "DELETE"
+  });
+}
+
+export async function resolveCustomerConflict(id: string, body: CustomerConflictResolveInput) {
+  return requestJson<CustomerActionEnvelope>(`/admin/customers/conflicts/${encodeURIComponent(id)}/resolve`, {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function mergeCustomers(body: CustomerMergeInput) {
+  return requestJson<CustomerEnvelope>("/admin/customers/merge", {
+    method: "POST",
+    body: JSON.stringify(body)
   });
 }
 
@@ -473,6 +588,12 @@ export async function uploadCmsHeaderLogo(file: File) {
   const formData = new FormData();
   formData.append("file", file);
   return requestFormData<CmsActionEnvelope>("/admin/cms/site-settings/logo", formData);
+}
+
+export async function uploadCmsAdminSidebarLogo(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return requestFormData<CmsActionEnvelope>("/admin/cms/site-settings/admin-sidebar-logo", formData);
 }
 
 export async function uploadCmsHeroProductImage(file: File) {
@@ -611,6 +732,125 @@ export async function fetchAdminProductCategories() {
 
 export async function fetchInventoryReport() {
   return requestJson<InventoryReportEnvelope>("/admin/inventory/report");
+}
+
+export async function adjustInventoryStock(body: InventoryStockAdjustmentInput) {
+  return requestJson<InventoryStockAdjustmentEnvelope>("/admin/inventory/stock-adjustments", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function fetchAdminWarehouses() {
+  return requestJson<WarehousesEnvelope>("/admin/warehouses", {
+    cache: "no-store"
+  });
+}
+
+export async function fetchAdminTransfers() {
+  return requestJson<WarehouseTransfersEnvelope>("/admin/transfers", {
+    cache: "no-store"
+  });
+}
+
+export async function fetchAdminTransfer(id: string) {
+  return requestJson<WarehouseTransferEnvelope>(`/admin/transfers/${encodeURIComponent(id)}`, {
+    cache: "no-store"
+  });
+}
+
+export async function createAdminTransfer(body: WarehouseTransferCreateInput) {
+  return requestJson<WarehouseTransferActionEnvelope>("/admin/transfers", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function dispatchAdminTransfer(id: string, body: WarehouseTransferDispatchInput = {}) {
+  return requestJson<WarehouseTransferActionEnvelope>(`/admin/transfers/${encodeURIComponent(id)}/dispatch`, {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function receiveAdminTransfer(id: string, body: WarehouseTransferReceiveInput = {}) {
+  return requestJson<WarehouseTransferActionEnvelope>(`/admin/transfers/${encodeURIComponent(id)}/receive`, {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function cancelAdminTransfer(id: string, body: WarehouseTransferCancelInput = {}) {
+  return requestJson<WarehouseTransferActionEnvelope>(`/admin/transfers/${encodeURIComponent(id)}/cancel`, {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function reconcileAdminTransfer(id: string, body: WarehouseTransferReconcileInput = {}) {
+  return requestJson<WarehouseTransferActionEnvelope>(`/admin/transfers/${encodeURIComponent(id)}/reconcile`, {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function createAdminTransferPackageSnapshot(id: string, body: WarehouseTransferPackageSnapshotInput = {}) {
+  return requestJson<WarehouseTransferActionEnvelope>(`/admin/transfers/${encodeURIComponent(id)}/package-snapshot`, {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function createAdminTransferGre(id: string, body: WarehouseTransferGuideInput = {}) {
+  return requestJson<WarehouseTransferActionEnvelope>(`/admin/transfers/${encodeURIComponent(id)}/gre`, {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function createAdminTransferSticker(id: string, body: WarehouseTransferStickerInput = {}) {
+  return requestJson<WarehouseTransferActionEnvelope>(`/admin/transfers/${encodeURIComponent(id)}/sticker`, {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function fetchPeruDepartments() {
+  return requestJson<PeruDepartmentsEnvelope>("/store/checkout/ubigeo/departments", {
+    cache: "no-store"
+  });
+}
+
+export async function fetchPeruProvinces(departmentCode: string) {
+  return requestJson<PeruProvincesEnvelope>(`/store/checkout/ubigeo/provinces/${encodeURIComponent(departmentCode)}`, {
+    cache: "no-store"
+  });
+}
+
+export async function fetchPeruDistricts(provinceCode: string) {
+  return requestJson<PeruDistrictsEnvelope>(`/store/checkout/ubigeo/districts/${encodeURIComponent(provinceCode)}`, {
+    cache: "no-store"
+  });
+}
+
+export async function createAdminWarehouse(body: WarehouseUpsertInput) {
+  return requestJson<WarehouseActionEnvelope>("/admin/warehouses", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function updateAdminWarehouse(id: string, body: Partial<WarehouseUpsertInput>) {
+  return requestJson<WarehouseActionEnvelope>(`/admin/warehouses/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function deleteAdminWarehouse(id: string) {
+  return requestJson<WarehouseActionEnvelope>(`/admin/warehouses/${encodeURIComponent(id)}`, {
+    method: "DELETE"
+  });
 }
 
 export async function createAdminProduct(body: ProductUpsertInput) {
@@ -791,6 +1031,24 @@ export type OrderEnvelope = {
   meta?: Record<string, unknown>;
 };
 
+export type OrderVendorOptionsEnvelope = {
+  data: AdminOrderVendorOption[];
+  meta?: {
+    total?: number;
+    active?: number;
+  };
+};
+
+export type DispatchLabelEnvelope = {
+  data: AdminDispatchLabelSummary;
+  meta?: Record<string, unknown>;
+};
+
+export type DispatchOrdersEnvelope = {
+  data: AdminDispatchOrderSummary[];
+  meta?: Record<string, unknown>;
+};
+
 export type PaymentsEnvelope = {
   data: AdminPaymentSummary[];
   meta?: Record<string, unknown>;
@@ -848,6 +1106,11 @@ export type VendorCodesEnvelope = {
 
 export type CustomersEnvelope = {
   data: CustomerSummary[];
+  meta?: Record<string, unknown>;
+};
+
+export type CustomerConflictsEnvelope = {
+  data: CustomerIdentityConflictSummary[];
   meta?: Record<string, unknown>;
 };
 
@@ -1091,5 +1354,20 @@ export type AdminProductActionEnvelope = {
 
 export type ProductImageUploadEnvelope = {
   data: ProductImageUploadSummary;
+  meta?: Record<string, unknown>;
+};
+
+export type PeruDepartmentsEnvelope = {
+  data: PeruDepartmentSummary[];
+  meta?: Record<string, unknown>;
+};
+
+export type PeruProvincesEnvelope = {
+  data: PeruProvinceSummary[];
+  meta?: Record<string, unknown>;
+};
+
+export type PeruDistrictsEnvelope = {
+  data: PeruDistrictSummary[];
   meta?: Record<string, unknown>;
 };

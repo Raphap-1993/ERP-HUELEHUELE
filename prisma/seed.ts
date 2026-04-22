@@ -25,6 +25,173 @@ function hashSeedPassword(email: string, password: string) {
   return `scrypt:${salt}:${hash}`;
 }
 
+async function ensureOperationalWarehouse(input: {
+  code: string;
+  name: string;
+  priority: number;
+  addressLine1: string;
+  reference: string;
+  departmentCode: string;
+  departmentName: string;
+  provinceCode: string;
+  provinceName: string;
+  districtCode: string;
+  districtName: string;
+}) {
+  const existing = await prisma.warehouse.findUnique({
+    where: { code: input.code }
+  });
+
+  if (existing) {
+    return prisma.warehouse.update({
+      where: { id: existing.id },
+      data: {
+        name: input.name,
+        status: LifecycleStatus.active,
+        priority: input.priority,
+        countryCode: "PE",
+        addressLine1: input.addressLine1,
+        reference: input.reference,
+        departmentCode: input.departmentCode,
+        departmentName: input.departmentName,
+        provinceCode: input.provinceCode,
+        provinceName: input.provinceName,
+        districtCode: input.districtCode,
+        districtName: input.districtName
+      }
+    });
+  }
+
+  return prisma.warehouse.create({
+    data: {
+      code: input.code,
+      name: input.name,
+      status: LifecycleStatus.active,
+      priority: input.priority,
+      countryCode: "PE",
+      addressLine1: input.addressLine1,
+      reference: input.reference,
+      departmentCode: input.departmentCode,
+      departmentName: input.departmentName,
+      provinceCode: input.provinceCode,
+      provinceName: input.provinceName,
+      districtCode: input.districtCode,
+      districtName: input.districtName
+    }
+  });
+}
+
+async function ensureOperationalWarehouses() {
+  const legacyDefault = await prisma.warehouse.findUnique({
+    where: { code: "WH-DEFAULT" }
+  });
+
+  const primary = await (async () => {
+    const existingPrimary = await prisma.warehouse.findUnique({
+      where: { code: "WH-LIMA-CENTRAL" }
+    });
+
+    if (!existingPrimary && legacyDefault) {
+      return prisma.warehouse.update({
+        where: { id: legacyDefault.id },
+        data: {
+          code: "WH-LIMA-CENTRAL",
+          name: "Lima Central",
+          status: LifecycleStatus.active,
+          priority: 0,
+          countryCode: "PE",
+          addressLine1: "Av. Argentina 415, Cercado de Lima",
+          reference: "Nodo principal para catálogo demo y despacho urbano.",
+          departmentCode: "15",
+          departmentName: "Lima",
+          provinceCode: "1501",
+          provinceName: "Lima",
+          districtCode: "150101",
+          districtName: "Lima"
+        }
+      });
+    }
+
+    return ensureOperationalWarehouse({
+      code: "WH-LIMA-CENTRAL",
+      name: "Lima Central",
+      priority: 0,
+      addressLine1: "Av. Argentina 415, Cercado de Lima",
+      reference: "Nodo principal para catálogo demo y despacho urbano.",
+      departmentCode: "15",
+      departmentName: "Lima",
+      provinceCode: "1501",
+      provinceName: "Lima",
+      districtCode: "150101",
+      districtName: "Lima"
+    });
+  })();
+
+  const secondary = await ensureOperationalWarehouse({
+    code: "WH-AREQUIPA-SUR",
+    name: "Arequipa Sur",
+    priority: 1,
+    addressLine1: "Av. Porongoche 510, José Luis Bustamante y Rivero",
+    reference: "Nodo secundario para cobertura regional y rebalanceo demo.",
+    departmentCode: "04",
+    departmentName: "Arequipa",
+    provinceCode: "0401",
+    provinceName: "Arequipa",
+    districtCode: "040129",
+    districtName: "José Luis Bustamante y Rivero"
+  });
+
+  return {
+    primary,
+    secondary
+  };
+}
+
+function splitStockAcrossWarehouses(stockOnHand: number) {
+  const normalizedStock = Math.max(0, Math.trunc(stockOnHand));
+  const primaryStock = Math.ceil(normalizedStock / 2);
+  return {
+    primaryStock,
+    secondaryStock: Math.max(0, normalizedStock - primaryStock)
+  };
+}
+
+function inferVariantAttributes(productSlug: string) {
+  if (productSlug === "clasico-verde") {
+    return {
+      flavorCode: "verde-herbal",
+      flavorLabel: "Verde Herbal",
+      presentationCode: "unitario",
+      presentationLabel: "Unitario"
+    };
+  }
+
+  if (productSlug === "premium-negro") {
+    return {
+      flavorCode: "negro-intenso",
+      flavorLabel: "Negro Intenso",
+      presentationCode: "unitario",
+      presentationLabel: "Unitario"
+    };
+  }
+
+  if (productSlug === "combo-duo-perfecto") {
+    return {
+      flavorCode: "duo",
+      flavorLabel: "Dúo",
+      presentationCode: "combo",
+      presentationLabel: "Combo"
+    };
+  }
+
+  return {
+    flavorCode: null,
+    flavorLabel: null,
+    presentationCode: null,
+    presentationLabel: null
+  };
+}
+
 async function seedSiteSettings() {
   await prisma.siteSetting.upsert({
     where: { key: "brand" },
@@ -235,6 +402,8 @@ async function seedOperationalUsers() {
 }
 
 async function seedCatalog() {
+  const { primary: defaultWarehouse, secondary: secondaryWarehouse } = await ensureOperationalWarehouses();
+
   for (const category of localDemoCategories) {
     await prisma.category.upsert({
       where: { slug: category.slug },
@@ -246,6 +415,8 @@ async function seedCatalog() {
   const seededProducts = new Map<string, { id: string; variantId: string }>();
 
   for (const product of localDemoProducts) {
+    const isBundle = (product.bundleComponents?.length ?? 0) > 0;
+    const variantAttributes = inferVariantAttributes(product.slug);
     const category = await prisma.category.findUnique({
       where: { slug: product.categorySlug }
     });
@@ -261,6 +432,7 @@ async function seedCatalog() {
         shortDescription: product.shortDescription,
         longDescription: product.longDescription,
         categoryId: category.id,
+        productKind: isBundle ? "bundle" : "single",
         status: "active",
         isFeatured: true
       },
@@ -270,6 +442,7 @@ async function seedCatalog() {
         shortDescription: product.shortDescription,
         longDescription: product.longDescription,
         categoryId: category.id,
+        productKind: isBundle ? "bundle" : "single",
         status: "active",
         isFeatured: true
       }
@@ -281,9 +454,14 @@ async function seedCatalog() {
         name: product.name,
         price: new Prisma.Decimal(product.price),
         compareAtPrice: product.compareAtPrice != null ? new Prisma.Decimal(product.compareAtPrice) : null,
-        stockOnHand: 120,
+        stockOnHand: isBundle ? 0 : 120,
         status: "active",
-        productId: record.id
+        productId: record.id,
+        defaultWarehouseId: isBundle ? null : defaultWarehouse.id,
+        flavorCode: variantAttributes.flavorCode,
+        flavorLabel: variantAttributes.flavorLabel,
+        presentationCode: variantAttributes.presentationCode,
+        presentationLabel: variantAttributes.presentationLabel
       },
       create: {
         productId: record.id,
@@ -291,10 +469,61 @@ async function seedCatalog() {
         name: product.name,
         price: new Prisma.Decimal(product.price),
         compareAtPrice: product.compareAtPrice != null ? new Prisma.Decimal(product.compareAtPrice) : null,
-        stockOnHand: 120,
-        status: "active"
+        stockOnHand: isBundle ? 0 : 120,
+        status: "active",
+        defaultWarehouseId: isBundle ? null : defaultWarehouse.id,
+        flavorCode: variantAttributes.flavorCode,
+        flavorLabel: variantAttributes.flavorLabel,
+        presentationCode: variantAttributes.presentationCode,
+        presentationLabel: variantAttributes.presentationLabel
       }
     });
+
+    if (isBundle) {
+      await prisma.warehouseInventoryBalance.deleteMany({
+        where: { variantId: variant.id }
+      });
+    } else {
+      const stockSplit = splitStockAcrossWarehouses(120);
+
+      await prisma.warehouseInventoryBalance.upsert({
+        where: {
+          warehouseId_variantId: {
+            warehouseId: defaultWarehouse.id,
+            variantId: variant.id
+          }
+        },
+        update: {
+          stockOnHand: stockSplit.primaryStock
+        },
+        create: {
+          warehouseId: defaultWarehouse.id,
+          variantId: variant.id,
+          stockOnHand: stockSplit.primaryStock,
+          reservedQuantity: 0,
+          committedQuantity: 0
+        }
+      });
+
+      await prisma.warehouseInventoryBalance.upsert({
+        where: {
+          warehouseId_variantId: {
+            warehouseId: secondaryWarehouse.id,
+            variantId: variant.id
+          }
+        },
+        update: {
+          stockOnHand: stockSplit.secondaryStock
+        },
+        create: {
+          warehouseId: secondaryWarehouse.id,
+          variantId: variant.id,
+          stockOnHand: stockSplit.secondaryStock,
+          reservedQuantity: 0,
+          committedQuantity: 0
+        }
+      });
+    }
 
     await prisma.productImage.deleteMany({
       where: { productId: record.id }

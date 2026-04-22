@@ -16,6 +16,9 @@ interface YapePaymentModalProps {
 
 type UploadState = "idle" | "uploading" | "done" | "error";
 
+const MAX_EVIDENCE_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+const SUPPORTED_EVIDENCE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
+
 export function YapePaymentModal({ open, walletNumber, walletType, walletOwnerName, total, onConfirm, onClose }: YapePaymentModalProps) {
   const [copied, setCopied] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -32,7 +35,28 @@ export function YapePaymentModal({ open, walletNumber, walletType, walletOwnerNa
     });
   }
 
+  function validateFile(selected: File) {
+    if (!SUPPORTED_EVIDENCE_TYPES.has(selected.type)) {
+      return "Formato no soportado. Usa JPG, PNG, WebP o AVIF.";
+    }
+
+    if (selected.size > MAX_EVIDENCE_FILE_SIZE_BYTES) {
+      return "El comprobante supera el máximo de 5 MB. Súbelo más liviano o vuelve a exportarlo.";
+    }
+
+    return null;
+  }
+
   function applyFile(selected: File) {
+    const validationError = validateFile(selected);
+    if (validationError) {
+      setFile(null);
+      setPreview(null);
+      setUploadState("error");
+      setUploadError(validationError);
+      return;
+    }
+
     setFile(selected);
     setUploadState("idle");
     setUploadError(null);
@@ -94,54 +118,54 @@ export function YapePaymentModal({ open, walletNumber, walletType, walletOwnerNa
     <Dialog open={open} onClose={handleClose} size="md">
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Confirmar compra</DialogTitle>
+          <DialogTitle>Pagar ahora con billetera virtual</DialogTitle>
         </DialogHeader>
 
         <DialogBody className="space-y-5">
-          {/* Total a pagar */}
-          <div className="rounded-[14px] bg-[#d8f3dc] px-5 py-4 text-center">
-            <p className="text-[12px] font-medium uppercase tracking-[0.08em] text-[#2d6a4f]">Total a pagar</p>
-            <p className="mt-1 font-serif text-3xl font-bold text-[#1a3a2e]">{total}</p>
+          <div className="rounded-[24px] bg-[#61a740] px-5 py-5 text-center text-[#163126]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#163126]/65">Paso 1 · Total a pagar</p>
+            <p className="mt-2 font-serif text-4xl font-black">{total}</p>
+            <p className="mt-2 text-xs leading-6 text-[#163126]/74">
+              Abre tu billetera virtual, paga este monto y luego sube tu comprobante para confirmar el pedido.
+            </p>
           </div>
 
-          {/* Número de billetera */}
           <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#5f6f66]">
               {walletType || "Billetera virtual"}
             </p>
-            <div className="flex items-center gap-3 rounded-[12px] border-[1.5px] border-[rgba(26,58,46,0.15)] bg-[#f4f4f0] px-4 py-3">
-              <span className="flex-1 font-mono text-[15px] font-semibold text-[#1a3a2e]">{walletNumber}</span>
+            <div className="flex items-center gap-3 rounded-[20px] border border-[rgba(26,58,46,0.12)] bg-[#fbfaf6] px-4 py-3.5">
+              <span className="flex-1 font-mono text-[15px] font-semibold text-[#163126]">{walletNumber}</span>
               <button
                 type="button"
                 onClick={handleCopy}
-                className="rounded-[8px] bg-[#1a3a2e] px-3 py-1.5 text-[12px] font-medium text-white transition hover:bg-[#2d6a4f] active:scale-95"
+                className="rounded-full bg-[#61a740] px-4 py-2 text-[12px] font-semibold text-[#163126] transition hover:bg-[#577e2f] hover:text-white active:scale-95"
               >
                 {copied ? "¡Copiado!" : "Copiar"}
               </button>
             </div>
             {walletOwnerName && (
-              <p className="mt-1.5 text-[12px] font-medium text-[#1a3a2e]">Titular: {walletOwnerName}</p>
+              <p className="mt-2 text-[12px] font-medium text-[#163126]">Titular: {walletOwnerName}</p>
             )}
-            <p className="mt-1 text-[11px] text-[#6b7280]">
-              Realiza el pago y sube la captura de pantalla como comprobante.
+            <p className="mt-1 text-[11px] leading-6 text-[#5f6f66]">
+              Copia este número, haz el pago desde tu billetera virtual y sigue con el comprobante aquí mismo.
             </p>
           </div>
 
-          {/* Upload comprobante */}
           <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">
-              Sube tu captura de pantalla *
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#5f6f66]">
+              Paso 2 · Sube tu comprobante *
             </p>
 
             {preview ? (
               <div className="space-y-2">
-                <div className="relative overflow-hidden rounded-[12px] border-[1.5px] border-[rgba(26,58,46,0.15)] bg-[#f4f4f0]">
-                  <img src={preview} alt="Comprobante Yape" className="max-h-52 w-full object-contain" />
+                <div className="relative overflow-hidden rounded-[20px] border border-[rgba(26,58,46,0.12)] bg-[#fbfaf6]">
+                  <img src={preview} alt="Comprobante de pago" className="max-h-52 w-full object-contain" />
                   {uploadState !== "uploading" && (
                     <button
                       type="button"
                       onClick={() => { setFile(null); setPreview(null); setUploadState("idle"); setUploadError(null); }}
-                      className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[11px] text-white hover:bg-black/80"
+                      className="absolute right-3 top-3 rounded-full bg-black/65 px-3 py-1 text-[11px] text-white hover:bg-black/80"
                     >
                       Cambiar
                     </button>
@@ -157,30 +181,34 @@ export function YapePaymentModal({ open, walletNumber, walletType, walletOwnerNa
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onClick={() => inputRef.current?.click()}
-                className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-[12px] border-[1.5px] border-dashed py-8 transition ${
+                className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-[22px] border border-dashed py-9 transition ${
                   dragging
-                    ? "border-[#52b788] bg-[#d8f3dc]"
-                    : "border-[rgba(26,58,46,0.2)] bg-[#f9f9f7] hover:border-[#52b788] hover:bg-[#f4f4f0]"
+                    ? "border-[#61a740] bg-[#e9f7ec]"
+                    : "border-[rgba(26,58,46,0.18)] bg-[#fbfaf6] hover:border-[#61a740] hover:bg-[#f4fbf6]"
                 }`}
               >
                 <span className="text-2xl">📎</span>
-                <p className="text-[13px] font-medium text-[#1a3a2e]">
+                <p className="text-[13px] font-medium text-[#163126]">
                   {dragging ? "Suelta la imagen aquí" : "Arrastra aquí o haz clic para seleccionar"}
                 </p>
-                <p className="text-[11px] text-[#6b7280]">JPG, PNG o WebP · máx 5 MB</p>
+                <p className="text-[11px] text-[#5f6f66]">JPG, PNG, WebP o AVIF · máximo 5 MB</p>
                 <input
                   ref={inputRef}
                   type="file"
-                  accept="image/jpeg,image/png,image/webp"
+                  accept="image/jpeg,image/png,image/webp,image/avif"
                   className="hidden"
                   onChange={handleFileInput}
                 />
               </div>
             )}
+
+            {!preview && uploadState === "error" && uploadError ? (
+              <p className="mt-2 text-[12px] text-red-600">{uploadError}</p>
+            ) : null}
           </div>
 
-          <p className="rounded-[10px] bg-amber-50 px-4 py-3 text-[12px] leading-relaxed text-amber-800">
-            Una vez confirmado tu pedido, validaremos el comprobante y te avisaremos por WhatsApp o email.
+          <p className="rounded-[18px] bg-[#fff7e8] px-4 py-3 text-[12px] leading-relaxed text-[#7a5e1c]">
+            Cuando recibamos tu comprobante, te confirmaremos el pedido por WhatsApp o email.
           </p>
         </DialogBody>
 
@@ -189,7 +217,7 @@ export function YapePaymentModal({ open, walletNumber, walletType, walletOwnerNa
             type="button"
             onClick={handleClose}
             disabled={isUploading}
-            className="rounded-[10px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-white px-5 py-2.5 text-[13px] font-medium text-[#1a3a2e] transition hover:bg-[#f4f4f0] disabled:opacity-50"
+            className="rounded-full border border-[rgba(26,58,46,0.12)] bg-white px-5 py-2.5 text-[13px] font-medium text-[#163126] transition hover:bg-[#f4fbf6] disabled:opacity-50"
           >
             Cancelar
           </button>
@@ -197,9 +225,9 @@ export function YapePaymentModal({ open, walletNumber, walletType, walletOwnerNa
             type="button"
             onClick={handleConfirm}
             disabled={!file || isUploading}
-            className="rounded-[10px] bg-[#1a3a2e] px-6 py-2.5 text-[13px] font-medium text-white transition hover:bg-[#2d6a4f] disabled:opacity-50"
+            className="rounded-full bg-[#61a740] px-6 py-2.5 text-[13px] font-semibold text-[#163126] transition hover:bg-[#577e2f] hover:text-white disabled:opacity-50"
           >
-            {isUploading ? "Subiendo..." : "Confirmar pedido →"}
+            {isUploading ? "Subiendo..." : "Enviar comprobante"}
           </button>
         </DialogFooter>
       </DialogContent>

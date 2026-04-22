@@ -12,7 +12,9 @@ import {
   type CommissionRuleInput,
   type CommissionPayoutSummary,
   type CommissionRuleSummary,
-  type CommissionSummary
+  type CommissionSummary,
+  isOrderCommerciallySettled,
+  isOrderStatusTerminalCancellation
 } from "@huelegood/shared";
 import { actionResponse, wrapResponse } from "../../common/response";
 import { BullMqService } from "../../persistence/bullmq.service";
@@ -873,12 +875,7 @@ export class CommissionsService implements OnModuleInit {
   }
 
   private resolveEligibleAt(order: AdminOrderSummary, rule: CommissionRuleRecord, previousEligibleAt?: string) {
-    const settled =
-      order.paymentStatus === PaymentStatus.Paid ||
-      order.orderStatus === OrderStatus.Paid ||
-      order.orderStatus === OrderStatus.Confirmed;
-
-    if (!settled) {
+    if (!isOrderCommerciallySettled(order)) {
       return previousEligibleAt;
     }
 
@@ -897,11 +894,7 @@ export class CommissionsService implements OnModuleInit {
       return CommissionStatus.Blocked;
     }
 
-    const terminalCancellation =
-      order.orderStatus === OrderStatus.Cancelled ||
-      order.orderStatus === OrderStatus.Refunded ||
-      order.orderStatus === OrderStatus.Expired ||
-      order.paymentStatus === PaymentStatus.Failed;
+    const terminalCancellation = isOrderStatusTerminalCancellation(order.orderStatus) || order.paymentStatus === PaymentStatus.Failed;
 
     if (terminalCancellation) {
       return previousStatus === CommissionStatus.Paid || payout?.status === CommissionPayoutStatus.Paid
@@ -917,7 +910,7 @@ export class CommissionsService implements OnModuleInit {
       return CommissionStatus.ScheduledForPayout;
     }
 
-    if (order.paymentStatus === PaymentStatus.Paid || order.orderStatus === OrderStatus.Paid || order.orderStatus === OrderStatus.Confirmed) {
+    if (isOrderCommerciallySettled(order)) {
       if (eligibleAt && new Date(eligibleAt).getTime() > Date.now()) {
         return CommissionStatus.Approved;
       }

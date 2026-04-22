@@ -58,6 +58,11 @@ export interface CatalogProduct {
   imageAlt?: string;
   defaultVariantId?: string;
   currencyCode?: string;
+  availableStock?: number;
+  lowStockThreshold?: number;
+  stockStatus?: "available" | "low_stock" | "out_of_stock";
+  stockLabel?: string;
+  isPurchasable?: boolean;
   variants?: {
     id: string;
     sku: string;
@@ -65,6 +70,11 @@ export interface CatalogProduct {
     price: number;
     compareAtPrice?: number;
     status: "active" | "inactive" | "out_of_stock";
+    availableStock?: number;
+    lowStockThreshold?: number;
+    stockStatus?: "available" | "low_stock" | "out_of_stock";
+    stockLabel?: string;
+    isPurchasable?: boolean;
   }[];
   images?: {
     id: string;
@@ -91,6 +101,339 @@ export interface BundleComponentSummary extends BundleComponentInput {
   productSku: string;
   variantName?: string;
   variantSku?: string;
+}
+
+export type WarehouseStatusValue = "active" | "inactive" | "suspended";
+
+export type WarehouseServiceAreaScopeValue = "department" | "province" | "district" | "zone";
+
+export type FulfillmentAssignmentStrategyValue =
+  | "manual"
+  | "warehouse_default"
+  | "coverage_priority"
+  | "stock_priority"
+  | "fallback";
+
+export type FulfillmentAssignmentStatusValue = "pending" | "assigned" | "skipped" | "cancelled";
+
+export type FulfillmentSuggestionStatusValue = "suggested" | "blocked";
+
+export interface WarehouseSummary {
+  id: string;
+  code: string;
+  name: string;
+  status: WarehouseStatusValue;
+  priority: number;
+  countryCode: string;
+  addressLine1: string;
+  addressLine2?: string;
+  reference?: string;
+  departmentCode: string;
+  departmentName?: string;
+  provinceCode: string;
+  provinceName?: string;
+  districtCode: string;
+  districtName?: string;
+  latitude?: number;
+  longitude?: number;
+  serviceAreas?: WarehouseServiceAreaSummary[];
+}
+
+export interface WarehouseServiceAreaSummary {
+  id: string;
+  warehouseId: string;
+  scopeType: WarehouseServiceAreaScopeValue;
+  scopeCode: string;
+  scopeLabel?: string;
+  priority: number;
+  isActive: boolean;
+}
+
+export interface WarehouseInventoryBalanceSummary {
+  warehouseId: string;
+  variantId: string;
+  stockOnHand: number;
+  reservedQuantity: number;
+  committedQuantity: number;
+  availableStock: number;
+  updatedAt: string;
+}
+
+export type WarehouseTransferStatusValue = "reserved" | "in_transit" | "partial_received" | "received" | "cancelled";
+export type WarehouseTransferDocumentKindValue = "package_snapshot" | "gre" | "sticker";
+export type WarehouseTransferIncidentStatusValue = "open" | "resolved";
+export type WarehouseTransferIncidentKindValue = "missing" | "damage" | "loss" | "overage" | "mixed";
+
+export interface WarehouseTransferLineInput {
+  variantId: string;
+  quantity: number;
+}
+
+export interface WarehouseTransferCreateInput {
+  originWarehouseId: string;
+  destinationWarehouseId: string;
+  reason: string;
+  notes?: string;
+  requestedByUserId?: string;
+  requestedAt?: string;
+  lines: WarehouseTransferLineInput[];
+}
+
+export interface WarehouseTransferDispatchInput {
+  notes?: string;
+  dispatchedAt?: string;
+  dispatchedByUserId?: string;
+}
+
+export interface WarehouseTransferReceiveInput {
+  notes?: string;
+  receivedAt?: string;
+  receivedByUserId?: string;
+  lines?: WarehouseTransferReceiveLineInput[];
+  incidentKind?: WarehouseTransferIncidentKindValue;
+  incidentNotes?: string;
+}
+
+export interface WarehouseTransferCancelInput {
+  notes?: string;
+  cancelledAt?: string;
+  cancelledByUserId?: string;
+}
+
+export interface WarehouseTransferReconcileInput {
+  notes?: string;
+  resolvedAt?: string;
+  resolvedByUserId?: string;
+}
+
+export interface WarehouseTransferLineSummary {
+  variantId: string;
+  sku: string;
+  name: string;
+  quantity: number;
+  dispatchedQuantity: number;
+  receivedQuantity: number;
+  pendingQuantity: number;
+}
+
+export interface WarehouseTransferIncidentLineSummary {
+  variantId: string;
+  sku: string;
+  name: string;
+  expectedQuantity: number;
+  receivedQuantity: number;
+  differenceQuantity: number;
+}
+
+export interface WarehouseTransferIncidentSummary {
+  id: string;
+  transferId: string;
+  transferNumber: string;
+  status: WarehouseTransferIncidentStatusValue;
+  kind: WarehouseTransferIncidentKindValue;
+  notes?: string;
+  openedByUserId?: string;
+  resolvedByUserId?: string;
+  openedAt: string;
+  resolvedAt?: string;
+  resolutionNote?: string;
+  totalExpectedUnits: number;
+  totalReceivedUnits: number;
+  totalDifferenceUnits: number;
+  lines: WarehouseTransferIncidentLineSummary[];
+}
+
+export interface WarehouseTransferHistorySummary {
+  status: WarehouseTransferStatusValue;
+  actorUserId?: string;
+  note?: string;
+  occurredAt: string;
+}
+
+export interface WarehouseTransferSnapshotBaseSummary {
+  transferId: string;
+  transferNumber: string;
+  originWarehouseId: string;
+  originWarehouseCode: string;
+  originWarehouseName: string;
+  destinationWarehouseId: string;
+  destinationWarehouseCode: string;
+  destinationWarehouseName: string;
+  lineCount: number;
+  totalUnits: number;
+  lines: WarehouseTransferLineSummary[];
+}
+
+export interface WarehouseTransferPackageSnapshotInput {
+  notes?: string;
+  packedAt?: string;
+  packedByUserId?: string;
+  declaredWeight?: number;
+  packageCount?: number;
+  packageIndex?: number;
+}
+
+export interface WarehouseTransferPackageSnapshotSummary extends WarehouseTransferSnapshotBaseSummary {
+  id: string;
+  documentKind: "package_snapshot";
+  templateVersion: "transfer-package-snapshot-v1";
+  packageId: string;
+  packageCount: number;
+  packageIndex: number;
+  packedAt: string;
+  packedByUserId?: string;
+  notes?: string;
+  declaredWeight?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WarehouseTransferGuideInput {
+  notes?: string;
+  issuedAt?: string;
+  issuedByUserId?: string;
+  guideType?: "sunat_remitente" | "sunat_transportista" | "sunat_event";
+  transportMode?: "private" | "public";
+}
+
+export interface WarehouseTransferGuideSummary extends WarehouseTransferSnapshotBaseSummary {
+  id: string;
+  documentKind: "gre";
+  templateVersion: "transfer-gre-v1";
+  guideType: "sunat_remitente" | "sunat_transportista" | "sunat_event";
+  series: string;
+  number: string;
+  referenceCode: string;
+  qrValue: string;
+  motive: string;
+  transportMode: "private" | "public";
+  issuedAt: string;
+  issuedByUserId?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WarehouseTransferStickerInput {
+  notes?: string;
+  generatedAt?: string;
+  generatedByUserId?: string;
+  printedAt?: string;
+  printedByUserId?: string;
+}
+
+export interface WarehouseTransferStickerSummary extends WarehouseTransferSnapshotBaseSummary {
+  id: string;
+  documentKind: "sticker";
+  templateVersion: "transfer-sticker-v1";
+  stickerCode: string;
+  guideReference?: string;
+  generatedAt: string;
+  generatedByUserId?: string;
+  printedAt?: string;
+  printedByUserId?: string;
+  printHint: {
+    paperSize: "A6";
+    orientation: "portrait";
+  };
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WarehouseTransferLogisticsSummary {
+  packageSnapshot?: WarehouseTransferPackageSnapshotSummary;
+  gre?: WarehouseTransferGuideSummary;
+  sticker?: WarehouseTransferStickerSummary;
+}
+
+export interface WarehouseTransferSummary {
+  id: string;
+  transferNumber: string;
+  status: WarehouseTransferStatusValue;
+  reason: string;
+  notes?: string;
+  originWarehouseId: string;
+  originWarehouseCode: string;
+  originWarehouseName: string;
+  destinationWarehouseId: string;
+  destinationWarehouseCode: string;
+  destinationWarehouseName: string;
+  lineCount: number;
+  totalUnits: number;
+  dispatchedUnits: number;
+  receivedUnits: number;
+  pendingUnits: number;
+  lines: WarehouseTransferLineSummary[];
+  history: WarehouseTransferHistorySummary[];
+  requestedByUserId?: string;
+  dispatchedByUserId?: string;
+  receivedByUserId?: string;
+  cancelledByUserId?: string;
+  partialReceivedByUserId?: string;
+  logistics?: WarehouseTransferLogisticsSummary;
+  incident?: WarehouseTransferIncidentSummary;
+  createdAt: string;
+  updatedAt: string;
+  dispatchedAt?: string;
+  partialReceivedAt?: string;
+  receivedAt?: string;
+  cancelledAt?: string;
+}
+
+export interface WarehouseTransferReceiveLineInput {
+  variantId: string;
+  quantity: number;
+}
+
+export interface FulfillmentMissingLineSummary {
+  warehouseId: string;
+  variantId: string;
+  sku: string;
+  name: string;
+  requestedQuantity: number;
+  availableQuantity: number;
+}
+
+export interface OrderFulfillmentAssignmentSummary {
+  id: string;
+  orderNumber: string;
+  warehouseId: string;
+  warehouseCode: string;
+  warehouseName: string;
+  status: FulfillmentAssignmentStatusValue;
+  strategy: FulfillmentAssignmentStrategyValue;
+  assignedAt: string;
+  assignedByUserId?: string;
+  notes?: string;
+  countryCodeSnapshot: string;
+  departmentCodeSnapshot: string;
+  departmentNameSnapshot?: string;
+  provinceCodeSnapshot: string;
+  provinceNameSnapshot?: string;
+  districtCodeSnapshot: string;
+  districtNameSnapshot?: string;
+  addressLine1Snapshot: string;
+  addressLine2Snapshot?: string;
+  referenceSnapshot?: string;
+}
+
+export interface OrderFulfillmentSuggestionSummary {
+  id: string;
+  orderNumber: string;
+  status: FulfillmentSuggestionStatusValue;
+  strategy?: FulfillmentAssignmentStrategyValue;
+  suggestedAt: string;
+  warehouseId?: string;
+  warehouseCode?: string;
+  warehouseName?: string;
+  coverageScope?: WarehouseServiceAreaScopeValue;
+  candidateCount: number;
+  canAutoAssign: boolean;
+  availableForAllLines: boolean;
+  reason: string;
+  blockingReason?: string;
+  missingLines?: FulfillmentMissingLineSummary[];
 }
 
 export interface PromoBanner {
@@ -192,6 +535,7 @@ export interface SiteSetting {
   walletType?: string;
   walletOwnerName?: string;
   headerLogoUrl?: string;
+  adminSidebarLogoUrl?: string;
   heroProductImageUrl?: string;
   loadingImageUrl?: string;
   faviconUrl?: string;

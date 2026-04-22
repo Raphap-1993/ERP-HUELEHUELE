@@ -107,6 +107,7 @@ Fuente verificada:
 - `GET /admin/cms/site-settings`
 - `PATCH /admin/cms/site-settings`
 - `POST /admin/cms/site-settings/logo`
+- `POST /admin/cms/site-settings/admin-sidebar-logo`
 - `POST /admin/cms/site-settings/hero-image`
 - `POST /admin/cms/site-settings/loading-image`
 - `POST /admin/cms/site-settings/favicon`

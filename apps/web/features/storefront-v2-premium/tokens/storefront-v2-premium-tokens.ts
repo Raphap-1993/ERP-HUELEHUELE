@@ -51,7 +51,7 @@ export function premiumProductToneClasses(tone?: CatalogProduct["tone"]) {
     default:
       return {
         frame: "bg-[linear-gradient(145deg,#edf2e8_0%,#e2ead7_45%,#cfdbc3_100%)]",
-        badge: "bg-[#112017] text-white",
+        badge: "bg-[#577e2f] text-white",
         accent: "text-[#4a6047]"
       };
   }

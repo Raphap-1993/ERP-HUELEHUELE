@@ -8,7 +8,7 @@ const ROLES = [
 ];
 
 const PERKS = [
-  { icon: "💸", text: "Comisiones reales pagadas cada fin de mes por Yape o Plin" },
+  { icon: "💸", text: "Comisiones reales pagadas cada fin de mes por billetera virtual" },
   { icon: "🎁", text: "Producto gratis para usar y recomendar con honestidad" },
   { icon: "📈", text: "Mejores condiciones cuanto más vendas" },
   { icon: "🤝", text: "Comunidad activa de colaboradores con soporte directo" },
@@ -21,7 +21,7 @@ export function VendorApplicationPage() {
 
         {/* Header centrado */}
         <div className="text-center mb-14">
-          <span className="inline-block text-xs font-semibold uppercase tracking-widest text-[#2d6a4f] bg-[#d8f3dc] px-4 py-1.5 rounded-full mb-5">
+          <span className="inline-block text-xs font-semibold uppercase tracking-widest text-[#61a740] bg-[#eef6e8] px-4 py-1.5 rounded-full mb-5">
             Únete al equipo
           </span>
           <h2 className="font-serif text-4xl font-black text-[#1a3a2e] md:text-5xl mb-4">
@@ -49,13 +49,13 @@ export function VendorApplicationPage() {
                   key={role.id}
                   className={`flex gap-4 items-start rounded-[17px] p-5 border cursor-default transition
                     ${i === 0
-                      ? "border-[#52b788] bg-[#d8f3dc]"
+                      ? "border-[#61a740] bg-[#eef6e8]"
                       : "border-[rgba(26,58,46,0.08)] bg-white hover:shadow-[0_4px_20px_rgba(26,58,46,0.08)] hover:translate-x-1"
                     }`}
                 >
                   <div
                     className={`w-11 h-11 rounded-[12px] flex-shrink-0 flex items-center justify-center text-[18px]
-                      ${i === 0 ? "bg-white" : "bg-[#d8f3dc]"}`}
+                      ${i === 0 ? "bg-white" : "bg-[#eef6e8]"}`}
                   >
                     {role.icon}
                   </div>

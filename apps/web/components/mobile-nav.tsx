@@ -50,7 +50,7 @@ export function MobileNav({ links, brandName, ctaHref = "/catalogo" }: MobileNav
         aria-label={open ? "Cerrar menú" : "Abrir menú"}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="md:hidden flex h-9 w-9 items-center justify-center rounded-xl text-[#1a3a2e] transition hover:bg-[#d8f3dc]"
+        className="md:hidden flex h-9 w-9 items-center justify-center rounded-xl text-[#1a3a2e] transition hover:bg-[#eef6e8]"
       >
         {open ? (
           <svg
@@ -107,7 +107,7 @@ export function MobileNav({ links, brandName, ctaHref = "/catalogo" }: MobileNav
               type="button"
               aria-label="Cerrar menú"
               onClick={close}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#1a3a2e] transition hover:bg-[#d8f3dc]"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#1a3a2e] transition hover:bg-[#eef6e8]"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -137,7 +137,7 @@ export function MobileNav({ links, brandName, ctaHref = "/catalogo" }: MobileNav
                   target="_blank"
                   rel="noreferrer"
                   onClick={close}
-                  className="rounded-xl px-4 py-4 text-base font-medium text-[#1a3a2e] transition hover:bg-[#d8f3dc]"
+                  className="rounded-xl px-4 py-4 text-base font-medium text-[#1a3a2e] transition hover:bg-[#eef6e8]"
                 >
                   {item.label}
                 </a>
@@ -146,7 +146,7 @@ export function MobileNav({ links, brandName, ctaHref = "/catalogo" }: MobileNav
                   key={`mobile-${item.href}-${item.label}`}
                   href={item.href}
                   onClick={close}
-                  className="rounded-xl px-4 py-4 text-base font-medium text-[#1a3a2e] transition hover:bg-[#d8f3dc]"
+                  className="rounded-xl px-4 py-4 text-base font-medium text-[#1a3a2e] transition hover:bg-[#eef6e8]"
                 >
                   {item.label}
                 </Link>
@@ -159,7 +159,7 @@ export function MobileNav({ links, brandName, ctaHref = "/catalogo" }: MobileNav
             <Link
               href={ctaHref}
               onClick={close}
-              className="block w-full rounded-full bg-[#1a3a2e] px-5 py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[#2d6a4f]"
+              className="block w-full rounded-full bg-[#61a740] px-5 py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[#577e2f]"
             >
               Comprar ahora
             </Link>

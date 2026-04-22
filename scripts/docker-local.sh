@@ -3,6 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="$ROOT_DIR/docker-compose.local.yml"
+ENV_FILE="$ROOT_DIR/.env"
+PROJECT_NAME="${COMPOSE_PROJECT_NAME:-erp-huelehuele}"
 ACTION="${1:-up}"
 
 if [[ $# -gt 0 ]]; then
@@ -10,6 +12,7 @@ if [[ $# -gt 0 ]]; then
 fi
 
 COMPOSE_CMD=()
+COMPOSE_ENV_ARGS=()
 
 resolve_compose_cmd() {
   if docker compose version >/dev/null 2>&1; then
@@ -66,7 +69,7 @@ EOF
 }
 
 ensure_daemon() {
-  if docker info >/dev/null 2>&1; then
+  if docker ps >/dev/null 2>&1; then
     return 0
   fi
 
@@ -75,10 +78,19 @@ ensure_daemon() {
 }
 
 run_compose() {
-  "${COMPOSE_CMD[@]}" -f "$COMPOSE_FILE" "$@"
+  if [[ ${#COMPOSE_ENV_ARGS[@]} -gt 0 ]]; then
+    "${COMPOSE_CMD[@]}" "${COMPOSE_ENV_ARGS[@]}" -p "$PROJECT_NAME" -f "$COMPOSE_FILE" "$@"
+    return 0
+  fi
+
+  "${COMPOSE_CMD[@]}" -p "$PROJECT_NAME" -f "$COMPOSE_FILE" "$@"
 }
 
 resolve_compose_cmd
+
+if [[ -f "$ENV_FILE" ]]; then
+  COMPOSE_ENV_ARGS=(--env-file "$ENV_FILE")
+fi
 
 case "$ACTION" in
   up)

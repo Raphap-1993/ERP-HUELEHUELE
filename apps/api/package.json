@@ -5,10 +5,10 @@
   "scripts": {
     "build": "nest build",
     "start": "node dist/apps/api/src/main.js",
-    "start:dev": "nest start --watch",
+    "start:dev": "nest start --watch --entryFile apps/api/src/main",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "tsc --noEmit -p tsconfig.json",
-    "test:erp-sales": "node --import tsx --test test/erp-sales-flow.test.ts",
+    "test:erp-sales": "npm run build -w @huelegood/shared && node --import tsx --test test/erp-sales-flow.test.ts",
     "prisma:generate": "prisma generate --schema ../../prisma/schema.prisma",
     "db:push": "prisma db push --schema ../../prisma/schema.prisma",
     "seed": "tsx ../../prisma/seed.ts"

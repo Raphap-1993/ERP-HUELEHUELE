@@ -15,7 +15,7 @@ export function FaqSection({
         <StorefrontV2SectionHeading
           eyebrow="Preguntas frecuentes"
           title="La información crítica sigue visible y ordenada."
-          description="Reutilizamos las FAQs actuales del CMS o del fallback compartido, pero en un bloque más consistente con la nueva jerarquía editorial."
+          description="Respuestas claras para elegir con confianza."
         />
         <div className="rounded-[1.85rem] border border-[#17211a]/8 bg-white/76 p-3 md:p-4">
           <FAQAccordion items={faqs} />
@@ -31,15 +31,15 @@ export function FaqSection({
 
         <div className="grid gap-3">
           <div className="rounded-[1.65rem] border border-white/12 bg-white/8 p-5">
-            <p className="text-[11px] uppercase tracking-[0.22em] text-white/42">Sin ruptura</p>
+            <p className="text-[11px] uppercase tracking-[0.22em] text-white/42">Compra simple</p>
             <p className="mt-2 text-sm leading-7 text-white/74">
-              El nuevo scaffold no toca el checkout ni reemplaza rutas existentes mientras el flag siga apagado.
+              El camino a compra es directo y fácil de entender.
             </p>
           </div>
           <div className="rounded-[1.65rem] border border-white/12 bg-white/8 p-5">
-            <p className="text-[11px] uppercase tracking-[0.22em] text-white/42">Salida actual</p>
+            <p className="text-[11px] uppercase tracking-[0.22em] text-white/42">Más opciones</p>
             <p className="mt-2 text-sm leading-7 text-white/74">
-              Toda compra sigue aterrizando en catálogo, checkout o mayoristas con el flujo productivo vigente.
+              Puedes comprar por catálogo o pedir atención mayorista según lo que necesites.
             </p>
           </div>
         </div>

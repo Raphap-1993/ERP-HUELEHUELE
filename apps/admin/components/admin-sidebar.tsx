@@ -1,29 +1,90 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
-import { adminNavigation, filterNavigationGroupsByRoles, siteSetting } from "@huelegood/shared";
+import { adminNavigation, filterNavigationGroupsByRoles, type SiteSetting } from "@huelegood/shared";
 import { useAdminSession } from "./admin-session-provider";
 
 type AdminSidebarProps = {
+  siteSettings: SiteSetting;
   variant?: "desktop" | "mobile";
   open?: boolean;
   onClose?: () => void;
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 };
 
 const NAV_GROUP_META: Record<string, string> = {
-  "Operación diaria": "Dashboard, pedidos, pagos y lectura rápida",
-  "Catálogo": "Productos y contenido publicado",
+  "Operación diaria": "Pedidos, despachos y pagos",
+  "Inventario y reportes": "Stock, almacenes y lectura del negocio",
+  "Catálogo": "Productos y CMS comercial",
   Comercial: "Canales, comisiones y mayoristas",
   Clientes: "Clientes, fidelización y campañas",
   Sistema: "Alertas, observabilidad y configuración"
+};
+
+const NAV_GROUP_TONES: Record<string, { muted: string; surface: string; accent: string; guide: string; activeItem: string }> = {
+  "Operación diaria": {
+    muted: "bg-[#1c382d] hover:bg-[#214032]",
+    surface: "bg-[#244638]",
+    accent: "bg-[#8fdcb0]",
+    guide: "bg-[#8fdcb0]/14",
+    activeItem: "bg-[#2a4c3d]"
+  },
+  "Inventario y reportes": {
+    muted: "bg-[#1c3932] hover:bg-[#21413a]",
+    surface: "bg-[#234239]",
+    accent: "bg-[#8fcec4]",
+    guide: "bg-[#8fcec4]/14",
+    activeItem: "bg-[#294a40]"
+  },
+  "Catálogo": {
+    muted: "bg-[#1d3930] hover:bg-[#223f33]",
+    surface: "bg-[#253f34]",
+    accent: "bg-[#b9d089]",
+    guide: "bg-[#b9d089]/14",
+    activeItem: "bg-[#2b473a]"
+  },
+  Comercial: {
+    muted: "bg-[#1c3932] hover:bg-[#21413a]",
+    surface: "bg-[#234239]",
+    accent: "bg-[#8fcec4]",
+    guide: "bg-[#8fcec4]/14",
+    activeItem: "bg-[#294a40]"
+  },
+  Clientes: {
+    muted: "bg-[#1d3a31] hover:bg-[#224036]",
+    surface: "bg-[#264138]",
+    accent: "bg-[#a6d1b4]",
+    guide: "bg-[#a6d1b4]/14",
+    activeItem: "bg-[#2d493e]"
+  },
+  Sistema: {
+    muted: "bg-[#1c3732] hover:bg-[#203d38]",
+    surface: "bg-[#233d38]",
+    accent: "bg-[#a8bbdf]",
+    guide: "bg-[#a8bbdf]/14",
+    activeItem: "bg-[#294641]"
+  }
+};
+
+const DEFAULT_NAV_GROUP_TONE = {
+  muted: "bg-[#1d392f] hover:bg-[#223f33]",
+  surface: "bg-[#244638]",
+  accent: "bg-[#8fdcb0]",
+  guide: "bg-white/[0.08]",
+  activeItem: "bg-[#2a4c3d]"
 };
 
 const NAV_ICONS: Record<string, React.ReactNode> = {
   "/": <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>,
   "/reportes": <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>,
   "/pedidos": <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>,
+  "/despachos": <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M3 7.5h11v9H3z"/><path d="M14 10h3l3 3v3h-6z"/><circle cx="7.5" cy="18" r="1.5"/><circle cx="17.5" cy="18" r="1.5"/></svg>,
+  "/inventario": <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M4 7l8-4 8 4-8 4-8-4z"/><path d="M4 12l8 4 8-4"/><path d="M4 17l8 4 8-4"/></svg>,
+  "/transferencias": <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M7 7h11"/><path d="M14 4l4 3-4 3"/><path d="M17 17H6"/><path d="M10 14l-4 3 4 3"/></svg>,
   "/pagos": <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>,
   "/productos": <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M20 7l-8-4-8 4 8 4 8-4z"/><path d="M4 7v10l8 4 8-4V7"/><path d="M12 11v10"/></svg>,
+  "/almacenes": <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h6"/><path d="M9 13h6"/></svg>,
   "/vendedores": <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>,
   "/comisiones": <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>,
   "/cupones": <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>,
@@ -50,16 +111,24 @@ function getDefaultExpandedGroups(
   return fallbackTitle ? [fallbackTitle] : [];
 }
 
-function getCollapsedGroupPreview(items: { label: string }[]) {
-  return items.slice(0, 3).map((item) => item.label).join(" · ");
-}
-
-export function AdminSidebar({ variant = "desktop", open = false, onClose }: AdminSidebarProps) {
+export function AdminSidebar({
+  siteSettings,
+  variant = "desktop",
+  open = false,
+  onClose,
+  collapsed = false,
+  onToggleCollapsed
+}: AdminSidebarProps) {
   const isDesktop = variant === "desktop";
+  const isCollapsed = isDesktop && collapsed;
   const pathname = usePathname();
   const { session, logout } = useAdminSession();
   const roleCodes = session?.user.roles.map((role) => role.code) ?? [];
-  const visibleNavigation = session ? filterNavigationGroupsByRoles(adminNavigation, roleCodes) : [];
+  const roleCodesSignature = roleCodes.join("|");
+  const visibleNavigation = useMemo(
+    () => (session ? filterNavigationGroupsByRoles(adminNavigation, roleCodes) : []),
+    [session, roleCodesSignature]
+  );
   const activeGroupTitle = visibleNavigation.find((group) =>
     group.items.some((item) => isNavigationItemActive(pathname, item.href))
   )?.title;
@@ -84,6 +153,14 @@ export function AdminSidebar({ variant = "desktop", open = false, onClose }: Adm
   const navigationSignature = visibleNavigation
     .map((group) => `${group.title}:${group.items.map((item) => item.href).join(",")}`)
     .join("|");
+  const sidebarLogoUrl = siteSettings.adminSidebarLogoUrl?.trim() || siteSettings.headerLogoUrl?.trim() || undefined;
+  const compactNavigation = visibleNavigation.flatMap((group) =>
+    group.items.map((item, index) => ({
+      ...item,
+      groupTitle: group.title,
+      isGroupStart: index === 0
+    }))
+  );
 
   useEffect(() => {
     if (!visibleNavigation.length) {
@@ -100,12 +177,8 @@ export function AdminSidebar({ variant = "desktop", open = false, onClose }: Adm
         return defaultGroups;
       }
 
-      if (variant === "mobile") {
-        return activeGroupTitle ? [activeGroupTitle] : [next[0]];
-      }
-
       if (activeGroupTitle && !next.includes(activeGroupTitle)) {
-        return [activeGroupTitle];
+        return [...next, activeGroupTitle];
       }
 
       return next.length === current.length && next.every((title, index) => title === current[index]) ? current : next;
@@ -114,100 +187,80 @@ export function AdminSidebar({ variant = "desktop", open = false, onClose }: Adm
 
   const toggleGroup = (title: string) => {
     setExpandedGroups((current) => {
-      if (variant === "mobile") {
-        if (current.includes(title)) {
-          return title === activeGroupTitle ? current : [];
-        }
-
-        return [title];
-      }
-
       if (current.includes(title)) {
-        return title === activeGroupTitle ? current : current.filter((groupTitle) => groupTitle !== title);
+        return current.filter((groupTitle) => groupTitle !== title);
       }
 
       return [...current, title];
     });
   };
 
-  const shellContent = (
-    <div className="flex h-full min-h-0 flex-col">
+  const collapseButton = isDesktop && onToggleCollapsed ? (
+    <button
+      type="button"
+      onClick={onToggleCollapsed}
+      aria-label={isCollapsed ? "Expandir menú" : "Colapsar menú"}
+      title={isCollapsed ? "Expandir menú" : "Colapsar menú"}
+      className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[9px] border border-white/[0.07] bg-white/[0.03] text-[#d7e5dd] transition hover:bg-white/[0.07] hover:text-white"
+    >
+      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <rect x="4" y="4" width="5" height="16" rx="1.2" />
+        {isCollapsed ? <polyline points="13 8 17 12 13 16" /> : <polyline points="17 8 13 12 17 16" />}
+      </svg>
+    </button>
+  ) : null;
 
-      {/* Header: logo */}
-      <div className="flex items-center gap-2.5 border-b border-white/[0.06] px-4 py-4">
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[9px] bg-[#52b788] font-bold text-[13px] text-[#1a3a2e]">
-          HH
-        </div>
-        <div className="min-w-0">
-          <div className="truncate text-[15px] font-semibold leading-tight text-white">{siteSetting.brandName}</div>
-          <div className="text-[10px] text-[#9db5a8]">Panel operativo</div>
-        </div>
-      </div>
+  const expandedNavigation = (
+    <nav className="admin-sidebar-scroll h-full overflow-y-auto overscroll-contain px-1.5 py-1.5 pr-1 [scrollbar-gutter:stable]">
+      {session && visibleNavigation.length
+        ? visibleNavigation.map((group) => {
+            const isExpanded = expandedGroups.includes(group.title);
+            const isGroupActive = group.title === activeGroupTitle;
+            const groupSummary = NAV_GROUP_META[group.title] ?? group.items.map((item) => item.label).join(" · ");
+            const showExpandedContainer = isExpanded || isGroupActive;
+            const groupTone = NAV_GROUP_TONES[group.title] ?? DEFAULT_NAV_GROUP_TONE;
 
-      {/* Nav */}
-      <div className="relative min-h-0 flex-1">
-        <div className="pointer-events-none absolute inset-x-2 top-0 z-10 h-4 bg-gradient-to-b from-[#17352a] via-[#17352a]/92 to-transparent" />
-        <nav className="admin-sidebar-scroll h-full overflow-y-auto overscroll-contain px-2 py-2.5 pr-1.5 [scrollbar-gutter:stable]">
-          {session && visibleNavigation.length ? (
-            visibleNavigation.map((group) => {
-              const isExpanded = expandedGroups.includes(group.title);
-              const isGroupActive = group.title === activeGroupTitle;
-              const collapsedPreview = getCollapsedGroupPreview(group.items);
-              const groupSummary = NAV_GROUP_META[group.title] ?? collapsedPreview;
-              const showExpandedContainer = isExpanded || isGroupActive;
-              const groupContainerClass = isDesktop
-                ? showExpandedContainer
-                  ? "border border-white/[0.06] bg-[#1f3d31]"
-                  : "border border-transparent bg-transparent"
-                : showExpandedContainer
-                  ? "border border-white/[0.05] bg-[#1f3d31]"
-                  : "border border-transparent bg-transparent";
-
-              return (
-                <div key={group.title} className={`mb-2 rounded-[12px] ${groupContainerClass}`}>
-                  <button
-                    type="button"
-                    onClick={() => toggleGroup(group.title)}
-                    aria-expanded={isExpanded}
-                    className={`flex w-full items-start gap-2.5 rounded-[11px] px-3 py-2.5 text-left transition-colors ${
-                      showExpandedContainer ? "bg-[#244638]" : "hover:bg-white/[0.03]"
+            return (
+              <div key={group.title} className="mb-1.5 rounded-[12px]">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.title)}
+                  aria-expanded={isExpanded}
+                  title={groupSummary}
+                  className={`flex w-full items-center gap-2.5 rounded-[11px] px-3 py-2 text-left transition-colors ${
+                    showExpandedContainer ? groupTone.surface : groupTone.muted
+                  }`}
+                >
+                  <span
+                    className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${
+                      isGroupActive ? groupTone.accent : isExpanded ? "bg-[#b9ccbf]" : "bg-[#6f897d]"
+                    }`}
+                  />
+                  <div
+                    className={`min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[0.18em] ${
+                      showExpandedContainer ? "text-[#edf5f0]" : "text-[#d7e5dd]"
                     }`}
                   >
-                    <span
-                      className={`mt-[0.45rem] h-1.5 w-1.5 flex-shrink-0 rounded-full ${
-                        isGroupActive ? "bg-[#8fdcb0]" : isExpanded ? "bg-[#b9ccbf]" : "bg-[#6f897d]"
-                      }`}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div
-                        className={`truncate text-[11px] font-semibold uppercase tracking-[0.18em] ${
-                          showExpandedContainer ? "text-[#edf5f0]" : "text-[#d7e5dd]"
-                        }`}
-                      >
-                        {group.title}
-                      </div>
-                      {isExpanded ? (
-                        <div className="pt-1 text-[11px] leading-4 text-[#c7d8cf]">{groupSummary}</div>
-                      ) : collapsedPreview ? (
-                        <div className="truncate pt-1 text-[11px] leading-4 text-[#bccdc4]">{collapsedPreview}</div>
-                      ) : null}
-                    </div>
-                    <svg
-                      className={`mt-[0.2rem] h-3.5 w-3.5 flex-shrink-0 text-[#b8cbc1] transition-transform ${
-                        isExpanded ? "rotate-180" : ""
-                      }`}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
-                      <polyline points="6 9 12 15 18 9" />
-                    </svg>
-                  </button>
+                    {group.title}
+                  </div>
+                  <svg
+                    className={`h-3.5 w-3.5 flex-shrink-0 text-[#b8cbc1] transition-transform ${
+                      isExpanded ? "rotate-180" : ""
+                    }`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
 
-                  {isExpanded ? (
-                    <div className="px-2.5 pb-2 pt-1">
-                      <div className="space-y-1 border-l border-white/[0.06] pl-2.5">
+                {isExpanded ? (
+                  <div className="px-2 pb-1.5 pt-1">
+                    <div className="relative pl-2">
+                      <div className={`absolute bottom-2 left-[0.95rem] top-1 w-px rounded-full ${groupTone.guide}`} />
+                      <div className="space-y-1">
                         {group.items.map((item) => {
                           const isActive = isNavigationItemActive(pathname, item.href);
                           return (
@@ -216,14 +269,15 @@ export function AdminSidebar({ variant = "desktop", open = false, onClose }: Adm
                               href={item.href}
                               onClick={handleNavigate}
                               aria-current={isActive ? "page" : undefined}
-                              className={`flex items-center gap-2 rounded-[10px] px-2.5 py-2 text-[13px] font-medium transition-colors ${
+                              className={`relative flex items-center gap-2 rounded-[10px] px-2.5 py-1.5 text-[13px] font-medium transition-colors ${
                                 isActive
-                                  ? "bg-[#2a4c3d] text-white shadow-[inset_0_0_0_1px_rgba(143,220,176,0.12)]"
+                                  ? `${groupTone.activeItem} text-white shadow-[inset_0_0_0_1px_rgba(143,220,176,0.12)]`
                                   : "text-[#dbe8e0] hover:bg-[#223f33] hover:text-white"
                               }`}
                             >
+                              <span aria-hidden className={`ml-3 h-px w-2 flex-shrink-0 rounded-full ${groupTone.guide}`} />
                               <span
-                                className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-[8px] ${
+                                className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-[7px] ${
                                   isActive ? "bg-[#214032] text-[#90dcb0]" : "bg-white/[0.06] text-[#c6d7ce]"
                                 }`}
                               >
@@ -239,26 +293,107 @@ export function AdminSidebar({ variant = "desktop", open = false, onClose }: Adm
                         })}
                       </div>
                     </div>
-                  ) : null}
-                </div>
-              );
-            })
-          ) : null}
-        </nav>
+                  </div>
+                ) : null}
+              </div>
+            );
+          })
+        : null}
+    </nav>
+  );
+
+  const compactNavigationRail = (
+    <nav className="admin-sidebar-scroll h-full overflow-y-auto overscroll-contain px-1.5 py-2 pr-1 [scrollbar-gutter:stable]">
+      {session && compactNavigation.length
+        ? compactNavigation.map((item) => {
+            const isActive = isNavigationItemActive(pathname, item.href);
+            const isActiveGroupStart = item.isGroupStart && item.groupTitle === activeGroupTitle;
+            const groupTone = NAV_GROUP_TONES[item.groupTitle] ?? DEFAULT_NAV_GROUP_TONE;
+
+            return (
+              <div key={item.href} className={item.isGroupStart ? "mt-3 first:mt-0" : "mt-1.5"}>
+                {item.isGroupStart ? (
+                  <div className={`mx-auto mb-2 rounded-full ${isActiveGroupStart ? `h-1 w-5 ${groupTone.accent}` : `h-px w-8 ${groupTone.guide}`}`} />
+                ) : null}
+                <a
+                  href={item.href}
+                  onClick={handleNavigate}
+                  aria-current={isActive ? "page" : undefined}
+                  aria-label={`${item.groupTitle}: ${item.label}`}
+                  title={`${item.groupTitle}: ${item.label}`}
+                  className={`mx-auto flex h-11 w-11 items-center justify-center rounded-[12px] transition-colors ${
+                    isActive
+                      ? "bg-[#2a4c3d] text-[#90dcb0] shadow-[inset_0_0_0_1px_rgba(143,220,176,0.12)]"
+                      : "text-[#dbe8e0] hover:bg-[#223f33] hover:text-white"
+                  }`}
+                >
+                  {NAV_ICONS[item.href] ?? (
+                    <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </a>
+              </div>
+            );
+          })
+        : null}
+    </nav>
+  );
+
+  const shellContent = (
+    <div className="flex h-full min-h-0 flex-col">
+
+      {/* Header: logo */}
+      <div
+        className={`border-b border-white/[0.06] py-3 ${
+          isDesktop && isCollapsed ? "flex flex-col items-center gap-2 px-2.5" : "flex items-center gap-2.5 px-3.5"
+        }`}
+      >
+        <div className={`flex min-w-0 items-center ${isDesktop && isCollapsed ? "justify-center" : "flex-1 gap-2.5"}`}>
+          {sidebarLogoUrl ? (
+            <img
+              src={sidebarLogoUrl}
+              alt={siteSettings.brandName}
+              className={`w-auto flex-shrink-0 object-contain ${isDesktop && isCollapsed ? "h-10 max-w-[44px]" : "h-9 max-w-[70px]"}`}
+            />
+          ) : (
+            <span className="flex-shrink-0 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#dff0e6]">
+              {siteSettings.brandName.slice(0, 2).toUpperCase()}
+            </span>
+          )}
+          {isDesktop && isCollapsed ? null : (
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[13px] font-semibold leading-tight text-white">{siteSettings.brandName}</div>
+            </div>
+          )}
+        </div>
+        {collapseButton}
+      </div>
+
+      {/* Nav */}
+      <div className="relative min-h-0 flex-1">
+        <div className="pointer-events-none absolute inset-x-2 top-0 z-10 h-3 bg-gradient-to-b from-[#17352a] via-[#17352a]/92 to-transparent" />
+        {isCollapsed ? compactNavigationRail : expandedNavigation}
         <div className="pointer-events-none absolute inset-x-2 bottom-0 z-10 h-5 bg-gradient-to-t from-[#17352a] via-[#17352a]/96 to-transparent" />
       </div>
 
       {/* User card */}
-      <div className="flex items-center gap-2.5 border-t border-white/[0.06] px-3 py-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))]">
+      <div
+        className={`border-t border-white/[0.06] px-3 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] ${
+          isDesktop && isCollapsed ? "flex flex-col items-center gap-2" : "flex items-center gap-2.5"
+        }`}
+      >
         <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#234234] text-[11px] font-semibold text-white">
           {initials}
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-[12px] font-semibold text-white">{session?.user.name ?? "Admin"}</div>
-          <div className="truncate text-[10px] text-[#bed0c6]">
-            {session?.user.roles[0]?.label ?? ""}
+        {isDesktop && isCollapsed ? null : (
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[12px] font-semibold text-white">{session?.user.name ?? "Admin"}</div>
+            <div className="truncate text-[10px] text-[#bed0c6]">
+              {session?.user.roles[0]?.label ?? ""}
+            </div>
           </div>
-        </div>
+        )}
         <button
           type="button"
           title="Cerrar sesión"
@@ -291,7 +426,7 @@ export function AdminSidebar({ variant = "desktop", open = false, onClose }: Adm
         className="absolute inset-0 bg-[#0f1510]/35 backdrop-blur-sm"
         onClick={() => { onClose?.(); }}
       />
-      <aside className="absolute left-0 top-0 z-10 h-[100dvh] min-h-0 w-[min(92vw,288px)] overflow-hidden bg-[#17352a] shadow-[0_18px_42px_rgba(7,17,12,0.24)]">
+      <aside className="absolute left-0 top-0 z-10 h-[100dvh] min-h-0 w-[min(88vw,272px)] overflow-hidden bg-[#17352a] shadow-[0_18px_42px_rgba(7,17,12,0.24)]">
         {shellContent}
       </aside>
     </div>

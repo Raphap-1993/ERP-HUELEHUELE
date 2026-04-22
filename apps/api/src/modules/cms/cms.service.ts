@@ -394,6 +394,7 @@ export class CmsService implements OnModuleInit {
       defaultSiteSetting.freeShippingThreshold
     );
     const headerLogoUrl = normalizeOptionalAssetUrl(body.headerLogoUrl);
+    const adminSidebarLogoUrl = normalizeOptionalAssetUrl(body.adminSidebarLogoUrl);
     const heroProductImageUrl = normalizeOptionalAssetUrl(body.heroProductImageUrl);
     const loadingImageUrl = normalizeOptionalAssetUrl(body.loadingImageUrl);
     const faviconUrl = normalizeOptionalAssetUrl(body.faviconUrl);
@@ -416,17 +417,19 @@ export class CmsService implements OnModuleInit {
       walletType,
       walletOwnerName,
       headerLogoUrl,
+      adminSidebarLogoUrl,
       heroProductImageUrl,
       loadingImageUrl,
       faviconUrl
     };
 
-    this.recordAdminAction("cms.site_settings.updated", "site_setting", "global", "La configuración base del storefront quedó actualizada.", {
+    this.recordAdminAction("cms.site_settings.updated", "site_setting", "global", "La configuración base de branding y operación quedó actualizada.", {
       brandName: this.siteSettingData.brandName,
       supportEmail: this.siteSettingData.supportEmail,
       shippingFlatRate: this.siteSettingData.shippingFlatRate,
       freeShippingThreshold: this.siteSettingData.freeShippingThreshold,
       hasHeaderLogo: Boolean(this.siteSettingData.headerLogoUrl),
+      hasAdminSidebarLogo: Boolean(this.siteSettingData.adminSidebarLogoUrl),
       hasHeroProductImage: Boolean(this.siteSettingData.heroProductImageUrl),
       hasLoadingImage: Boolean(this.siteSettingData.loadingImageUrl),
       hasFavicon: Boolean(this.siteSettingData.faviconUrl)
@@ -456,7 +459,7 @@ export class CmsService implements OnModuleInit {
       headerLogoUrl: upload.url
     };
 
-    this.recordAdminAction("cms.site_settings.logo_updated", "site_setting", "global", "El logo del menú quedó actualizado.", {
+    this.recordAdminAction("cms.site_settings.logo_updated", "site_setting", "global", "El logo del header público quedó actualizado.", {
       hasHeaderLogo: true
     });
     void this.persistState();
@@ -471,6 +474,48 @@ export class CmsService implements OnModuleInit {
 
     return {
       ...actionResponse("ok", "Logo actualizado correctamente."),
+      siteSetting: { ...this.siteSettingData }
+    };
+  }
+
+  async uploadAdminSidebarLogo(file: { buffer: Buffer; mimetype?: string; originalname?: string } | undefined) {
+    if (!file?.buffer) {
+      throw new BadRequestException("Debes adjuntar un logo válido.");
+    }
+
+    const upload = await this.mediaService.uploadImage(file, {
+      kind: "logo",
+      slug: `${this.siteSettingData.brandName || "huelegood"}-admin`,
+      preserveSvg: true
+    });
+
+    const previousLogo = this.siteSettingData.adminSidebarLogoUrl;
+    this.siteSettingData = {
+      ...this.siteSettingData,
+      adminSidebarLogoUrl: upload.url
+    };
+
+    this.recordAdminAction(
+      "cms.site_settings.admin_sidebar_logo_updated",
+      "site_setting",
+      "global",
+      "El logo del side menu del backoffice quedó actualizado.",
+      {
+        hasAdminSidebarLogo: true
+      }
+    );
+    void this.persistState();
+
+    if (previousLogo && previousLogo !== upload.url) {
+      try {
+        await this.mediaService.deleteByPublicUrl(previousLogo);
+      } catch {
+        // Non-blocking cleanup.
+      }
+    }
+
+    return {
+      ...actionResponse("ok", "Logo del backoffice actualizado correctamente."),
       siteSetting: { ...this.siteSettingData }
     };
   }

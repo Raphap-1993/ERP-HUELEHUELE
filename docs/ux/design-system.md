@@ -33,6 +33,7 @@ La estética no debe caer en un ecommerce genérico. La interfaz debe transmitir
 - llamadas a la acción claras
 - formularios simples
 - estados visibles
+- el copy público no debe mencionar CMS, API, stack, preview, flags, persistencia, contratos ni detalles internos de implementación
 
 ### Premium sin recargar
 
@@ -73,8 +74,8 @@ La integración con `Preline Themes` debe mapear sus variables semánticas a la 
 
 | Token | Rol | Valor de referencia Huelegood |
 | --- | --- | --- |
-| `--primary` | CTA y acento principal | verde herbal profundo |
-| `--primary-hover` | hover de CTA | verde bosque más denso |
+| `--primary` | CTA y acento principal | verde del logo Huelegood |
+| `--primary-hover` | hover de CTA | sombra verde del logo |
 | `--background` | fondo general | marfil cálido con lectura limpia |
 | `--foreground` | texto principal | verde negro casi carbón |
 | `--muted` | fondos suaves | salvia muy clara |
@@ -86,14 +87,14 @@ Ejemplo conceptual:
 
 ```css
 :root {
-  --primary: #112017;
-  --primary-hover: #1b2d21;
+  --primary: #61a740;
+  --primary-hover: #577e2f;
   --background: #f6f1e8;
   --foreground: #18231b;
-  --muted: #e7eee2;
+  --muted: #eef6e8;
   --border: rgba(17, 32, 23, 0.12);
   --card: rgba(255, 255, 255, 0.92);
-  --ring: #87a96b;
+  --ring: #61a740;
 }
 ```
 
@@ -137,6 +138,7 @@ Usar escala basada en múltiplos de 4 con énfasis en ritmos de 8 para layout.
 - diseño mobile-first
 - hero y bloques editoriales con composición amplia
 - grillas de producto claras y respiradas
+- el shell público debe usar un fondo continuo basado en `--background` detrás del header para que la navegación flotante no parezca apoyada sobre una franja distinta
 - secciones tipo `hero`, `trending products` y `promo banners` pueden apoyarse en patrones de `Preline`, siempre aterrizados a tokens Huelegood
 
 ### Admin

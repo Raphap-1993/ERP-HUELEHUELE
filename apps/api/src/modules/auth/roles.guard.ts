@@ -1,6 +1,7 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { RoleCode, type AuthSessionSummary } from "@huelegood/shared";
+import { isProductionRuntime } from "../../common/env";
 import { AUTH_ROLES_KEY } from "./auth-rbac";
 import { resolveSession } from "./auth-session";
 
@@ -28,6 +29,27 @@ function getRoleCodes(session: AuthSessionSummary) {
   return session.user.roles.map((role) => role.code);
 }
 
+function localAdminBypassEnabled() {
+  return !isProductionRuntime() && process.env.LOCAL_ADMIN_BYPASS === "true";
+}
+
+function buildLocalAdminSession(): AuthSessionSummary {
+  return {
+    token: "local-admin-bypass",
+    expiresAt: "2099-12-31T23:59:59.000Z",
+    user: {
+      id: "local-admin-bypass",
+      name: "Admin Local",
+      email: "admin@huelegood.local",
+      roles: [
+        { code: RoleCode.SuperAdmin, label: "Super Admin" },
+        { code: RoleCode.Admin, label: "Admin" }
+      ],
+      accountType: "admin"
+    }
+  };
+}
+
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
@@ -43,6 +65,13 @@ export class RolesGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+    if (localAdminBypassEnabled()) {
+      const session = buildLocalAdminSession();
+      request.authSession = session;
+      request.authUser = session.user;
+      return true;
+    }
+
     const authorization = normalizeAuthorizationHeader(request.headers?.authorization);
     const session =
       request.authSession ??

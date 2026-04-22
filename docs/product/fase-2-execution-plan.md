@@ -152,6 +152,12 @@ Nota:
 | `F2-002-09` | Exports CSV operativos | `backend-lead` + `qa-lead` | `orders`, `payments`, `commissions`, `marketing` | Descarga de CSV útiles para operación y conciliación sin depender de copiar tablas |
 | `F2-002-10` | Dashboard comercial consolidado por rol | `frontend-lead` | `dashboard`, `crm`, `marketing`, `comisiones` | Dashboards por rol con foco comercial, no sólo operacional |
 
+Avance puntual al `15 de abril de 2026`:
+
+- el workspace admin de reportes ya aplica `salesChannel`, `vendorCode`, `productSlug` y `sku` sobre el mismo scope server-side para métricas, tablas y exportación CSV
+- la conciliación manual admin ya separa `comprobantes` en `Pagos` y `openpay` pendiente o `registro directo` en `Pedidos`, con una ruta operativa explícita
+- `Pedidos > Operacion` ya funciona como vista canonica de trazabilidad comercial, con ruta activa, referencia, nota y fechas concentradas en el detalle operativo
+
 ### Bloque 4. Cierre de calidad y handoff
 
 | ID | Título | Agente líder sugerido | Módulos tocados | Resultado esperado |

@@ -50,8 +50,9 @@
 
 1. Operacion crea pedido manual pendiente.
 2. El sistema reserva stock.
-3. Operacion registra o aprueba el pago.
-4. El sistema confirma stock, fecha de venta y trazabilidad comercial.
+3. Si existe comprobante, operacion revisa la solicitud en `Pagos`.
+4. Si no existe solicitud manual y el metodo es `manual`, operacion registra el pago directo desde `Pedidos > Operacion`.
+5. El sistema confirma stock, fecha de venta y trazabilidad comercial en el detalle operativo del pedido.
 
 ## CU-04 Recibir pedido web
 
@@ -81,14 +82,17 @@
 ### Flujo principal
 
 1. El sistema recibe confirmacion valida de pago o decision operativa equivalente.
-2. El pedido pasa al primer estado comercial valido.
-3. El sistema registra fecha de confirmacion comercial.
-4. El sistema confirma stock.
-5. El sistema actualiza reportes y trazabilidad.
+2. Si la orden es `openpay` y sigue pendiente, la conciliacion manual se ejecuta desde `Pedidos > Operacion`.
+3. Si existe `manual_request`, la decision se toma desde `Pagos` o desde el detalle operativo del pedido con el mismo contexto.
+4. El pedido pasa al primer estado comercial valido.
+5. El sistema registra fecha de confirmacion comercial.
+6. El sistema confirma stock.
+7. El sistema actualiza reportes y trazabilidad.
 
 ### Regla homologada
 
 - el evento canonico es la confirmacion de pago o venta, no el despacho
+- el detalle de `Pedidos > Operacion` es la vista canonica para seguir la trazabilidad comercial del pedido; `Pagos` solo resuelve la bandeja de comprobantes
 
 ## CU-06 Descontar stock
 

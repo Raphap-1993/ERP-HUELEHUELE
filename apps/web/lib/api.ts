@@ -9,10 +9,15 @@ import type {
   CatalogProduct,
   CatalogSummaryResponse,
   CheckoutActionSummary,
+  CheckoutDocumentLookupInput,
+  CheckoutDocumentLookupSummary,
   CheckoutQuoteInput,
   CheckoutQuoteSummary,
   CheckoutRequestInput,
   LoyaltySummaryEnvelope,
+  PeruDepartmentSummary,
+  PeruDistrictSummary,
+  PeruProvinceSummary,
   VendorApplicationInput,
   VendorApplicationSummary,
   WholesaleLeadInput,
@@ -105,6 +110,31 @@ export async function fetchCheckoutQuote(body: CheckoutQuoteInput) {
   });
 }
 
+export async function fetchCheckoutDocumentLookup(body: CheckoutDocumentLookupInput) {
+  return requestJson<CheckoutDocumentLookupEnvelope>("/store/checkout/document-lookup", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function fetchPeruDepartments() {
+  return requestJson<PeruDepartmentsEnvelope>("/store/checkout/ubigeo/departments", {
+    cache: "no-store"
+  });
+}
+
+export async function fetchPeruProvinces(departmentCode: string) {
+  return requestJson<PeruProvincesEnvelope>(`/store/checkout/ubigeo/provinces/${departmentCode}`, {
+    cache: "no-store"
+  });
+}
+
+export async function fetchPeruDistricts(provinceCode: string) {
+  return requestJson<PeruDistrictsEnvelope>(`/store/checkout/ubigeo/districts/${provinceCode}`, {
+    cache: "no-store"
+  });
+}
+
 export async function createOpenpayCheckout(body: CheckoutRequestInput) {
   return requestJson<CheckoutActionEnvelope>("/store/checkout/openpay", {
     method: "POST",
@@ -126,15 +156,38 @@ export async function uploadPaymentEvidence(file: File): Promise<{ url: string }
 
   let response: Response;
   try {
-    response = await fetch(url, { method: "POST", body: formData });
+    response = await fetch(url, {
+      method: "POST",
+      body: formData,
+      mode: "cors"
+    });
   } catch (error) {
-    throw new Error(`No pudimos subir el comprobante. ${error instanceof Error ? error.message : ""}`);
+    console.error("Payment evidence upload failed", {
+      url,
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+      error
+    });
+
+    const rawMessage = error instanceof Error ? error.message : "";
+    if (rawMessage.toLowerCase().includes("failed to fetch")) {
+      throw new Error("No pudimos conectar con el servicio para subir el comprobante. Revisa tu conexión e inténtalo otra vez.");
+    }
+
+    throw new Error(`No pudimos subir el comprobante. ${rawMessage}`.trim());
   }
 
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
     const message = payload?.message ?? payload?.error ?? `HTTP ${response.status}`;
-    throw new Error(Array.isArray(message) ? message.join(", ") : String(message));
+    const normalizedMessage = Array.isArray(message) ? message.join(", ") : String(message);
+
+    if (response.status === 413 || normalizedMessage.toLowerCase().includes("file too large")) {
+      throw new Error("El comprobante supera el máximo de 5 MB. Súbelo más liviano o vuelve a exportarlo.");
+    }
+
+    throw new Error(normalizedMessage);
   }
 
   return payload as { url: string };
@@ -240,12 +293,32 @@ export type CheckoutQuoteEnvelope = {
   meta?: Record<string, unknown>;
 };
 
+export type CheckoutDocumentLookupEnvelope = {
+  data: CheckoutDocumentLookupSummary;
+  meta?: Record<string, unknown>;
+};
+
 export type CheckoutActionEnvelope = {
   status: string;
   message: string;
   referenceId?: string;
   order?: CheckoutActionSummary;
   quote?: CheckoutQuoteSummary;
+};
+
+export type PeruDepartmentsEnvelope = {
+  data: PeruDepartmentSummary[];
+  meta?: Record<string, unknown>;
+};
+
+export type PeruProvincesEnvelope = {
+  data: PeruProvinceSummary[];
+  meta?: Record<string, unknown>;
+};
+
+export type PeruDistrictsEnvelope = {
+  data: PeruDistrictSummary[];
+  meta?: Record<string, unknown>;
 };
 
 export type WholesaleLeadActionEnvelope = {

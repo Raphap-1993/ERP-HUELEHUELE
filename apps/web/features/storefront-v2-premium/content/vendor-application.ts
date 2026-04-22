@@ -9,7 +9,7 @@ export const vendorApplicationContent = {
     eyebrow: "Comunidad comercial Huele Huele",
     title: "Trabaja con nosotros si puedes representar bien la marca y moverla con criterio.",
     description:
-      "Esta ruta sigue viva como entrada comercial formal. Ahora usa un formulario real conectado al endpoint existente para registrar postulaciones sin inventar backend nuevo.",
+      "Cuéntanos cómo te gustaría colaborar con la marca. Revisamos cada postulación con atención.",
     metrics: [
       {
         label: "Perfil",
@@ -19,12 +19,12 @@ export const vendorApplicationContent = {
       {
         label: "Proceso",
         value: "Screening",
-        detail: "La solicitud entra a revisión y mantiene trazabilidad en el backend actual."
+        detail: "Revisamos cada solicitud con criterio comercial y respuesta clara."
       },
       {
         label: "Salida",
         value: "Código",
-        detail: "Si se aprueba, el flujo existente crea la base del onboarding comercial."
+        detail: "Si tu perfil encaja, te acompañamos en el siguiente paso para empezar."
       }
     ]
   },
@@ -36,7 +36,7 @@ export const vendorApplicationContent = {
   sellerBenefits: [
     "Código comercial para atribución de ventas.",
     "Seguimiento de comisiones y estado del proceso.",
-    "Ingreso a un canal que ya existe en el ERP y en el admin."
+    "Ingreso a un canal comercial con seguimiento claro."
   ],
   steps: [
     {
@@ -52,7 +52,7 @@ export const vendorApplicationContent = {
     {
       step: "03",
       title: "Activación",
-      description: "Si el perfil avanza, el flujo actual registra la base del vendedor y su seguimiento."
+      description: "Si el perfil avanza, te acompañamos con la activación y el siguiente paso."
     }
   ]
 } as const;

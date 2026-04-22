@@ -9,11 +9,14 @@
   --card-foreground: 153 15% 12%;
   --muted: 39 24% 93%;
   --muted-foreground: 153 8% 36%;
-  --primary: 153 24% 11%;
-  --primary-foreground: 0 0% 100%;
+  --primary: 101 45% 45%;
+  --primary-foreground: 153 15% 12%;
   --accent: 35 48% 66%;
   --accent-foreground: 153 15% 12%;
   --border: 38 15% 85%;
+  --brand-green: #61a740;
+  --brand-green-deep: #577e2f;
+  --brand-green-soft: #eef6e8;
   color-scheme: light;
 }
 
@@ -27,10 +30,16 @@ html {
   scroll-behavior: smooth;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
 body {
   margin: 0;
   color: hsl(var(--foreground));
-  background: #ffffff;
+  background: hsl(var(--background));
   font-family: var(--font-sans), "Avenir Next", "Satoshi", "Helvetica Neue", sans-serif;
   line-height: 1.5;
   letter-spacing: -0.01em;
@@ -65,7 +74,7 @@ h6 {
 }
 
 ::selection {
-  background: rgba(19, 32, 22, 0.16);
+  background: rgba(97, 167, 64, 0.22);
 }
 
 button,
@@ -87,4 +96,20 @@ a {
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-8px); }
+}
+
+@media (min-width: 1024px) {
+  body:has([data-checkout-fullscreen="true"]) footer {
+    display: none;
+  }
+
+  body:has([data-checkout-fullscreen="true"]) main {
+    display: flex;
+    min-height: calc(100dvh - 96px);
+  }
+
+  body:has([data-checkout-fullscreen="true"]) main > [data-checkout-fullscreen="true"] {
+    flex: 1;
+    min-height: 0;
+  }
 }

@@ -1,106 +1,56 @@
-# Plan de Implementacion
+# Plan De Implementacion Vigente
 
-## Backlog priorizado
+Fecha de corte: 2026-04-22.
 
-### Prioridad 1
+## Estado
 
-- homologar trazabilidad de pedido o venta
-- reforzar registro de vendedor
-- centralizar y explicitar politica de stock
-- habilitar reportes por vendedor y producto
+El frente ERP comercial/logistico esta implementado y validado tecnicamente. El trabajo inmediato ya no es construir desde cero, sino cerrar trazabilidad Git, validacion browser y siguientes decisiones de producto.
 
-### Prioridad 2
+## Frentes Cerrados
 
-- exponer detalle de fechas por venta y por producto
-- cerrar mejor conciliacion de pagos online
-- endurecer persistencia relacional de vendedores e inventario
+- trazabilidad comercial en pedidos;
+- alta y asignacion de vendedores;
+- reportes por vendedor, producto, canal y filtros server-side;
+- reserva, confirmacion, liberacion y reversa de stock;
+- inventario por `variante + almacen`;
+- almacenes y cobertura operativa;
+- transferencias multi-almacen con incidencia y documentos;
+- checkout robustecido con stock, DNI y evidencia Yape;
+- despliegue productivo por releases;
+- documentacion canonica rehecha.
 
-## Fases
+## Fase Actual: Homologacion Git Y Cierre Operativo
 
-### Fase A Documentacion y homologacion
+1. Registrar en Git el snapshot local que ya coincide con produccion.
+2. Excluir `outputs/`, `storage/`, dumps, backups y `.env`.
+3. Publicar rama/PR o merge controlado para que GitHub refleje el estado real.
+4. Validar manualmente en browser:
+   - `/pedidos`
+   - `/pagos`
+   - `/reportes`
+   - `/inventario`
+   - `/transferencias`
+5. Mantener evidencia en [06-validacion-y-pruebas.md](./06-validacion-y-pruebas.md).
 
-- cerrar auditoria
-- fijar glosario y reglas de lenguaje
-- fijar casos de uso y diseno tecnico
+## Siguiente Frente Recomendado
 
-### Fase B Dominio y backend
+Elegir solo uno:
 
-- extender `orders` con vendedor, canal y fechas
-- reforzar alta de vendedor
-- agregar lectura de reportes por vendedor y producto
-- consolidar confirmacion de venta y stock en un punto comun
+1. Automatizar E2E browser admin.
+2. Completar webhook Openpay productivo.
+3. Crear print-ready final de GRE/sticker.
+4. Migrar snapshots heredados prioritarios a tablas Prisma.
 
-### Fase C Admin y UX operativa
+## Validaciones Obligatorias
 
-- permitir asociar vendedor en pedidos manuales
-- mostrar trazabilidad comercial en detalle de pedido
-- exponer reportes por vendedor y producto
-
-### Fase D Calidad y cierre
-
-- agregar pruebas o scripts de validacion
-- documentar resultados, riesgos y rollback
-
-## Tareas por modulo
-
-### Analista
-
-- validar requerimientos contra codigo actual
-- homologar estados que cuentan como venta valida
-- dejar criterios de aceptacion verificables
-
-### Arquitecto
-
-- definir politica unica de stock
-- decidir que campos de trazabilidad viven en pedido
-- evitar duplicidad entre reportes, inventario y comisiones
-
-### Backend
-
-- `vendors`: alta, persistencia util y relacion operativa
-- `orders`: vendedor, canal, fechas, confirmacion comercial
-- `payments`: confirmacion manual y online controlada
-- `inventory`: reserva, confirmacion y reversa central
-- `reports/core`: agregaciones por vendedor, producto y detalle
-
-### Frontend admin
-
-- formulario y feedback de alta de vendedor
-- selector o visibilidad de vendedor en pedido manual
-- trazabilidad comercial en detalle del pedido
-- tablas de reportes por vendedor y producto
-
-### QA
-
-- matriz minima de validacion funcional
-- casos borde de stock insuficiente, doble procesamiento y cancelacion
-
-### Documentacion
-
-- mantener `docs/00` a `docs/06` alineados
-- actualizar `docs/README.md`
-
-## Dependencias
-
-- los reportes dependen de la trazabilidad del pedido
-- la trazabilidad del pedido depende de resolver vendedor y fecha de confirmacion
-- la consistencia de stock depende de la politica homologada de estados
-
-## Riesgos
-
-- cambios sobre un worktree ya modificado
-- divergencia entre runtime snapshot y schema Prisma
-- falta de webhook online productivo
-- ausencia de framework de testing formal en el repo
-
-## Validaciones
-
-- `npm run typecheck`
-- pruebas o scripts de validacion del flujo
-- validacion manual de rutas admin afectadas
+```bash
+npm run typecheck
+npm run test:erp-sales
+npm run build
+```
 
 ## Rollback
 
-- conservar cambios incrementales y aislados por modulo
-- no eliminar estructuras previas mientras no exista reemplazo validado
-- si una mutacion de reportes o stock falla, revertir solo la capa afectada y mantener snapshots anteriores
+- Codigo: volver el symlink `current` a la release anterior y recargar PM2.
+- Datos: solo con backup productivo validado.
+- Nunca usar base local como rollback de produccion.

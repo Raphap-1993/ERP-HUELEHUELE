@@ -42,8 +42,8 @@ function SPMetricCard({ label, value, detail }: { label: string; value: string; 
 
 function SPBadge({ children, tone = "default" }: { children: React.ReactNode; tone?: "default" | "green" | "neutral" | "amber" }) {
   const styles: Record<string, string> = {
-    default: "bg-[#d8f3dc] text-[#2d6a4f]",
-    green: "bg-[#d8f3dc] text-[#2d6a4f]",
+    default: "bg-[#eef6e8] text-[#61a740]",
+    green: "bg-[#eef6e8] text-[#61a740]",
     neutral: "bg-black/6 text-black/60",
     amber: "bg-amber-50 text-amber-700"
   };
@@ -228,7 +228,7 @@ export function SellerPanelWorkspace() {
             type="button"
             onClick={() => setRefreshKey((current) => current + 1)}
             disabled={loading}
-            className="inline-flex items-center gap-2 rounded-full border border-[#2d6a4f]/30 bg-white px-5 py-2.5 text-sm font-medium text-[#1a3a2e] shadow-sm transition hover:border-[#2d6a4f] hover:bg-[#d8f3dc] disabled:opacity-40"
+            className="inline-flex items-center gap-2 rounded-full border border-[#61a740]/30 bg-white px-5 py-2.5 text-sm font-medium text-[#1a3a2e] shadow-sm transition hover:border-[#61a740] hover:bg-[#eef6e8] disabled:opacity-40"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <polyline points="1 4 1 10 7 10" />
@@ -241,7 +241,7 @@ export function SellerPanelWorkspace() {
         {/* Loading */}
         {loading && (
           <div className="flex items-center gap-3 rounded-2xl border border-black/6 bg-white px-6 py-8 shadow-sm">
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#52b788] border-t-transparent" />
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#61a740] border-t-transparent" />
             <span className="text-sm text-[#6b7280]">Cargando panel vendedor...</span>
           </div>
         )}
@@ -249,7 +249,7 @@ export function SellerPanelWorkspace() {
         {/* No session */}
         {!loading && !session && (
           <SPCard className="overflow-hidden">
-            <div className="bg-[linear-gradient(135deg,#1a3a2e_0%,#2d6a4f_100%)] px-8 py-10 text-white">
+            <div className="bg-[linear-gradient(135deg,#1a3a2e_0%,#61a740_100%)] px-8 py-10 text-white">
               <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-white/15 text-2xl">
                 🏷️
               </div>
@@ -261,13 +261,13 @@ export function SellerPanelWorkspace() {
             <div className="flex flex-wrap gap-3 px-8 py-6">
               <Link
                 href="/cuenta"
-                className="inline-flex items-center gap-2 rounded-full bg-[#1a3a2e] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#2d6a4f]"
+                className="inline-flex items-center gap-2 rounded-full bg-[#577e2f] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#61a740]"
               >
                 Ir a mi cuenta
               </Link>
               <Link
                 href="/catalogo"
-                className="inline-flex items-center gap-2 rounded-full border border-[#1a3a2e]/20 px-6 py-3 text-sm font-medium text-[#1a3a2e] transition hover:border-[#2d6a4f] hover:bg-[#d8f3dc]"
+                className="inline-flex items-center gap-2 rounded-full border border-[#1a3a2e]/20 px-6 py-3 text-sm font-medium text-[#1a3a2e] transition hover:border-[#61a740] hover:bg-[#eef6e8]"
               >
                 Ver catálogo
               </Link>
@@ -279,7 +279,7 @@ export function SellerPanelWorkspace() {
         {!loading && session && !hasSellerAccess(session) && (
           <SPCard className="p-8">
             <h2 className="mb-1 font-serif text-xl font-bold text-[#1a3a2e]">Cuenta sin acceso comercial</h2>
-            <p className="mb-4 text-sm text-[#6b7280]">Esta sesión no tiene un rol vendedor habilitado para el panel.</p>
+            <p className="mb-4 text-sm text-[#6b7280]">Tu cuenta aún no tiene acceso a esta sección.</p>
             <div className="mb-4 rounded-xl bg-black/[0.03] px-4 py-3 text-sm text-black/65">
               Sesión activa: {session.user.name} · {session.user.email}
             </div>
@@ -290,7 +290,7 @@ export function SellerPanelWorkspace() {
             </div>
             <Link
               href="/cuenta"
-              className="inline-flex items-center gap-2 rounded-full border border-[#1a3a2e]/20 px-5 py-2.5 text-sm font-medium text-[#1a3a2e] transition hover:border-[#2d6a4f] hover:bg-[#d8f3dc]"
+              className="inline-flex items-center gap-2 rounded-full border border-[#1a3a2e]/20 px-5 py-2.5 text-sm font-medium text-[#1a3a2e] transition hover:border-[#61a740] hover:bg-[#eef6e8]"
             >
               Volver a mi cuenta
             </Link>
@@ -303,7 +303,7 @@ export function SellerPanelWorkspace() {
             {/* Identity + metrics */}
             <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
               {/* Seller identity card */}
-              <div className="overflow-hidden rounded-2xl bg-[linear-gradient(135deg,#1a3a2e_0%,#2d6a4f_100%)] p-7 text-white shadow-[0_8px_32px_rgba(26,58,46,0.25)]">
+              <div className="overflow-hidden rounded-2xl bg-[linear-gradient(135deg,#1a3a2e_0%,#61a740_100%)] p-7 text-white shadow-[0_8px_32px_rgba(26,58,46,0.25)]">
                 <div className="mb-4 flex flex-wrap items-center gap-2">
                   <SPBadge tone="green">{overview.seller.status}</SPBadge>
                   <SPBadge tone="neutral">Código activo</SPBadge>
@@ -350,7 +350,7 @@ export function SellerPanelWorkspace() {
               />
               <SPTable
                 title="Liquidaciones"
-                description="Estado de tus pagos y referencias operativas."
+                description="Estado de tus pagos y movimientos."
                 headers={["Liquidación", "Periodo", "Monto", "Estado", "Referencia", "Actualizado"]}
                 rows={payoutRows}
               />
@@ -371,14 +371,14 @@ export function SellerPanelWorkspace() {
           <SPCard className="p-8">
             <h2 className="mb-1 font-serif text-xl font-bold text-[#1a3a2e]">No pudimos cargar tu panel</h2>
             <p className="mb-4 text-sm text-[#6b7280]">
-              La cuenta existe, pero todavía no quedó enlazada al perfil vendedor operativo.
+              Tu cuenta aún no está activada como vendedora.
             </p>
             <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               {error}
             </div>
             <Link
               href="/trabaja-con-nosotros"
-              className="inline-flex items-center gap-2 rounded-full border border-[#1a3a2e]/20 px-5 py-2.5 text-sm font-medium text-[#1a3a2e] transition hover:border-[#2d6a4f] hover:bg-[#d8f3dc]"
+              className="inline-flex items-center gap-2 rounded-full border border-[#1a3a2e]/20 px-5 py-2.5 text-sm font-medium text-[#1a3a2e] transition hover:border-[#61a740] hover:bg-[#eef6e8]"
             >
               Contactar al equipo comercial
             </Link>

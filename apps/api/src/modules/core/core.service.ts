@@ -8,6 +8,7 @@ import {
   PaymentStatus,
   RoleCode,
   WholesaleLeadStatus,
+  type AdminReportFiltersInput,
   type AdminOrderDetail,
   type AdminMetric,
   type AdminRoleDashboardSummary,
@@ -16,9 +17,11 @@ import {
   type CommissionSummary,
   type ProductSalesReportRow,
   type SalesDetailReportRow,
+  type SalesChannelValue,
   type SellerPanelOverviewSummary,
   type VendorSalesReportRow,
-  type VendorSummary
+  type VendorSummary,
+  isOrderCommerciallyReportable
 } from "@huelegood/shared";
 import { wrapResponse } from "../../common/response";
 import { CommissionsService } from "../commissions/commissions.service";
@@ -121,18 +124,107 @@ function isInRange(value: string | undefined, from: string, to: string) {
   return Number.isFinite(timestamp) && timestamp >= fromMs && timestamp <= toMs;
 }
 
-function isSalesReportable(order: AdminOrderDetail) {
-  return (
-    Boolean(order.confirmedAt) &&
-    [
-      OrderStatus.Paid,
-      OrderStatus.Confirmed,
-      OrderStatus.Preparing,
-      OrderStatus.Shipped,
-      OrderStatus.Delivered,
-      OrderStatus.Completed
-    ].includes(order.orderStatus)
-  );
+interface NormalizedAdminReportFilters {
+  salesChannel?: SalesChannelValue;
+  vendorCode?: string;
+  productSlug?: string;
+  sku?: string;
+  hasProductFilter: boolean;
+}
+
+interface ScopedSalesOrder {
+  order: AdminOrderDetail;
+  confirmedAt: string;
+  salesChannel: SalesChannelValue;
+  matchedItems: AdminOrderDetail["items"];
+  revenue: number;
+}
+
+function normalizeReportText(value?: string) {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
+}
+
+function normalizeReportCode(value?: string) {
+  return normalizeReportText(value)?.toUpperCase();
+}
+
+function normalizeReportSlug(value?: string) {
+  return normalizeReportText(value)?.toLowerCase();
+}
+
+function normalizeReportFilters(filters: AdminReportFiltersInput = {}): NormalizedAdminReportFilters {
+  const salesChannel = filters.salesChannel === "web" || filters.salesChannel === "manual" ? filters.salesChannel : undefined;
+  const vendorCode = normalizeReportCode(filters.vendorCode);
+  const productSlug = normalizeReportSlug(filters.productSlug);
+  const sku = normalizeReportCode(filters.sku);
+
+  return {
+    salesChannel,
+    vendorCode,
+    productSlug,
+    sku,
+    hasProductFilter: Boolean(productSlug || sku)
+  };
+}
+
+function matchesReportOrder(order: Pick<AdminOrderDetail, "salesChannel" | "vendorCode">, filters: NormalizedAdminReportFilters) {
+  if (filters.salesChannel && order.salesChannel !== filters.salesChannel) {
+    return false;
+  }
+
+  if (filters.vendorCode && normalizeReportCode(order.vendorCode) !== filters.vendorCode) {
+    return false;
+  }
+
+  return true;
+}
+
+function filterReportItems(order: Pick<AdminOrderDetail, "items">, filters: NormalizedAdminReportFilters) {
+  if (!filters.hasProductFilter) {
+    return order.items;
+  }
+
+  return order.items.filter((item) => {
+    if (filters.productSlug && normalizeReportSlug(item.slug) !== filters.productSlug) {
+      return false;
+    }
+
+    if (filters.sku && normalizeReportCode(item.sku) !== filters.sku) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+function scopedSalesRevenue(order: Pick<AdminOrderDetail, "total">, items: AdminOrderDetail["items"], filters: NormalizedAdminReportFilters) {
+  if (!filters.hasProductFilter) {
+    return order.total;
+  }
+
+  return sum(items.map((item) => item.lineTotal));
+}
+
+function buildScopedSalesOrders(orders: AdminOrderDetail[], from: string, to: string, filters: NormalizedAdminReportFilters) {
+  return orders
+    .filter((order) => isOrderCommerciallyReportable(order) && isInRange(order.confirmedAt, from, to) && matchesReportOrder(order, filters))
+    .map((order) => {
+      const matchedItems = filterReportItems(order, filters);
+      if (!matchedItems.length) {
+        return undefined;
+      }
+
+      return {
+        order,
+        confirmedAt: order.confirmedAt ?? order.createdAt,
+        salesChannel: order.salesChannel,
+        matchedItems,
+        revenue: scopedSalesRevenue(order, matchedItems, filters)
+      } satisfies ScopedSalesOrder;
+    })
+    .filter((entry): entry is ScopedSalesOrder => Boolean(entry))
+    .sort((left, right) => right.confirmedAt.localeCompare(left.confirmedAt));
 }
 
 @Injectable()
@@ -230,25 +322,33 @@ export class CoreService {
     });
   }
 
-  getReportByPeriod(from: string, to: string) {
-    const operationalOrders = this.ordersService.listOrdersInRange(from, to).data;
-    const salesOrders = this.ordersService
-      .getAllOrderDetails()
-      .filter((order) => isSalesReportable(order) && isInRange(order.confirmedAt, from, to))
-      .sort((left, right) => (right.confirmedAt ?? "").localeCompare(left.confirmedAt ?? ""));
+  getReportByPeriod(from: string, to: string, rawFilters: AdminReportFiltersInput = {}) {
+    const filters = normalizeReportFilters(rawFilters);
+    const allOrders = this.ordersService.getAllOrderDetails();
+    const orderSummaries = new Map(this.ordersService.listOrders().data.map((order) => [order.orderNumber, order]));
+    const operationalOrders = allOrders
+      .filter(
+        (order) =>
+          isInRange(order.createdAt, from, to) &&
+          matchesReportOrder(order, filters) &&
+          filterReportItems(order, filters).length > 0
+      )
+      .map((order) => orderSummaries.get(order.orderNumber))
+      .filter((order): order is NonNullable<typeof order> => Boolean(order));
+    const salesOrders = buildScopedSalesOrders(allOrders, from, to, filters);
     const commissions = this.commissionsService.listCommissions().data;
     const payouts = this.commissionsService.listPayouts().data;
 
-    const revenue = sum(salesOrders.map((order) => order.total));
+    const revenue = sum(salesOrders.map((entry) => entry.revenue));
 
     const byDayMap: Record<string, { count: number; revenue: number; paid: number }> = {};
-    for (const order of salesOrders) {
-      const day = (order.confirmedAt ?? order.createdAt).slice(0, 10);
+    for (const entry of salesOrders) {
+      const day = entry.confirmedAt.slice(0, 10);
       if (!byDayMap[day]) {
         byDayMap[day] = { count: 0, revenue: 0, paid: 0 };
       }
       byDayMap[day].count += 1;
-      byDayMap[day].revenue += order.total;
+      byDayMap[day].revenue += entry.revenue;
       byDayMap[day].paid += 1;
     }
 
@@ -257,8 +357,8 @@ export class CoreService {
       .map(([date, stats]) => ({ date, ...stats }));
 
     const byPaymentMethod: Record<string, number> = {};
-    for (const order of salesOrders) {
-      const method = order.paymentMethod ?? "unknown";
+    for (const entry of salesOrders) {
+      const method = entry.order.paymentMethod ?? "unknown";
       byPaymentMethod[method] = (byPaymentMethod[method] ?? 0) + 1;
     }
 
@@ -272,9 +372,8 @@ export class CoreService {
     const vendorMap = new Map<string, VendorSalesReportRow>();
     const productMap = new Map<string, ProductSalesReportRow>();
 
-    for (const order of salesOrders) {
-      const confirmedAt = order.confirmedAt ?? order.createdAt;
-      const salesChannel = order.salesChannel;
+    for (const entry of salesOrders) {
+      const { order, confirmedAt, salesChannel, matchedItems, revenue: orderRevenue } = entry;
       byChannel[salesChannel] = (byChannel[salesChannel] ?? 0) + 1;
 
       const vendorKey = order.vendorId ?? order.vendorCode ?? "sin-vendedor";
@@ -292,7 +391,7 @@ export class CoreService {
       };
 
       vendorRow.salesCount += 1;
-      vendorRow.totalRevenue += order.total;
+      vendorRow.totalRevenue += orderRevenue;
       vendorRow.avgOrderValue = Math.round(vendorRow.totalRevenue / vendorRow.salesCount);
       vendorRow.lastSaleAt =
         !vendorRow.lastSaleAt || confirmedAt > vendorRow.lastSaleAt ? confirmedAt : vendorRow.lastSaleAt;
@@ -303,7 +402,7 @@ export class CoreService {
       }
       vendorMap.set(vendorKey, vendorRow);
 
-      for (const item of order.items) {
+      for (const item of matchedItems) {
         const productKey = `${item.slug}::${item.sku}`;
         const productRow = productMap.get(productKey) ?? {
           productSlug: item.slug,
@@ -366,6 +465,12 @@ export class CoreService {
     );
     const paidComm = commissions.filter((c) => c.status === CommissionStatus.Paid);
     const paidPayouts = payouts.filter((p) => p.status === CommissionPayoutStatus.Paid);
+    const appliedFilters = {
+      salesChannel: filters.salesChannel,
+      vendorCode: filters.vendorCode,
+      productSlug: filters.productSlug,
+      sku: filters.sku
+    };
 
     return wrapResponse(
       {
@@ -405,33 +510,31 @@ export class CoreService {
           paidAmount: sum(paidPayouts.map((p) => p.netAmount))
         }
       },
-      { generatedAt: new Date().toISOString() }
+      { generatedAt: new Date().toISOString(), filters: appliedFilters }
     );
   }
 
-  generateOrdersCsv(from: string, to: string): string {
-    const orders = this.ordersService
-      .getAllOrderDetails()
-      .filter((order) => isSalesReportable(order) && isInRange(order.confirmedAt, from, to))
-      .sort((left, right) => (right.confirmedAt ?? "").localeCompare(left.confirmedAt ?? ""));
+  generateOrdersCsv(from: string, to: string, rawFilters: AdminReportFiltersInput = {}): string {
+    const filters = normalizeReportFilters(rawFilters);
+    const orders = buildScopedSalesOrders(this.ordersService.getAllOrderDetails(), from, to, filters);
     const escape = (v: string | number | undefined | null) => {
       const s = v == null ? "" : String(v);
       return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
     };
     const header = ["Pedido", "Cliente", "Canal", "Total", "Metodo", "Estado pedido", "Estado pago", "Vendedor", "Codigo", "Items", "Fecha venta"].join(",");
-    const rows = orders.map((o) =>
+    const rows = orders.map(({ order, confirmedAt, matchedItems, revenue }) =>
       [
-        escape(o.orderNumber),
-        escape(fullCustomerName(o.customer) || o.customer.email),
-        escape(o.salesChannel),
-        escape(o.total),
-        escape(o.paymentMethod),
-        escape(o.orderStatus),
-        escape(o.paymentStatus),
-        escape(o.vendorName),
-        escape(o.vendorCode),
-        escape(o.items.length),
-        escape((o.confirmedAt ?? o.createdAt).slice(0, 10))
+        escape(order.orderNumber),
+        escape(fullCustomerName(order.customer) || order.customer.email),
+        escape(order.salesChannel),
+        escape(revenue),
+        escape(order.paymentMethod),
+        escape(order.orderStatus),
+        escape(order.paymentStatus),
+        escape(order.vendorName),
+        escape(order.vendorCode),
+        escape(matchedItems.length),
+        escape(confirmedAt.slice(0, 10))
       ].join(",")
     );
     return [header, ...rows].join("\n");

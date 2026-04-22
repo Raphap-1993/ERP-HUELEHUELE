@@ -25,7 +25,6 @@ import {
   Textarea
 } from "@huelegood/ui";
 import type {
-  InventoryReportRow,
   ProductAdminDetail,
   ProductAdminSummary,
   ProductCategorySummary,
@@ -35,16 +34,17 @@ import type {
   ProductUpsertInput,
   ProductVariantInput,
   ProductVariantSummary,
-  ProductVariantStatusValue
+  ProductVariantStatusValue,
+  WarehouseSummary
 } from "@huelegood/shared";
 import { ProductSalesChannel } from "@huelegood/shared";
 import {
   createAdminProduct,
   deleteAdminProductImage,
+  fetchAdminWarehouses,
   fetchAdminProduct,
   fetchAdminProductCategories,
   fetchAdminProducts,
-  fetchInventoryReport,
   uploadAdminProductImage,
   updateAdminProduct
 } from "../lib/api";
@@ -53,6 +53,11 @@ type VariantDraft = {
   id?: string;
   sku: string;
   name: string;
+  flavorCode: string;
+  flavorLabel: string;
+  presentationCode: string;
+  presentationLabel: string;
+  defaultWarehouseId: string;
   price: string;
   compareAtPrice: string;
   stockOnHand: string;
@@ -178,6 +183,11 @@ function createVariantDraft(seed?: Partial<VariantDraft>): VariantDraft {
     id: seed?.id,
     sku: seed?.sku ?? "",
     name: seed?.name ?? "Variante principal",
+    flavorCode: seed?.flavorCode ?? "",
+    flavorLabel: seed?.flavorLabel ?? "",
+    presentationCode: seed?.presentationCode ?? "",
+    presentationLabel: seed?.presentationLabel ?? "",
+    defaultWarehouseId: seed?.defaultWarehouseId ?? "",
     price: seed?.price ?? "0",
     compareAtPrice: seed?.compareAtPrice ?? "",
     stockOnHand: seed?.stockOnHand ?? "0",
@@ -241,6 +251,11 @@ function fromProductDetail(product: ProductAdminDetail): ProductFormState {
             id: variant.id,
             sku: variant.sku,
             name: variant.name,
+            flavorCode: variant.flavorCode ?? "",
+            flavorLabel: variant.flavorLabel ?? "",
+            presentationCode: variant.presentationCode ?? "",
+            presentationLabel: variant.presentationLabel ?? "",
+            defaultWarehouseId: variant.defaultWarehouseId ?? "",
             price: String(variant.price),
             compareAtPrice: variant.compareAtPrice != null ? String(variant.compareAtPrice) : "",
             stockOnHand: String(variant.stockOnHand),
@@ -264,9 +279,15 @@ function fromProductDetail(product: ProductAdminDetail): ProductFormState {
   };
 }
 
-function buildProductPayload(form: ProductFormState, products: ProductAdminSummary[]): ProductUpsertInput {
+function buildProductPayload(
+  form: ProductFormState,
+  products: ProductAdminSummary[],
+  categories: ProductCategorySummary[]
+): ProductUpsertInput {
   const name = form.name.trim();
   const slug = slugify(form.slug || form.name);
+  const selectedCategory = categories.find((category) => category.id === form.categoryId) ?? null;
+  const isCombo = selectedCategory?.slug === COMBO_CATEGORY_SLUG || form.bundleComponents.length > 0;
 
   if (!name) {
     throw new Error("El nombre es obligatorio.");
@@ -276,13 +297,21 @@ function buildProductPayload(form: ProductFormState, products: ProductAdminSumma
     throw new Error("El slug es obligatorio.");
   }
 
+  if (isCombo && form.bundleComponents.length === 0) {
+    throw new Error("Un combo necesita al menos un componente para calcular su stock.");
+  }
+
   const variantSkus = new Set<string>();
   const variants: ProductVariantInput[] = form.variants.map((variant, index) => {
     const sku = variant.sku.trim() || `${slug.toUpperCase()}-${String(index + 1).padStart(2, "0")}`;
     const variantName = variant.name.trim() || (index === 0 ? "Variante principal" : `Variante ${index + 1}`);
+    const flavorLabel = variant.flavorLabel.trim() || undefined;
+    const flavorCode = (variant.flavorCode.trim() || slugify(variant.flavorLabel)).trim() || undefined;
+    const presentationLabel = variant.presentationLabel.trim() || undefined;
+    const presentationCode = (variant.presentationCode.trim() || slugify(variant.presentationLabel)).trim() || undefined;
     const price = Number(variant.price);
-    const stockOnHand = Number(variant.stockOnHand);
-    const lowStockThreshold = Number(variant.lowStockThreshold);
+    const stockOnHand = isCombo ? 0 : Number(variant.stockOnHand);
+    const lowStockThreshold = isCombo ? 0 : Number(variant.lowStockThreshold);
     const compareAtPrice = variant.compareAtPrice.trim() ? Number(variant.compareAtPrice) : undefined;
 
     if (variantSkus.has(sku)) {
@@ -294,11 +323,11 @@ function buildProductPayload(form: ProductFormState, products: ProductAdminSumma
       throw new Error(`La variante ${sku} tiene un precio inválido.`);
     }
 
-    if (!Number.isFinite(stockOnHand) || stockOnHand < 0) {
+    if (!isCombo && (!Number.isFinite(stockOnHand) || stockOnHand < 0)) {
       throw new Error(`La variante ${sku} tiene un stock inválido.`);
     }
 
-    if (!Number.isFinite(lowStockThreshold) || lowStockThreshold < 0) {
+    if (!isCombo && (!Number.isFinite(lowStockThreshold) || lowStockThreshold < 0)) {
       throw new Error(`La variante ${sku} tiene un umbral de stock inválido.`);
     }
 
@@ -310,6 +339,11 @@ function buildProductPayload(form: ProductFormState, products: ProductAdminSumma
       id: variant.id,
       sku,
       name: variantName,
+      flavorCode,
+      flavorLabel,
+      presentationCode,
+      presentationLabel,
+      defaultWarehouseId: isCombo ? undefined : variant.defaultWarehouseId.trim() || undefined,
       price,
       compareAtPrice,
       stockOnHand: Math.trunc(stockOnHand),
@@ -352,6 +386,7 @@ function buildProductPayload(form: ProductFormState, products: ProductAdminSumma
 
   return {
     categoryId: form.categoryId.trim() || undefined,
+    productKind: isCombo ? "bundle" : "single",
     name,
     slug,
     shortDescription: form.shortDescription.trim() || undefined,
@@ -384,7 +419,7 @@ function createInitialImageForm(): {
 export function ProductsWorkspace() {
   const [products, setProducts] = useState<ProductAdminSummary[]>([]);
   const [categories, setCategories] = useState<ProductCategorySummary[]>([]);
-  const [inventoryRows, setInventoryRows] = useState<InventoryReportRow[]>([]);
+  const [warehouses, setWarehouses] = useState<WarehouseSummary[]>([]);
   const [bundleComponentProducts, setBundleComponentProducts] = useState<Record<string, ProductAdminDetail>>({});
   const [bundleComponentProductLoading, setBundleComponentProductLoading] = useState<Record<string, boolean>>({});
   const [bundleComponentProductErrors, setBundleComponentProductErrors] = useState<Record<string, string>>({});
@@ -410,10 +445,10 @@ export function ProductsWorkspace() {
     async function loadList() {
       setLoading(true);
       try {
-        const [productsResponse, categoriesResponse, inventoryResponse] = await Promise.all([
+        const [productsResponse, categoriesResponse, warehousesResponse] = await Promise.all([
           fetchAdminProducts(),
           fetchAdminProductCategories(),
-          fetchInventoryReport()
+          fetchAdminWarehouses()
         ]);
 
         if (!active) {
@@ -422,7 +457,7 @@ export function ProductsWorkspace() {
 
         setProducts(productsResponse.data);
         setCategories(categoriesResponse.data);
-        setInventoryRows(inventoryResponse.data.rows ?? []);
+        setWarehouses(warehousesResponse.data);
         setError(null);
 
         if (!isCreating) {
@@ -556,8 +591,8 @@ export function ProductsWorkspace() {
   const metrics = useMemo(() => {
     const activeProducts = products.filter((product) => product.status === "active").length;
     const featuredProducts = products.filter((product) => product.isFeatured).length;
-    const lowStockRows = inventoryRows.filter((row) => row.lowStock).length;
     const internalProducts = products.filter((product) => product.salesChannel === "internal").length;
+    const comboProducts = products.filter((product) => product.categorySlug === COMBO_CATEGORY_SLUG).length;
 
     return [
       {
@@ -576,12 +611,12 @@ export function ProductsWorkspace() {
         detail: "Visibles en home y secciones clave."
       },
       {
-        label: "Internos / stock bajo",
-        value: `${internalProducts} / ${lowStockRows}`,
-        detail: "Canal interno y alertas operativas."
+        label: "Internos / combos",
+        value: `${internalProducts} / ${comboProducts}`,
+        detail: "Canal interno y bundles del catálogo."
       }
     ];
-  }, [inventoryRows, products]);
+  }, [products]);
 
   const imageVariants = selectedProduct?.variants ?? form.variants.map((variant, index) => ({
     id: variant.id ?? `draft-${index}`,
@@ -716,15 +751,15 @@ export function ProductsWorkspace() {
   }
 
   async function refreshCatalog() {
-    const [productsResponse, categoriesResponse] = await Promise.all([
+    const [productsResponse, categoriesResponse, warehousesResponse] = await Promise.all([
       fetchAdminProducts(),
-      fetchAdminProductCategories()
+      fetchAdminProductCategories(),
+      fetchAdminWarehouses()
     ]);
 
     setProducts(productsResponse.data);
     setCategories(categoriesResponse.data);
-    const inventoryResponse = await fetchInventoryReport();
-    setInventoryRows(inventoryResponse.data.rows ?? []);
+    setWarehouses(warehousesResponse.data);
   }
 
   async function reloadSelectedProduct(productId: string) {
@@ -847,7 +882,7 @@ export function ProductsWorkspace() {
     setFeedback(null);
 
     try {
-      const payload = buildProductPayload(form, products);
+      const payload = buildProductPayload(form, products, categories);
       const response = isCreating || !selectedProductId
         ? await createAdminProduct(payload)
         : await updateAdminProduct(selectedProductId, payload);
@@ -993,7 +1028,7 @@ export function ProductsWorkspace() {
     <div className="space-y-6 pb-10">
       <SectionHeader
         title="Productos"
-        description="Gestiona productos, combos e imágenes desde el backoffice con subida directa a R2."
+        description="Gestiona catálogo, combos, precios e imágenes. El conteo operativo por almacén vive en Inventario."
       />
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -1058,20 +1093,20 @@ export function ProductsWorkspace() {
             ))}
           </div>
 
-          <AdminDataTable
-            title="Reporte de stock y ventas"
-            description="Fuente única para ventas confirmadas, canal y alerta de stock bajo."
-            headers={["SKU", "Producto", "Canal", "Vendidas", "Disponible", "Umbral", "Estado"]}
-            rows={inventoryRows.slice(0, 12).map((row) => [
-              row.sku,
-              `${row.productName} · ${row.reportingGroup}`,
-              row.salesChannel === "internal" ? "Interno" : "Público",
-              String(row.unitsSold),
-              String(row.availableStock),
-              String(row.lowStockThreshold),
-              <StatusBadge key={`${row.variantId}-stock`} label={row.lowStock ? "Bajo" : "Sano"} tone={row.lowStock ? "warning" : "success"} />
-            ])}
-          />
+          <Card className="border-[#d9e7dd] bg-[#f7fbf8]">
+            <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium text-[#1a3a2e]">Inventario operativo separado del catálogo</p>
+                <p className="text-sm leading-6 text-black/60">
+                  `Productos` define la ficha comercial y el almacén preferido. El stock físico, reservas y disponible
+                  para vender se mantienen en `Inventario`.
+                </p>
+              </div>
+              <Button href="/inventario" variant="secondary">
+                Abrir inventario
+              </Button>
+            </CardContent>
+          </Card>
         </CardContent>
       </Card>
 
@@ -1242,9 +1277,11 @@ export function ProductsWorkspace() {
                         {hasMultipleVariants ? "Opciones de venta" : "Presentación comercial"}
                       </div>
                       <div className="text-sm text-black/55">
-                        {hasMultipleVariants
-                          ? "Cada opción define su SKU, precio, stock y estado."
-                          : "Aquí defines el SKU, precio, stock y estado del producto sin exponer variantes técnicas."}
+                        {isComboProduct
+                          ? "Define SKU, precio y estado del combo. El stock disponible se calcula desde sus componentes."
+                          : hasMultipleVariants
+                            ? "Cada opción define su SKU, precio, stock y estado."
+                            : "Aquí defines el SKU, precio, stock y estado del producto sin exponer variantes técnicas."}
                       </div>
                     </div>
                     {hasMultipleVariants ? (
@@ -1293,7 +1330,66 @@ export function ProductsWorkspace() {
                             </label>
                           </div>
 
-                          <div className="mt-4 grid gap-4 md:grid-cols-5">
+                          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                            <label className="space-y-1.5">
+                              <span className="text-sm font-medium text-[#132016]">Sabor</span>
+                              <Input
+                                value={variant.flavorLabel}
+                                onChange={(event) => updateVariant(index, "flavorLabel", event.target.value)}
+                                placeholder="Verde Herbal"
+                              />
+                            </label>
+                            <label className="space-y-1.5">
+                              <span className="text-sm font-medium text-[#132016]">Código sabor</span>
+                              <Input
+                                value={variant.flavorCode}
+                                onChange={(event) => updateVariant(index, "flavorCode", event.target.value)}
+                                placeholder="verde-herbal"
+                              />
+                            </label>
+                            {!isComboProduct ? (
+                              <label className="space-y-1.5">
+                                <span className="text-sm font-medium text-[#132016]">Almacén preferido</span>
+                                <select
+                                  value={variant.defaultWarehouseId}
+                                  onChange={(event) => updateVariant(index, "defaultWarehouseId", event.target.value)}
+                                  className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none transition focus:border-black/25"
+                                >
+                                  <option value="">Sin asignar</option>
+                                  {warehouses.map((warehouse) => (
+                                    <option key={warehouse.id} value={warehouse.id}>
+                                      {warehouse.name} · {warehouse.code}
+                                    </option>
+                                  ))}
+                                </select>
+                                <span className="text-xs text-black/45">Se usa como sugerencia inicial del despacho.</span>
+                              </label>
+                            ) : null}
+                            <label className="space-y-1.5">
+                              <span className="text-sm font-medium text-[#132016]">Presentación</span>
+                              <Input
+                                value={variant.presentationLabel}
+                                onChange={(event) => updateVariant(index, "presentationLabel", event.target.value)}
+                                placeholder="Unitario"
+                              />
+                            </label>
+                            <label className="space-y-1.5">
+                              <span className="text-sm font-medium text-[#132016]">Código presentación</span>
+                              <Input
+                                value={variant.presentationCode}
+                                onChange={(event) => updateVariant(index, "presentationCode", event.target.value)}
+                                placeholder="unitario"
+                              />
+                            </label>
+                          </div>
+
+                          <div className="mt-4 rounded-[1rem] border border-black/8 bg-white px-3 py-2 text-xs text-black/55">
+                            {isComboProduct
+                              ? "El combo no registra stock inicial ni almacén base propio. Inventario calcula su disponibilidad desde el stock de los componentes."
+                              : "El stock operativo por variante y almacén se mantiene en `Inventario`. Aquí solo configuras el valor inicial/base de la ficha."}
+                          </div>
+
+                          <div className={`mt-4 grid gap-4 ${isComboProduct ? "md:grid-cols-3" : "md:grid-cols-5"}`}>
                             <label className="space-y-1.5">
                               <span className="text-sm font-medium text-[#132016]">Precio</span>
                               <Input
@@ -1315,26 +1411,30 @@ export function ProductsWorkspace() {
                                 placeholder="Opcional"
                               />
                             </label>
-                            <label className="space-y-1.5">
-                              <span className="text-sm font-medium text-[#132016]">Stock</span>
-                              <Input
-                                type="number"
-                                min="0"
-                                step="1"
-                                value={variant.stockOnHand}
-                                onChange={(event) => updateVariant(index, "stockOnHand", event.target.value)}
-                              />
-                            </label>
-                            <label className="space-y-1.5">
-                              <span className="text-sm font-medium text-[#132016]">Umbral bajo</span>
-                              <Input
-                                type="number"
-                                min="0"
-                                step="1"
-                                value={variant.lowStockThreshold}
-                                onChange={(event) => updateVariant(index, "lowStockThreshold", event.target.value)}
-                              />
-                            </label>
+                            {!isComboProduct ? (
+                              <>
+                                <label className="space-y-1.5">
+                                  <span className="text-sm font-medium text-[#132016]">Stock inicial/base</span>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    value={variant.stockOnHand}
+                                    onChange={(event) => updateVariant(index, "stockOnHand", event.target.value)}
+                                  />
+                                </label>
+                                <label className="space-y-1.5">
+                                  <span className="text-sm font-medium text-[#132016]">Umbral alerta</span>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    value={variant.lowStockThreshold}
+                                    onChange={(event) => updateVariant(index, "lowStockThreshold", event.target.value)}
+                                  />
+                                </label>
+                              </>
+                            ) : null}
                             <label className="space-y-1.5">
                               <span className="text-sm font-medium text-[#132016]">Estado</span>
                               <select
@@ -1384,7 +1484,66 @@ export function ProductsWorkspace() {
                         </label>
                       </div>
 
-                      <div className="mt-4 grid gap-4 md:grid-cols-5">
+                      <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        <label className="space-y-1.5">
+                          <span className="text-sm font-medium text-[#132016]">Sabor</span>
+                          <Input
+                            value={primaryVariant.flavorLabel}
+                            onChange={(event) => updateVariant(0, "flavorLabel", event.target.value)}
+                            placeholder="Verde Herbal"
+                          />
+                        </label>
+                        <label className="space-y-1.5">
+                          <span className="text-sm font-medium text-[#132016]">Código sabor</span>
+                          <Input
+                            value={primaryVariant.flavorCode}
+                            onChange={(event) => updateVariant(0, "flavorCode", event.target.value)}
+                            placeholder="verde-herbal"
+                          />
+                        </label>
+                        {!isComboProduct ? (
+                          <label className="space-y-1.5">
+                            <span className="text-sm font-medium text-[#132016]">Origen preferido</span>
+                            <select
+                              value={primaryVariant.defaultWarehouseId}
+                              onChange={(event) => updateVariant(0, "defaultWarehouseId", event.target.value)}
+                              className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none transition focus:border-black/25"
+                            >
+                              <option value="">Sin asignar</option>
+                              {warehouses.map((warehouse) => (
+                                <option key={warehouse.id} value={warehouse.id}>
+                                  {warehouse.name} · {warehouse.code}
+                                </option>
+                              ))}
+                            </select>
+                            <span className="text-xs text-black/45">Se usa como sugerencia inicial del despacho.</span>
+                          </label>
+                        ) : null}
+                        <label className="space-y-1.5">
+                          <span className="text-sm font-medium text-[#132016]">Presentación</span>
+                          <Input
+                            value={primaryVariant.presentationLabel}
+                            onChange={(event) => updateVariant(0, "presentationLabel", event.target.value)}
+                            placeholder="Unitario"
+                          />
+                        </label>
+                        <label className="space-y-1.5">
+                          <span className="text-sm font-medium text-[#132016]">Código presentación</span>
+                          <Input
+                            value={primaryVariant.presentationCode}
+                            onChange={(event) => updateVariant(0, "presentationCode", event.target.value)}
+                            placeholder="unitario"
+                          />
+                        </label>
+                      </div>
+
+                      <div className="mt-4 rounded-[1rem] border border-black/8 bg-white px-3 py-2 text-xs text-black/55">
+                        {isComboProduct
+                          ? "El combo no registra stock inicial ni almacén base propio. Inventario calcula su disponibilidad desde el stock de los componentes."
+                          : "El stock operativo por variante y almacén se mantiene en `Inventario`. Aquí solo configuras el valor inicial/base de la ficha."}
+                      </div>
+
+                      <div className={`mt-4 grid gap-4 ${isComboProduct ? "md:grid-cols-3" : "md:grid-cols-5"}`}>
                         <label className="space-y-1.5">
                           <span className="text-sm font-medium text-[#132016]">Precio</span>
                           <Input
@@ -1406,26 +1565,30 @@ export function ProductsWorkspace() {
                             placeholder="Opcional"
                           />
                         </label>
-                        <label className="space-y-1.5">
-                          <span className="text-sm font-medium text-[#132016]">Stock</span>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="1"
-                            value={primaryVariant.stockOnHand}
-                            onChange={(event) => updateVariant(0, "stockOnHand", event.target.value)}
-                          />
-                        </label>
-                        <label className="space-y-1.5">
-                          <span className="text-sm font-medium text-[#132016]">Umbral bajo</span>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="1"
-                            value={primaryVariant.lowStockThreshold}
-                            onChange={(event) => updateVariant(0, "lowStockThreshold", event.target.value)}
-                          />
-                        </label>
+                        {!isComboProduct ? (
+                          <>
+                            <label className="space-y-1.5">
+                              <span className="text-sm font-medium text-[#132016]">Stock inicial/base</span>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={primaryVariant.stockOnHand}
+                                onChange={(event) => updateVariant(0, "stockOnHand", event.target.value)}
+                              />
+                            </label>
+                            <label className="space-y-1.5">
+                              <span className="text-sm font-medium text-[#132016]">Umbral alerta</span>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={primaryVariant.lowStockThreshold}
+                                onChange={(event) => updateVariant(0, "lowStockThreshold", event.target.value)}
+                              />
+                            </label>
+                          </>
+                        ) : null}
                         <label className="space-y-1.5">
                           <span className="text-sm font-medium text-[#132016]">Estado</span>
                           <select
@@ -1456,7 +1619,8 @@ export function ProductsWorkspace() {
                         <div>
                           <div className="font-semibold text-[#132016]">Componentes del combo</div>
                           <div className="text-sm text-black/55">
-                            Define qué productos base se descuentan cuando vendes este combo.
+                            Define qué productos base se descuentan cuando vendes este combo. El stock se calcula con
+                            la disponibilidad de estas presentaciones.
                           </div>
                         </div>
                         <Button type="button" variant="secondary" size="sm" onClick={handleAddBundleComponent}>
@@ -1603,6 +1767,11 @@ export function ProductsWorkspace() {
                         </div>
                       );
                         })}
+                        {!form.bundleComponents.length ? (
+                          <div className="rounded-[1.25rem] border border-dashed border-black/10 bg-[#fafaf7] p-4 text-sm text-black/55">
+                            Agrega al menos un componente para que el combo pueda calcular su stock disponible.
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   </>

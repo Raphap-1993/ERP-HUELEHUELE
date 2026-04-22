@@ -57,6 +57,11 @@ function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
 }
 
+function envOrFallback(name: string, fallback: string) {
+  const value = process.env[name]?.trim();
+  return value ? value : fallback;
+}
+
 async function createSession(account: AuthRecord): Promise<AuthSessionSummary> {
   const token = randomUUID();
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString();
@@ -194,6 +199,19 @@ function resolveDisplayName(user: DatabaseAuthUser) {
   return user.email;
 }
 
+function seedLocalAdminAccount() {
+  const email = normalizeEmail(envOrFallback("BOOTSTRAP_ADMIN_EMAIL", "admin@huelegood.com"));
+
+  accounts.set(email, {
+    id: "dev-admin-local",
+    name: envOrFallback("BOOTSTRAP_ADMIN_NAME", "Admin Huelegood"),
+    email,
+    password: envOrFallback("BOOTSTRAP_ADMIN_PASSWORD", "huelegood123"),
+    accountType: "admin",
+    roles: buildRoles([RoleCode.SuperAdmin, RoleCode.Admin])
+  });
+}
+
 @Injectable()
 export class AuthService implements OnModuleInit, OnModuleDestroy {
   constructor(
@@ -215,6 +233,10 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
     if (snapshot) {
       this.restoreSnapshot(snapshot);
       return;
+    }
+
+    if (accounts.size === 0) {
+      seedLocalAdminAccount();
     }
 
     await this.persistState();

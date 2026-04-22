@@ -11,7 +11,7 @@ export function TestimonialsSection({
       <StorefrontV2SectionHeading
         eyebrow="Prueba social"
         title="La narrativa gana cuando se apoya en momentos de uso reales."
-        description="Seguimos usando testimonios y CMS actuales, pero con una composición más premium y más legible."
+        description="Historias reales de quienes ya lo usan."
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

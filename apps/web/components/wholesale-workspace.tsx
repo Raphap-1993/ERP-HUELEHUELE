@@ -105,13 +105,13 @@ export function WholesaleWorkspace() {
   return (
     <div className="space-y-0">
       {/* Sección oscura principal */}
-      <section className="bg-[#1a3a2e] py-24 relative overflow-hidden">
+      <section className="bg-[#577e2f] py-24 relative overflow-hidden">
         <div className="mx-auto max-w-[1120px] px-6">
           <div className="grid grid-cols-1 gap-16 xl:grid-cols-2 xl:items-start">
 
             {/* Columna izquierda: info */}
             <div>
-              <span className="inline-block text-xs font-semibold uppercase tracking-widest text-[#52b788] bg-[rgba(82,183,136,0.15)] px-4 py-1.5 rounded-full mb-5">
+              <span className="inline-block text-xs font-semibold uppercase tracking-widest text-[#61a740] bg-[rgba(97,167,64,0.15)] px-4 py-1.5 rounded-full mb-5">
                 {interestType === "distributor" ? "Ruta distribuidor" : "Oportunidad de negocio"}
               </span>
               <h2 className="font-serif text-4xl font-black text-white leading-tight mb-4 md:text-5xl">
@@ -146,7 +146,7 @@ export function WholesaleWorkspace() {
                   },
                 ].map((ben) => (
                   <div key={ben.title} className="flex gap-4 items-start">
-                    <div className="w-11 h-11 rounded-[13px] flex-shrink-0 bg-[rgba(82,183,136,0.12)] border border-[rgba(82,183,136,0.2)] flex items-center justify-center text-[18px]">
+                    <div className="w-11 h-11 rounded-[13px] flex-shrink-0 bg-[rgba(97,167,64,0.12)] border border-[rgba(97,167,64,0.2)] flex items-center justify-center text-[18px]">
                       {ben.icon}
                     </div>
                     <div>
@@ -168,7 +168,7 @@ export function WholesaleWorkspace() {
                     key={stat.num}
                     className="bg-white/5 border border-white/8 rounded-[15px] p-4 text-center"
                   >
-                    <div className="font-serif text-[28px] font-black text-[#52b788]">
+                    <div className="font-serif text-[28px] font-black text-[#61a740]">
                       {stat.num}
                     </div>
                     <p className="text-[11px] text-white/40 mt-1 leading-[1.4]">{stat.label}</p>
@@ -185,7 +185,7 @@ export function WholesaleWorkspace() {
                   <h4 className="font-serif text-xl text-white mb-2">¡Solicitud enviada!</h4>
                   <p className="text-sm text-white/55 leading-relaxed">{message}</p>
                   {nextStep ? (
-                    <p className="mt-2 text-sm text-[#52b788]">{nextStep}</p>
+                    <p className="mt-2 text-sm text-[#61a740]">{nextStep}</p>
                   ) : null}
                 </div>
               ) : (
@@ -209,7 +209,7 @@ export function WholesaleWorkspace() {
                           value={contact}
                           onChange={(e) => setContact(e.target.value)}
                           placeholder="Tu nombre"
-                          className="w-full px-3.5 py-3 bg-white/7 border border-white/14 rounded-[11px] text-white text-sm placeholder:text-white/25 outline-none focus:border-[#52b788] transition"
+                          className="w-full px-3.5 py-3 bg-white/7 border border-white/14 rounded-[11px] text-white text-sm placeholder:text-white/25 outline-none focus:border-[#61a740] transition"
                         />
                       </label>
                       <label className="block space-y-1.5">
@@ -222,7 +222,7 @@ export function WholesaleWorkspace() {
                           onChange={(e) => setPhone(e.target.value)}
                           placeholder="+51 999 000 000"
                           type="tel"
-                          className="w-full px-3.5 py-3 bg-white/7 border border-white/14 rounded-[11px] text-white text-sm placeholder:text-white/25 outline-none focus:border-[#52b788] transition"
+                          className="w-full px-3.5 py-3 bg-white/7 border border-white/14 rounded-[11px] text-white text-sm placeholder:text-white/25 outline-none focus:border-[#61a740] transition"
                         />
                       </label>
                     </div>
@@ -237,7 +237,7 @@ export function WholesaleWorkspace() {
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="tu@correo.com"
                         type="email"
-                        className="w-full px-3.5 py-3 bg-white/7 border border-white/14 rounded-[11px] text-white text-sm placeholder:text-white/25 outline-none focus:border-[#52b788] transition"
+                        className="w-full px-3.5 py-3 bg-white/7 border border-white/14 rounded-[11px] text-white text-sm placeholder:text-white/25 outline-none focus:border-[#61a740] transition"
                       />
                     </label>
 
@@ -250,7 +250,7 @@ export function WholesaleWorkspace() {
                         value={company}
                         onChange={(e) => setCompany(e.target.value)}
                         placeholder="Ej: Botica Central, Tienda Naturista..."
-                        className="w-full px-3.5 py-3 bg-white/7 border border-white/14 rounded-[11px] text-white text-sm placeholder:text-white/25 outline-none focus:border-[#52b788] transition"
+                        className="w-full px-3.5 py-3 bg-white/7 border border-white/14 rounded-[11px] text-white text-sm placeholder:text-white/25 outline-none focus:border-[#61a740] transition"
                       />
                     </label>
 
@@ -268,8 +268,8 @@ export function WholesaleWorkspace() {
                               onClick={() => setBusinessType(opt)}
                               className={`px-3.5 py-2 rounded-[9px] border text-xs font-medium transition ${
                                 businessType === opt
-                                  ? "border-[#52b788] bg-[rgba(82,183,136,0.12)] text-white"
-                                  : "border-white/13 text-white/60 hover:border-[rgba(82,183,136,0.4)]"
+                                  ? "border-[#61a740] bg-[rgba(97,167,64,0.12)] text-white"
+                                  : "border-white/13 text-white/60 hover:border-[rgba(97,167,64,0.4)]"
                               }`}
                             >
                               {opt}
@@ -287,21 +287,21 @@ export function WholesaleWorkspace() {
                       <select
                         value={volume}
                         onChange={(e) => setVolume(e.target.value)}
-                        className="w-full px-3.5 py-3 bg-white/7 border border-white/14 rounded-[11px] text-white text-sm outline-none focus:border-[#52b788] transition cursor-pointer appearance-none"
+                        className="w-full px-3.5 py-3 bg-white/7 border border-white/14 rounded-[11px] text-white text-sm outline-none focus:border-[#61a740] transition cursor-pointer appearance-none"
                       >
-                        <option value="" className="bg-[#1a3a2e]">
+                        <option value="" className="bg-[#577e2f]">
                           Selecciona un rango
                         </option>
-                        <option value="10 – 24 unidades" className="bg-[#1a3a2e]">
+                        <option value="10 – 24 unidades" className="bg-[#577e2f]">
                           10 – 24 unidades
                         </option>
-                        <option value="25 – 49 unidades" className="bg-[#1a3a2e]">
+                        <option value="25 – 49 unidades" className="bg-[#577e2f]">
                           25 – 49 unidades
                         </option>
-                        <option value="50 – 99 unidades" className="bg-[#1a3a2e]">
+                        <option value="50 – 99 unidades" className="bg-[#577e2f]">
                           50 – 99 unidades
                         </option>
-                        <option value="100+ unidades" className="bg-[#1a3a2e]">
+                        <option value="100+ unidades" className="bg-[#577e2f]">
                           100+ unidades
                         </option>
                       </select>
@@ -316,7 +316,7 @@ export function WholesaleWorkspace() {
                         value={city}
                         onChange={(e) => setCity(e.target.value)}
                         placeholder="Lima, Cusco, Arequipa..."
-                        className="w-full px-3.5 py-3 bg-white/7 border border-white/14 rounded-[11px] text-white text-sm placeholder:text-white/25 outline-none focus:border-[#52b788] transition"
+                        className="w-full px-3.5 py-3 bg-white/7 border border-white/14 rounded-[11px] text-white text-sm placeholder:text-white/25 outline-none focus:border-[#61a740] transition"
                       />
                     </label>
 
@@ -330,7 +330,7 @@ export function WholesaleWorkspace() {
                         onChange={(e) => setNotes(e.target.value)}
                         placeholder="Cuéntanos sobre tu negocio o cualquier consulta..."
                         rows={3}
-                        className="w-full px-3.5 py-3 bg-white/7 border border-white/14 rounded-[11px] text-white text-sm placeholder:text-white/25 outline-none focus:border-[#52b788] transition resize-y"
+                        className="w-full px-3.5 py-3 bg-white/7 border border-white/14 rounded-[11px] text-white text-sm placeholder:text-white/25 outline-none focus:border-[#61a740] transition resize-y"
                       />
                     </label>
 
@@ -363,7 +363,7 @@ export function WholesaleWorkspace() {
       <section id="planes" className="bg-[#faf8f3] py-24">
         <div className="mx-auto max-w-[1120px] px-6">
           <div className="mb-10">
-            <span className="text-xs font-semibold uppercase tracking-widest text-[#2d6a4f] bg-[#d8f3dc] px-4 py-1.5 rounded-full">
+            <span className="text-xs font-semibold uppercase tracking-widest text-[#61a740] bg-[#eef6e8] px-4 py-1.5 rounded-full">
               Planes por volumen
             </span>
             <h2 className="font-serif text-4xl font-black text-[#1a3a2e] mt-4 mb-3">

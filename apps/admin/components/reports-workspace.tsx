@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   Badge,
   Button,
@@ -10,10 +10,11 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
+  Input,
   MetricCard,
   SectionHeader
 } from "@huelegood/ui";
-import { type AdminMetric } from "@huelegood/shared";
+import { type AdminMetric, type AdminReportFiltersInput } from "@huelegood/shared";
 import { fetchAdminReport, downloadAdminReportCsv, type AdminReportPeriodData } from "../lib/api";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -50,12 +51,109 @@ function startOfMonth() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 }
 
+type ReportChannelFilter = "all" | AdminReportPeriodData["sales"]["details"][number]["salesChannel"];
+type ReportFilterDraft = {
+  salesChannel: ReportChannelFilter;
+  vendorCode: string;
+  productSlug: string;
+  sku: string;
+};
+
+const EMPTY_REPORT_FILTER_DRAFT: ReportFilterDraft = {
+  salesChannel: "all",
+  vendorCode: "",
+  productSlug: "",
+  sku: ""
+};
+
+function channelLabel(value: ReportChannelFilter) {
+  if (value === "web") {
+    return "Web";
+  }
+
+  if (value === "manual") {
+    return "Manual";
+  }
+
+  return "Todos";
+}
+
+function formatChannelActivity(
+  webCount: number,
+  manualCount: number,
+  activeChannel: ReportChannelFilter
+) {
+  if (activeChannel === "all") {
+    return `${webCount} web / ${manualCount} manual`;
+  }
+
+  const visibleCount = activeChannel === "web" ? webCount : manualCount;
+  return `${visibleCount} ${channelLabel(activeChannel).toLowerCase()}`;
+}
+
+function normalizeReportFilterDraft(draft: ReportFilterDraft): ReportFilterDraft {
+  return {
+    salesChannel: draft.salesChannel,
+    vendorCode: draft.vendorCode.trim().toUpperCase(),
+    productSlug: draft.productSlug.trim().toLowerCase(),
+    sku: draft.sku.trim().toUpperCase()
+  };
+}
+
+function buildAppliedReportFilters(draft: ReportFilterDraft): AdminReportFiltersInput {
+  const normalizedDraft = normalizeReportFilterDraft(draft);
+  return {
+    salesChannel: normalizedDraft.salesChannel === "all" ? undefined : normalizedDraft.salesChannel,
+    vendorCode: normalizedDraft.vendorCode || undefined,
+    productSlug: normalizedDraft.productSlug || undefined,
+    sku: normalizedDraft.sku || undefined
+  };
+}
+
+function hasAppliedReportFilters(filters: AdminReportFiltersInput) {
+  return Boolean(filters.salesChannel || filters.vendorCode || filters.productSlug || filters.sku);
+}
+
+function areAppliedReportFiltersEqual(left: AdminReportFiltersInput, right: AdminReportFiltersInput) {
+  return (
+    left.salesChannel === right.salesChannel &&
+    left.vendorCode === right.vendorCode &&
+    left.productSlug === right.productSlug &&
+    left.sku === right.sku
+  );
+}
+
 const PRESETS = [
   { label: "Hoy", from: () => today(), to: () => today() },
   { label: "7 días", from: () => daysAgo(6), to: () => today() },
   { label: "30 días", from: () => daysAgo(29), to: () => today() },
   { label: "Este mes", from: () => startOfMonth(), to: () => today() }
 ] as const;
+
+function ReportsSection({
+  eyebrow,
+  title,
+  description,
+  children
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="space-y-4">
+      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+          <Badge tone="info">{eyebrow}</Badge>
+          <h2 className="mt-2 text-xl font-semibold text-[#132016]">{title}</h2>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-black/55">{description}</p>
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
 
 // ── Inline chart ──────────────────────────────────────────────────────────────
 
@@ -155,17 +253,19 @@ export function ReportsWorkspace() {
   const [from, setFrom] = useState(daysAgo(29));
   const [to, setTo] = useState(today());
   const [activePreset, setActivePreset] = useState<string>("30 días");
+  const [filterDraft, setFilterDraft] = useState<ReportFilterDraft>(EMPTY_REPORT_FILTER_DRAFT);
+  const [appliedFilters, setAppliedFilters] = useState<AdminReportFiltersInput>({});
   const [report, setReport] = useState<AdminReportPeriodData | null>(null);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadReport = useCallback(
-    async (f: string, t: string) => {
+    async (f: string, t: string, filters: AdminReportFiltersInput = {}) => {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetchAdminReport(f, t);
+        const res = await fetchAdminReport(f, t, filters);
         setReport(res.data);
       } catch (err) {
         setError(err instanceof Error ? err.message : "No se pudo cargar el reporte.");
@@ -178,7 +278,7 @@ export function ReportsWorkspace() {
   );
 
   useEffect(() => {
-    void loadReport(from, to);
+    void loadReport(from, to, {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -188,18 +288,32 @@ export function ReportsWorkspace() {
     setFrom(f);
     setTo(t);
     setActivePreset(preset.label);
-    void loadReport(f, t);
+    void loadReport(f, t, appliedFilters);
   }
 
   function handleManualLoad() {
     setActivePreset("");
-    void loadReport(from, to);
+    void loadReport(from, to, appliedFilters);
+  }
+
+  function handleApplyFilters() {
+    const normalizedDraft = normalizeReportFilterDraft(filterDraft);
+    const nextFilters = buildAppliedReportFilters(normalizedDraft);
+    setFilterDraft(normalizedDraft);
+    setAppliedFilters(nextFilters);
+    void loadReport(from, to, nextFilters);
+  }
+
+  function handleClearFilters() {
+    setFilterDraft(EMPTY_REPORT_FILTER_DRAFT);
+    setAppliedFilters({});
+    void loadReport(from, to, {});
   }
 
   async function handleExport() {
     setExporting(true);
     try {
-      await downloadAdminReportCsv(from, to);
+      await downloadAdminReportCsv(from, to, appliedFilters);
     } finally {
       setExporting(false);
     }
@@ -236,9 +350,15 @@ export function ReportsWorkspace() {
       ]
     : [];
 
+  const draftFilters = buildAppliedReportFilters(filterDraft);
+  const filtersDirty = !areAppliedReportFiltersEqual(draftFilters, appliedFilters);
+  const appliedChannelFilter: ReportChannelFilter = appliedFilters.salesChannel ?? "all";
+  const hasAppliedFiltersActive = hasAppliedReportFilters(appliedFilters);
+
   const recentRows = (report?.orders.recent ?? []).map((o) => [
     o.orderNumber,
     o.customerName,
+    o.salesChannel === "manual" ? "Manual" : "Web",
     formatCurrency(o.total),
     o.paymentMethod ?? "—",
     o.orderStatus,
@@ -250,6 +370,7 @@ export function ReportsWorkspace() {
     row.vendorName,
     row.vendorCode ?? "—",
     String(row.salesCount),
+    formatChannelActivity(row.webSalesCount, row.manualSalesCount, appliedChannelFilter),
     formatCurrency(row.totalRevenue),
     formatCurrency(row.avgOrderValue),
     formatDateTime(row.lastSaleAt)
@@ -259,7 +380,7 @@ export function ReportsWorkspace() {
     `${row.productName} · ${row.sku}`,
     String(row.unitsSold),
     formatCurrency(row.totalRevenue),
-    `${row.webUnitsSold} web / ${row.manualUnitsSold} manual`,
+    formatChannelActivity(row.webUnitsSold, row.manualUnitsSold, appliedChannelFilter),
     formatDateTime(row.lastSoldAt)
   ]);
 
@@ -275,73 +396,160 @@ export function ReportsWorkspace() {
 
   return (
     <div className="space-y-6 py-6 md:py-10">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <SectionHeader
-          title="Reportes"
-          description="Analiza pedidos, ingresos y conversión por periodo."
-        />
-      </div>
+      <SectionHeader
+        title="Reportes"
+        description="Define el alcance una vez, revisa el resumen y baja luego al detalle operativo."
+      />
 
-      {/* Date range controls */}
-      <Card>
-        <CardContent className="pt-5 pb-4">
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Presets */}
-            {PRESETS.map((preset) => (
-              <Button
-                key={preset.label}
-                variant={activePreset === preset.label ? "primary" : "secondary"}
-                onClick={() => applyPreset(preset)}
-                disabled={loading}
-              >
-                {preset.label}
-              </Button>
-            ))}
+      <ReportsSection
+        eyebrow="Control"
+        title="Periodo y filtros"
+        description="Todo el reporte, las tablas y el CSV usan este mismo alcance."
+      >
+        <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+          <Card>
+            <CardHeader>
+              <CardTitle>Periodo</CardTitle>
+              <CardDescription>Usa un preset o define fechas exactas antes de exportar.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                {PRESETS.map((preset) => (
+                  <Button
+                    key={preset.label}
+                    variant={activePreset === preset.label ? "primary" : "secondary"}
+                    onClick={() => applyPreset(preset)}
+                    disabled={loading}
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
+              </div>
 
-            {/* Separator */}
-            <span className="text-black/20">|</span>
-
-            {/* Manual inputs */}
-            <div className="flex items-center gap-2">
-              <input
-                type="date"
-                value={from}
-                max={to}
-                onChange={(e) => { setFrom(e.target.value); setActivePreset(""); }}
-                className="rounded-lg border border-black/10 bg-white px-3 py-1.5 text-sm text-[#1a3a2e] focus:border-[#52b788] focus:outline-none"
-              />
-              <span className="text-sm text-black/35">→</span>
-              <input
-                type="date"
-                value={to}
-                min={from}
-                max={today()}
-                onChange={(e) => { setTo(e.target.value); setActivePreset(""); }}
-                className="rounded-lg border border-black/10 bg-white px-3 py-1.5 text-sm text-[#1a3a2e] focus:border-[#52b788] focus:outline-none"
-              />
-              <Button onClick={handleManualLoad} disabled={loading}>
-                {loading ? "Cargando…" : "Cargar"}
-              </Button>
-            </div>
-
-            {report && (
-              <>
-                <Badge tone="success">
-                  {report.period.from} → {report.period.to}
-                </Badge>
-                <Button
-                  variant="secondary"
-                  onClick={() => { void handleExport(); }}
-                  disabled={exporting || loading}
-                >
-                  {exporting ? "Exportando…" : "Exportar CSV"}
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="date"
+                  value={from}
+                  max={to}
+                  onChange={(e) => { setFrom(e.target.value); setActivePreset(""); }}
+                  className="rounded-lg border border-black/10 bg-white px-3 py-1.5 text-sm text-[#1a3a2e] focus:border-[#52b788] focus:outline-none"
+                />
+                <span className="text-sm text-black/35">→</span>
+                <input
+                  type="date"
+                  value={to}
+                  min={from}
+                  max={today()}
+                  onChange={(e) => { setTo(e.target.value); setActivePreset(""); }}
+                  className="rounded-lg border border-black/10 bg-white px-3 py-1.5 text-sm text-[#1a3a2e] focus:border-[#52b788] focus:outline-none"
+                />
+                <Button onClick={handleManualLoad} disabled={loading}>
+                  {loading ? "Cargando…" : "Cargar"}
                 </Button>
-              </>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+              </div>
+
+              {report ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone="success">
+                    {report.period.from} → {report.period.to}
+                  </Badge>
+                  <Button
+                    variant="secondary"
+                    onClick={() => { void handleExport(); }}
+                    disabled={exporting || loading}
+                  >
+                    {exporting ? "Exportando…" : "Exportar CSV"}
+                  </Button>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Filtros</CardTitle>
+              <CardDescription>Acota por canal, vendedor, producto o SKU antes de revisar resultados.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                {(["all", "web", "manual"] as const).map((value) => {
+                  return (
+                    <Button
+                      key={value}
+                      variant={filterDraft.salesChannel === value ? "primary" : "secondary"}
+                      onClick={() => setFilterDraft((current) => ({ ...current, salesChannel: value }))}
+                      disabled={loading}
+                    >
+                      {channelLabel(value)}
+                    </Button>
+                  );
+                })}
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3">
+                <label className="space-y-2">
+                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-black/45">
+                    Código de vendedor
+                  </span>
+                  <Input
+                    value={filterDraft.vendorCode}
+                    onChange={(event) => setFilterDraft((current) => ({ ...current, vendorCode: event.target.value }))}
+                    placeholder="Ej. VENDEDOR-LIMA"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-black/45">
+                    Producto
+                  </span>
+                  <Input
+                    value={filterDraft.productSlug}
+                    onChange={(event) => setFilterDraft((current) => ({ ...current, productSlug: event.target.value }))}
+                    placeholder="Ej. premium-negro"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-black/45">
+                    SKU
+                  </span>
+                  <Input
+                    value={filterDraft.sku}
+                    onChange={(event) => setFilterDraft((current) => ({ ...current, sku: event.target.value }))}
+                    placeholder="Ej. HG-PREMIUM"
+                  />
+                </label>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button onClick={handleApplyFilters} disabled={loading || !filtersDirty}>
+                  {loading ? "Aplicando…" : "Aplicar filtros"}
+                </Button>
+                {hasAppliedFiltersActive ? (
+                  <Button variant="ghost" onClick={handleClearFilters} disabled={loading}>
+                    Limpiar filtros
+                  </Button>
+                ) : null}
+                {filtersDirty ? <Badge tone="warning">Hay cambios sin aplicar</Badge> : null}
+              </div>
+
+              {report ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={appliedChannelFilter === "all" ? "neutral" : "info"}>
+                    Canal: {channelLabel(appliedChannelFilter)}
+                  </Badge>
+                  {appliedFilters.vendorCode ? <Badge tone="neutral">Código: {appliedFilters.vendorCode}</Badge> : null}
+                  {appliedFilters.productSlug ? <Badge tone="neutral">Producto: {appliedFilters.productSlug}</Badge> : null}
+                  {appliedFilters.sku ? <Badge tone="neutral">SKU: {appliedFilters.sku}</Badge> : null}
+                  <Badge tone="neutral">{report.orders.total} pedidos</Badge>
+                  <Badge tone="neutral">{report.products.rows.length} productos</Badge>
+                  <Badge tone="neutral">{report.sales.details.length} líneas</Badge>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+        </div>
+      </ReportsSection>
 
       {/* Error */}
       {error && (
@@ -359,127 +567,151 @@ export function ReportsWorkspace() {
         </div>
       )}
 
-      {/* Metrics */}
       {!loading && report && (
         <>
-          <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
-            {metrics.map((metric) => (
-              <MetricCard key={metric.label} metric={metric} />
-            ))}
-          </div>
+          <ReportsSection
+            eyebrow="Resumen"
+            title="Vista ejecutiva"
+            description="Primero muestra salud comercial del periodo: volumen, ingresos, pagos, estados y comisiones."
+          >
+            <>
+              <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
+                {metrics.map((metric) => (
+                  <MetricCard key={metric.label} metric={metric} />
+                ))}
+              </div>
 
-          {/* Charts row */}
-          <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-            {/* Daily chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Ingresos por día</CardTitle>
-                <CardDescription>Evolución de ingresos y pedidos en el periodo seleccionado.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <DailyChart byDay={report.orders.byDay} />
-              </CardContent>
-            </Card>
+              <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Ingresos por día</CardTitle>
+                    <CardDescription>Evolución de ingresos y pedidos en el periodo seleccionado.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <DailyChart byDay={report.orders.byDay} />
+                  </CardContent>
+                </Card>
 
-            {/* Methods breakdown */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Métodos de pago</CardTitle>
-                <CardDescription>
-                  Distribución de {report.sales.totalConfirmed} ventas confirmadas por método.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <MethodBreakdown
-                  byMethod={report.orders.byPaymentMethod}
-                  total={report.orders.total}
-                />
-              </CardContent>
-            </Card>
-          </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Métodos de pago</CardTitle>
+                    <CardDescription>
+                      Distribución de {report.sales.totalConfirmed} ventas confirmadas por método.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <MethodBreakdown
+                      byMethod={report.orders.byPaymentMethod}
+                      total={report.sales.totalConfirmed}
+                    />
+                  </CardContent>
+                </Card>
+              </div>
 
-          {/* Recent orders */}
-          <AdminDataTable
-            title="Pedidos del periodo"
-            description={`${report.orders.total} pedido${report.orders.total !== 1 ? "s" : ""} entre ${report.period.from} y ${report.period.to}`}
-            headers={["Pedido", "Cliente", "Total", "Método", "Estado", "Pago", "Fecha"]}
-            rows={recentRows}
-          />
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            <AdminDataTable
-              title="Ventas por vendedor"
-              description={`${report.sales.totalConfirmed} venta${report.sales.totalConfirmed !== 1 ? "s" : ""} confirmada${report.sales.totalConfirmed !== 1 ? "s" : ""} para el periodo.`}
-              headers={["Vendedor", "Código", "Ventas", "Monto", "Ticket prom.", "Última venta"]}
-              rows={vendorRows}
-            />
-
-            <AdminDataTable
-              title="Ventas por producto"
-              description="Unidades e ingresos agrupados por producto y SKU."
-              headers={["Producto", "Unidades", "Ingresos", "Canales", "Última venta"]}
-              rows={productRows}
-            />
-          </div>
-
-          <AdminDataTable
-            title="Detalle de ventas"
-            description="Fecha de venta confirmada por producto, canal y vendedor."
-            headers={["Fecha venta", "Pedido", "Canal", "Vendedor", "Producto", "Cant.", "Total línea"]}
-            rows={detailRows}
-          />
-
-          {/* Status breakdown + Commissions summary */}
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Status breakdown */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Estado de pedidos</CardTitle>
-                <CardDescription>Distribución por estado en el periodo.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {Object.entries(report.orders.byStatus).length === 0 ? (
-                    <p className="text-sm text-black/40">Sin pedidos en el periodo</p>
-                  ) : (
-                    Object.entries(report.orders.byStatus)
-                      .sort(([, a], [, b]) => b - a)
-                      .map(([status, count]) => (
-                        <div key={status} className="flex items-center justify-between rounded-lg bg-black/[0.025] px-4 py-2.5 text-sm">
-                          <span className="text-black/65">{status}</span>
-                          <span className="font-semibold text-[#1a3a2e]">{count}</span>
-                        </div>
-                      ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Commissions summary */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Comisiones</CardTitle>
-                <CardDescription>Estado acumulado de comisiones de vendedores.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {[
-                    { label: "Total comisiones", value: formatCurrency(report.commissions.totalAmount), detail: `${report.commissions.total} registros` },
-                    { label: "Por liquidar", value: formatCurrency(report.commissions.payableAmount), detail: `${report.commissions.payable} payable${report.commissions.payable !== 1 ? "s" : ""}` },
-                    { label: "Ya pagado", value: formatCurrency(report.commissions.paidAmount), detail: `${report.commissions.paid} liquidado${report.commissions.paid !== 1 ? "s" : ""}` }
-                  ].map((item) => (
-                    <div key={item.label} className="flex items-center justify-between rounded-lg bg-black/[0.025] px-4 py-3">
-                      <div>
-                        <p className="text-sm font-medium text-[#1a3a2e]">{item.label}</p>
-                        <p className="text-xs text-black/45">{item.detail}</p>
-                      </div>
-                      <p className="font-serif text-lg font-bold text-[#1a3a2e]">{item.value}</p>
+              <div className="grid gap-6 lg:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Estado de pedidos</CardTitle>
+                    <CardDescription>Distribución por estado en el periodo.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {Object.entries(report.orders.byStatus).length === 0 ? (
+                        <p className="text-sm text-black/40">Sin pedidos en el periodo</p>
+                      ) : (
+                        Object.entries(report.orders.byStatus)
+                          .sort(([, a], [, b]) => b - a)
+                          .map(([status, count]) => (
+                            <div key={status} className="flex items-center justify-between rounded-lg bg-black/[0.025] px-4 py-2.5 text-sm">
+                              <span className="text-black/65">{status}</span>
+                              <span className="font-semibold text-[#1a3a2e]">{count}</span>
+                            </div>
+                          ))
+                      )}
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Comisiones</CardTitle>
+                    <CardDescription>Estado acumulado de comisiones de vendedores.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {[
+                        { label: "Total comisiones", value: formatCurrency(report.commissions.totalAmount), detail: `${report.commissions.total} registros` },
+                        { label: "Por liquidar", value: formatCurrency(report.commissions.payableAmount), detail: `${report.commissions.payable} payable${report.commissions.payable !== 1 ? "s" : ""}` },
+                        { label: "Ya pagado", value: formatCurrency(report.commissions.paidAmount), detail: `${report.commissions.paid} liquidado${report.commissions.paid !== 1 ? "s" : ""}` }
+                      ].map((item) => (
+                        <div key={item.label} className="flex items-center justify-between rounded-lg bg-black/[0.025] px-4 py-3">
+                          <div>
+                            <p className="text-sm font-medium text-[#1a3a2e]">{item.label}</p>
+                            <p className="text-xs text-black/45">{item.detail}</p>
+                          </div>
+                          <p className="font-serif text-lg font-bold text-[#1a3a2e]">{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          </ReportsSection>
+
+          <ReportsSection
+            eyebrow="Detalle"
+            title="Listas operativas"
+            description="Después baja a pedidos, productos, vendedores y líneas confirmadas."
+          >
+            <>
+              <AdminDataTable
+                title="Pedidos del periodo"
+                description={
+                  recentRows.length > 0
+                    ? `Mostrando ${recentRows.length} pedido${recentRows.length !== 1 ? "s" : ""} recientes de ${report.orders.total} dentro del scope ${report.period.from} → ${report.period.to}.`
+                    : "No hay pedidos dentro del scope activo."
+                }
+                headers={["Pedido", "Cliente", "Canal", "Total", "Método", "Estado", "Pago", "Fecha"]}
+                rows={recentRows}
+              />
+
+              <div className="grid gap-6 lg:grid-cols-2">
+                <AdminDataTable
+                  title="Ventas por producto"
+                  description={
+                    productRows.length > 0
+                      ? "Unidades e ingresos agrupados por producto y SKU dentro del scope cargado."
+                      : "No hay productos en el scope activo."
+                  }
+                  headers={["Producto", "Unidades", "Ingresos periodo", "Actividad", "Última venta"]}
+                  rows={productRows}
+                />
+
+                <AdminDataTable
+                  title="Ventas por vendedor"
+                  description={
+                    vendorRows.length > 0
+                      ? `${vendorRows.length} vendedor${vendorRows.length !== 1 ? "es" : ""} agregado${vendorRows.length !== 1 ? "s" : ""} en el scope cargado.`
+                      : "No hay vendedores en el scope activo."
+                  }
+                  headers={["Vendedor", "Código", "Ventas", "Actividad", "Monto periodo", "Ticket prom.", "Última venta"]}
+                  rows={vendorRows}
+                />
+              </div>
+
+              <AdminDataTable
+                title="Detalle de ventas"
+                description={
+                  detailRows.length > 0
+                    ? `Detalle visible de ${detailRows.length} línea${detailRows.length !== 1 ? "s" : ""} confirmada${detailRows.length !== 1 ? "s" : ""} dentro del scope cargado.`
+                    : "No hay líneas de detalle en el scope activo."
+                }
+                headers={["Fecha venta", "Pedido", "Canal", "Vendedor", "Producto", "Cant.", "Total línea"]}
+                rows={detailRows}
+              />
+            </>
+          </ReportsSection>
         </>
       )}
 

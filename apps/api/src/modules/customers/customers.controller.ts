@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post } from "@nestjs/common";
-import { adminAccessRoles, type CustomerUpsertInput } from "@huelegood/shared";
+import { adminAccessRoles, type CustomerConflictResolveInput, type CustomerMergeInput, type CustomerUpsertInput } from "@huelegood/shared";
 import { RequireRoles } from "../auth/auth-rbac";
 import { CustomersService } from "./customers.service";
 
@@ -11,6 +11,11 @@ export class CustomersController {
   @Get()
   listCustomers() {
     return this.customersService.listCustomers();
+  }
+
+  @Get("conflicts")
+  listCustomerConflicts() {
+    return this.customersService.listCustomerConflicts();
   }
 
   @Get(":id")
@@ -31,6 +36,16 @@ export class CustomersController {
   @Patch(":id")
   updateCustomer(@Param("id") id: string, @Body() body: CustomerUpsertInput) {
     return this.customersService.updateCustomer(id, body);
+  }
+
+  @Post("merge")
+  mergeCustomers(@Body() body: CustomerMergeInput) {
+    return this.customersService.mergeCustomers(body);
+  }
+
+  @Post("conflicts/:id/resolve")
+  resolveCustomerConflict(@Param("id") id: string, @Body() body: CustomerConflictResolveInput) {
+    return this.customersService.resolveCustomerConflict(id, body);
   }
 
   @Delete(":id")

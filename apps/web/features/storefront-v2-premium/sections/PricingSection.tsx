@@ -6,6 +6,7 @@ import {
   resolveStorefrontMediaSrc,
   storefrontV2PremiumProductArtBySlug
 } from "../lib/media";
+import { StorefrontReveal } from "../components/StorefrontReveal";
 
 type PricingStyle = {
   badge: string;
@@ -21,9 +22,9 @@ const DISPLAY_ORDER = ["clasico-verde", "combo-duo-perfecto", "premium-negro"] a
 const STYLE_BY_SLUG: Record<(typeof DISPLAY_ORDER)[number], PricingStyle> = {
   "clasico-verde": {
     badge: "🌿 Nuevo",
-    badgeTone: "bg-[#1a3a2e] text-white",
+    badgeTone: "bg-[#577e2f] text-white",
     placeholder: "🌿",
-    imgBg: "bg-gradient-to-br from-[#e8f5e9] to-[#d8f3dc]",
+    imgBg: "bg-gradient-to-br from-[#e8f5e9] to-[#eef6e8]",
     cta: "Quiero el Clásico →"
   },
   "combo-duo-perfecto": {
@@ -89,14 +90,8 @@ function resolveFeaturedCopy(product: CatalogProduct) {
   };
 }
 
-function resolveCheckoutHref(product: CatalogProduct) {
-  const variantId = product.defaultVariantId;
-
-  if (!variantId) {
-    return `/checkout?producto=${encodeURIComponent(product.slug)}`;
-  }
-
-  return `/checkout?producto=${encodeURIComponent(product.slug)}&variantId=${encodeURIComponent(variantId)}`;
+function resolveCheckoutHref(_product: CatalogProduct) {
+  return "/checkout";
 }
 
 function PricingCard({
@@ -121,11 +116,11 @@ function PricingCard({
   return (
     <div
       className={`relative rounded-3xl bg-white p-8 transition hover:-translate-y-1 hover:shadow-[0_20px_60px_rgba(26,58,46,0.12)] ${
-        style.featured ? "scale-[1.02] border-2 border-[#2d6a4f] shadow-[0_20px_60px_rgba(26,58,46,0.12)]" : "border-2 border-transparent"
+        style.featured ? "scale-[1.02] border-2 border-[#61a740] shadow-[0_20px_60px_rgba(26,58,46,0.12)]" : "border-2 border-transparent"
       }`}
     >
       {style.featured ? (
-        <div className="absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-gradient-to-r from-[#2d6a4f] to-[#52b788] px-5 py-2 text-xs font-bold text-white">
+        <div className="absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-gradient-to-r from-[#577e2f] to-[#61a740] px-5 py-2 text-xs font-bold text-white">
           {style.badge}
         </div>
       ) : (
@@ -157,11 +152,11 @@ function PricingCard({
       </div>
 
       {savings ? (
-        <div className="mb-5 inline-block rounded-full bg-[#d8f3dc] px-3 py-1 text-xs font-bold text-[#52b788]">
+        <div className="mb-5 inline-block rounded-full bg-[#eef6e8] px-3 py-1 text-xs font-bold text-[#61a740]">
           {savings}
         </div>
       ) : product.compareAtPrice ? (
-        <div className="mb-5 inline-block rounded-full bg-[#d8f3dc] px-3 py-1 text-xs font-bold text-[#52b788]">
+        <div className="mb-5 inline-block rounded-full bg-[#eef6e8] px-3 py-1 text-xs font-bold text-[#61a740]">
           {`Ahorro frente al precio de referencia`}
         </div>
       ) : null}
@@ -169,7 +164,7 @@ function PricingCard({
       <ul className="mb-7 space-y-2 border-t border-[#f4f4f0] pt-5">
         {features.map((feature) => (
           <li key={feature} className="flex items-start gap-2 text-sm text-[#6b7280]">
-            <span className="mt-0.5 text-[#52b788]">✓</span>
+            <span className="mt-0.5 text-[#61a740]">✓</span>
             {feature}
           </li>
         ))}
@@ -179,8 +174,8 @@ function PricingCard({
         href={resolveCheckoutHref(product)}
         className={`block w-full rounded-full py-4 text-center text-sm font-semibold text-white transition hover:-translate-y-0.5 ${
           style.featured
-            ? "bg-gradient-to-r from-[#2d6a4f] to-[#52b788] hover:shadow-[0_8px_30px_rgba(45,106,79,0.35)]"
-            : "bg-[#2d6a4f] hover:bg-[#1a3a2e]"
+            ? "bg-gradient-to-r from-[#577e2f] to-[#61a740] hover:shadow-[0_8px_30px_rgba(97,167,64,0.35)]"
+            : "bg-[#61a740] hover:bg-[#577e2f]"
         }`}
       >
         {style.cta}
@@ -188,7 +183,7 @@ function PricingCard({
 
       <Link
         href={`/producto/${product.slug}`}
-        className="mt-3 block text-center text-xs font-semibold uppercase tracking-[0.22em] text-[#2d6a4f] transition hover:text-[#1a3a2e]"
+        className="mt-3 block text-center text-xs font-semibold uppercase tracking-[0.22em] text-[#61a740] transition hover:text-[#1a3a2e]"
       >
         Ver detalle
       </Link>
@@ -211,8 +206,8 @@ export function PricingSection({
   return (
     <section id="tienda" className="bg-[#f4f4f0] py-24">
       <div className="mx-auto max-w-[1120px] px-4 md:px-6">
-        <div className="mb-14">
-          <span className="mb-4 inline-block rounded-full bg-[#d8f3dc] px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-[#2d6a4f]">
+        <StorefrontReveal className="mb-14">
+          <span className="mb-4 inline-block rounded-full bg-[#eef6e8] px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-[#61a740]">
             Elige tu Huele Huele
           </span>
           <h2 className="mb-4 font-serif text-4xl font-black leading-tight text-[#1a3a2e] md:text-5xl">
@@ -221,27 +216,31 @@ export function PricingSection({
           <p className="max-w-xl text-base leading-relaxed text-[#6b7280]">
             Elige el que va contigo. Envíos rápidos a todo el Perú vía Olva Courier y Shalom.
           </p>
-        </div>
+        </StorefrontReveal>
 
         {loading && visibleProducts.length === 0 ? (
-          <div className="rounded-[1.75rem] border border-dashed border-[rgba(45,106,79,0.16)] bg-white/60 px-6 py-10 text-center text-sm text-[#6b7280]">
+          <div className="rounded-[1.75rem] border border-dashed border-[rgba(97,167,64,0.16)] bg-white/60 px-6 py-10 text-center text-sm text-[#6b7280]">
             Cargando catálogo...
           </div>
         ) : null}
 
-        <div className="grid items-start gap-6 md:grid-cols-3">
+        <StorefrontReveal className="grid items-start gap-6 md:grid-cols-3" selector="[data-storefront-reveal-item]" stagger={0.1} y={24}>
           {visibleProducts.length > 0 ? (
-            visibleProducts.map((product) => <PricingCard key={product.slug} product={product} currencyCode={currencyCode} />)
+            visibleProducts.map((product) => (
+              <div key={product.slug} data-storefront-reveal-item>
+                <PricingCard product={product} currencyCode={currencyCode} />
+              </div>
+            ))
           ) : (
-            <div className="rounded-[1.75rem] border border-dashed border-[rgba(45,106,79,0.16)] bg-white/70 px-6 py-10 text-center text-sm text-[#6b7280] md:col-span-3">
+            <div className="rounded-[1.75rem] border border-dashed border-[rgba(97,167,64,0.16)] bg-white/70 px-6 py-10 text-center text-sm text-[#6b7280] md:col-span-3">
               No pudimos cargar productos desde el catálogo.
             </div>
           )}
-        </div>
+        </StorefrontReveal>
 
-        <p className="mt-10 text-center text-sm text-[#6b7280]">
-          💳 Aceptamos Yape, Plin, transferencia y contra-entrega · 🚚 Envíos en 24-72h a todo el Perú
-        </p>
+        <StorefrontReveal className="mt-10 text-center text-sm text-[#6b7280]">
+          <p>💳 Aceptamos billetera virtual, transferencia y contra-entrega · 🚚 Envíos en 24-72h a todo el Perú</p>
+        </StorefrontReveal>
       </div>
     </section>
   );

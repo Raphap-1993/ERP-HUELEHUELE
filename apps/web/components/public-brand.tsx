@@ -33,14 +33,8 @@ function formatPrice(value: number, currencyCode = "PEN") {
   }
 }
 
-function resolveCheckoutHref(product: CatalogProduct) {
-  const variantId = product.defaultVariantId;
-
-  if (!variantId) {
-    return `/checkout?producto=${encodeURIComponent(product.slug)}`;
-  }
-
-  return `/checkout?producto=${encodeURIComponent(product.slug)}&variantId=${encodeURIComponent(variantId)}`;
+function resolveCheckoutHref(_product: CatalogProduct) {
+  return "/checkout";
 }
 
 export function EditorialMedia({
@@ -108,7 +102,7 @@ export function EditorialProductGrid({ products }: { products: CatalogProduct[] 
                       ? "bg-white/72 text-[#7b4f1e]"
                       : product.tone === "graphite"
                         ? "bg-white/72 text-[#132016]"
-                        : "bg-[#132016] text-white"
+                        : "bg-[#577e2f] text-white"
                   )}
                 >
                   {product.badge}

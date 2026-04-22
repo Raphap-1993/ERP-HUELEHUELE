@@ -81,11 +81,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     <html lang="es">
       <body className={`${bodyFont.variable} ${displayFont.variable} antialiased`} suppressHydrationWarning>
         <LoadingScreen imageUrl={loadingImageUrl} />
-        <div className="flex min-h-screen flex-col overflow-x-clip bg-white">
+        <div className="flex min-h-screen flex-col overflow-x-clip bg-[hsl(var(--background))]">
 
           {/* ── Header ──────────────────────────────────── */}
           <header className="sticky top-0 z-40 shrink-0 px-4 pt-3 md:px-6 md:pt-4">
-            <div className="mx-auto max-w-[1200px]">
+            <div className="mx-auto max-w-[1376px]">
               <div className="flex items-center justify-between gap-4 rounded-2xl border border-black/6 bg-white/90 px-4 py-3 shadow-[0_4px_24px_rgba(26,58,46,0.08)] backdrop-blur-xl md:px-5">
                 {/* Brand */}
                 <Link href="/" className="flex items-center gap-2 shrink-0">
@@ -100,7 +100,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                     </>
                   ) : (
                     <>
-                      <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1a3a2e] text-sm">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#577e2f] text-sm">
                         🦜
                       </span>
                       <span className="font-serif text-base font-bold text-[#1a3a2e]">
@@ -116,7 +116,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                     <NavLink
                       key={`${item.href}-${item.label}`}
                       item={item}
-                      className="rounded-full px-3.5 py-2 text-sm text-black/60 transition hover:bg-[#d8f3dc] hover:text-[#1a3a2e]"
+                      className="rounded-full px-3.5 py-2 text-sm text-black/60 transition hover:bg-[#eef6e8] hover:text-[#1a3a2e]"
                     />
                   ))}
                 </nav>
@@ -127,7 +127,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                 {/* CTA */}
                 <Link
                   href="/catalogo"
-                  className="hidden shrink-0 rounded-full bg-[#1a3a2e] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2d6a4f] md:inline-flex"
+                  className="hidden shrink-0 rounded-full bg-[#61a740] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#577e2f] md:inline-flex"
                 >
                   Comprar ahora
                 </Link>
@@ -139,7 +139,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <main className="flex-1">{children}</main>
 
           {/* ── Footer ──────────────────────────────────── */}
-          <footer className="bg-[#1a3a2e] px-4 py-12 text-white md:px-6">
+          <footer className="bg-[#eef6e8] px-4 py-12 text-[#163126] md:px-6">
             <div className="mx-auto max-w-[1200px]">
               <div className="grid gap-10 md:grid-cols-[2fr_1fr_1fr_1fr]">
                 {/* Brand column */}
@@ -152,11 +152,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                         className="h-10 w-auto max-w-[216px] object-contain"
                       />
                     ) : (
-                      <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/15 text-sm">🦜</span>
+                      <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#61a740]/20 text-sm">🦜</span>
                     )}
                     <span className="font-serif text-base font-bold">{settings.brandName}</span>
                   </div>
-                  <p className="max-w-xs text-sm leading-7 text-white/55">
+                  <p className="max-w-xs text-sm leading-7 text-[#163126]/68">
                     Tu aliado natural para respirar bien, sentirte bien y moverte por la vida sin que nada te detenga.
                   </p>
                 </div>
@@ -164,7 +164,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                 {/* Nav groups */}
                 {navigationGroups.map((group) => (
                   <div key={group.title}>
-                    <p className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-white/40">
+                    <p className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-[#163126]/45">
                       {group.title}
                     </p>
                     <div className="flex flex-col gap-2">
@@ -172,7 +172,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                         <NavLink
                           key={`footer-${item.href}-${item.label}`}
                           item={item}
-                          className="text-sm text-white/65 transition hover:text-[#52b788]"
+                          className="text-sm text-[#163126]/72 transition hover:text-[#61a740]"
                         />
                       ))}
                     </div>
@@ -180,7 +180,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                 ))}
               </div>
 
-              <div className="mt-10 flex flex-col gap-2 border-t border-white/10 pt-6 text-xs text-white/35 md:flex-row md:justify-between">
+              <div className="mt-10 flex flex-col gap-2 border-t border-[#163126]/10 pt-6 text-xs text-[#163126]/48 md:flex-row md:justify-between">
                 <span>© {currentYear} {settings.brandName}. Todos los derechos reservados.</span>
                 <span>Hecho con 💚 en Perú</span>
               </div>

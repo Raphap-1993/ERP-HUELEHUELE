@@ -148,6 +148,64 @@ function manualPriorityLabel(request: AdminManualPaymentRequestSummary) {
   return { label: "Cerrado", tone: "neutral" as const };
 }
 
+type ManualDecisionGuide = {
+  tone: "neutral" | "success" | "warning" | "danger" | "info";
+  title: string;
+  description: string;
+  impact: string;
+  nextStep: string;
+};
+
+function resolveManualDecisionGuide(request?: AdminManualPaymentRequestSummary | null): ManualDecisionGuide {
+  if (!request) {
+    return {
+      tone: "neutral",
+      title: "Sin solicitud seleccionada",
+      description: "Selecciona un comprobante para revisar contexto, evidencia y decisión operativa.",
+      impact: "No hay impacto mientras no exista una solicitud cargada en la vista.",
+      nextStep: "Abre una solicitud desde la cola manual."
+    };
+  }
+
+  if (request.status === "under_review" || request.status === "submitted") {
+    return {
+      tone: "warning",
+      title: "Pendiente de decisión",
+      description: "Esta solicitud todavía requiere validación humana del comprobante.",
+      impact: "Aprobar confirma el pedido y lo devuelve a su flujo operativo normal. Rechazar deja el caso cerrado con auditoría.",
+      nextStep: "Revisa evidencia, referencia, monto y observaciones antes de aprobar o rechazar."
+    };
+  }
+
+  if (request.status === "approved") {
+    return {
+      tone: "success",
+      title: "Solicitud ya aprobada",
+      description: "La conciliación manual ya se resolvió y el pedido quedó confirmado.",
+      impact: "No requiere nueva decisión; solo seguimiento, despacho o reenvío de comunicación si aplica.",
+      nextStep: "Continúa la operación desde el pedido o confirma que la notificación salió correctamente."
+    };
+  }
+
+  if (request.status === "rejected") {
+    return {
+      tone: "danger",
+      title: "Solicitud rechazada",
+      description: "La revisión del comprobante ya quedó cerrada por rechazo operativo.",
+      impact: "El pedido sale del flujo de conciliación activa y queda trazado para auditoría.",
+      nextStep: "No reabras esta solicitud; genera un caso nuevo si operación valida otro pago."
+    };
+  }
+
+  return {
+    tone: "info",
+    title: "Solicitud cerrada",
+    description: "La solicitud ya no está en una etapa operativa accionable.",
+    impact: "Solo requiere seguimiento o consulta histórica.",
+    nextStep: "Usa el detalle del pedido si necesitas más contexto."
+  };
+}
+
 export function PaymentsWorkspace() {
   const [payments, setPayments] = useState<AdminPaymentSummary[]>([]);
   const [manualRequests, setManualRequests] = useState<AdminManualPaymentRequestSummary[]>([]);
@@ -220,6 +278,8 @@ export function PaymentsWorkspace() {
     () => manualRequests.find((request) => request.id === selectedRequestId) ?? null,
     [manualRequests, selectedRequestId]
   );
+  const selectedRequestGuide = useMemo(() => resolveManualDecisionGuide(selectedRequest), [selectedRequest]);
+  const canResolveSelectedRequest = selectedRequest?.status === "under_review" || selectedRequest?.status === "submitted";
 
   const metrics = useMemo(
     () => [
@@ -361,7 +421,7 @@ export function PaymentsWorkspace() {
             <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
               <SectionHeader
                 title="Pagos"
-                description="Centro operativo para conciliación, revisión manual y seguimiento de notificación."
+                description="Bandeja operativa para comprobantes manuales, conciliación y seguimiento de notificación."
               />
               <Button type="button" variant="secondary" onClick={loadFreshData} disabled={loading || actionLoading}>
                 {loading ? "Actualizando..." : "Refrescar"}
@@ -373,14 +433,22 @@ export function PaymentsWorkspace() {
             </div>
             <div className="grid gap-3 md:grid-cols-3">
               <HeroFact label="En revisión" value={String(underReviewCount)} detail="Comprobantes frenando la decisión final." />
-              <HeroFact label="Openpay" value={String(openpayCount)} detail="Cobros directos que ya siguen su ruta automática." />
+              <HeroFact label="Openpay" value={String(openpayCount)} detail="Cobros online; los pendientes se concilian desde Pedidos > Operación." />
               <HeroFact label="Manual" value={String(manualCount)} detail="Pagos que requieren evidencia o conciliación asistida." />
             </div>
           </div>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-1">
             <OperationalCallout
+              title="Qué se resuelve aquí"
+              description="Esta bandeja atiende solicitudes manuales con comprobante. Cada decisión deja actor, nota y estado final trazado."
+            />
+            <OperationalCallout
               title="Prioridad de hoy"
               description="Resolver revisión manual primero. Después validar que los pagos confirmados estén notificando y no queden en limbo."
+            />
+            <OperationalCallout
+              title="Qué no se resuelve aquí"
+              description="Los pedidos web con Openpay pendiente se confirman desde Pedidos > Operación, no desde esta cola."
             />
             <OperationalCallout
               title="Cobertura"
@@ -508,6 +576,21 @@ export function PaymentsWorkspace() {
                   </div>
                 </div>
 
+                <ManualDecisionGuideCard guide={selectedRequestGuide} />
+
+                {selectedRequest.evidenceImageUrl ? (
+                  <div className="rounded-[1.5rem] border border-black/10 bg-white p-4">
+                    <p className="text-xs uppercase tracking-[0.22em] text-black/45">Comprobante cargado</p>
+                    <div className="mt-3 overflow-hidden rounded-[1rem] border border-black/8 bg-[#f7f5ef]">
+                      <img
+                        src={selectedRequest.evidenceImageUrl}
+                        alt={`Comprobante ${selectedRequest.id}`}
+                        className="max-h-80 w-full object-contain"
+                      />
+                    </div>
+                  </div>
+                ) : null}
+
                 {selectedRequest.evidenceNotes ? (
                   <div className="rounded-[1.5rem] border border-black/10 bg-white p-4">
                     <p className="text-xs uppercase tracking-[0.22em] text-black/45">Notas del comprobante</p>
@@ -515,23 +598,32 @@ export function PaymentsWorkspace() {
                   </div>
                 ) : null}
 
-                <div className="grid gap-4">
-                  <div className="space-y-2">
-                    <p className="text-xs uppercase tracking-[0.22em] text-black/45">Revisor</p>
-                    <Input value={reviewer} onChange={(event) => setReviewer(event.target.value)} placeholder="operador_pagos" />
+                {selectedRequest.notes ? (
+                  <div className="rounded-[1.5rem] border border-black/10 bg-white p-4">
+                    <p className="text-xs uppercase tracking-[0.22em] text-black/45">Nota operativa registrada</p>
+                    <p className="mt-2 text-sm leading-6 text-black/62">{selectedRequest.notes}</p>
                   </div>
-                  <div className="space-y-2">
-                    <p className="text-xs uppercase tracking-[0.22em] text-black/45">Notas</p>
-                    <Textarea value={reviewNotes} onChange={(event) => setReviewNotes(event.target.value)} placeholder="Motivo de aprobación o rechazo" />
+                ) : null}
+
+                {canResolveSelectedRequest ? (
+                  <div className="grid gap-4">
+                    <div className="space-y-2">
+                      <p className="text-xs uppercase tracking-[0.22em] text-black/45">Revisor</p>
+                      <Input value={reviewer} onChange={(event) => setReviewer(event.target.value)} placeholder="operador_pagos" />
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-xs uppercase tracking-[0.22em] text-black/45">Notas</p>
+                      <Textarea value={reviewNotes} onChange={(event) => setReviewNotes(event.target.value)} placeholder="Motivo de aprobación o rechazo" />
+                    </div>
                   </div>
-                </div>
+                ) : null}
               </div>
             ) : (
               <p className="text-sm text-black/55">Selecciona una solicitud para revisar el comprobante.</p>
             )}
           </DialogBody>
           <DialogFooter>
-            {selectedRequest ? (
+            {selectedRequest && canResolveSelectedRequest ? (
               <>
                 <Button type="button" onClick={() => void handleDecision("approve")} disabled={actionLoading}>
                   Aprobar
@@ -578,6 +670,34 @@ function OperationalCallout({
     <div className="rounded-[1.5rem] border border-black/8 bg-white/78 px-4 py-4">
       <div className="text-sm font-semibold text-[#132016]">{title}</div>
       <p className="mt-2 text-sm leading-6 text-black/58">{description}</p>
+    </div>
+  );
+}
+
+function ManualDecisionGuideCard({ guide }: { guide: ManualDecisionGuide }) {
+  return (
+    <div className="rounded-[1.5rem] border border-black/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(244,247,241,0.94)_100%)] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-[0.22em] text-black/45">Ruta operativa</p>
+          <h3 className="mt-2 text-lg font-semibold text-[#132016]">{guide.title}</h3>
+        </div>
+        <Badge tone={guide.tone}>{guide.title}</Badge>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <div className="rounded-[1rem] border border-black/8 bg-white/80 px-3 py-3">
+          <p className="text-xs uppercase tracking-[0.18em] text-black/42">Lectura</p>
+          <p className="mt-2 text-sm leading-6 text-black/62">{guide.description}</p>
+        </div>
+        <div className="rounded-[1rem] border border-black/8 bg-white/80 px-3 py-3">
+          <p className="text-xs uppercase tracking-[0.18em] text-black/42">Impacto</p>
+          <p className="mt-2 text-sm leading-6 text-black/62">{guide.impact}</p>
+        </div>
+        <div className="rounded-[1rem] border border-black/8 bg-white/80 px-3 py-3">
+          <p className="text-xs uppercase tracking-[0.18em] text-black/42">Siguiente paso</p>
+          <p className="mt-2 text-sm leading-6 text-black/62">{guide.nextStep}</p>
+        </div>
+      </div>
     </div>
   );
 }

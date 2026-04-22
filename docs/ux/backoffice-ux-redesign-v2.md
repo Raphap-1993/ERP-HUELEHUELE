@@ -165,12 +165,14 @@ Todo al mismo nivel de scroll vertical, sin jerarquía.
 
 ### Comportamiento del sidebar
 
-- **Jerarquía compacta en desktop** — headers de grupo más densos, menos cards altas y un único grupo expandido por defecto
+- **Jerarquía compacta en desktop** — headers de grupo más densos, menos cards altas y uno o varios grupos pueden permanecer abiertos según necesidad operativa
 - **Grupos con label** (`OPERACIÓN DIARIA`, `CATÁLOGO`, etc.) — no son links, son separadores visuales
 - **Active state** — highlight verde del ítem actual + resaltado del grupo
-- **Preview colapsado** — cada grupo cerrado muestra un resumen corto de sus módulos para escanear sin abrir todo
+- **Texto mínimo persistente** — los grupos muestran solo su label; el contexto secundario debe desaparecer del estado persistente y quedar para hover, tooltip o apertura
+- **Tono por grupo** — cada bloque usa una variación mínima de superficie para separar contextos sin romper la paleta general del backoffice
 - **Badges** — circulito rojo con número para Pedidos pendientes, Pagos por revisar, Notificaciones
-- **Collapse mode** — en ≤1280px el sidebar colapsa a solo iconos; los grupos desaparecen
+- **Collapse mode** — en desktop el sidebar puede colapsarse y expandirse manualmente; en anchos angostos arranca compacto por defecto para ahorrar espacio
+- **Guías de lectura** — los submenús usan líneas guía ultra delgadas para reforzar jerarquía y escaneo vertical
 - **Hover tooltips** — en modo colapsado, el nombre del módulo aparece como tooltip
 
 ---
@@ -257,19 +259,24 @@ Para módulos complejos como Productos que tienen imágenes, la gestión de imá
 ### OPERACIONES
 
 #### Dashboard
-- **Layout:** Full-width, multi-grid de métricas y charts
+- **Layout:** Header compacto + bloque de `atención inmediata` + rutas rápidas por rol + métricas resumidas
+- **Jerarquía:** La cola urgente y el pedido o frente más sensible aparecen antes que charts o lectura analítica
+- **Charts:** Deben vivir en una capa secundaria desplegable o claramente posterior, nunca por encima de la operación inmediata
 - **Modal:** No aplica (solo lectura)
 - **Scroll:** No
 
 #### Pedidos
 - **Layout:** Métricas (total, pendientes, completados, cancelados) + tabla paginada
-- **Modal de detalle:** Timeline del pedido + datos del cliente + items
+- **Modal de detalle:** Tabs de `Resumen`, `Despacho`, `Operación` y `Timeline` para separar lectura, logística y acciones sin mezclar todo en una sola vista
+- **Operación:** Debe mostrar una guía explícita de ruta de conciliación para separar `registro manual directo`, `conciliación Openpay` y `solicitud con comprobante`
+- **Trazabilidad canónica:** El detalle de pedido es la vista canónica de trazabilidad comercial; `Pedidos > Operación` concentra actor, referencia, nota, fechas y estado de la conciliación
 - **Modal de acción:** "Cambiar estado" — select + nota interna
-- **Scroll:** No
+- **Scroll:** Interno dentro del modal cuando el contenido crece
 
 #### Pagos
 - **Layout:** Métricas (monto total, pendientes, aprobados, rechazados) + tabla paginada
-- **Modal de revisión:** Detalle del pago + comprobante + botones Aprobar/Rechazar
+- **Bandeja:** Atiende comprobantes manuales; debe advertir explícitamente que los `openpay` pendientes se resuelven en `Pedidos > Operación`
+- **Modal de revisión:** Detalle del pago + comprobante + actor + nota + efecto operativo claro antes de Aprobar/Rechazar
 - **Scroll:** No
 
 ---
@@ -351,9 +358,9 @@ Para módulos complejos como Productos que tienen imágenes, la gestión de imá
 - **Scroll:** No
 
 #### Configuración
-- **Layout:** Tabs por sección (General, Branding, Integraciones, Seguridad)
-- **Patrón:** Cada tab tiene su propio formulario con botón Guardar — NO modal
-- **Branding:** Logo del menú, loading e ícono del sitio deben poder cargarse desde configuración y reflejarse en web/admin
+- **Layout:** Bloques ordenados por impacto (branding, operación, hero y navegación)
+- **Patrón:** Formularios persistentes en página con helper text y previews claras — NO modal
+- **Branding:** El logo del side menu del backoffice debe poder editarse por separado del logo del header público; loading e ícono del sitio siguen gestionándose desde la misma vista
 - **Biblioteca de medios:** Cuando branding ya existe en `Cloudflare R2`, el panel debe abrir un modal de selección para reutilizar assets existentes sin re-subir archivos
 - **Scroll:** Vertical en la sección, permitido
 

@@ -8,11 +8,15 @@ interface LoadingScreenProps {
 }
 
 export function LoadingScreen({ imageUrl }: LoadingScreenProps) {
-  const [phase, setPhase] = useState<"enter" | "visible" | "exit" | "done">("enter");
+  const [phase, setPhase] = useState<"enter" | "visible" | "exit" | "done">("done");
   const pathname = usePathname();
 
-  // Trigger 1-second overlay on every route change (including initial mount)
   useEffect(() => {
+    if (!imageUrl) {
+      setPhase("done");
+      return;
+    }
+
     setPhase("enter");
     const enterTimer = setTimeout(() => setPhase("visible"), 50);
     const exitTimer = setTimeout(() => setPhase("exit"), 1000);

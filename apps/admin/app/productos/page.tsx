@@ -6,7 +6,7 @@ export default function ProductsPage() {
   return (
     <AdminAuthGate
       title="Productos"
-      description="Catálogo administrable, combos e imágenes para el storefront."
+      description="Catálogo administrable, variantes comerciales y media del storefront."
       allowedRoles={adminAccessRoles.products}
     >
       <ProductsWorkspace />

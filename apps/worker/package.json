@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "tsx watch src/main.ts",
+    "dev": "nest start --watch --entryFile apps/worker/src/main",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/apps/worker/src/main.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",

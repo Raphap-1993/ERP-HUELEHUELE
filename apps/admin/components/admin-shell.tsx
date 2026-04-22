@@ -2,14 +2,21 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
+import { type SiteSetting } from "@huelegood/shared";
 import { useAdminSession } from "./admin-session-provider";
 import { AdminSidebar } from "./admin-sidebar";
 import { AdminTopbar } from "./admin-topbar";
 
-export function AdminShell({ children, loadingImageUrl }: { children: ReactNode; loadingImageUrl?: string }) {
+const DESKTOP_SIDEBAR_COLLAPSED_STORAGE_KEY = "huelegood-admin-sidebar-collapsed";
+
+export function AdminShell({ children, runtimeSiteSettings }: { children: ReactNode; runtimeSiteSettings: SiteSetting }) {
   const pathname = usePathname();
   const { session, loading } = useAdminSession();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState<boolean | null>(null);
+  const isPrintRoute = /^\/pedidos\/[^/]+\/etiqueta\/?$/.test(pathname);
+  const loadingImageUrl = runtimeSiteSettings.loadingImageUrl?.trim() || undefined;
+  const sidebarCollapsed = desktopSidebarCollapsed ?? false;
 
   useEffect(() => {
     setMobileSidebarOpen(false);
@@ -52,6 +59,25 @@ export function AdminShell({ children, loadingImageUrl }: { children: ReactNode;
     };
   }, []);
 
+  useEffect(() => {
+    const storedPreference = window.localStorage.getItem(DESKTOP_SIDEBAR_COLLAPSED_STORAGE_KEY);
+
+    if (storedPreference === "true" || storedPreference === "false") {
+      setDesktopSidebarCollapsed(storedPreference === "true");
+      return;
+    }
+
+    setDesktopSidebarCollapsed(window.matchMedia("(max-width: 1279px)").matches);
+  }, []);
+
+  useEffect(() => {
+    if (desktopSidebarCollapsed === null) {
+      return;
+    }
+
+    window.localStorage.setItem(DESKTOP_SIDEBAR_COLLAPSED_STORAGE_KEY, String(desktopSidebarCollapsed));
+  }, [desktopSidebarCollapsed]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f4f6f5] px-4 py-10">
@@ -82,22 +108,44 @@ export function AdminShell({ children, loadingImageUrl }: { children: ReactNode;
     );
   }
 
+  if (isPrintRoute) {
+    return <div className="min-h-screen bg-[#f4f6f5]">{children}</div>;
+  }
+
   return (
     <>
-      <div className="mx-auto h-screen w-full max-w-[1520px] overflow-hidden px-4 py-5 lg:px-6 lg:py-6">
-        <div className="grid h-full gap-5 lg:grid-cols-[248px_minmax(0,1fr)] xl:grid-cols-[264px_minmax(0,1fr)]">
-          <AdminSidebar variant="desktop" />
+      <div className="mx-auto h-screen w-full max-w-[1480px] overflow-hidden px-4 py-4.5 lg:px-5 lg:py-5">
+        <div
+          className={`grid h-full gap-3 transition-[grid-template-columns] duration-200 ${
+            sidebarCollapsed
+              ? "lg:grid-cols-[84px_minmax(0,1fr)]"
+              : "lg:grid-cols-[220px_minmax(0,1fr)] 2xl:grid-cols-[232px_minmax(0,1fr)]"
+          }`}
+        >
+          <AdminSidebar
+            siteSettings={runtimeSiteSettings}
+            variant="desktop"
+            collapsed={sidebarCollapsed}
+            onToggleCollapsed={() => {
+              setDesktopSidebarCollapsed((current) => !current);
+            }}
+          />
           <main className="flex min-h-0 min-w-0 flex-col overflow-hidden">
             <div className="lg:hidden">
               <AdminTopbar onMenuClick={() => setMobileSidebarOpen(true)} />
             </div>
-            <div className="mt-6 flex-1 space-y-6 overflow-y-auto pb-6 lg:mt-0">
+            <div className="mt-4 flex-1 space-y-6 overflow-y-auto pb-6 lg:mt-0">
               {children}
             </div>
           </main>
         </div>
       </div>
-      <AdminSidebar variant="mobile" open={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} />
+      <AdminSidebar
+        siteSettings={runtimeSiteSettings}
+        variant="mobile"
+        open={mobileSidebarOpen}
+        onClose={() => setMobileSidebarOpen(false)}
+      />
     </>
   );
 }

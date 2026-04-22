@@ -11,6 +11,8 @@ coverage
 *.log
 logs/
 backups/
+outputs/
+storage/
 prisma/dev.db
 apps/**/.next
 apps/**/dist

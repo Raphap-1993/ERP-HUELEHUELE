@@ -137,7 +137,7 @@ export async function loadStorefrontV2Content(): Promise<StorefrontV2Content> {
       {
         label: "Selección",
         value: `${products.length} formatos`,
-        detail: catalogProducts.length > 0 ? "Catálogo persistido desde la base de datos." : "Catálogo corto, curado y alineado con el estado real del proyecto."
+        detail: catalogProducts.length > 0 ? "Selección actual disponible." : "Selección corta y fácil de recorrer."
       },
       {
         label: "Sensación",
@@ -147,12 +147,12 @@ export async function loadStorefrontV2Content(): Promise<StorefrontV2Content> {
       {
         label: "Checkout",
         value: "Directo",
-        detail: "La salida a compra sigue usando las rutas productivas actuales."
+        detail: "Compra simple y directa desde el primer clic."
       },
       {
         label: "Escala",
-        value: "Cloudflare-ready",
-        detail: "Los assets pueden migrar a media remota sin rehacer la capa visual."
+        value: "Imagen cuidada",
+        detail: "Fotografía y presentación alineadas a una lectura clara."
       }
     ],
     products,
@@ -168,15 +168,15 @@ export async function loadStorefrontV2Content(): Promise<StorefrontV2Content> {
         description: "Cada bloque prioriza foco, ritmo visual y salida clara a compra sin parecer un dashboard."
       },
       {
-        eyebrow: "Compatibilidad operativa",
-        title: "Rediseño premium sin tocar checkout, admin ni contratos actuales.",
-        description: "La capa v2 se monta sobre rutas y datos ya existentes para evitar regresiones en flujos productivos.",
+        eyebrow: "Compra simple",
+        title: "Una experiencia premium, clara y fácil de recorrer.",
+        description: "La navegación respira mejor, prioriza el producto y facilita la decisión.",
         tone: "dark"
       },
       {
-        eyebrow: "Media preparada",
-        title: "Lista para migrar de assets locales a Cloudflare.",
-        description: "Los helpers de media permiten mover imágenes a `cdn.huelegood.com` o `images.huelegood.com` de forma progresiva."
+        eyebrow: "Imagen cuidada",
+        title: "Visuales limpios para entender cada formato.",
+        description: "Las imágenes acompañan la elección sin distraer ni recargar."
       }
     ],
     ingredientStories: [
@@ -207,7 +207,7 @@ export async function loadStorefrontV2Content(): Promise<StorefrontV2Content> {
       {
         step: "02",
         title: "Compra sin rodeos",
-        description: "Los CTAs llevan al checkout actual para mantener el flujo operativo intacto y reducir fricción en conversión.",
+        description: "Elige tu formato y pasa a una compra simple y directa.",
         ctaLabel: "Ir al checkout",
         ctaHref: "/checkout"
       },
@@ -227,7 +227,7 @@ export async function loadStorefrontV2Content(): Promise<StorefrontV2Content> {
       {
         label: "Formatos activos",
         value: `${products.length}`,
-        detail: catalogProducts.length > 0 ? "Basado en catálogo persistido." : "Basado en `featuredProducts` de `@huelegood/shared`."
+        detail: catalogProducts.length > 0 ? "Selección disponible hoy." : "Selección disponible hoy."
       },
       {
         label: "Momentos clave",
@@ -237,7 +237,7 @@ export async function loadStorefrontV2Content(): Promise<StorefrontV2Content> {
       {
         label: "Ruta comercial",
         value: "D2C + B2B",
-        detail: "Home pública, checkout actual y canal mayorista conviven sin cambio de contratos."
+        detail: "Compra directa y opción mayorista, según lo que necesites."
       }
     ],
     brandStoryCards: [
@@ -253,8 +253,8 @@ export async function loadStorefrontV2Content(): Promise<StorefrontV2Content> {
       },
       {
         label: "Escala cuidada",
-        title: "Lista para campañas, temporadas y media remota.",
-        description: "La estructura nueva permite crecer contenido, assets y variantes visuales sin desordenar la base operativa actual."
+        title: "Lista para campañas, temporadas y nuevos momentos de uso.",
+        description: "La estructura permite crecer el contenido sin perder claridad visual."
       }
     ]
   };

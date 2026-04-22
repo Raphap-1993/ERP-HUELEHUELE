@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, startTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   AdminDataTable,
+  Badge,
   Button,
   Card,
   CardContent,
@@ -41,6 +43,7 @@ import {
   updateCmsHeroCopy,
   updateCmsNavigation,
   updateCmsSiteSettings,
+  uploadCmsAdminSidebarLogo,
   uploadCmsFavicon,
   uploadCmsHeaderLogo,
   uploadCmsHeroProductImage,
@@ -106,13 +109,14 @@ function normalizeSiteSetting(value: SiteSetting): CmsSiteSettingsInput {
     walletType: value.walletType,
     walletOwnerName: value.walletOwnerName,
     headerLogoUrl: value.headerLogoUrl,
+    adminSidebarLogoUrl: value.adminSidebarLogoUrl,
     heroProductImageUrl: value.heroProductImageUrl,
     loadingImageUrl: value.loadingImageUrl,
     faviconUrl: value.faviconUrl
   };
 }
 
-type SiteAssetField = "headerLogoUrl" | "heroProductImageUrl" | "loadingImageUrl" | "faviconUrl";
+type SiteAssetField = "headerLogoUrl" | "adminSidebarLogoUrl" | "heroProductImageUrl" | "loadingImageUrl" | "faviconUrl";
 
 const siteAssetPickerConfig: Record<
   SiteAssetField,
@@ -123,7 +127,12 @@ const siteAssetPickerConfig: Record<
   }
 > = {
   headerLogoUrl: {
-    label: "Logo del menú",
+    label: "Logo del header público",
+    libraryLabel: "logos principales",
+    kind: "logo"
+  },
+  adminSidebarLogoUrl: {
+    label: "Logo del side menu",
     libraryLabel: "logos e íconos",
     kind: "logo"
   },
@@ -161,6 +170,7 @@ function formatFileSize(sizeBytes?: number) {
 }
 
 export function SettingsWorkspace() {
+  const router = useRouter();
   const [snapshot, setSnapshot] = useState<CmsSnapshotResponse>({
     siteSetting: defaultSiteSetting,
     heroCopy: defaultHeroCopy,
@@ -180,6 +190,8 @@ export function SettingsWorkspace() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoUploading, setLogoUploading] = useState(false);
+  const [adminSidebarLogoFile, setAdminSidebarLogoFile] = useState<File | null>(null);
+  const [adminSidebarLogoUploading, setAdminSidebarLogoUploading] = useState(false);
   const [heroImageFile, setHeroImageFile] = useState<File | null>(null);
   const [heroImageUploading, setHeroImageUploading] = useState(false);
   const [loadingImageFile, setLoadingImageFile] = useState<File | null>(null);
@@ -246,9 +258,13 @@ export function SettingsWorkspace() {
         detail: "Páginas editables registradas."
       },
       {
-        label: "Logo",
-        value: snapshot.siteSetting.headerLogoUrl ? "Activo" : "Texto",
-        detail: snapshot.siteSetting.headerLogoUrl ? "La cabecera usa imagen." : "La cabecera usa nombre en texto."
+        label: "Side Menu",
+        value: snapshot.siteSetting.adminSidebarLogoUrl ? "Propio" : snapshot.siteSetting.headerLogoUrl ? "Hereda" : "Texto",
+        detail: snapshot.siteSetting.adminSidebarLogoUrl
+          ? "El backoffice usa un logo dedicado."
+          : snapshot.siteSetting.headerLogoUrl
+            ? "El backoffice hereda el logo público."
+            : "El backoffice sigue con fallback textual."
       }
     ],
     [snapshot]
@@ -268,6 +284,21 @@ export function SettingsWorkspace() {
       return haystack.includes(query);
     });
   }, [mediaAssets, mediaSearch]);
+
+  const hasPendingSiteChanges =
+    JSON.stringify(normalizeSiteSetting(siteForm)) !== JSON.stringify(normalizeSiteSetting(snapshot.siteSetting));
+  const sidebarLogoPreviewUrl = siteForm.adminSidebarLogoUrl?.trim() || siteForm.headerLogoUrl?.trim() || undefined;
+
+  function syncSiteSetting(nextSiteSetting: SiteSetting) {
+    setSiteForm(nextSiteSetting);
+    setSnapshot((current) => ({
+      ...current,
+      siteSetting: nextSiteSetting
+    }));
+    startTransition(() => {
+      router.refresh();
+    });
+  }
 
   function refresh() {
     setRefreshKey((current) => current + 1);
@@ -318,7 +349,10 @@ export function SettingsWorkspace() {
     setError(null);
 
     try {
-      await updateCmsSiteSettings(normalizeSiteSetting(siteForm));
+      const response = await updateCmsSiteSettings(normalizeSiteSetting(siteForm));
+      if (response.siteSetting) {
+        syncSiteSetting(response.siteSetting);
+      }
       refresh();
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : "No pudimos actualizar la configuración base.");
@@ -381,7 +415,7 @@ export function SettingsWorkspace() {
     try {
       const response = await uploadCmsLoadingImage(loadingImageFile);
       if (response.siteSetting) {
-        setSiteForm(response.siteSetting);
+        syncSiteSetting(response.siteSetting);
       }
       setLoadingImageFile(null);
       refresh();
@@ -399,7 +433,7 @@ export function SettingsWorkspace() {
     try {
       const response = await uploadCmsFavicon(faviconFile);
       if (response.siteSetting) {
-        setSiteForm(response.siteSetting);
+        syncSiteSetting(response.siteSetting);
       }
       setFaviconFile(null);
       refresh();
@@ -421,7 +455,7 @@ export function SettingsWorkspace() {
     try {
       const response = await uploadCmsHeaderLogo(logoFile);
       if (response.siteSetting) {
-        setSiteForm(response.siteSetting);
+        syncSiteSetting(response.siteSetting);
       }
       setLogoFile(null);
       refresh();
@@ -432,11 +466,33 @@ export function SettingsWorkspace() {
     }
   }
 
+  async function handleUploadAdminSidebarLogo() {
+    if (!adminSidebarLogoFile) {
+      return;
+    }
+
+    setAdminSidebarLogoUploading(true);
+    setError(null);
+
+    try {
+      const response = await uploadCmsAdminSidebarLogo(adminSidebarLogoFile);
+      if (response.siteSetting) {
+        syncSiteSetting(response.siteSetting);
+      }
+      setAdminSidebarLogoFile(null);
+      refresh();
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "No pudimos subir el logo del backoffice.");
+    } finally {
+      setAdminSidebarLogoUploading(false);
+    }
+  }
+
   return (
     <div className="space-y-8 pb-10">
       <SectionHeader
         title="Configuración"
-        description="Branding, navegación y mensajes públicos del storefront desde un panel más ordenado."
+        description="Ordena branding del admin y storefront, parámetros operativos y navegación pública sin mezclar conceptos."
       />
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -445,34 +501,156 @@ export function SettingsWorkspace() {
         ))}
       </div>
 
+      <div className="grid gap-4 xl:grid-cols-3">
+        <Card className="rounded-[1.5rem] border-black/8 bg-[#f7faf6] shadow-[0_12px_34px_rgba(18,34,20,0.04)]">
+          <CardContent className="space-y-3">
+            <Badge tone="info">1. Branding</Badge>
+            <div>
+              <p className="text-base font-semibold text-[#132016]">Admin y storefront separados</p>
+              <p className="text-sm leading-6 text-black/58">
+                Aquí defines qué se ve en el side menu del backoffice, qué se ve en el header público y qué asset usa el sistema al cargar.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="rounded-[1.5rem] border-black/8 bg-[#fbf8f2] shadow-[0_12px_34px_rgba(18,34,20,0.04)]">
+          <CardContent className="space-y-3">
+            <Badge tone="warning">2. Operación</Badge>
+            <div>
+              <p className="text-base font-semibold text-[#132016]">Contacto, billetera y envíos</p>
+              <p className="text-sm leading-6 text-black/58">
+                Estos valores afectan soporte visible, pagos manuales y reglas de costo de envío del checkout.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="rounded-[1.5rem] border-black/8 bg-white shadow-[0_12px_34px_rgba(18,34,20,0.04)]">
+          <CardContent className="space-y-3">
+            <Badge tone="success">3. Storefront</Badge>
+            <div>
+              <p className="text-base font-semibold text-[#132016]">Hero y navegación pública</p>
+              <p className="text-sm leading-6 text-black/58">
+                La home y los enlaces visibles viven abajo. Ahí editas el mensaje comercial y el menú del storefront.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="space-y-6">
         <Card className="rounded-[1.75rem] border-black/8 shadow-[0_14px_42px_rgba(18,34,20,0.05)]">
           <CardHeader>
-            <CardTitle>Identidad y contacto</CardTitle>
-            <CardDescription>Valores base que alimentan la navegación, el footer y el branding público.</CardDescription>
+            <div className="flex flex-wrap items-center gap-3">
+              <CardTitle>Configuración base</CardTitle>
+              <Badge tone={hasPendingSiteChanges ? "warning" : "success"}>
+                {hasPendingSiteChanges ? "Cambios sin guardar" : "Todo al día"}
+              </Badge>
+            </div>
+            <CardDescription>
+              Branding del admin y storefront, canales de soporte y parámetros operativos. Los campos están ordenados por impacto real para que se entienda qué cambia al guardar.
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:col-span-2 xl:grid-cols-3">
+              <div className="rounded-[1.25rem] border border-black/8 bg-[#f7faf6] p-4">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-black/40">Backoffice</p>
+                <p className="mt-2 text-sm leading-6 text-black/58">
+                  El logo del side menu es exclusivo del panel admin. Si lo dejas vacío, el admin hereda el logo público o cae al texto.
+                </p>
+              </div>
+              <div className="rounded-[1.25rem] border border-black/8 bg-[#fbf8f2] p-4">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-black/40">Storefront</p>
+                <p className="mt-2 text-sm leading-6 text-black/58">
+                  El header público, la home y el favicon se editan aquí, pero ya no se mezclan con el branding visual del backoffice.
+                </p>
+              </div>
+              <div className="rounded-[1.25rem] border border-black/8 bg-white p-4">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-black/40">Operación</p>
+                <p className="mt-2 text-sm leading-6 text-black/58">
+                  WhatsApp, correo, billetera y envíos afectan checkout, soporte y reglas operativas visibles para el equipo y el cliente.
+                </p>
+              </div>
+            </div>
             <div className="space-y-2">
               <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="site-brand">
                 Marca
               </label>
               <Input id="site-brand" value={siteForm.brandName} onChange={(event) => setSiteForm({ ...siteForm, brandName: event.target.value })} />
+              <p className="text-xs leading-5 text-black/55">Nombre base para web, admin, metadata y fallback textual.</p>
             </div>
             <div className="space-y-2">
               <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="site-support">
-                Soporte
+                Correo de soporte
               </label>
               <Input id="site-support" value={siteForm.supportEmail} onChange={(event) => setSiteForm({ ...siteForm, supportEmail: event.target.value })} />
+              <p className="text-xs leading-5 text-black/55">Canal visible para atención y contacto operativo.</p>
             </div>
             <div className="space-y-2 md:col-span-2">
               <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="site-tagline">
                 Tagline
               </label>
               <Textarea id="site-tagline" value={siteForm.tagline} onChange={(event) => setSiteForm({ ...siteForm, tagline: event.target.value })} />
+              <p className="text-xs leading-5 text-black/55">Texto corto de marca que acompaña bloques del storefront y piezas de apoyo.</p>
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="site-admin-sidebar-logo">
+                Logo del side menu
+              </label>
+              <Input
+                id="site-admin-sidebar-logo"
+                placeholder="https://... o /brand/admin-logo.svg"
+                value={siteForm.adminSidebarLogoUrl ?? ""}
+                onChange={(event) => setSiteForm({ ...siteForm, adminSidebarLogoUrl: event.target.value || undefined })}
+              />
+              <div className="rounded-[1rem] border border-black/8 bg-[#17352a] p-3">
+                <div className="flex items-center gap-3">
+                  {sidebarLogoPreviewUrl ? (
+                    <img src={sidebarLogoPreviewUrl} alt={siteForm.brandName} className="h-9 w-auto max-w-[72px] flex-shrink-0 object-contain" />
+                  ) : (
+                    <span className="flex-shrink-0 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#dff0e6]">
+                      {siteForm.brandName.slice(0, 2).toUpperCase()}
+                    </span>
+                  )}
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold text-white max-2xl:hidden">{siteForm.brandName}</div>
+                    <div className="text-[11px] text-[#a8c2b4]">Rail compacto</div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  onChange={(event) => setAdminSidebarLogoFile(event.target.files?.[0] ?? null)}
+                  disabled={adminSidebarLogoUploading}
+                  className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm outline-none"
+                />
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleUploadAdminSidebarLogo}
+                    disabled={adminSidebarLogoUploading || !adminSidebarLogoFile}
+                  >
+                    {adminSidebarLogoUploading ? "Subiendo..." : "Subir logo admin"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => void openMediaPicker("adminSidebarLogoUrl")}
+                    disabled={adminSidebarLogoUploading}
+                  >
+                    Elegir desde biblioteca
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs leading-5 text-black/55">
+                Solo afecta el menú lateral del backoffice. Si lo dejas vacío, el admin usará primero el logo público y luego el fallback textual.
+              </p>
             </div>
             <div className="space-y-2 md:col-span-2">
               <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="site-logo">
-                Logo del menú
+                Logo del header público
               </label>
               <Input
                 id="site-logo"
@@ -497,7 +675,7 @@ export function SettingsWorkspace() {
                 />
                 <div className="flex flex-wrap gap-2">
                   <Button type="button" variant="secondary" onClick={handleUploadLogo} disabled={logoUploading || !logoFile}>
-                    {logoUploading ? "Subiendo..." : "Subir logo"}
+                    {logoUploading ? "Subiendo..." : "Subir logo público"}
                   </Button>
                   <Button type="button" variant="ghost" onClick={() => void openMediaPicker("headerLogoUrl")} disabled={logoUploading}>
                     Elegir desde biblioteca
@@ -505,32 +683,7 @@ export function SettingsWorkspace() {
                 </div>
               </div>
               <p className="text-xs leading-5 text-black/55">
-                Si defines una imagen, la cabecera pública reemplaza el texto de marca. También puedes reutilizar un logo que ya exista en R2 sin volver a subirlo.
-              </p>
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="site-hero-image">
-                Imagen del hero
-              </label>
-              <Input
-                id="site-hero-image"
-                placeholder="https://... o /brand/hero.jpg"
-                value={siteForm.heroProductImageUrl ?? ""}
-                onChange={(event) => setSiteForm({ ...siteForm, heroProductImageUrl: event.target.value || undefined })}
-              />
-              {siteForm.heroProductImageUrl ? (
-                <div className="rounded-[1.2rem] border border-black/8 bg-[#f7f8f4] p-3">
-                  <p className="mb-2 text-[11px] uppercase tracking-[0.24em] text-black/40">Imagen actual</p>
-                  <img src={siteForm.heroProductImageUrl} alt="Imagen hero actual" className="max-h-40 rounded-xl object-contain" />
-                </div>
-              ) : null}
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="ghost" onClick={() => void openMediaPicker("heroProductImageUrl")}>
-                  Elegir desde biblioteca
-                </Button>
-              </div>
-              <p className="text-xs leading-5 text-black/55">
-                Define aquí la imagen principal del home. Puedes pegar una URL directa o elegir una imagen ya guardada en R2.
+                Reemplaza el nombre textual en la cabecera pública. No cambia el side menu del admin salvo que el logo admin siga vacío.
               </p>
             </div>
             <div className="space-y-2 md:col-span-2">
@@ -568,7 +721,7 @@ export function SettingsWorkspace() {
                 </Button>
               </div>
               <p className="text-xs leading-5 text-black/55">
-                WebP, PNG o JPG. Se muestra centrado a 150 × 150 px al cargar la web pública. También puedes reutilizar un asset ya disponible en R2.
+                WebP, PNG o JPG. Se usa en la carga inicial del admin y la web pública. También puedes reutilizar un asset ya disponible en R2.
               </p>
             </div>
             <div className="space-y-2 md:col-span-2">
@@ -609,10 +762,11 @@ export function SettingsWorkspace() {
                 WhatsApp
               </label>
               <Input id="site-whatsapp" value={siteForm.whatsapp} onChange={(event) => setSiteForm({ ...siteForm, whatsapp: event.target.value })} />
+              <p className="text-xs leading-5 text-black/55">Canal corto de soporte y contacto visible para el cliente.</p>
             </div>
             <div className="space-y-2">
               <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="site-yape-number">
-                Número Yape
+                Número de billetera
               </label>
               <Input
                 id="site-yape-number"
@@ -634,6 +788,7 @@ export function SettingsWorkspace() {
                 value={siteForm.walletType ?? ""}
                 onChange={(event) => setSiteForm({ ...siteForm, walletType: event.target.value })}
               />
+              <p className="text-xs leading-5 text-black/55">Ejemplo: Yape, Plin o la billetera real que verá el cliente al pagar manualmente.</p>
             </div>
             <div className="space-y-2">
               <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="site-wallet-owner">
@@ -651,7 +806,7 @@ export function SettingsWorkspace() {
             </div>
             <div className="space-y-2">
               <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="site-shipping-flat">
-                Envio fijo (S/)
+                Envío fijo (S/)
               </label>
               <Input
                 id="site-shipping-flat"
@@ -665,12 +820,12 @@ export function SettingsWorkspace() {
                 }
               />
               <p className="text-xs leading-5 text-black/55">
-                Monto fijo de envio cuando el pedido no califica a envio gratis.
+                Monto fijo de envío cuando el pedido no califica a envío gratis.
               </p>
             </div>
             <div className="space-y-2">
               <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="site-free-shipping">
-                Envio gratis desde (S/)
+                Envío gratis desde (S/)
               </label>
               <Input
                 id="site-free-shipping"
@@ -684,22 +839,26 @@ export function SettingsWorkspace() {
                 }
               />
               <p className="text-xs leading-5 text-black/55">
-                Subtotal (menos descuentos) minimo para que el envio sea S/ 0.00.
+                Subtotal mínimo, menos descuentos, para que el envío pase a S/ 0.00.
               </p>
             </div>
-            <div className="rounded-[1.5rem] border border-black/8 bg-[#f7f8f4] p-4">
-              <p className="text-[11px] uppercase tracking-[0.24em] text-black/40">Vista previa cabecera</p>
-              <div className="mt-3 flex min-h-14 items-center rounded-[1rem] border border-black/8 bg-white px-4">
-                {siteForm.headerLogoUrl ? (
-                  <img src={siteForm.headerLogoUrl} alt={siteForm.brandName} className="h-10 w-auto max-w-[180px] object-contain" />
-                ) : (
-                  <span className="text-xs uppercase tracking-[0.38em] text-black/42">{siteForm.brandName}</span>
-                )}
+            <div className="space-y-3 rounded-[1.5rem] border border-black/8 bg-[#f7f8f4] p-4 md:col-span-2">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-black/40">Lectura rápida del impacto</p>
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-[1rem] border border-black/8 bg-white px-4 py-3 text-sm text-black/58">
+                  `Logo del side menu` solo toca el sidebar del backoffice.
+                </div>
+                <div className="rounded-[1rem] border border-black/8 bg-white px-4 py-3 text-sm text-black/58">
+                  `Logo del header público` solo toca la cabecera visible del storefront.
+                </div>
+                <div className="rounded-[1rem] border border-black/8 bg-white px-4 py-3 text-sm text-black/58">
+                  WhatsApp, billetera y envíos afectan checkout, soporte y operación.
+                </div>
               </div>
             </div>
             <div className="md:col-span-2">
               <Button onClick={handleSaveSiteSettings} disabled={savingSection === "site"}>
-                {savingSection === "site" ? "Guardando..." : "Guardar identidad"}
+                {savingSection === "site" ? "Guardando..." : "Guardar configuración base"}
               </Button>
             </div>
           </CardContent>
@@ -708,7 +867,7 @@ export function SettingsWorkspace() {
         <Card className="rounded-[1.75rem] border-black/8 shadow-[0_14px_42px_rgba(18,34,20,0.05)]">
           <CardHeader>
             <CardTitle>Hero del storefront</CardTitle>
-            <CardDescription>Mensaje principal de la home y sus llamadas a la acción.</CardDescription>
+            <CardDescription>Mensaje principal, CTAs e imagen del bloque hero de la home pública.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
@@ -819,7 +978,7 @@ export function SettingsWorkspace() {
       <Card className="rounded-[1.75rem] border-black/8 shadow-[0_14px_42px_rgba(18,34,20,0.05)]">
         <CardHeader>
           <CardTitle>Navegación pública</CardTitle>
-          <CardDescription>Editor avanzado de grupos y enlaces visibles en el storefront.</CardDescription>
+          <CardDescription>Editor avanzado del menú visible en el storefront. El resumen te muestra qué está publicado y el JSON de la derecha es la fuente editable.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-6 xl:grid-cols-[0.7fr_1.3fr]">
           <div className="space-y-4 rounded-[1.5rem] border border-black/8 bg-[#f7f8f4] p-5">
@@ -843,6 +1002,9 @@ export function SettingsWorkspace() {
             </div>
           </div>
           <div className="space-y-4">
+            <div className="rounded-[1.25rem] border border-black/8 bg-[#fbfbf8] px-4 py-3 text-sm leading-6 text-black/58">
+              Edita grupos y enlaces con cuidado: si el JSON queda inválido no se guardará. Usa el resumen de la izquierda para entender la estructura actual antes de tocarla.
+            </div>
             <Textarea value={navigationJson} onChange={(event) => setNavigationJson(event.target.value)} className="min-h-64 font-mono text-xs" />
             <Button onClick={handleSaveNavigation} disabled={savingSection === "navigation"}>
               {savingSection === "navigation" ? "Guardando..." : "Guardar navegación"}

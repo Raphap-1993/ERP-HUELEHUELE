@@ -54,6 +54,7 @@ Formalizar cómo se atribuye una venta a un vendedor y cómo esa atribución evo
 - operación puede definir un `preferredCode` friendly tanto al dar de alta manualmente como al aprobar una postulación; el código sigue siendo único.
 - admin puede editar datos base del vendedor, su `status` y, cuando todavía no existe historial comercial, también su código.
 - admin solo puede eliminar el perfil si no tiene pedidos, comisiones ni postulaciones ligadas.
+- operación puede asignar o corregir el `vendorCode` de un pedido existente desde backoffice cuando necesita regularizar la atribución comercial.
 
 ## Subflujo B: maduración y liquidación de comisión
 

@@ -1,6 +1,33 @@
 import "reflect-metadata";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import * as dotenv from "dotenv";
-dotenv.config();
+
+function loadWorkspaceEnv() {
+  const visited = new Set<string>();
+  let currentDir = process.cwd();
+
+  while (!visited.has(currentDir)) {
+    visited.add(currentDir);
+
+    for (const fileName of [".env.local", ".env"]) {
+      const filePath = path.join(currentDir, fileName);
+
+      if (fs.existsSync(filePath)) {
+        dotenv.config({ path: filePath, override: false });
+      }
+    }
+
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) {
+      break;
+    }
+
+    currentDir = parentDir;
+  }
+}
+
+loadWorkspaceEnv();
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { getPort } from "./common/env";

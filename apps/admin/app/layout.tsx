@@ -18,7 +18,8 @@ async function resolveRuntimeSettings() {
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await resolveRuntimeSettings();
-  const siteIconUrl = settings.faviconUrl?.trim() || settings.headerLogoUrl?.trim() || undefined;
+  const siteIconUrl =
+    settings.faviconUrl?.trim() || settings.adminSidebarLogoUrl?.trim() || settings.headerLogoUrl?.trim() || undefined;
 
   return {
     title: `${settings.brandName} Admin`,
@@ -40,7 +41,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     <html lang="es">
       <body>
         <AdminSessionProvider>
-          <AdminShell loadingImageUrl={settings.loadingImageUrl}>{children}</AdminShell>
+          <AdminShell runtimeSiteSettings={settings}>{children}</AdminShell>
         </AdminSessionProvider>
       </body>
     </html>

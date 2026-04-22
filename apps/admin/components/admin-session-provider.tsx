@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { AuthCredentialsInput, AuthSessionSummary } from "@huelegood/shared";
+import { RoleCode, type AuthCredentialsInput, type AuthSessionSummary } from "@huelegood/shared";
 import { fetchAdminSession, loginAdmin, logoutAdmin } from "../lib/api";
 import {
   clearStoredAdminSessionToken,
@@ -19,11 +19,33 @@ type AdminSessionContextValue = {
 
 const AdminSessionContext = createContext<AdminSessionContextValue | null>(null);
 
+const localAdminBypassEnabled = process.env.NEXT_PUBLIC_LOCAL_ADMIN_BYPASS === "true";
+
+const localBypassSession: AuthSessionSummary = {
+  token: "local-admin-bypass",
+  expiresAt: "2099-12-31T23:59:59.000Z",
+  user: {
+    id: "local-admin-bypass",
+    name: "Admin Local",
+    email: "admin@huelegood.local",
+    roles: [
+      { code: RoleCode.SuperAdmin, label: "Super Admin" },
+      { code: RoleCode.Admin, label: "Admin" }
+    ],
+    accountType: "admin"
+  }
+};
+
 export function AdminSessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSessionSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refreshSession = useCallback(async () => {
+    if (localAdminBypassEnabled) {
+      setSession(localBypassSession);
+      return localBypassSession;
+    }
+
     const token = readStoredAdminSessionToken();
     if (!token) {
       setSession(null);
@@ -60,6 +82,12 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
   }, [refreshSession]);
 
   const login = useCallback(async (credentials: AuthCredentialsInput) => {
+    if (localAdminBypassEnabled) {
+      writeStoredAdminSessionToken(localBypassSession.token);
+      setSession(localBypassSession);
+      return localBypassSession;
+    }
+
     const response = await loginAdmin(credentials);
     if (!response.data) {
       throw new Error("No pudimos iniciar sesión.");
@@ -71,6 +99,12 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    if (localAdminBypassEnabled) {
+      clearStoredAdminSessionToken();
+      setSession(localBypassSession);
+      return;
+    }
+
     const token = readStoredAdminSessionToken();
     try {
       await logoutAdmin(token ?? undefined);

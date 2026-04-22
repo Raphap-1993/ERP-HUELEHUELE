@@ -23,7 +23,7 @@ export function HeroEditorialSection({
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-3">
               <Badge className="bg-[#17211a] text-white">{hero.eyebrow}</Badge>
-              {preview ? <span className="text-[11px] uppercase tracking-[0.28em] text-black/42">Vista controlada v2</span> : null}
+              {preview ? null : null}
             </div>
             <div className="space-y-4">
               <h1 className="max-w-4xl text-4xl font-semibold leading-[0.93] tracking-[-0.045em] text-[#17211a] md:text-[4.4rem]">
@@ -85,13 +85,13 @@ export function HeroEditorialSection({
               <div className="rounded-[1.7rem] border border-white/22 bg-white/82 p-4 backdrop-blur">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-black/38">Escena</p>
                 <p className="mt-2 text-sm font-semibold leading-6 text-[#17211a]">
-                  Bloques grandes, ritmo aireado y una lectura de marca más curada.
+                  Bloques grandes, ritmo aireado y una lectura de marca más clara.
                 </p>
               </div>
               <div className="rounded-[1.7rem] border border-white/12 bg-[#17211a]/84 p-4 text-white backdrop-blur">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-white/42">Salida</p>
                 <p className="mt-2 text-sm font-semibold leading-6">
-                  El flujo sigue llevando a catálogo, checkout y mayoristas actuales.
+                  Descubre el producto, compra directo o pide atención mayorista.
                 </p>
               </div>
             </div>

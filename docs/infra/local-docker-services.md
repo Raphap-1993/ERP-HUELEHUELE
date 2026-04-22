@@ -19,13 +19,13 @@ No se deben mezclar variantes ad hoc de `docker compose`, `docker-compose`, puer
 
 El repo reserva estos puertos host para evitar choques con instalaciones nativas ya existentes:
 
-- `PostgreSQL`: `localhost:5433`
+- `PostgreSQL`: `localhost:55436`
 - `Redis`: `localhost:6380`
 
 La configuración esperada en `.env` para este flujo es:
 
 ```dotenv
-DATABASE_URL=postgresql://postgres:postgres@localhost:5433/huelegood
+DATABASE_URL=postgresql://postgres:postgres@localhost:55436/huelegood
 REDIS_URL=redis://localhost:6380
 ```
 

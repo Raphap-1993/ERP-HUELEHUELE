@@ -10,7 +10,7 @@ import {
 
 const labelStyle = "text-[11px] font-semibold uppercase tracking-[0.07em] text-black/42 block";
 const inputLight =
-  "w-full px-3.5 py-3 bg-white border border-[rgba(26,58,46,0.15)] rounded-[11px] text-[#1c1c1c] text-sm placeholder:text-[#6b7280] outline-none focus:border-[#52b788] transition";
+  "w-full px-3.5 py-3 bg-white border border-[rgba(26,58,46,0.15)] rounded-[11px] text-[#1c1c1c] text-sm placeholder:text-[#6b7280] outline-none focus:border-[#61a740] transition";
 
 const applicationIntentOptions: Array<{
   id: VendorApplicationDraft["applicationIntent"];
@@ -202,8 +202,8 @@ export function VendorApplicationForm({
                   className={`px-3.5 py-2 rounded-[9px] border text-xs font-medium transition
                     ${
                       applicationIntent === opt.id
-                        ? "border-[#2d6a4f] bg-[#d8f3dc] text-[#1a3a2e]"
-                        : "border-[rgba(26,58,46,0.18)] text-[#6b7280] hover:border-[rgba(45,106,79,0.4)]"
+                        ? "border-[#61a740] bg-[#eef6e8] text-[#1a3a2e]"
+                        : "border-[rgba(26,58,46,0.18)] text-[#6b7280] hover:border-[rgba(97,167,64,0.4)]"
                     }`}
                 >
                   {opt.label}
@@ -251,7 +251,7 @@ export function VendorApplicationForm({
           <button
             type="submit"
             disabled={isPending}
-            className="w-full flex items-center justify-center gap-2 bg-[#2d6a4f] hover:bg-[#1a3a2e] text-white font-semibold py-4 rounded-full text-sm transition shadow-[0_8px_30px_rgba(45,106,79,0.3)] disabled:opacity-60"
+            className="w-full flex items-center justify-center gap-2 bg-[#61a740] hover:bg-[#577e2f] text-white font-semibold py-4 rounded-full text-sm transition shadow-[0_8px_30px_rgba(97,167,64,0.3)] disabled:opacity-60"
           >
             {isPending ? "Enviando..." : submitLabel}
           </button>

@@ -1,179 +1,143 @@
-# Estrategia de Despliegue
+# Despliegue Y Homologacion
 
-## Objetivo
+Fecha de corte: 2026-04-22.
 
-Definir cómo publicar Huelegood en el VPS actual usando Hestia, Nginx, PM2, PostgreSQL existente y Redis.
+Este documento define como mantener produccion igual al codigo local sin tocar la base de datos productiva.
 
-La referencia canónica del VPS actual vive en [environments.md](./environments.md#vps-actual).
+## Regla Principal
 
-## Estrategia base
+LOCAL es la fuente de verdad del codigo. Produccion conserva su propia base de datos.
 
-Huelegood se despliega como cuatro procesos de aplicación supervisados por PM2 detrás de Nginx:
+Homologar significa:
 
-- `huelegood-web`
-- `huelegood-admin`
-- `huelegood-api`
-- `huelegood-worker`
+1. validar codigo local;
+2. registrar snapshot en Git;
+3. publicar release en VPS;
+4. mantener `/home/huelehuele/apps/huelegood.com/shared/.env.production`;
+5. no restaurar ni reemplazar PostgreSQL productivo con datos locales.
 
-## Topología de producción
+## Topologia Productiva
 
-| Dominio | Destino | Puerto local sugerido |
+| Dominio | Proceso | Puerto |
 | --- | --- | --- |
-| `huelegood.com` | Next.js web | `3000` |
-| `admin.huelegood.com` | Next.js admin | `3005` |
-| `api.huelegood.com` | NestJS API | `4000` |
-| sin dominio público | worker BullMQ | sin puerto expuesto |
+| `https://huelegood.com` | `huelegood-web` | `3000` |
+| `https://admin.huelegood.com` | `huelegood-admin` | `3005` |
+| `https://api.huelegood.com` | `huelegood-api` | `4000` |
+| sin dominio publico | `huelegood-worker` | no aplica |
 
-Notas:
+Infra:
 
-- El worker no requiere exposición pública.
-- Los puertos son sugeridos y pueden ajustarse si el VPS ya tiene ocupación previa.
-- Hestia gestiona los virtual hosts y Nginx hace reverse proxy a cada proceso PM2.
+- VPS: `192.99.43.76`.
+- Runtime: Hestia + Nginx + PM2.
+- Codigo: `/home/huelehuele/apps/huelegood.com/releases/<timestamp>`.
+- Symlink activo: `/home/huelehuele/apps/huelegood.com/current`.
+- Entorno productivo: `/home/huelehuele/apps/huelegood.com/shared/.env.production`.
+- BD productiva: PostgreSQL local del VPS.
 
-## Artefactos operativos versionados
+## Flujo De Release Seguro
 
-- `ecosystem.config.cjs`: definición operativa de `PM2`
-- `.env.production.example`: plantilla de variables para el VPS
-- `scripts/release-production.sh`: release reproducible con build, recarga PM2 y smoke checks
-- `scripts/backup-production.sh`: backup de PostgreSQL y uploads
-- `scripts/smoke-check.mjs`: verificación post-deploy
-- `ops/nginx/*.conf`: snippets de reverse proxy para Hestia/Nginx
+```mermaid
+flowchart TB
+  local["LOCAL"] --> validate["typecheck + test:erp-sales + build"]
+  validate --> commit["commit snapshot"]
+  commit --> push["push GitHub"]
+  validate --> release["crear release timestamp"]
+  release --> backup["backup BD/uploads"]
+  backup --> dbPush{"cambio schema?"}
+  dbPush -- si --> prismaPush["HUELEGOOD_RUN_DB_PUSH=1 npm run deploy:release"]
+  dbPush -- no --> normalRelease["npm run deploy:release"]
+  prismaPush --> smoke["smoke checks"]
+  normalRelease --> smoke
+  smoke --> current["current apunta a release activa"]
+```
 
-Decisión vigente de media pública:
+## Comandos Locales De Validacion
 
-- `Cloudflare R2` es el storage objetivo para logo, hero, banners e imágenes de producto en storefront
-- el VPS sigue reteniendo uploads privados y evidencias operativas
+```bash
+npm run typecheck
+npm run test:erp-sales
+npm run build
+```
 
-En el VPS actual documentado en [environments.md](./environments.md#vps-actual), el archivo de entorno efectivo vive fuera del repo en:
+## Scripts Productivos
 
-- `/home/huelehuele/apps/huelegood.com/shared/.env.production`
+- `scripts/release-production.sh`: instala dependencias, genera Prisma, construye apps, recarga PM2 y corre smoke checks.
+- `scripts/backup-production.sh`: genera dump PostgreSQL y archiva uploads.
+- `scripts/smoke-check.mjs`: valida web, admin y API.
 
-El script de release soporta ambas ubicaciones:
+## Base De Datos
 
-- `.env.production` dentro del repo
-- `../shared/.env.production` como origen compartido de producción
+Reglas:
 
-Cuando se despliega desde un árbol versionado en `releases/<timestamp>`, el script también resuelve el entorno compartido en:
+- No copiar la BD local a produccion.
+- No correr `prisma:seed` en produccion.
+- Antes de cambios de schema, hacer backup.
+- `prisma:push` productivo solo debe correr con `HUELEGOOD_RUN_DB_PUSH=1` y durante ventana controlada.
+- Redis no se respalda como fuente de verdad.
 
-- `/home/huelehuele/apps/huelegood.com/shared/.env.production`
+## Variables De Entorno
 
-Convención operativa vigente:
+Nunca versionar:
 
-- el código de una release productiva debe vivir en `releases/<timestamp>`
-- el symlink `current` debe apuntar a la release activa
-- `PM2` debe arrancar contra `current`, no contra un checkout mutable en `repo`
+- `.env`
+- `.env.local`
+- `.env.production`
+- dumps SQL
+- backups
+- evidencias de pago
+- `outputs/`
+- `storage/`
 
-## Flujo de despliegue recomendado
+Variables minimas productivas:
 
-1. Actualizar código desde Git y preparar `.env.production`.
-2. Publicar el código en una nueva carpeta `releases/<timestamp>`.
-3. Ejecutar `npm run deploy:release` desde esa release.
-4. Si la release incluye cambios de esquema, activar `HUELEGOOD_RUN_DB_PUSH=1` antes de lanzar el script.
-5. Validar `pm2 status`, logs y smoke checks.
-6. Ejecutar `npm run deploy:backup` o dejarlo programado por `cron`.
+- `DATABASE_URL`
+- `REDIS_URL`
+- `JWT_SECRET`
+- `SESSION_SECRET`
+- `NEXT_PUBLIC_APP_URL`
+- `NEXT_PUBLIC_ADMIN_URL`
+- `NEXT_PUBLIC_API_URL`
+- `WEB_PORT`
+- `ADMIN_PORT`
+- `API_PORT`
+- `OPENPAY_*`
+- `APIPERU_*`
+- `RESEND_*`
+- `R2_*` si media publica usa Cloudflare R2.
 
-Notas operativas:
+## Smoke Checks
 
-- la convención canónica de URLs públicas es `NEXT_PUBLIC_*`
-- la convención canónica de accesos bootstrap es `BOOTSTRAP_*`
-- el release todavía acepta aliases legados (`APP_URL`, `ADMIN_LOGIN_*`, etc.) para no romper despliegues previos, pero no deben seguir produciéndose nuevos entornos con esa convención
+Publicos:
 
-## Base de datos
+- `https://huelegood.com/health`
+- `https://admin.huelegood.com/health`
+- `https://api.huelegood.com/api/v1/health/liveness`
+- `https://api.huelegood.com/api/v1/health/readiness`
+- `https://api.huelegood.com/api/v1/health/operational`
 
-- Se reutiliza la instancia PostgreSQL existente del VPS.
-- Recomendación: crear una base dedicada `huelegood` dentro de esa misma instancia para aislar tablas del proyecto.
-- No se introduce una base de datos externa gestionada.
+Locales en VPS:
 
-## Redis y colas
+- `http://127.0.0.1:3000/health`
+- `http://127.0.0.1:3005/health`
+- `http://127.0.0.1:4000/api/v1/health/liveness`
 
-- Redis corre en el mismo VPS o en la instancia Redis ya disponible.
-- BullMQ usa Redis para jobs y reintentos.
-- Redis no se considera fuente de verdad.
+## Rollback
 
-## Reverse proxy con Hestia/Nginx
+Rollback de codigo:
 
-### Responsabilidades de Nginx
+1. apuntar `current` a la release anterior;
+2. recargar PM2 con `--update-env`;
+3. correr smoke checks.
 
-- terminación TLS
-- proxy pass por subdominio
-- compresión y headers seguros
-- logs de acceso y error
-- limitación básica de tamaño de upload para evidencias
-- exposición de `/health` en `web` y `admin`
+Rollback de datos:
 
-### Recomendaciones
+- solo con backup productivo;
+- requiere decision explicita;
+- no usar datos locales como rollback.
 
-- habilitar `client_max_body_size` acorde al tamaño máximo de comprobantes
-- propagar headers `X-Forwarded-*`
-- restringir rutas sensibles de admin si se requiere endurecimiento adicional
-- usar los snippets de `ops/nginx/` como base de la configuración gestionada por Hestia
+## Checklist De Homologacion Git
 
-## Healthchecks
-
-### API
-
-- `GET /health/liveness`
-- `GET /health/readiness`
-- `GET /health/operational`
-
-### Web y admin
-
-- `GET /health` con payload JSON simple y `release`
-
-## Modo mantenimiento para storefront
-
-- La web pública soporta un modo mantenimiento controlado por `WEB_MAINTENANCE_MODE=true`.
-- Cuando está activo, cualquier ruta pública del storefront se reescribe a una pantalla estática propia.
-- No afecta:
-  - `GET /health`
-  - assets de `/_next/`
-  - assets públicos como `/brand/*`
-  - `admin`
-  - `api`
-- Si se define `WEB_MAINTENANCE_BYPASS_TOKEN`, un reviewer puede entrar al storefront real con `?maintenance_bypass=<token>`.
-- El bypass se guarda en cookie segura para revisar varias páginas sin desactivar el mantenimiento global.
-
-## Logs
-
-- PM2: logs por proceso
-- Nginx: access/error logs por dominio
-- aplicación: logs estructurados por servicio y nivel
-
-## Backups
-
-### Obligatorios
-
-- dump nocturno de PostgreSQL
-- copia de uploads públicos y privados
-- resguardo de archivos de configuración de despliegue
-
-### Recomendados
-
-- retención de al menos 7 a 14 días
-- verificación periódica de restauración
-- automatizar con `scripts/backup-production.sh` y `cron`
-
-Nota:
-
-- si la media pública ya vive en `Cloudflare R2`, los backups del VPS no son la fuente principal de recuperación de esos activos
-- los backups locales siguen siendo obligatorios para evidencias privadas y cualquier activo aún no migrado
-
-## Estrategia de releases
-
-- despliegues pequeños y frecuentes
-- migraciones compatibles hacia adelante
-- rollback por versión previa de aplicación y restauración controlada de datos si fuera necesario
-
-## Riesgos operativos del despliegue
-
-- single point of failure del VPS
-- saturación de CPU/RAM si web, admin, api y worker compiten sin límites
-- crecimiento de logs y uploads sin política de limpieza
-
-## Mitigaciones
-
-- definir límites de concurrencia de PM2 y worker
-- rotación de logs
-- monitoreo básico de disco, memoria y colas
-- revisar tamaño de backups y uploads desde el inicio
-- smoke checks post-deploy sobre `web`, `admin` y `api`
+- excluir `outputs/`, `storage/`, `.env`, backups y builds.
+- commitear snapshot local vigente.
+- empujar a GitHub en rama trazable.
+- si se decide que ese snapshot reemplaza `origin/main`, hacer merge/PR o fast-forward controlado; evitar force push sin ventana y confirmacion.

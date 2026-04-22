@@ -55,7 +55,7 @@ export function StickyBarClient() {
 
   return (
     <div
-      className={`fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between gap-4 bg-[#1a3a2e] px-4 py-4 shadow-[0_-4px_30px_rgba(0,0,0,0.25)] transition-transform duration-400 md:px-8 ${
+      className={`fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between gap-4 bg-[#577e2f] px-4 py-4 shadow-[0_-4px_30px_rgba(0,0,0,0.25)] transition-transform duration-400 motion-reduce:transition-none md:px-8 ${
         visible ? "translate-y-0" : "translate-y-full"
       }`}
       role="banner"

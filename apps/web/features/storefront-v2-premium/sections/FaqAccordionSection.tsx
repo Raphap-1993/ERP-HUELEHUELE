@@ -1,4 +1,5 @@
 import type { FaqItem } from "@huelegood/shared";
+import { StorefrontReveal } from "../components/StorefrontReveal";
 
 const FAQS: FaqItem[] = [
   {
@@ -7,7 +8,7 @@ const FAQS: FaqItem[] = [
   },
   {
     question: "🚚 ¿Hacen envíos a todo el Perú?",
-    answer: "Sí. Enviamos a todo el territorio peruano vía Olva Courier y Shalom. Lima y Callao: 24-48 horas. Provincias: 48-96 horas. Aceptamos Yape, Plin, transferencia bancaria y contra-entrega (en zonas seleccionadas). También puedes coordinarlo por nuestro Instagram @huele.good.",
+    answer: "Sí. Enviamos a todo el territorio peruano vía Olva Courier y Shalom. Lima y Callao: 24-48 horas. Provincias: 48-96 horas. Aceptamos billetera virtual, transferencia bancaria y contra-entrega (en zonas seleccionadas). También puedes coordinarlo por nuestro Instagram @huele.good.",
   },
   {
     question: "🌿 ¿De qué está hecho exactamente?",
@@ -24,32 +25,33 @@ export function FaqAccordionSection({ faqs = FAQS }: { faqs?: FaqItem[] }) {
     <section id="faq" className="bg-[#faf8f3] py-24">
       <div className="mx-auto max-w-[1120px] px-4 md:px-6">
         {/* Heading */}
-        <div className="mb-14 text-center">
-          <span className="mb-4 inline-block rounded-full bg-[#d8f3dc] px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-[#2d6a4f]">
+        <StorefrontReveal className="mb-14 text-center">
+          <span className="mb-4 inline-block rounded-full bg-[#eef6e8] px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-[#61a740]">
             Preguntas frecuentes
           </span>
           <h2 className="font-serif text-4xl font-black leading-tight text-[#1a3a2e] md:text-5xl">
             Resolvemos tus dudas
           </h2>
-        </div>
+        </StorefrontReveal>
 
         {/* Preline accordion — chevron rotates via [.hs-accordion.active_&] (Tailwind v3 arbitrary selector) */}
-        <div className="hs-accordion-group mx-auto max-w-3xl space-y-3">
+        <StorefrontReveal className="hs-accordion-group mx-auto max-w-3xl space-y-3" selector="[data-storefront-reveal-item]" stagger={0.08} y={18}>
           {faqs.map((faq, i) => (
             <div
               key={`${faq.question}-${i}`}
+              data-storefront-reveal-item
               className="hs-accordion overflow-hidden rounded-2xl border border-[#1a3a2e]/7 bg-white"
               id={`faq-item-${i}`}
             >
               <button
-                className="hs-accordion-toggle flex w-full items-start justify-between gap-4 px-7 py-5 text-left text-base font-semibold text-[#1a3a2e] transition hover:text-[#2d6a4f] focus:outline-none"
+                className="hs-accordion-toggle flex w-full items-start justify-between gap-4 px-7 py-5 text-left text-base font-semibold text-[#1a3a2e] transition hover:text-[#61a740] focus:outline-none"
                 aria-expanded="false"
                 aria-controls={`faq-collapse-${i}`}
               >
                 <span>{faq.question}</span>
                 {/* Chevron rotates 180° when accordion is active */}
                 <svg
-                  className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#52b788] transition-transform duration-300 [.hs-accordion.active_&]:rotate-180"
+                  className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#61a740] transition-transform duration-300 [.hs-accordion.active_&]:rotate-180"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -73,7 +75,7 @@ export function FaqAccordionSection({ faqs = FAQS }: { faqs?: FaqItem[] }) {
               </div>
             </div>
           ))}
-        </div>
+        </StorefrontReveal>
       </div>
     </section>
   );

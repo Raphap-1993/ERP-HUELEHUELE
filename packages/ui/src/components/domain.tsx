@@ -58,7 +58,7 @@ export function HeroSection({ copy = heroCopy }: { copy?: HeroCopy }) {
     <section className="relative overflow-hidden rounded-[2rem] border border-black/10 bg-[radial-gradient(circle_at_top_right,_rgba(17,24,39,0.08),_transparent_35%),linear-gradient(180deg,#ffffff_0%,#f7f6f2_100%)] px-6 py-10 shadow-soft md:px-10 md:py-14">
       <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
         <div className="max-w-3xl space-y-6">
-          <Badge tone="info" className="bg-[#132016] text-white">
+          <Badge tone="info" className="bg-[#577e2f] text-white">
             {copy.eyebrow}
           </Badge>
           <div className="space-y-4">
@@ -100,7 +100,7 @@ export function HeroSection({ copy = heroCopy }: { copy?: HeroCopy }) {
               <CardDescription>Una experiencia más simple, limpia y portable para quienes prefieren practicidad real.</CardDescription>
             </CardContent>
           </Card>
-          <Card className="border-[#132016]/10 bg-[#132016] text-white">
+          <Card className="border-[#132016]/10 bg-[#577e2f] text-white">
             <CardContent className="space-y-3">
               <Badge className="bg-white/15 text-white">Favoritos</Badge>
               <div className="space-y-2 text-sm text-white/78">
@@ -122,7 +122,7 @@ export function HeroSection({ copy = heroCopy }: { copy?: HeroCopy }) {
 export function PromoBannerCard({ banner }: { banner: PromoBanner }) {
   const toneClass =
     banner.tone === "olive"
-      ? "bg-[#132016] text-white"
+      ? "bg-[#577e2f] text-white"
       : banner.tone === "amber"
         ? "bg-amber-500 text-white"
         : "bg-slate-900 text-white";
@@ -334,7 +334,7 @@ export function TimelinePedido({ items = orderTimeline }: { items?: TimelineEntr
         <ol className="space-y-4">
           {items.map((item, index) => (
             <li key={`${item.status}-${index}`} className="flex gap-4">
-              <div className="mt-1 h-3 w-3 rounded-full bg-[#132016]" />
+              <div className="mt-1 h-3 w-3 rounded-full bg-[#577e2f]" />
               <div className="flex-1">
                 <div className="flex items-center justify-between gap-4">
                   <div className="font-semibold text-[#132016]">{item.label}</div>
@@ -381,7 +381,7 @@ export function WholesalePlanCard({ plan }: { plan: WholesalePlan }) {
         <ul className="space-y-2 text-sm text-black/70">
           {plan.perks.map((perk) => (
             <li key={perk} className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-[#132016]" />
+              <span className="h-2 w-2 rounded-full bg-[#577e2f]" />
               {perk}
             </li>
           ))}

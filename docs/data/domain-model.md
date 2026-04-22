@@ -1,170 +1,169 @@
-# Modelo de Dominio
+# Modelo De Dominio Vigente
 
-## Objetivo
+Fecha de corte: 2026-04-22.
 
-Definir cómo se organiza el dominio de Huelegood, cuáles son sus agregados principales y cómo se relacionan entre sí.
+Este documento resume los agregados actuales y sus invariantes. El detalle fisico vive en `prisma/schema.prisma`; si hay diferencia, el schema y este documento deben actualizarse juntos.
 
-## Convenciones transversales
+## Contextos
 
-- IDs recomendados: `UUID`.
-- Timestamps: `created_at`, `updated_at` y, cuando aplique, `deleted_at` o `archived_at`.
-- Montos monetarios: tipo decimal preciso y `currency_code` ISO 4217.
-- Historiales y auditoría persistidos en tablas dedicadas, no solo en logs.
-- Las tablas operativas deben incluir campos de estado explícitos.
-
-## Bounded contexts
-
-| Contexto | Descripción |
+| Contexto | Agregados principales |
 | --- | --- |
-| Identity & Access | usuarios, roles, permisos y perfiles internos/externos |
-| CMS | contenido administrable y navegación pública |
-| Commerce | catálogo, promociones, carrito, pedidos y pagos |
-| Seller Channel | vendedores, códigos y comisiones |
-| B2B / Wholesale | leads, tiers y cotizaciones |
-| Loyalty | reglas y saldos de puntos |
-| Marketing | segmentos, campañas, plantillas y eventos |
-| Platform Ops | notificaciones, auditoría y acciones administrativas |
+| Identidad | `users`, `roles`, `permissions`, sesiones |
+| Cliente | `customers`, direcciones, conflictos de identidad |
+| Catalogo | `products`, `product_variants`, `product_images`, categorias |
+| Operacion comercial | `orders`, `order_items`, `payments`, `manual_payment_requests`, `payment_evidences` |
+| Inventario | `warehouses`, `warehouse_inventory_balances`, `inventory_movements` |
+| Transferencias | `warehouse_transfers`, lineas, documentos e incidencias |
+| Growth | `vendors`, `vendor_codes`, `commissions`, `commission_payouts` |
+| Retencion | `loyalty_accounts`, movimientos, canjes |
+| Marketing | segmentos, campanas, notificaciones |
+| Plataforma | audit, health, observability, media |
 
-## Agregados principales
+## Agregados
 
-### Usuario
+### Cliente Canonico
 
-`users` es la identidad raíz. Según el caso, un usuario puede estar vinculado a:
+`customers` representa la identidad operativa del comprador.
 
-- `admins`
-- `customers`
-- `vendors`
+Reglas:
 
-Una `vendor_application` puede existir antes de convertirse en `user`/`vendor`.
+- `documentType + documentNumber` es la senial mas fuerte.
+- `email` y `phone` son seniales secundarias.
+- nombre y direccion no deben auto-fusionar clientes.
+- las fusiones manuales reasignan referencias operativas, pero no reescriben snapshots historicos de pedidos.
+- los conflictos se revisan en CRM.
 
-### Catálogo
+### Producto Y Variante
 
-`products` y `product_variants` modelan la oferta comercial. Las variantes son el nivel operativo de stock, precio y venta.
+`products` define la oferta. `product_variants` define el SKU vendible.
 
-Campos aditivos vigentes:
+Reglas:
 
-- `products.sales_channel`: `public | internal`
-- `products.reporting_group`: agrupación comercial y analítica
-- `product_variants.low_stock_threshold`: umbral operativo por SKU
+- el stock real opera por variante + almacen.
+- `defaultWarehouseId` en variante es preferencia de salida, no obligacion permanente.
+- productos internos no aparecen en catalogo publico.
+- los bundles deben resolverse en inventario por sus componentes cuando corresponda.
+
+### Almacen
+
+`warehouses` representa un nodo fisico.
+
+Reglas:
+
+- puede tener ubigeo, prioridad, cobertura y coordenadas.
+- solo almacenes activos pueden recibir asignaciones nuevas.
+- cobertura y prioridad ayudan a sugerir origen; stock suficiente sigue siendo obligatorio.
+
+### Balance De Inventario
+
+`warehouse_inventory_balances` conserva saldo por `variantId + warehouseId`.
+
+Campos semanticos:
+
+- `stockOnHand`: unidades fisicas base.
+- `reservedQuantity`: retenido temporalmente por pedido o transferencia.
+- `committedQuantity`: venta confirmada o compromiso comercial.
+- `availableStock`: derivado operativo, no campo de verdad independiente.
+
+Reglas:
+
+- ninguna venta debe saltarse `InventoryService`.
+- ninguna transferencia debe editar dos saldos manualmente.
+- si cambia el origen de fulfillment, la reserva debe recomponerse.
 
 ### Pedido
 
-`orders` es el agregado transaccional central. Debe encapsular:
+`orders` es el agregado transaccional central.
 
-- snapshot de cliente
-- snapshot de dirección
-- snapshot de líneas
-- totales comerciales
-- atribución de vendedor
-- referencias a pagos
+Contiene:
 
-### Pago
+- snapshot de cliente.
+- snapshot de direccion.
+- lineas y totales.
+- atribucion comercial.
+- estado de pago.
+- estado comercial.
+- trazabilidad de fulfillment.
 
-`payments` representa el estado de pago consolidado. `payment_transactions` conserva interacciones finas con Openpay u otros intentos. `manual_payment_requests` y `payment_evidences` modelan el camino manual.
+Reglas:
 
-### Vendedor y comisión
-
-`vendors` define el actor comercial. `vendor_codes` materializa la atribución en checkout. `commission_attributions` y `commissions` registran el derecho económico derivado.
-
-Campos aditivos vigentes:
-
-- `vendor_applications.application_intent`: `affiliate | seller | content_creator | other`
-- `vendors.collaboration_type`: `seller | affiliate`
-- `commission_rules.applies_to_collaboration_type`
-
-Regla vigente de fase 1:
-
-- la intención pública vive en `vendor_application`
-- el `collaborationType` final del vendedor se confirma recién al aprobar la postulación
-- `content_creator` y `other` se resuelven como `seller` salvo decisión operativa explícita distinta
-
-### CMS
-
-`CmsTestimonial` se extendió a `kind: text | audio | social` con `audioUrl`, `socialUrl`, `socialPlatform`, `coverImageUrl` y `position`.
-
-### Loyalty
-
-`loyalty_accounts` conserva saldo. `loyalty_movements` es la fuente de verdad de puntos. `redemptions` captura el uso.
-
-### Marketing
-
-`segments`, `campaigns` y `campaign_runs` organizan la ejecución. `campaign_recipients` y `notification_logs` son la trazabilidad.
-
-## Relaciones clave
-
-### Identidad y acceso
-
-- `users` 1:N `roles` mediante una tabla pivote implícita o equivalente en implementación
-- `roles` N:N `permissions`
-- `users` 1:1 `admins` o `customers` o `vendors`, según perfil
-
-### Comercio
-
-- `categories` 1:N `products`
-- `products` 1:N `product_variants`
-- `products` 1:N `product_images`
-- `carts` 1:N `cart_items`
-- `orders` 1:N `order_items`
-- `orders` 1:N `order_addresses`
-- `orders` 1:N `payments`
-- `orders` 1:N `order_status_history`
+- el snapshot historico no se reconstruye desde cliente vivo.
+- un pedido web usa idempotencia por request.
+- estados reservables retienen stock.
+- estados validos de venta alimentan reportes y comisiones.
+- cancelacion, expiracion o reembolso liberan o revierten inventario.
 
 ### Pago
 
-- `payments` 1:N `payment_transactions`
-- `payments` 1:N `manual_payment_requests`
-- `manual_payment_requests` 1:N `payment_evidences`
+`payments`, `manual_payment_requests` y `payment_evidences` modelan la ruta de cobro.
 
-### Seller channel
+Reglas:
 
-- `vendors` 1:1 `vendor_profiles`
-- `vendors` 1:N `vendor_codes`
-- `vendors` 1:N `vendor_bank_accounts`
-- `vendors` 1:N `vendor_status_history`
-- `orders` 1:N `commission_attributions`
-- `commission_rules` 1:N `commissions`
-- `commission_payouts` 1:N `payout_items`
+- pago manual aprobado debe dejar actor, referencia, fecha y notas.
+- evidencia privada no se versiona en Git.
+- Openpay requiere idempotencia y webhook firmado cuando se active el flujo completo.
 
-### Wholesale
+### Transferencia Entre Almacenes
 
-- `wholesale_leads` 1:N `wholesale_quotes`
-- `wholesale_quotes` 1:N `wholesale_quote_items`
+`warehouse_transfers` mueve stock fisico entre dos almacenes.
 
-### Loyalty
+Estados:
 
-- `customers` 1:1 `loyalty_accounts`
-- `loyalty_accounts` 1:N `loyalty_movements`
-- `customers` 1:N `redemptions`
+- `reserved`
+- `in_transit`
+- `partial_received`
+- `received`
+- `cancelled`
 
-### Marketing y notificaciones
+Documentos:
 
-- `segments` 1:N `campaigns`
-- `campaigns` 1:N `campaign_runs`
-- `campaign_runs` 1:N `campaign_recipients`
-- `notifications` 1:N `notification_logs`
+- `package_snapshot`
+- `gre`
+- `sticker`
 
-## Reglas de consistencia del dominio
+Incidencias:
 
-- Un pedido no puede depender del carrito para reconstruir sus montos históricos.
-- Una comisión no puede pasar a `paid` sin haber sido `payable`.
-- Un cliente no puede canjear puntos no disponibles.
-- Una campaña no debe despachar sin audiencia materializada.
-- Un pago manual aprobado debe dejar huella de quién lo aprobó.
-- Un producto `internal` no puede aparecer en catálogo, PDP ni checkout público.
-- El reporte de inventario debe usar la misma fuente de reservas y confirmaciones del ledger operativo.
+- `missing`
+- `damage`
+- `loss`
+- `overage`
+- `mixed`
 
-## Eventos internos recomendados
+Reglas:
 
-- `order.created`
-- `order.paid`
-- `payment.manual.approved`
-- `vendor.onboarded`
-- `commission.payable`
-- `loyalty.points.available`
-- `campaign.run.started`
+- crear transferencia reserva en origen.
+- despachar descuenta fisico en origen.
+- recibir ingresa fisico en destino.
+- recepcion parcial abre incidencia.
+- reconciliar cierra incidencia sin editar balances a mano.
+- `transferNumber` es el hilo operativo comun.
 
-Estos eventos no sustituyen la base de datos como verdad; son mecanismos internos de orquestación asíncrona.
+## Relaciones Principales
 
-## Observación de modelado
+```mermaid
+erDiagram
+  CUSTOMERS ||--o{ ORDERS : places
+  ORDERS ||--o{ ORDER_ITEMS : contains
+  ORDERS ||--o{ ORDER_STATUS_HISTORY : traces
+  ORDERS ||--o| ORDER_FULFILLMENT_ASSIGNMENTS : fulfillment
+  PRODUCTS ||--o{ PRODUCT_VARIANTS : has
+  PRODUCT_VARIANTS ||--o{ WAREHOUSE_INVENTORY_BALANCES : stock
+  WAREHOUSES ||--o{ WAREHOUSE_INVENTORY_BALANCES : stores
+  WAREHOUSES ||--o{ ORDER_FULFILLMENT_ASSIGNMENTS : ships
+  WAREHOUSES ||--o{ WAREHOUSE_TRANSFERS : origin_or_destination
+  WAREHOUSE_TRANSFERS ||--o{ WAREHOUSE_TRANSFER_LINES : moves
+  WAREHOUSE_TRANSFERS ||--o{ WAREHOUSE_TRANSFER_DOCUMENTS : emits
+  WAREHOUSE_TRANSFERS ||--o| WAREHOUSE_TRANSFER_INCIDENTS : has
+  VENDORS ||--o{ VENDOR_CODES : owns
+  VENDORS ||--o{ COMMISSIONS : earns
+  ORDERS ||--o{ COMMISSIONS : generates
+```
 
-Huelegood no es multi-tenant. Ninguna tabla requiere `tenant_id` en esta etapa. Si en el futuro existiera una línea white-label o multi-marca, el rediseño debe pasar por una nueva ADR.
+## Invariantes
+
+- No existe multi-tenant en esta etapa.
+- Redis no es fuente de verdad.
+- `module_snapshots` es persistencia heredada; no debe crecer sin justificacion.
+- Reportes, comisiones e inventario deben compartir la misma definicion de venta valida.
+- `outputs/`, dumps, backups, storage privado y `.env` no se versionan.
+- Produccion conserva su BD; homologar codigo no significa restaurar datos locales.

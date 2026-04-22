@@ -49,6 +49,20 @@ export class AdminCmsController {
     return this.cmsService.uploadSiteLogo(file);
   }
 
+  @Post("site-settings/admin-sidebar-logo")
+  @UseInterceptors(
+    FileInterceptor("file", {
+      storage: memoryStorage(),
+      limits: {
+        fileSize: 10 * 1024 * 1024,
+        files: 1
+      }
+    })
+  )
+  uploadAdminSidebarLogo(@UploadedFile() file: { buffer: Buffer; mimetype?: string; originalname?: string } | undefined) {
+    return this.cmsService.uploadAdminSidebarLogo(file);
+  }
+
   @Post("site-settings/hero-image")
   @UseInterceptors(
     FileInterceptor("file", {

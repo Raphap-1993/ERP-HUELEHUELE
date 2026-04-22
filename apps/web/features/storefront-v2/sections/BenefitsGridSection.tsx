@@ -6,9 +6,9 @@ export function BenefitsGridSection({ benefits }: { benefits: StorefrontV2Benefi
   return (
     <section className="space-y-6">
       <StorefrontV2SectionHeading
-        eyebrow="Por qué esta capa nueva"
-        title="Un storefront más premium sin abrir un refactor masivo."
-        description="La propuesta v2 moderniza la lectura visual, mejora la jerarquía y deja preparada la capa de media remota sin mover los flujos críticos."
+        eyebrow="Por qué elegirlo"
+        title="Una experiencia más clara, fresca y premium."
+        description="La lectura es más simple, el producto se entiende mejor y la compra se siente directa."
       />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {benefits.map((benefit, index) => {

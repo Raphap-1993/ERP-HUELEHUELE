@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CmsSocialPlatform, CmsTestimonialKind, type CmsTestimonial } from "@huelegood/shared";
+import { StorefrontReveal } from "../components/StorefrontReveal";
 
 const FALLBACK_TESTIMONIALS: CmsTestimonial[] = [
   {
@@ -42,11 +43,11 @@ const FALLBACK_TESTIMONIALS: CmsTestimonial[] = [
 
 function kindLabel(testimonial: CmsTestimonial) {
   if (testimonial.kind === CmsTestimonialKind.Audio) {
-    return "Audio curado";
+    return "Audio";
   }
 
   if (testimonial.kind === CmsTestimonialKind.Social) {
-    return testimonial.socialPlatform === CmsSocialPlatform.Tiktok ? "TikTok curado" : "Instagram curado";
+    return testimonial.socialPlatform === CmsSocialPlatform.Tiktok ? "TikTok" : "Instagram";
   }
 
   return "Testimonio real";
@@ -54,11 +55,11 @@ function kindLabel(testimonial: CmsTestimonial) {
 
 function summaryText(testimonial: CmsTestimonial) {
   if (testimonial.kind === CmsTestimonialKind.Audio) {
-    return testimonial.quote ?? "Escucha un testimonio en audio curado desde el CMS.";
+    return testimonial.quote ?? "Escucha la experiencia de uno de nuestros clientes.";
   }
 
   if (testimonial.kind === CmsTestimonialKind.Social) {
-    return testimonial.quote ?? "Ver testimonio curado desde redes sociales.";
+    return testimonial.quote ?? "Mira una publicación compartida por nuestra comunidad.";
   }
 
   return testimonial.quote ?? "Testimonio activo.";
@@ -94,28 +95,29 @@ export function TestimonialsSection({ testimonials = FALLBACK_TESTIMONIALS }: { 
   return (
     <section id="testimonios" className="bg-white py-24">
       <div className="mx-auto max-w-[1120px] px-4 md:px-6">
-        <div className="mb-14">
-          <span className="mb-4 inline-block rounded-full bg-[#d8f3dc] px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-[#2d6a4f]">
+        <StorefrontReveal className="mb-14">
+          <span className="mb-4 inline-block rounded-full bg-[#eef6e8] px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-[#61a740]">
             Lo dicen ellos
           </span>
           <h2 className="mb-4 font-serif text-4xl font-black leading-tight text-[#1a3a2e] md:text-5xl">
-            Prueba social curada y visible en runtime
+            Historias reales de quienes ya lo usan
           </h2>
           <p className="max-w-xl text-base leading-relaxed text-[#6b7280]">
-            Testimonios de texto, audio y social publicados desde CMS sin redeploy.
+            Testimonios en texto, audio y video para ayudarte a elegir con más confianza.
           </p>
-        </div>
+        </StorefrontReveal>
 
-        <div className="grid gap-6 md:grid-cols-3">
+        <StorefrontReveal className="grid gap-6 md:grid-cols-3" selector="[data-storefront-reveal-item]" stagger={0.08} y={22}>
           {visibleTestimonials.map((testimonial) => {
             const href = actionHref(testimonial);
             const label = actionLabel(testimonial);
             return (
               <div
                 key={testimonial.id}
+                data-storefront-reveal-item
                 className="relative overflow-hidden rounded-3xl border border-[#1a3a2e]/7 bg-[#faf8f3] p-7"
               >
-                <span className="mb-4 inline-flex rounded-full bg-[#d8f3dc] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#2d6a4f]">
+                <span className="mb-4 inline-flex rounded-full bg-[#eef6e8] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#61a740]">
                   {kindLabel(testimonial)}
                 </span>
                 <div className="mb-4 text-lg tracking-widest text-[#c9a84c]">
@@ -127,7 +129,7 @@ export function TestimonialsSection({ testimonials = FALLBACK_TESTIMONIALS }: { 
                     href={href}
                     target="_blank"
                     rel="noreferrer"
-                    className="mb-5 inline-flex rounded-full border border-[#2d6a4f]/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-[#2d6a4f] transition hover:border-[#2d6a4f] hover:bg-[#d8f3dc]"
+                    className="mb-5 inline-flex rounded-full border border-[#61a740]/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-[#61a740] transition hover:border-[#61a740] hover:bg-[#eef6e8]"
                   >
                     {label}
                   </Link>
@@ -140,7 +142,7 @@ export function TestimonialsSection({ testimonials = FALLBACK_TESTIMONIALS }: { 
               </div>
             );
           })}
-        </div>
+        </StorefrontReveal>
       </div>
     </section>
   );

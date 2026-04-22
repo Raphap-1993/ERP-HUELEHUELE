@@ -42,15 +42,24 @@ import type {
   AuditOverviewSummary,
   BundleComponentInput,
   BundleComponentSummary,
+  FulfillmentAssignmentStatusValue,
+  FulfillmentAssignmentStrategyValue,
   HealthDependencySummary,
   ObservabilityEventSummary,
   ObservabilityOverviewSummary,
   ObservabilityQueueSummary,
   ObservabilityRequestSummary,
   ObservabilityRouteMetricSummary,
+  OrderFulfillmentAssignmentSummary,
+  OrderFulfillmentSuggestionSummary,
   OperationalHealthSummary,
   SecurityPostureSummary,
   WebNavigationGroup,
+  WarehouseInventoryBalanceSummary,
+  WarehouseTransferSummary,
+  WarehouseServiceAreaScopeValue,
+  WarehouseSummary,
+  WarehouseStatusValue,
   WholesalePlan
 } from "../domain/models";
 
@@ -195,6 +204,12 @@ export interface CustomerAddressSummary {
   region: string;
   postalCode: string;
   countryCode: string;
+  departmentCode?: string;
+  departmentName?: string;
+  provinceCode?: string;
+  provinceName?: string;
+  districtCode?: string;
+  districtName?: string;
   isDefault: boolean;
 }
 
@@ -208,6 +223,12 @@ export interface CustomerAddressInput {
   region: string;
   postalCode: string;
   countryCode?: string;
+  departmentCode?: string;
+  departmentName?: string;
+  provinceCode?: string;
+  provinceName?: string;
+  districtCode?: string;
+  districtName?: string;
   isDefault?: boolean;
 }
 
@@ -219,6 +240,7 @@ export interface CustomerSummary {
   firstName: string;
   lastName: string;
   fullName: string;
+  documentType?: CheckoutDocumentType;
   documentNumber?: string;
   marketingOptIn: boolean;
   status: CustomerStatusValue;
@@ -235,12 +257,59 @@ export interface CustomerDetail extends CustomerSummary {
   recentOrders: AdminOrderSummary[];
 }
 
+export type CustomerIdentityConflictStatus = "open" | "resolved" | "ignored" | "merged";
+
+export interface CustomerConflictCandidateSummary {
+  id: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  documentType?: CheckoutDocumentType;
+  documentNumber?: string;
+  ordersCount: number;
+}
+
+export interface CustomerIdentityConflictSummary {
+  id: string;
+  orderNumber: string;
+  status: CustomerIdentityConflictStatus;
+  reason: string;
+  customerName: string;
+  email?: string;
+  phone?: string;
+  documentType?: CheckoutDocumentType;
+  documentNumber?: string;
+  candidateCustomers: CustomerConflictCandidateSummary[];
+  createdAt: string;
+  resolvedAt?: string;
+  resolutionNotes?: string;
+  resolvedCustomerId?: string;
+  resolutionType?: "assign_existing" | "merge" | "ignore";
+}
+
+export interface CustomerConflictResolveInput {
+  action: "assign_existing" | "merge" | "ignore";
+  winnerCustomerId?: string;
+  mergeSourceCustomerId?: string;
+  actor?: string;
+  notes?: string;
+}
+
+export interface CustomerMergeInput {
+  sourceCustomerId: string;
+  targetCustomerId: string;
+  actor?: string;
+  notes?: string;
+  conflictId?: string;
+}
+
 export interface CustomerUpsertInput {
   email: string;
   phone?: string;
   password?: string;
   firstName: string;
   lastName: string;
+  documentType?: CheckoutDocumentType;
   documentNumber?: string;
   marketingOptIn?: boolean;
   status?: CustomerStatusValue;
@@ -682,17 +751,25 @@ export interface CatalogSummaryResponse {
 }
 
 export type ProductStatusValue = "draft" | "active" | "inactive" | "archived";
+export type ProductKindValue = "single" | "bundle";
 export type ProductVariantStatusValue = "active" | "inactive" | "out_of_stock";
 
 export interface ProductVariantSummary {
   id: string;
   sku: string;
   name: string;
+  flavorCode?: string;
+  flavorLabel?: string;
+  presentationCode?: string;
+  presentationLabel?: string;
   price: number;
   compareAtPrice?: number;
   stockOnHand: number;
   lowStockThreshold?: number;
   status: ProductVariantStatusValue;
+  defaultWarehouseId?: string;
+  defaultWarehouseCode?: string;
+  defaultWarehouseName?: string;
 }
 
 export interface ProductImageSummary {
@@ -717,6 +794,7 @@ export interface ProductAdminSummary {
   id: string;
   name: string;
   slug: string;
+  productKind: ProductKindValue;
   shortDescription?: string;
   categoryId?: string;
   categorySlug?: string;
@@ -727,6 +805,9 @@ export interface ProductAdminSummary {
   compareAtPrice?: number;
   sku: string;
   defaultVariantId?: string;
+  defaultWarehouseId?: string;
+  defaultWarehouseCode?: string;
+  defaultWarehouseName?: string;
   salesChannel?: ProductSalesChannel;
   reportingGroup?: string;
   currencyCode: string;
@@ -745,11 +826,16 @@ export interface ProductVariantInput {
   id?: string;
   sku: string;
   name: string;
+  flavorCode?: string;
+  flavorLabel?: string;
+  presentationCode?: string;
+  presentationLabel?: string;
   price: number;
   compareAtPrice?: number;
   stockOnHand: number;
   lowStockThreshold?: number;
   status: ProductVariantStatusValue;
+  defaultWarehouseId?: string;
 }
 
 export interface ProductBundleComponentInput extends BundleComponentInput {}
@@ -758,6 +844,7 @@ export interface ProductBundleComponentSummary extends BundleComponentSummary {}
 
 export interface ProductUpsertInput {
   categoryId?: string;
+  productKind?: ProductKindValue;
   name: string;
   slug: string;
   shortDescription?: string;
@@ -768,6 +855,42 @@ export interface ProductUpsertInput {
   reportingGroup?: string;
   variants: ProductVariantInput[];
   bundleComponents: ProductBundleComponentInput[];
+}
+
+export interface WarehouseServiceAreaInput {
+  scopeType: WarehouseServiceAreaScopeValue;
+  scopeCode: string;
+  priority?: number;
+  isActive?: boolean;
+}
+
+export interface WarehouseUpsertInput {
+  code?: string;
+  name: string;
+  status: WarehouseStatusValue;
+  priority?: number;
+  countryCode?: string;
+  addressLine1: string;
+  addressLine2?: string;
+  reference?: string;
+  departmentCode: string;
+  departmentName?: string;
+  provinceCode: string;
+  provinceName?: string;
+  districtCode: string;
+  districtName?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  serviceAreas?: WarehouseServiceAreaInput[];
+}
+
+export interface OrderFulfillmentAssignmentInput {
+  warehouseId: string;
+  status?: FulfillmentAssignmentStatusValue;
+  strategy?: FulfillmentAssignmentStrategyValue;
+  assignedByUserId?: string;
+  assignedAt?: string;
+  notes?: string;
 }
 
 export interface ProductImageUploadInput {
@@ -807,6 +930,7 @@ export interface InventoryAllocationSummary {
   sku: string;
   name: string;
   quantity: number;
+  warehouseId?: string;
 }
 
 export interface CheckoutCustomerInput {
@@ -837,6 +961,27 @@ export type CheckoutDeliveryMode = "standard" | "province_shalom_pickup";
 
 export type CheckoutCarrier = "olva_courier" | "shalom";
 
+export const CHECKOUT_STANDARD_DELIVERY_DEPARTMENT_CODES = ["07", "15"] as const;
+export const CHECKOUT_STANDARD_DELIVERY_PROVINCE_CODES = ["0701", "1501"] as const;
+
+export function isCheckoutStandardDeliveryDepartmentCode(code?: string | null) {
+  const normalized = code?.trim();
+  return normalized
+    ? CHECKOUT_STANDARD_DELIVERY_DEPARTMENT_CODES.includes(
+        normalized as (typeof CHECKOUT_STANDARD_DELIVERY_DEPARTMENT_CODES)[number]
+      )
+    : false;
+}
+
+export function isCheckoutStandardDeliveryProvinceCode(code?: string | null) {
+  const normalized = code?.trim();
+  return normalized
+    ? CHECKOUT_STANDARD_DELIVERY_PROVINCE_CODES.includes(
+        normalized as (typeof CHECKOUT_STANDARD_DELIVERY_PROVINCE_CODES)[number]
+      )
+    : false;
+}
+
 export interface CheckoutShippingInput {
   deliveryMode?: CheckoutDeliveryMode;
   carrier?: CheckoutCarrier;
@@ -853,6 +998,79 @@ export interface CheckoutAddressInput extends CheckoutShippingInput {
   region: string;
   postalCode: string;
   countryCode?: string;
+  departmentCode?: string;
+  departmentName?: string;
+  provinceCode?: string;
+  provinceName?: string;
+  districtCode?: string;
+  districtName?: string;
+}
+
+export interface CheckoutCustomerPrefillAddressSummary {
+  line1: string;
+  line2?: string;
+  city: string;
+  region: string;
+  postalCode: string;
+  countryCode: string;
+  departmentCode?: string;
+  departmentName?: string;
+  provinceCode?: string;
+  provinceName?: string;
+  districtCode?: string;
+  districtName?: string;
+}
+
+export interface CheckoutCustomerPrefillSummary {
+  id: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  email?: string;
+  phone?: string;
+  documentType?: CheckoutDocumentType;
+  documentNumber?: string;
+  defaultAddress?: CheckoutCustomerPrefillAddressSummary;
+}
+
+export interface CheckoutDocumentLookupInput {
+  documentType: CheckoutDocumentType;
+  documentNumber: string;
+}
+
+export interface CheckoutDocumentIdentitySummary {
+  documentType: CheckoutDocumentType;
+  documentNumber: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  verificationDigit?: string;
+  source: "apiperu";
+}
+
+export interface CheckoutDocumentLookupSummary {
+  documentType: CheckoutDocumentType;
+  documentNumber: string;
+  officialIdentity?: CheckoutDocumentIdentitySummary;
+  customer?: CheckoutCustomerPrefillSummary;
+}
+
+export interface PeruDepartmentSummary {
+  code: string;
+  name: string;
+}
+
+export interface PeruProvinceSummary {
+  code: string;
+  name: string;
+  departmentCode: string;
+}
+
+export interface PeruDistrictSummary {
+  code: string;
+  name: string;
+  departmentCode: string;
+  provinceCode: string;
 }
 
 export interface CheckoutQuoteItemSummary {
@@ -947,6 +1165,12 @@ export interface OrderAddressSummary extends CheckoutShippingInput {
   region: string;
   postalCode: string;
   countryCode: string;
+  departmentCode?: string;
+  departmentName?: string;
+  provinceCode?: string;
+  provinceName?: string;
+  districtCode?: string;
+  districtName?: string;
 }
 
 export interface OrderStatusHistorySummary {
@@ -996,9 +1220,33 @@ export interface AdminManualPaymentRequestSummary {
   notes?: string;
 }
 
+export type OrderCommercialTraceRoute = "manual_direct" | "manual_request" | "openpay_backoffice" | "openpay_provider";
+
+export type OrderCommercialTraceStatus = "pending" | "confirmed" | "rejected";
+
+export interface OrderCommercialTraceSummary {
+  route: OrderCommercialTraceRoute;
+  status: OrderCommercialTraceStatus;
+  actor?: string;
+  reference?: string;
+  note?: string;
+  evidenceReference?: string;
+  evidenceNotes?: string;
+  evidenceImageUrl?: string;
+  occurredAt?: string;
+}
+
+export interface AdminDispatchLabelAvailabilitySummary {
+  available: boolean;
+  actionLabel: "Imprimir etiqueta" | "Reimprimir etiqueta";
+  blockReason?: string;
+}
+
 export interface AdminOrderSummary {
   orderNumber: string;
   customerName: string;
+  customerId?: string;
+  customerConflictId?: string;
   total: number;
   currencyCode: string;
   orderStatus: OrderStatus;
@@ -1015,10 +1263,23 @@ export interface AdminOrderSummary {
   updatedAt: string;
   createdAt: string;
   itemCount: number;
+  dispatchLabel?: AdminDispatchLabelAvailabilitySummary;
+}
+
+export interface AdminOrderVendorOption {
+  code: string;
+  name: string;
+  email?: string;
+  city?: string;
+  collaborationType?: VendorCollaborationType;
+  status: VendorStatus;
+  updatedAt: string;
 }
 
 export interface AdminOrderDetail {
   orderNumber: string;
+  customerId?: string;
+  customerConflictId?: string;
   customer: OrderCustomerSummary;
   address: OrderAddressSummary;
   items: OrderItemSummary[];
@@ -1034,6 +1295,8 @@ export interface AdminOrderDetail {
   vendorId?: string;
   vendorCode?: string;
   vendorName?: string;
+  fulfillmentSuggestion?: OrderFulfillmentSuggestionSummary;
+  fulfillmentAssignment?: OrderFulfillmentAssignmentSummary;
   couponCode?: string;
   notes?: string;
   providerReference: string;
@@ -1047,9 +1310,98 @@ export interface AdminOrderDetail {
   statusHistory: OrderStatusHistorySummary[];
   payment: AdminPaymentSummary;
   manualRequest?: AdminManualPaymentRequestSummary;
+  commercialTrace?: OrderCommercialTraceSummary;
+  confirmedAt?: string;
+  dispatchLabel?: AdminDispatchLabelAvailabilitySummary;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminDispatchLabelItemSummary {
+  name: string;
+  sku: string;
+  quantity: number;
+}
+
+export interface AdminDispatchLabelRecipientSummary {
+  name: string;
+  phone: string;
+}
+
+export interface AdminDispatchLabelDestinationSummary {
+  line1: string;
+  line2?: string | null;
+  city: string;
+  region: string;
+  postalCode?: string | null;
+  countryCode: string;
+  deliveryMode: CheckoutDeliveryMode;
+  carrier?: CheckoutCarrier;
+  agencyName?: string | null;
+  payOnPickup?: boolean | null;
+}
+
+export interface AdminDispatchLabelOrderSummary {
+  reference: string;
+  salesChannel: SalesChannelValue;
+  vendorCode?: string;
+  vendorName?: string;
+  totalItems: number;
+  totalUnits: number;
+  items: AdminDispatchLabelItemSummary[];
+}
+
+export interface AdminDispatchLabelSummary {
+  orderNumber: string;
+  templateVersion: "dispatch-label-v1";
+  generatedAt: string;
+  recipient: AdminDispatchLabelRecipientSummary;
+  destination: AdminDispatchLabelDestinationSummary;
+  order: AdminDispatchLabelOrderSummary;
+  barcode: {
+    type: "code128";
+    value: string;
+  };
+  printHint: {
+    paperSize: "A6";
+    orientation: "portrait";
+  };
+}
+
+export interface AdminDispatchOrderSummary {
+  orderNumber: string;
+  customerName: string;
+  recipientName: string;
+  phone: string;
+  city: string;
+  region: string;
+  countryCode: string;
+  deliveryMode: CheckoutDeliveryMode;
+  carrier?: CheckoutCarrier;
+  agencyName?: string;
+  orderStatus: OrderStatus;
+  salesChannel: SalesChannelValue;
+  providerReference: string;
+  vendorCode?: string;
+  vendorName?: string;
+  fulfillmentSuggestion?: OrderFulfillmentSuggestionSummary;
+  fulfillmentAssignment?: OrderFulfillmentAssignmentSummary;
+  totalItems: number;
+  totalUnits: number;
   confirmedAt?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AdminDispatchLabelPrintInput {
+  templateVersion?: "dispatch-label-v1";
+  format?: "html" | "pdf";
+  channel?: "single" | "batch";
+}
+
+export interface AdminOrderVendorAssignmentInput {
+  vendorCode?: string;
+  actor?: string;
 }
 
 export interface AdminOrderStatusTransitionInput {
@@ -1093,21 +1445,61 @@ export interface InventoryReportRow {
   productId: string;
   productName: string;
   productSlug: string;
+  productImageUrl?: string;
+  productImageAlt?: string;
   salesChannel: ProductSalesChannel;
   variantId: string;
   variantName: string;
   sku: string;
+  warehouseId: string;
+  warehouseCode?: string;
+  warehouseName?: string;
+  isDefaultWarehouse: boolean;
   unitsSold: number;
   stockOnHand: number;
   reservedQuantity: number;
+  committedQuantity: number;
   availableStock: number;
+  variantUnitsSold: number;
+  variantStockOnHand: number;
+  variantReservedQuantity: number;
+  variantCommittedQuantity: number;
+  variantAvailableStock: number;
   lowStockThreshold: number;
   lowStock: boolean;
+  defaultWarehouseId?: string;
+  defaultWarehouseCode?: string;
+  defaultWarehouseName?: string;
+  warehouseBalances: WarehouseInventoryBalanceSummary[];
 }
 
 export interface InventoryReportSummary {
   rows: InventoryReportRow[];
   generatedAt: string;
+}
+
+export interface InventoryStockAdjustmentInput {
+  variantId: string;
+  warehouseId: string;
+  stockOnHand: number;
+  reason: string;
+}
+
+export interface InventoryStockAdjustmentEnvelope {
+  status: "ok" | "queued" | "pending_review" | "rejected";
+  message: string;
+  referenceId?: string;
+  balance: WarehouseInventoryBalanceSummary;
+  previousStockOnHand: number;
+  nextStockOnHand: number;
+  delta: number;
+}
+
+export interface AdminReportFiltersInput {
+  salesChannel?: SalesChannelValue;
+  vendorCode?: string;
+  productSlug?: string;
+  sku?: string;
 }
 
 export interface VendorSalesReportRow {
@@ -1234,6 +1626,49 @@ export interface ObservabilityOverviewEnvelope {
 export interface InventoryReportEnvelope {
   data: InventoryReportSummary;
   meta?: Record<string, unknown>;
+}
+
+export interface WarehousesEnvelope {
+  data: WarehouseSummary[];
+  meta?: Record<string, unknown>;
+}
+
+export interface WarehouseEnvelope {
+  data: WarehouseSummary;
+  meta?: Record<string, unknown>;
+}
+
+export interface WarehouseActionEnvelope {
+  status: "ok" | "queued" | "pending_review" | "rejected";
+  message: string;
+  referenceId?: string;
+  warehouse?: WarehouseSummary;
+}
+
+export interface OrderFulfillmentActionEnvelope {
+  status: "ok" | "queued" | "pending_review" | "rejected";
+  message: string;
+  referenceId?: string;
+  suggestion?: OrderFulfillmentSuggestionSummary;
+  assignment?: OrderFulfillmentAssignmentSummary;
+  order?: AdminOrderDetail;
+}
+
+export interface WarehouseTransfersEnvelope {
+  data: WarehouseTransferSummary[];
+  meta?: Record<string, unknown>;
+}
+
+export interface WarehouseTransferEnvelope {
+  data: WarehouseTransferSummary;
+  meta?: Record<string, unknown>;
+}
+
+export interface WarehouseTransferActionEnvelope {
+  status: "ok" | "queued" | "pending_review" | "rejected";
+  message: string;
+  referenceId?: string;
+  transfer?: WarehouseTransferSummary;
 }
 
 export interface StorefrontPagePayload {

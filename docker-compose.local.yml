@@ -1,3 +1,5 @@
+name: erp-huelehuele
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -7,7 +9,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "${POSTGRES_HOST_PORT:-5433}:5432"
+      - "${POSTGRES_HOST_PORT:-55436}:5432"
     volumes:
       - huelegood-postgres-data:/var/lib/postgresql/data
     healthcheck:

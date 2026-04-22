@@ -99,6 +99,7 @@ Una venta manual o pedido manual desde backoffice debe:
 - registrar fecha y hora
 - afectar inventario segun la politica unica
 - quedar disponible para reportes
+- distinguir en admin entre `registro manual directo` y `revision de comprobante`, mostrando actor, nota y efecto operativo de cada ruta
 
 ### RF-06 Venta web
 
@@ -108,6 +109,8 @@ Una orden web debe:
 - conservar la atribucion comercial del vendedor cuando exista
 - afectar inventario segun la politica unica
 - quedar disponible para reportes cuando alcance estado de venta valida
+- permitir conciliacion manual controlada desde backoffice mientras no exista webhook Openpay productivo
+- impedir que la operacion use `registro manual directo` como sustituto de la conciliacion online de una orden `openpay`
 
 ### RF-07 Reporte por vendedor
 
@@ -115,6 +118,7 @@ El admin debe poder consultar ventas por vendedor con filtros por:
 
 - rango de fechas
 - canal
+- `vendorCode` exacto cuando necesite acotar un vendedor puntual dentro del mismo workspace
 - estado valido
 
 Y ver como minimo:
@@ -123,6 +127,7 @@ Y ver como minimo:
 - monto total
 - ticket promedio
 - ultimas ventas
+- exportacion CSV consistente con el mismo scope aplicado
 
 ### RF-08 Reporte por producto
 
@@ -130,6 +135,7 @@ El admin debe poder consultar ventas por producto con filtros por:
 
 - rango de fechas
 - canal
+- `productSlug` o `sku` exactos para acotar el scope operativo sin romper agregaciones
 - estado valido
 
 Y ver como minimo:
@@ -137,6 +143,7 @@ Y ver como minimo:
 - unidades vendidas
 - ingresos
 - ultimas fechas de venta
+- exportacion CSV consistente con el mismo scope aplicado
 
 ### RF-09 Fechas de venta
 
@@ -194,4 +201,6 @@ Toda accion administrativa sensible debe dejar:
 - el inventario se gestiona desde una politica central comun
 - existen reportes por vendedor y por producto
 - los reportes usan estados y fechas homologadas
+- en reportes admin, filtros, metricas, tablas y CSV comparten el mismo scope aplicado
+- en admin, la UX diferencia con claridad `comprobante manual`, `registro manual directo` y `conciliacion Openpay`
 - la documentacion nueva queda alineada con el codigo implementado

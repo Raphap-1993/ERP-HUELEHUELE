@@ -32,10 +32,10 @@ export function CtaBannerSection({
             <p className="mt-2 text-sm leading-7 text-white/72">{secondaryBanner.description}</p>
           </div>
           <div className="rounded-[1.75rem] border border-white/12 bg-white/8 p-5 backdrop-blur">
-            <p className="text-[11px] uppercase tracking-[0.24em] text-white/42">Preparado para crecer</p>
-            <p className="mt-3 text-xl font-semibold tracking-tight text-white">Feature-flagged y listo para Cloudflare media.</p>
+            <p className="text-[11px] uppercase tracking-[0.24em] text-white/42">Experiencia cuidada</p>
+            <p className="mt-3 text-xl font-semibold tracking-tight text-white">Una experiencia más clara, fresca y premium.</p>
             <p className="mt-2 text-sm leading-7 text-white/72">
-              La ruta v2 permite iterar visualmente sin intervenir la home productiva hasta que el switch sea seguro.
+              Cada sección busca ayudarte a entender el producto y decidir rápido.
             </p>
           </div>
         </div>

@@ -1,187 +1,154 @@
-# Huelegood Docs
+# Documentacion Canonica ERP Huele Huele
 
-## Visión general
+Fecha de corte: 2026-04-22.
 
-Huelegood se documenta en este repositorio como una plataforma comercial modular propia, orientada a operar una marca de consumo con venta directa, canal seller-first, gestión administrativa interna y crecimiento comercial controlado desde una única base tecnológica.
+Este indice reemplaza la lectura anterior dispersa. Para evitar confusiones, la fuente de verdad operativa queda acotada a los documentos marcados como **vigentes** en esta pagina. Cualquier otro archivo historico del repo se conserva solo como evidencia de decisiones o trabajo anterior; no debe usarse para planificar, presupuestar, desplegar ni explicar arquitectura actual.
 
-No se plantea como una landing page ni como un ecommerce básico. El objetivo es construir una base implementable para:
+## Estado Ejecutivo
 
-- storefront e-commerce en Next.js
-- backoffice administrable en Next.js
-- API transaccional en NestJS
-- pagos Openpay
-- pagos manuales con revisión operativa
-- módulo de vendedores con código y comisiones
-- formulario y flujo de "trabaja con nosotros"
-- módulo mayorista y distribuidores
-- campañas y CRM básico
-- fidelización por puntos
-- CMS interno propio
-- colas y workers para procesos asíncronos
+El ERP Huele Huele ya opera como una plataforma propia con cuatro procesos:
 
-## Estado actual del proyecto
+- `huelegood-web`: storefront publico en Next.js.
+- `huelegood-admin`: backoffice operativo en Next.js.
+- `huelegood-api`: API transaccional en NestJS.
+- `huelegood-worker`: jobs asincronos sobre BullMQ.
 
-El repositorio ya contiene una base de implementación real y esta carpeta `docs/` funciona como fuente de verdad para arquitectura, producto, flujos, datos, UX e infraestructura.
+La base productiva es PostgreSQL en el VPS. Redis se usa para colas y coordinacion transitoria. La media publica usa Cloudflare R2 como destino objetivo y los uploads privados pueden seguir en el VPS mientras no exista una decision distinta.
 
-Como base funcional, el proyecto ya cubre:
+El codigo local es la fuente de verdad de aplicacion; produccion debe homologarse contra ese snapshot sin reemplazar la base de datos productiva.
 
-- storefront público, admin, API y worker
-- auth, catálogo y checkout
-- pedidos, pagos y revisión manual
-- checkout, pagos y revisión manual endurecidos con idempotencia y guards de estado
-- vendedores, comisiones y seller-first
-- mayoristas, campañas y CRM básico
-- fidelización por puntos y notificaciones
-- CMS interno, auditoría, seguridad y healthchecks
-- RBAC real con guards, permisos persistidos y navegación admin filtrada por rol
-- persistencia operativa en PostgreSQL para módulos stateful
-- BullMQ operativo para notificaciones, conciliación manual y liquidación de comisiones
-- observabilidad operativa con logs estructurados y vista admin dedicada
-- seller panel ampliado y dashboards operativos por rol
-- reglas de comisión más flexibles con elegibilidad, prioridad y ajustes de payout
-- despliegue productivo estable sobre VPS con `PM2`, `Hestia` y `Nginx`
-- modo mantenimiento del storefront para cambios sensibles en producción
-- baseline visual pública activa sobre `storefront-v2-premium`, inspirada en `Preline/Coffee Shop`, ya publicada en `/`
-- principales superficies públicas alineadas al lenguaje herbal actual de Huele Huele
-- login admin separado del shell operativo y acceso real por `AdminAuthGate`
-- resolución del API normalizada en `web` y `admin` para producción, sin depender de `localhost`
-- release script alineado con `.env.production` local o `shared/.env.production` en el VPS
+## Documentos Vigentes
 
-Pendiente estructural inmediato antes de seguir ampliando Fase 2:
+### Lectura rapida
 
-- conectar catálogo, checkout y superficies públicas a una fuente real de productos persistidos
-- habilitar gestión real de productos desde backoffice, no sólo contenido CMS
-- habilitar media pública administrable para logo, hero, banners e imágenes de producto
-- adoptar `Cloudflare R2` como storage vigente de media pública del storefront
+1. [Arquitectura general](./architecture/overview.md)
+2. [Diagramas del sistema](./architecture/system-diagrams.md)
+3. [Mapa de modulos](./architecture/modules.md)
+4. [Modelo de dominio](./data/domain-model.md)
+5. [Contratos API v1](./api/api-v1-outline.md)
+6. [Despliegue y homologacion](./infra/deployment-strategy.md)
+7. [Validacion y pruebas](./06-validacion-y-pruebas.md)
 
-Como insumo funcional, se asume que la v1 de Huelegood ya comunica:
+### Producto y operacion
 
-- operación seller-first
-- catálogo visible con productos como `Clásico Verde`, `Premium Negro` y `Combo Dúo Perfecto`
-- ofertas activas y códigos promocionales
-- bloque mayorista y distribuidores
-- narrativa de CRM, campañas, dashboard y seller panel
-- propuesta de valor centrada en frescura, reset, portabilidad, tráfico, viajes y altura
-- diferenciación frente a vape y pomadas
+- [Vision de producto](./product/product-vision.md)
+- [Alcance vigente](./product/scope.md)
+- [Roadmap](./product/roadmap.md)
+- [Roles y permisos](./product/roles-and-permissions.md)
+- [Plan de implementacion](./05-plan-de-implementacion.md)
 
-## Restricciones rectoras
+### Flujos operativos
 
-- No usar WordPress, Medusa, Strapi ni un CMS externo como núcleo.
-- No modelar multi-tenant interno para Huelegood.
-- Reutilizar la base de datos PostgreSQL ya disponible en el VPS del proyecto.
-- Adoptar arquitectura de monolito modular, no microservicios puros.
-- Mantener una capa visual compartida basada en `Tailwind CSS`, usando `shadcn/ui` donde aporta valor y `Preline` como acelerador de layout en la web pública.
-
-## Stack objetivo
-
-- `Next.js` para web pública
-- `Next.js` para admin
-- `NestJS` para API
-- `PostgreSQL`
-- `Redis` + `BullMQ`
-- `Prisma ORM`
-- `Preline` como librería de layout en storefront público
-- `Cloudflare R2` como storage de media pública del storefront
-- `PM2`
-- `Hestia + Nginx`
-
-## Estructura de documentos
-
-### Auditoria y homologacion ERP
-
-- [00-auditoria-inicial.md](./00-auditoria-inicial.md)
-- [01-requerimientos-funcionales-erp-huelehuele.md](./01-requerimientos-funcionales-erp-huelehuele.md)
-- [02-glosario-y-homologacion.md](./02-glosario-y-homologacion.md)
-- [03-casos-de-uso.md](./03-casos-de-uso.md)
-- [04-diseno-tecnico.md](./04-diseno-tecnico.md)
-- [05-plan-de-implementacion.md](./05-plan-de-implementacion.md)
-- [06-validacion-y-pruebas.md](./06-validacion-y-pruebas.md) `se actualiza al cierre de la implementacion`
-
-### Arquitectura
-
-- [overview.md](./architecture/overview.md)
-- [solution-architecture.md](./architecture/solution-architecture.md)
-- [modules.md](./architecture/modules.md)
-- [module-diagrams.md](./architecture/module-diagrams.md)
-- [non-functional-requirements.md](./architecture/non-functional-requirements.md)
-- [risks-and-mitigations.md](./architecture/risks-and-mitigations.md)
-- [adr-001-monolith-modular.md](./architecture/adr-001-monolith-modular.md)
-
-### Producto
-
-- [product-vision.md](./product/product-vision.md)
-- [scope.md](./product/scope.md)
-- [roadmap.md](./product/roadmap.md)
-- [backlog-mvp.md](./product/backlog-mvp.md)
-- [fase-2-execution-plan.md](./product/fase-2-execution-plan.md)
-- [roles-and-permissions.md](./product/roles-and-permissions.md)
-
-### Flujos
-
-- [checkout-openpay.md](./flows/checkout-openpay.md)
-- [manual-payments.md](./flows/manual-payments.md)
-- [vendor-application.md](./flows/vendor-application.md)
-- [vendors-and-commissions.md](./flows/vendors-and-commissions.md)
-- [wholesale-flow.md](./flows/wholesale-flow.md)
-- [loyalty-flow.md](./flows/loyalty-flow.md)
-- [campaigns-and-notifications.md](./flows/campaigns-and-notifications.md)
+- [Checkout y Openpay](./flows/checkout-openpay.md)
+- [Pagos manuales](./flows/manual-payments.md)
+- [Etiquetas de despacho](./flows/order-dispatch-labels.md)
+- [Fulfillment por almacenes](./flows/warehouse-fulfillment-triangulation.md)
+- [Transferencias, GRE y stickers](./flows/warehouse-transfers-sunat-guides-and-package-labels.md)
+- [Vendedores y comisiones](./flows/vendors-and-commissions.md)
+- [Mayoristas](./flows/wholesale-flow.md)
 
 ### Datos
 
-- [domain-model.md](./data/domain-model.md)
-- [entities.md](./data/entities.md)
-- [order-states.md](./data/order-states.md)
-- [commission-states.md](./data/commission-states.md)
-
-### API
-
-- [api-v1-outline.md](./api/api-v1-outline.md)
-- [implemented-endpoints-inventory.md](./api/implemented-endpoints-inventory.md)
+- [Modelo de dominio](./data/domain-model.md)
+- [Entidades](./data/entities.md)
+- [Control de inventario por almacen](./data/inventory-control-by-warehouse.md)
+- [Estados de pedido](./data/order-states.md)
+- [Estados de comision](./data/commission-states.md)
 
 ### UX
 
-- [design-system.md](./ux/design-system.md)
-- [shadcn-ui-guidelines.md](./ux/shadcn-ui-guidelines.md)
+- [Sistema visual](./ux/design-system.md)
+- [Backoffice UX](./ux/backoffice-ux-redesign-v2.md)
+- [Checkout UX](./ux/checkout-redesign.md)
 
-### Storefront
+## Documentacion Historica
 
-- [storefront-v2-premium-landing.md](./storefront-v2-premium-landing.md) `vigente como registro de consolidación`
-- [storefront-redesign-phase7.md](./storefront-redesign-phase7.md) `histórico`
+Los handoffs fechados, auditorias de worktree y documentos de fases antiguas sirven como bitacora, no como arquitectura vigente. Si contradicen este indice, prevalece este indice.
 
-Nota:
+No usar como fuente principal:
 
-- las rutas `/storefront-v2` y `/storefront-v2-premium` ya no operan como previews públicas; en producción redirigen a `/`
-- la experiencia oficial pública vive en `/`, `/catalogo`, `/checkout`, `/cuenta`, `/mayoristas`, `/trabaja-con-nosotros` y `/panel-vendedor`
+- handoffs de `docs/product/*handoff*.md`
+- auditorias fechadas de worktree
+- documentos de redisenos antiguos de storefront
+- notas de impacto creadas para cortes ya cerrados
 
-### Infraestructura
+Si una decision historica sigue aplicando, debe estar reflejada en los documentos vigentes listados arriba.
 
-- [deployment-strategy.md](./infra/deployment-strategy.md)
-- [environments.md](./infra/environments.md)
-- [local-docker-services.md](./infra/local-docker-services.md)
-- [pm2-services.md](./infra/pm2-services.md)
+## Mapa Del Monorepo
 
-## Orden recomendado de lectura
+| Ruta | Responsabilidad |
+| --- | --- |
+| `apps/web` | Storefront publico: home, catalogo, PDP, checkout, cuenta, mayoristas y panel vendedor. |
+| `apps/admin` | Backoffice: pedidos, pagos, productos, inventario, almacenes, transferencias, reportes y operacion. |
+| `apps/api` | Backend NestJS: modulos de dominio, API admin/store, auth, seguridad, Prisma y orquestacion. |
+| `apps/worker` | Jobs BullMQ para pagos, comisiones y notificaciones. |
+| `packages/shared` | Tipos, contratos, enums, navegacion y helpers compartidos. |
+| `packages/ui` | Componentes base reutilizables. |
+| `prisma` | Schema, seed local/demo y modelo persistente. |
+| `scripts` | Operacion local, despliegue, backups, smoke checks y backfills. |
+| `ops/nginx` | Snippets Nginx para Hestia/VPS. |
 
-1. [Visión de producto](./product/product-vision.md)
-2. [Alcance](./product/scope.md)
-3. [Resumen de arquitectura](./architecture/overview.md)
-4. [Arquitectura de solución](./architecture/solution-architecture.md)
-5. [Módulos](./architecture/modules.md)
-6. [Modelo de dominio](./data/domain-model.md)
-7. [Entidades](./data/entities.md)
-8. [Flujos clave](./flows/checkout-openpay.md)
-9. [API v1](./api/api-v1-outline.md)
-10. [Sistema visual](./ux/design-system.md)
-11. [Despliegue e infraestructura](./infra/deployment-strategy.md)
+## Superficies Activas
 
-## Cómo usar esta documentación
+### Publico
 
-- Como base de implementación inmediata para definir estructura de aplicaciones, módulos y tablas.
-- Como fuente de verdad para convertir alcance y backlog en tickets.
-- Como guía para alinear decisiones de arquitectura, UX, operaciones y datos antes de escribir código.
+- `/`
+- `/catalogo`
+- `/producto/[slug]`
+- `/checkout`
+- `/cuenta`
+- `/mayoristas`
+- `/trabaja-con-nosotros`
+- `/panel-vendedor`
 
-## Convenciones generales
+### Admin
 
-- Todos los documentos están escritos en español y orientados a ejecución real.
-- Los nombres de módulos y tablas se mantienen en inglés técnico cuando eso favorece consistencia con código y base de datos.
-- Cuando una regla aparece en producto, flujos y datos, prevalece la formulación más restrictiva para evitar ambigüedad.
+- `/pedidos`
+- `/pagos`
+- `/despachos`
+- `/productos`
+- `/inventario`
+- `/almacenes`
+- `/transferencias`
+- `/reportes`
+- `/vendedores`
+- `/comisiones`
+- `/crm`
+- `/cms`
+- `/auditoria`
+- `/observabilidad`
+
+## Reglas Para Mantener La Documentacion
+
+- Si se agrega un modulo, primero actualizar [modules.md](./architecture/modules.md) y [system-diagrams.md](./architecture/system-diagrams.md).
+- Si cambia una tabla o agregado, actualizar [domain-model.md](./data/domain-model.md) y `prisma/schema.prisma` en el mismo corte.
+- Si cambia un endpoint, actualizar [api-v1-outline.md](./api/api-v1-outline.md).
+- Si cambia despliegue, puertos o `.env`, actualizar [deployment-strategy.md](./infra/deployment-strategy.md) y [environments.md](./infra/environments.md).
+- No crear handoffs nuevos como fuente permanente; los handoffs deben cerrarse integrando su contenido en la documentacion vigente.
+
+## Arranque Local
+
+```bash
+npm install
+cp .env.example .env
+npm run docker:up
+npm run local:demo
+npm run dev:api
+npm run dev:web
+npm run dev:admin
+npm run dev:worker
+```
+
+URLs locales:
+
+- Web: `http://localhost:3000`
+- Admin: `http://localhost:3001`
+- API: `http://localhost:4000/api/v1`
+- PostgreSQL local: `localhost:55436`
+- Redis local: `localhost:6380`
+
+Produccion:
+
+- Web: `https://huelegood.com`
+- Admin: `https://admin.huelegood.com`
+- API: `https://api.huelegood.com/api/v1`

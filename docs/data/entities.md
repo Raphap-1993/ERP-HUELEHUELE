@@ -20,8 +20,9 @@ Listar las entidades principales del modelo de datos, su propósito y relaciones
 | `roles` | agrupación de permisos | `code`, `name`, `is_system` | N:N con `permissions` |
 | `permissions` | permisos atómicos | `code`, `name`, `module` | asignados vía roles |
 | `admins` | perfil interno | `user_id`, `display_name`, `job_title`, `is_active` | 1:1 con `users` |
-| `customers` | perfil de cliente | `user_id`, `first_name`, `last_name`, `document_number`, `marketing_opt_in` | 1:1 con `users`; 1:N con direcciones |
+| `customers` | perfil de cliente | `user_id`, `first_name`, `last_name`, `document_type`, `document_number`, `marketing_opt_in`, `merge_status`, `merged_into_customer_id` | 1:1 con `users`; 1:N con direcciones; dedupe principal por identidad documental cuando exista; soporta fusiones auditables |
 | `customer_addresses` | direcciones guardadas | `customer_id`, `label`, `recipient_name`, `line1`, `city`, `region`, `postal_code`, `country_code`, `is_default` | snapshot futuro a `order_addresses` |
+| `customer_identity_conflicts` | cola de conflictos de identidad | `order_number`, `status`, `reason`, `customer_name`, `email`, `phone`, `document_type`, `document_number`, `candidate_customer_ids`, `resolved_customer_id` | revisión manual desde CRM cuando documento/email/teléfono apuntan a más de un cliente canónico |
 
 ## CMS
 
@@ -42,9 +43,18 @@ Listar las entidades principales del modelo de datos, su propósito y relaciones
 | --- | --- | --- | --- |
 | `categories` | agrupación comercial | `name`, `slug`, `description`, `is_active`, `sort_order` | 1:N con `products` |
 | `products` | producto base | `category_id`, `name`, `slug`, `short_description`, `long_description`, `status`, `is_featured` | puede representar líneas como `Clásico Verde` |
-| `product_variants` | unidad vendible | `product_id`, `sku`, `name`, `price`, `compare_at_price`, `stock_on_hand`, `status` | nivel de venta y stock lógico |
+| `product_variants` | unidad vendible | `product_id`, `sku`, `name`, `price`, `compare_at_price`, `stock_on_hand`, `default_warehouse_id`, `status` | nivel de venta y stock lógico; el almacén por defecto vive en la variante |
 | `product_images` | imágenes públicas | `product_id`, `variant_id`, `url`, `alt_text`, `sort_order`, `is_primary` | soporta imagen general o por variante |
-| `inventory_movements` | trazabilidad de stock | `variant_id`, `type`, `quantity`, `reference_type`, `reference_id`, `reason` | opcionalmente se activa desde MVP según operación real |
+| `inventory_movements` | trazabilidad de stock | `variant_id`, `warehouse_id`, `type`, `quantity`, `reference_type`, `reference_id`, `reason` | el ledger debe distinguir almacén origen para reservas, confirmaciones y reversas |
+
+## Inventario y fulfillment
+
+| Entidad | Propósito | Campos clave sugeridos | Relaciones y notas |
+| --- | --- | --- | --- |
+| `warehouses` | nodo físico de salida | `code`, `name`, `status`, `priority`, `line1`, `line2`, `department_code`, `province_code`, `district_code`, `latitude`, `longitude` | ubicación configurable para triangulación y operación; coordenadas son opcionales y secundarias |
+| `warehouse_service_areas` | cobertura o prioridad geográfica por almacén | `warehouse_id`, `scope_type`, `scope_code`, `priority`, `is_active` | puede modelar departamento, provincia, distrito o zona |
+| `warehouse_inventory_balances` | saldo operativo por origen | `warehouse_id`, `variant_id`, `stock_on_hand`, `reserved_quantity`, `committed_quantity`, `updated_at` | fuente operativa para validar sugerencia, asignación, reserva, confirmación y reversa por almacén |
+| `order_fulfillment_assignments` | origen logístico elegido para el pedido | `order_id`, `warehouse_id`, `status`, `strategy`, `assigned_by`, `assigned_at`, `notes` | snapshot operativo de origen; evita recalcular la salida al leer |
 
 ## Comercial
 
@@ -54,7 +64,7 @@ Listar las entidades principales del modelo de datos, su propósito y relaciones
 | `coupons` | cupones controlados | `promotion_id`, `code`, `usage_limit`, `usage_count`, `status`, `expires_at` | pueden mapear a promoción única |
 | `carts` | carrito activo | `customer_id`, `session_id`, `status`, `currency_code`, `vendor_code_snapshot`, `coupon_code_snapshot` | origen de pre-checkout |
 | `cart_items` | líneas del carrito | `cart_id`, `product_variant_id`, `quantity`, `unit_price_snapshot`, `discount_snapshot` | recalculables antes del pedido |
-| `orders` | venta transaccional | `customer_id`, `number`, `status`, `currency_code`, `subtotal`, `discount_total`, `grand_total`, `vendor_code_snapshot` | agregado central |
+| `orders` | venta transaccional | `customer_id`, `number`, `status`, `currency_code`, `subtotal`, `discount_total`, `grand_total`, `vendor_code_snapshot` | agregado central; debe exponer también snapshot de fulfillment/origen |
 | `order_items` | líneas finales del pedido | `order_id`, `product_variant_id`, `sku_snapshot`, `name_snapshot`, `quantity`, `unit_price`, `discount_total`, `line_total` | snapshot inmutable |
 | `order_addresses` | direcciones del pedido | `order_id`, `type`, `recipient_name`, `line1`, `city`, `region`, `postal_code`, `country_code` | shipping/billing |
 | `order_status_history` | historial de estados | `order_id`, `from_status`, `to_status`, `reason`, `changed_by_user_id`, `changed_at` | obligatorio para trazabilidad |
@@ -130,12 +140,18 @@ Listar las entidades principales del modelo de datos, su propósito y relaciones
 ## Índices recomendados mínimos
 
 - `users.email` único
+- `users.phone` único
 - `roles.code` único
 - `permissions.code` único
 - `products.slug` único
 - `product_variants.sku` único
 - `coupons.code` único
 - `orders.number` único
+- `customers(document_type, document_number)` único cuando exista
+- `customers.merge_status` indexado
+- `customers.merged_into_customer_id` indexado
+- `customer_identity_conflicts.order_number` único
+- `customer_identity_conflicts(status, created_at)` indexado
 - `payments.provider_reference` indexado
 - `vendor_codes.code` único lógico
 - `commission_payouts(vendor_id, period_start, period_end)`

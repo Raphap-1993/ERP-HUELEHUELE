@@ -44,7 +44,7 @@ function AccountDetail({
   helper: string;
 }) {
   return (
-    <div className="rounded-2xl border border-[#d8f3dc] bg-[#f7f8f4] px-4 py-4">
+    <div className="rounded-2xl border border-[#eef6e8] bg-[#f7f8f4] px-4 py-4">
       <p className="text-[11px] uppercase tracking-[0.24em] text-black/40">{label}</p>
       <p className="mt-3 text-xl font-semibold text-[#1a3a2e]">{value}</p>
       <p className="mt-2 text-sm leading-6 text-black/56">{helper}</p>
@@ -228,7 +228,7 @@ export function AccountWorkspace() {
         <div className="grid gap-8 lg:grid-cols-[1fr_1fr] lg:items-start">
 
           {/* Left: copy */}
-          <div className="rounded-[22px] bg-[#1a3a2e] p-10 text-white">
+          <div className="rounded-[22px] bg-[#577e2f] p-10 text-white">
             <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40">Mi cuenta</p>
             <h1 className="mb-4 font-serif text-[2.4rem] font-bold leading-[1.1] text-white">
               Acceso simple para compras, puntos y seguimiento.
@@ -239,7 +239,7 @@ export function AccountWorkspace() {
             <div className="space-y-3">
               {["Historial de pedidos en un clic.", "Puntos de lealtad siempre visibles.", "Acceso a panel comercial si eres vendedor."].map((item) => (
                 <div key={item} className="flex items-center gap-3 text-[13px] text-white/70">
-                  <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[#52b788] text-[10px] text-white">✓</div>
+                  <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[#61a740] text-[10px] text-white">✓</div>
                   {item}
                 </div>
               ))}
@@ -247,7 +247,7 @@ export function AccountWorkspace() {
             <div className="mt-10 grid grid-cols-3 gap-3">
               {[{ n: "6+", l: "Pedidos típicos" }, { n: "S/400+", l: "Por cliente" }, { n: "24h", l: "Soporte" }].map((stat) => (
                 <div key={stat.l} className="rounded-[12px] border border-white/10 bg-white/6 p-3 text-center">
-                  <div className="font-serif text-[20px] font-black text-[#52b788]">{stat.n}</div>
+                  <div className="font-serif text-[20px] font-black text-[#61a740]">{stat.n}</div>
                   <div className="mt-1 text-[10px] text-white/35">{stat.l}</div>
                 </div>
               ))}
@@ -264,14 +264,14 @@ export function AccountWorkspace() {
               <button
                 type="button"
                 onClick={() => setMode("login")}
-                className={`rounded-full px-5 py-2 text-[13px] font-medium transition ${mode === "login" ? "bg-[#1a3a2e] text-white" : "text-[#1a3a2e]"}`}
+                className={`rounded-full px-5 py-2 text-[13px] font-medium transition ${mode === "login" ? "bg-[#577e2f] text-white" : "text-[#1a3a2e]"}`}
               >
                 Ingresar
               </button>
               <button
                 type="button"
                 onClick={() => setMode("register")}
-                className={`rounded-full px-5 py-2 text-[13px] font-medium transition ${mode === "register" ? "bg-[#1a3a2e] text-white" : "text-[#1a3a2e]"}`}
+                className={`rounded-full px-5 py-2 text-[13px] font-medium transition ${mode === "register" ? "bg-[#577e2f] text-white" : "text-[#1a3a2e]"}`}
               >
                 Crear cuenta
               </button>
@@ -292,7 +292,7 @@ export function AccountWorkspace() {
                     value={loginForm.email}
                     onChange={(e) => setLoginForm((c) => ({ ...c, email: e.target.value }))}
                     placeholder="tu@correo.com"
-                    className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white"
+                    className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#61a740] focus:bg-white"
                   />
                 </div>
                 <div>
@@ -304,13 +304,13 @@ export function AccountWorkspace() {
                     value={loginForm.password}
                     onChange={(e) => setLoginForm((c) => ({ ...c, password: e.target.value }))}
                     placeholder="••••••••"
-                    className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white"
+                    className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#61a740] focus:bg-white"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full rounded-[11px] bg-[#2d6a4f] py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#1a3a2e] hover:-translate-y-px disabled:opacity-60"
+                  className="w-full rounded-[11px] bg-[#61a740] py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#577e2f] hover:-translate-y-px disabled:opacity-60"
                 >
                   {submitting ? "Validando..." : "Ingresar →"}
                 </button>
@@ -325,7 +325,7 @@ export function AccountWorkspace() {
                     value={registerForm.name}
                     onChange={(e) => setRegisterForm((c) => ({ ...c, name: e.target.value, accountType: "customer" }))}
                     placeholder="Tu nombre completo"
-                    className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white"
+                    className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#61a740] focus:bg-white"
                   />
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -337,7 +337,7 @@ export function AccountWorkspace() {
                       value={registerForm.email}
                       onChange={(e) => setRegisterForm((c) => ({ ...c, email: e.target.value }))}
                       placeholder="tu@correo.com"
-                      className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white"
+                      className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#61a740] focus:bg-white"
                     />
                   </div>
                   <div>
@@ -348,7 +348,7 @@ export function AccountWorkspace() {
                       value={registerForm.password}
                       onChange={(e) => setRegisterForm((c) => ({ ...c, password: e.target.value, accountType: "customer" }))}
                       placeholder="••••••••"
-                      className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white"
+                      className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#61a740] focus:bg-white"
                     />
                   </div>
                 </div>
@@ -359,13 +359,13 @@ export function AccountWorkspace() {
                     value={registerForm.phone}
                     onChange={(e) => setRegisterForm((c) => ({ ...c, phone: e.target.value, accountType: "customer" }))}
                     placeholder="+51 999 000 000"
-                    className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#52b788] focus:bg-white"
+                    className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#61a740] focus:bg-white"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full rounded-[11px] bg-[#2d6a4f] py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#1a3a2e] hover:-translate-y-px disabled:opacity-60"
+                  className="w-full rounded-[11px] bg-[#61a740] py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#577e2f] hover:-translate-y-px disabled:opacity-60"
                 >
                   {submitting ? "Creando cuenta..." : "Crear cuenta →"}
                 </button>
@@ -387,12 +387,12 @@ export function AccountWorkspace() {
 
           {/* Profile card */}
           <div className="rounded-[22px] border border-[rgba(26,58,46,0.1)] bg-white p-7 text-center">
-            <div className="mx-auto mb-3.5 flex h-[72px] w-[72px] items-center justify-center rounded-full bg-[#d8f3dc] font-serif text-[26px] font-black text-[#2d6a4f]">
+            <div className="mx-auto mb-3.5 flex h-[72px] w-[72px] items-center justify-center rounded-full bg-[#eef6e8] font-serif text-[26px] font-black text-[#61a740]">
               {session.user.name.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase()}
             </div>
             <p className="font-serif text-[18px] font-bold text-[#1a3a2e]">{session.user.name}</p>
             <p className="mt-0.5 text-[13px] text-[#6b7280]">{session.user.email}</p>
-            <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#d8f3dc] px-3.5 py-1.5 text-[11px] font-bold text-[#2d6a4f]">
+            <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#eef6e8] px-3.5 py-1.5 text-[11px] font-bold text-[#61a740]">
               <span>🛡</span> Cliente activo
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2.5">
@@ -422,7 +422,7 @@ export function AccountWorkspace() {
                 onClick={() => setActivePanel(item.id)}
                 className={`flex w-full items-center gap-2.5 border-b border-[rgba(26,58,46,0.05)] px-4 py-3.5 text-left text-[13px] font-medium last:border-b-0 transition ${
                   activePanel === item.id
-                    ? "bg-[#d8f3dc] font-semibold text-[#1a3a2e]"
+                    ? "bg-[#eef6e8] font-semibold text-[#1a3a2e]"
                     : "text-[#6b7280] hover:bg-[#faf8f3] hover:text-[#1a3a2e]"
                 }`}
               >
@@ -458,7 +458,7 @@ export function AccountWorkspace() {
                   <div key={order.id} className="rounded-[16px] border border-[rgba(26,58,46,0.1)] p-5 transition hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(26,58,46,0.08)]">
                     <div className="mb-3.5 flex items-center justify-between">
                       <div>
-                        <p className="text-[14px] font-bold text-[#2d6a4f]">{order.id}</p>
+                        <p className="text-[14px] font-bold text-[#61a740]">{order.id}</p>
                         <p className="text-[12px] text-[#6b7280]">{order.date}</p>
                       </div>
                       <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${order.statusColor}`}>{order.status}</span>
@@ -477,8 +477,8 @@ export function AccountWorkspace() {
                     <div className="flex items-center justify-between">
                       <span className="font-serif text-[18px] font-bold text-[#1a3a2e]">{order.total}</span>
                       <div className="flex gap-2">
-                        <button type="button" className="rounded-[9px] border border-[rgba(26,58,46,0.12)] px-3 py-1.5 text-[12px] font-medium text-[#6b7280] transition hover:border-[#2d6a4f] hover:bg-[#d8f3dc] hover:text-[#2d6a4f]">Ver detalle</button>
-                        <button type="button" className="rounded-[9px] bg-[#2d6a4f] px-3 py-1.5 text-[12px] font-medium text-white transition hover:bg-[#1a3a2e]">Comprar de nuevo</button>
+                        <button type="button" className="rounded-[9px] border border-[rgba(26,58,46,0.12)] px-3 py-1.5 text-[12px] font-medium text-[#6b7280] transition hover:border-[#61a740] hover:bg-[#eef6e8] hover:text-[#61a740]">Ver detalle</button>
+                        <button type="button" className="rounded-[9px] bg-[#61a740] px-3 py-1.5 text-[12px] font-medium text-white transition hover:bg-[#577e2f]">Comprar de nuevo</button>
                       </div>
                     </div>
                   </div>
@@ -492,16 +492,16 @@ export function AccountWorkspace() {
             <div className="rounded-[22px] border border-[rgba(26,58,46,0.1)] bg-white p-8">
               <h3 className="mb-1 font-serif text-[19px] font-bold text-[#1a3a2e]">Rastrear pedido</h3>
               <p className="mb-6 text-[14px] text-[#6b7280]">Estado actual de tu pedido en camino.</p>
-              <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-[14px] bg-[#d8f3dc] p-5">
+              <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-[14px] bg-[#eef6e8] p-5">
                 <div>
-                  <p className="text-[12px] font-semibold text-[#2d6a4f]">Pedido en camino</p>
+                  <p className="text-[12px] font-semibold text-[#61a740]">Pedido en camino</p>
                   <p className="font-serif text-[22px] font-black text-[#1a3a2e]">#00085</p>
                   <p className="text-[12px] text-[#6b7280]">Pack x3 · S/ 99.90</p>
                 </div>
                 <div className="text-right">
                   <p className="text-[12px] text-[#6b7280]">Courier</p>
                   <p className="text-[14px] font-semibold text-[#1a3a2e]">Olva Courier</p>
-                  <p className="text-[12px] font-semibold text-[#2d6a4f]">ABC-123456</p>
+                  <p className="text-[12px] font-semibold text-[#61a740]">ABC-123456</p>
                 </div>
               </div>
               <div className="space-y-0">
@@ -513,11 +513,11 @@ export function AccountWorkspace() {
                 ].map((step, i, arr) => (
                   <div key={step.label} className="flex gap-4 pb-5 last:pb-0">
                     <div className="flex flex-col items-center">
-                      <div className={`mt-0.5 h-3.5 w-3.5 flex-shrink-0 rounded-full border-2 ${step.done ? "border-[#52b788] bg-[#52b788]" : step.current ? "border-[#2d6a4f] bg-[#2d6a4f] shadow-[0_0_0_4px_rgba(82,183,136,0.2)]" : "border-[rgba(26,58,46,0.2)]"}`} />
-                      {i < arr.length - 1 && <div className={`mt-1 w-0.5 flex-1 ${step.done ? "bg-[#52b788]" : "bg-[rgba(26,58,46,0.1)]"}`} style={{ minHeight: "24px" }} />}
+                      <div className={`mt-0.5 h-3.5 w-3.5 flex-shrink-0 rounded-full border-2 ${step.done ? "border-[#61a740] bg-[#61a740]" : step.current ? "border-[#61a740] bg-[#61a740] shadow-[0_0_0_4px_rgba(97,167,64,0.2)]" : "border-[rgba(26,58,46,0.2)]"}`} />
+                      {i < arr.length - 1 && <div className={`mt-1 w-0.5 flex-1 ${step.done ? "bg-[#61a740]" : "bg-[rgba(26,58,46,0.1)]"}`} style={{ minHeight: "24px" }} />}
                     </div>
                     <div className="pb-0">
-                      <p className={`text-[13px] font-semibold ${step.current ? "text-[#2d6a4f]" : step.done ? "text-[#1a3a2e]" : "text-[#6b7280]"}`}>{step.label}</p>
+                      <p className={`text-[13px] font-semibold ${step.current ? "text-[#61a740]" : step.done ? "text-[#1a3a2e]" : "text-[#6b7280]"}`}>{step.label}</p>
                       <p className="text-[12px] text-[#6b7280]">{step.detail}</p>
                     </div>
                   </div>
@@ -542,7 +542,7 @@ export function AccountWorkspace() {
                     <div className="mb-2.5 text-4xl">{item.emoji}</div>
                     <p className="text-[13px] font-semibold text-[#1a3a2e]">{item.name}</p>
                     <p className="mb-3 mt-1 font-serif text-[16px] font-bold text-[#1a3a2e]">{item.price}</p>
-                    <a href={`/producto/${item.slug}`} className="block w-full rounded-[9px] bg-[#2d6a4f] py-2 text-[12px] font-semibold text-white transition hover:bg-[#1a3a2e]">Ver detalle</a>
+                    <a href={`/producto/${item.slug}`} className="block w-full rounded-[9px] bg-[#61a740] py-2 text-[12px] font-semibold text-white transition hover:bg-[#577e2f]">Ver detalle</a>
                   </div>
                 ))}
               </div>
@@ -555,13 +555,13 @@ export function AccountWorkspace() {
               <h3 className="mb-1 font-serif text-[19px] font-bold text-[#1a3a2e]">Mis direcciones</h3>
               <p className="mb-6 text-[14px] text-[#6b7280]">Gestiona las direcciones de entrega guardadas en tu cuenta.</p>
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="relative rounded-[15px] border-[1.5px] border-[#52b788] bg-[#d8f3dc] p-5">
-                  <span className="absolute right-3 top-3 rounded-full bg-[#2d6a4f] px-2.5 py-0.5 text-[10px] font-bold text-white">Principal</span>
+                <div className="relative rounded-[15px] border-[1.5px] border-[#61a740] bg-[#eef6e8] p-5">
+                  <span className="absolute right-3 top-3 rounded-full bg-[#61a740] px-2.5 py-0.5 text-[10px] font-bold text-white">Principal</span>
                   <div className="mb-2.5 text-xl">🏠</div>
                   <p className="text-[13px] font-semibold text-[#1a3a2e]">Casa</p>
                   <p className="mt-1.5 text-[12px] leading-relaxed text-[#6b7280]">Av. Javier Prado Este 1234<br />Miraflores, Lima</p>
                   <div className="mt-3.5">
-                    <button type="button" className="rounded-[9px] border border-[rgba(26,58,46,0.12)] px-3 py-1.5 text-[12px] font-medium text-[#6b7280] transition hover:border-[#2d6a4f] hover:text-[#2d6a4f]">Editar</button>
+                    <button type="button" className="rounded-[9px] border border-[rgba(26,58,46,0.12)] px-3 py-1.5 text-[12px] font-medium text-[#6b7280] transition hover:border-[#61a740] hover:text-[#61a740]">Editar</button>
                   </div>
                 </div>
                 <div className="rounded-[15px] border-[1.5px] border-[rgba(26,58,46,0.1)] p-5">
@@ -569,15 +569,15 @@ export function AccountWorkspace() {
                   <p className="text-[13px] font-semibold text-[#1a3a2e]">Trabajo</p>
                   <p className="mt-1.5 text-[12px] leading-relaxed text-[#6b7280]">Calle Las Begonias 580<br />San Isidro, Lima · Piso 8</p>
                   <div className="mt-3.5 flex gap-2">
-                    <button type="button" className="rounded-[9px] border border-[rgba(26,58,46,0.12)] px-3 py-1.5 text-[12px] font-medium text-[#6b7280] transition hover:border-[#2d6a4f] hover:text-[#2d6a4f]">Editar</button>
-                    <button type="button" className="rounded-[9px] bg-[#2d6a4f] px-3 py-1.5 text-[12px] font-medium text-white transition hover:bg-[#1a3a2e]">Usar como principal</button>
+                    <button type="button" className="rounded-[9px] border border-[rgba(26,58,46,0.12)] px-3 py-1.5 text-[12px] font-medium text-[#6b7280] transition hover:border-[#61a740] hover:text-[#61a740]">Editar</button>
+                    <button type="button" className="rounded-[9px] bg-[#61a740] px-3 py-1.5 text-[12px] font-medium text-white transition hover:bg-[#577e2f]">Usar como principal</button>
                   </div>
                 </div>
-                <div className="flex cursor-pointer flex-col items-center justify-center gap-2.5 rounded-[15px] border-2 border-dashed border-[rgba(45,106,79,0.25)] p-6 text-center transition hover:border-[#52b788] hover:bg-[#d8f3dc]">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-[9px] bg-[#d8f3dc]">
-                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#2d6a4f" strokeWidth={2}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <div className="flex cursor-pointer flex-col items-center justify-center gap-2.5 rounded-[15px] border-2 border-dashed border-[rgba(97,167,64,0.25)] p-6 text-center transition hover:border-[#61a740] hover:bg-[#eef6e8]">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-[9px] bg-[#eef6e8]">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#61a740" strokeWidth={2}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                   </div>
-                  <p className="text-[12px] font-semibold text-[#2d6a4f]">Agregar nueva dirección</p>
+                  <p className="text-[12px] font-semibold text-[#61a740]">Agregar nueva dirección</p>
                 </div>
               </div>
             </div>
@@ -590,7 +590,7 @@ export function AccountWorkspace() {
                 <h3 className="mb-1 font-serif text-[19px] font-bold text-[#1a3a2e]">Datos personales</h3>
                 <p className="mb-6 text-[14px] text-[#6b7280]">Tu información de perfil asociada a esta cuenta.</p>
                 <div className="mb-6 flex items-center gap-5 border-b border-[rgba(26,58,46,0.08)] pb-6">
-                  <div className="flex h-[68px] w-[68px] flex-shrink-0 items-center justify-center rounded-full bg-[#d8f3dc] font-serif text-[24px] font-black text-[#2d6a4f]">
+                  <div className="flex h-[68px] w-[68px] flex-shrink-0 items-center justify-center rounded-full bg-[#eef6e8] font-serif text-[24px] font-black text-[#61a740]">
                     {session.user.name.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase()}
                   </div>
                   <div>
@@ -602,15 +602,15 @@ export function AccountWorkspace() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Nombre</label>
-                    <input defaultValue={accountState?.firstName ?? ""} className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] outline-none transition focus:border-[#52b788] focus:bg-white" />
+                    <input defaultValue={accountState?.firstName ?? ""} className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] outline-none transition focus:border-[#61a740] focus:bg-white" />
                   </div>
                   <div>
                     <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Apellido</label>
-                    <input defaultValue={accountState?.lastName ?? ""} className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] outline-none transition focus:border-[#52b788] focus:bg-white" />
+                    <input defaultValue={accountState?.lastName ?? ""} className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] outline-none transition focus:border-[#61a740] focus:bg-white" />
                   </div>
                   <div>
                     <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Email</label>
-                    <input defaultValue={session.user.email} type="email" className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] outline-none transition focus:border-[#52b788] focus:bg-white" />
+                    <input defaultValue={session.user.email} type="email" className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] outline-none transition focus:border-[#61a740] focus:bg-white" />
                   </div>
                   {session.user.vendorCode ? (
                     <div>
@@ -632,7 +632,7 @@ export function AccountWorkspace() {
                       { label: "Pendientes", value: loyaltySummary.pendingPoints, helper: "Se confirman pronto" },
                       { label: "Canjeados", value: loyaltySummary.redeemedPoints, helper: "Total histórico" },
                     ].map((stat) => (
-                      <div key={stat.label} className="rounded-[13px] border border-[#d8f3dc] bg-[#f4f4f0] px-4 py-4">
+                      <div key={stat.label} className="rounded-[13px] border border-[#eef6e8] bg-[#f4f4f0] px-4 py-4">
                         <p className="text-[10px] uppercase tracking-[0.2em] text-[#6b7280]">{stat.label}</p>
                         <p className="mt-2 font-serif text-[22px] font-black text-[#1a3a2e]">{stat.value}</p>
                         <p className="mt-1 text-[11px] text-[#6b7280]">{stat.helper}</p>
@@ -640,19 +640,19 @@ export function AccountWorkspace() {
                     ))}
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <span className="rounded-full bg-[#d8f3dc] px-3 py-1 text-[11px] font-semibold text-[#2d6a4f]">{loyaltyMovementLabel(loyaltySummary.recentMovement)}</span>
-                    <span className="rounded-full bg-[#d8f3dc] px-3 py-1 text-[11px] font-semibold text-[#2d6a4f]">{redemptionLabel(loyaltySummary.redemptionStatus)}</span>
+                    <span className="rounded-full bg-[#eef6e8] px-3 py-1 text-[11px] font-semibold text-[#61a740]">{loyaltyMovementLabel(loyaltySummary.recentMovement)}</span>
+                    <span className="rounded-full bg-[#eef6e8] px-3 py-1 text-[11px] font-semibold text-[#61a740]">{redemptionLabel(loyaltySummary.redemptionStatus)}</span>
                   </div>
                 </div>
               ) : null}
 
               {/* Seller panel access */}
               {hasSellerPanelAccess ? (
-                <div className="rounded-[22px] bg-[#1a3a2e] p-8 text-white">
+                <div className="rounded-[22px] bg-[#577e2f] p-8 text-white">
                   <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40">Acceso comercial</p>
                   <h3 className="mb-2 font-serif text-[22px] font-bold text-white">Tu cuenta tiene panel vendedor.</h3>
                   <p className="mb-6 text-[13px] leading-7 text-white/60">Revisa pedidos atribuidos, comisiones y liquidaciones desde un solo lugar.</p>
-                  <a href="/panel-vendedor" className="inline-block rounded-full bg-[#52b788] px-6 py-3 text-[13px] font-semibold text-[#1a3a2e] transition hover:bg-[#d8f3dc]">
+                  <a href="/panel-vendedor" className="inline-block rounded-full bg-[#61a740] px-6 py-3 text-[13px] font-semibold text-[#1a3a2e] transition hover:bg-[#eef6e8]">
                     Ir al panel vendedor →
                   </a>
                 </div>

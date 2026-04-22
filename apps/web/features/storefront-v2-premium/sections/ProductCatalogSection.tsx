@@ -108,13 +108,11 @@ export function ProductCatalogSection({
                   <div className="flex items-center gap-3">
                     <Link
                       href={`/producto/${classicGreen.slug}`}
-                      className="text-xs font-semibold uppercase tracking-[0.22em] text-[#2d6a4f] hover:text-[#162117]"
+                      className="text-xs font-semibold uppercase tracking-[0.22em] text-[#61a740] hover:text-[#162117]"
                     >
                       Ver detalle
                     </Link>
-                    <Button
-                      href={`/checkout?producto=${encodeURIComponent(classicGreen.slug)}${classicGreen.defaultVariantId ? `&variantId=${encodeURIComponent(classicGreen.defaultVariantId)}` : ""}`}
-                    >
+                    <Button href="/checkout">
                       Comprar
                     </Button>
                   </div>
@@ -190,13 +188,11 @@ export function ProductCatalogSection({
                         <div className="flex items-center gap-3">
                           <Link
                             href={`/producto/${product.slug}`}
-                            className="text-xs font-semibold uppercase tracking-[0.22em] text-[#2d6a4f] hover:text-[#162117]"
+                            className="text-xs font-semibold uppercase tracking-[0.22em] text-[#61a740] hover:text-[#162117]"
                           >
                             Ver detalle
                           </Link>
-                          <Button
-                            href={`/checkout?producto=${encodeURIComponent(product.slug)}${product.defaultVariantId ? `&variantId=${encodeURIComponent(product.defaultVariantId)}` : ""}`}
-                          >
+                          <Button href="/checkout">
                             Comprar
                           </Button>
                         </div>

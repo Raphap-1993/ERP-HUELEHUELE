@@ -14,6 +14,18 @@ enum LifecycleStatus {
   suspended
 }
 
+enum CustomerMergeStatus {
+  active
+  merged
+}
+
+enum CustomerIdentityConflictStatus {
+  open
+  resolved
+  ignored
+  merged
+}
+
 enum PageStatus {
   draft
   published
@@ -30,6 +42,11 @@ enum ProductStatus {
 enum ProductSalesChannel {
   public
   internal
+}
+
+enum ProductKind {
+  single
+  bundle
 }
 
 enum VariantStatus {
@@ -273,6 +290,55 @@ enum InventoryMovementType {
   adjustment
 }
 
+enum WarehouseTransferStatus {
+  reserved
+  in_transit
+  partial_received
+  received
+  cancelled
+}
+
+enum WarehouseTransferDocumentKind {
+  package_snapshot
+  gre
+  sticker
+}
+
+enum WarehouseTransferIncidentStatus {
+  open
+  resolved
+}
+
+enum WarehouseTransferIncidentKind {
+  missing
+  damage
+  loss
+  overage
+  mixed
+}
+
+enum WarehouseCoverageScopeType {
+  department
+  province
+  district
+  zone
+}
+
+enum FulfillmentAssignmentStrategy {
+  manual
+  warehouse_default
+  coverage_priority
+  stock_priority
+  fallback
+}
+
+enum FulfillmentAssignmentStatus {
+  pending
+  assigned
+  skipped
+  cancelled
+}
+
 model User {
   id            String        @id @default(uuid()) @db.Uuid
   email         String        @unique
@@ -289,6 +355,7 @@ model User {
   auditLogs     AuditLog[]    @relation("AuditActor")
   adminActions  AdminAction[] @relation("AdminActionActor")
   orderStatusChanges OrderStatusHistory[] @relation("OrderStatusChangedBy")
+  fulfillmentAssignments OrderFulfillmentAssignment[] @relation("FulfillmentAssignmentAssignedBy")
 
   @@map("users")
 }
@@ -359,23 +426,55 @@ model Admin {
 }
 
 model Customer {
-  id             String            @id @default(uuid()) @db.Uuid
-  userId         String            @unique @db.Uuid
-  firstName      String
-  lastName       String
-  documentNumber String?
-  marketingOptIn Boolean           @default(false)
-  status         LifecycleStatus    @default(active)
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  addresses      CustomerAddress[]
-  orders         Order[]
-  carts          Cart[]
-  loyaltyAccount LoyaltyAccount?
-  redemptions    Redemption[]
+  id                 String                    @id @default(uuid()) @db.Uuid
+  userId             String                    @unique @db.Uuid
+  firstName          String
+  lastName           String
+  documentType       String?
+  documentNumber     String?
+  marketingOptIn     Boolean                   @default(false)
+  status             LifecycleStatus           @default(active)
+  mergeStatus        CustomerMergeStatus       @default(active)
+  mergedIntoCustomerId String?                 @db.Uuid
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  user               User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  addresses          CustomerAddress[]
+  orders             Order[]
+  carts              Cart[]
+  loyaltyAccount     LoyaltyAccount?
+  redemptions        Redemption[]
+  mergedIntoCustomer Customer?                 @relation("CustomerMerge", fields: [mergedIntoCustomerId], references: [id], onDelete: SetNull)
+  mergedCustomers    Customer[]                @relation("CustomerMerge")
+  resolvedConflicts  CustomerIdentityConflict[] @relation("ResolvedCustomerIdentityConflict")
 
+  @@unique([documentType, documentNumber])
+  @@index([mergeStatus])
+  @@index([mergedIntoCustomerId])
   @@map("customers")
+}
+
+model CustomerIdentityConflict {
+  id                  String                         @id @default(uuid()) @db.Uuid
+  orderNumber         String                         @unique
+  status              CustomerIdentityConflictStatus @default(open)
+  reason              String
+  customerName        String
+  email               String?
+  phone               String?
+  documentType        String?
+  documentNumber      String?
+  candidateCustomerIds String[]                      @default([])
+  resolvedCustomerId  String?                        @db.Uuid
+  resolutionType      String?
+  resolutionNotes     String?
+  resolvedAt          DateTime?
+  createdAt           DateTime                       @default(now())
+  updatedAt           DateTime                       @updatedAt
+  resolvedCustomer    Customer?                      @relation("ResolvedCustomerIdentityConflict", fields: [resolvedCustomerId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@map("customer_identity_conflicts")
 }
 
 model CustomerAddress {
@@ -389,6 +488,12 @@ model CustomerAddress {
   region         String
   postalCode     String
   countryCode    String   @default("PE")
+  departmentCode String?
+  departmentName String?
+  provinceCode   String?
+  provinceName   String?
+  districtCode   String?
+  districtName   String?
   isDefault      Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -526,6 +631,7 @@ model Category {
 model Product {
   id              String         @id @default(uuid()) @db.Uuid
   categoryId      String?        @db.Uuid
+  productKind     ProductKind    @default(single)
   name            String
   slug            String         @unique
   shortDescription String?
@@ -548,6 +654,11 @@ model Product {
 model ProductVariant {
   id              String             @id @default(uuid()) @db.Uuid
   productId       String             @db.Uuid
+  defaultWarehouseId String?         @db.Uuid
+  flavorCode      String?
+  flavorLabel     String?
+  presentationCode String?
+  presentationLabel String?
   sku             String             @unique
   name            String
   price           Decimal            @db.Decimal(10, 2)
@@ -558,14 +669,68 @@ model ProductVariant {
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
   product         Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  defaultWarehouse Warehouse?        @relation(fields: [defaultWarehouseId], references: [id], onDelete: SetNull)
   images          ProductImage[]
   bundleComponentUses ProductBundleComponent[] @relation("BundleComponentVariant")
   inventoryMovements InventoryMovement[]
+  warehouseBalances WarehouseInventoryBalance[]
+  transferLines   WarehouseTransferLine[]
   cartItems       CartItem[]
   orderItems      OrderItem[]
   wholesaleQuoteItems WholesaleQuoteItem[]
 
+  @@index([defaultWarehouseId])
   @@map("product_variants")
+}
+
+/// Fase 1: un almacen operativo puede ser el origen por defecto de una variante.
+model Warehouse {
+  id             String                   @id @default(uuid()) @db.Uuid
+  code           String                   @unique
+  name           String
+  status         LifecycleStatus          @default(active)
+  priority       Int                      @default(0)
+  countryCode    String                   @default("PE")
+  addressLine1   String
+  addressLine2   String?
+  reference      String?
+  departmentCode String
+  departmentName String?
+  provinceCode   String
+  provinceName   String?
+  districtCode   String
+  districtName   String?
+  latitude       Float?
+  longitude      Float?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  variants       ProductVariant[]
+  inventoryMovements InventoryMovement[]
+  inventoryBalances WarehouseInventoryBalance[]
+  serviceAreas   WarehouseServiceArea[]
+  fulfillmentAssignments OrderFulfillmentAssignment[]
+  originTransfers WarehouseTransfer[] @relation("WarehouseTransferOrigin")
+  destinationTransfers WarehouseTransfer[] @relation("WarehouseTransferDestination")
+
+  @@index([status, priority])
+  @@index([departmentCode, provinceCode, districtCode])
+  @@map("warehouses")
+}
+
+model WarehouseServiceArea {
+  id          String                  @id @default(uuid()) @db.Uuid
+  warehouseId String                  @db.Uuid
+  scopeType   WarehouseCoverageScopeType
+  scopeCode   String
+  priority    Int                     @default(0)
+  isActive    Boolean                 @default(true)
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+  warehouse   Warehouse               @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  @@unique([warehouseId, scopeType, scopeCode])
+  @@index([scopeType, scopeCode, isActive])
+  @@map("warehouse_service_areas")
 }
 
 model ProductImage {
@@ -605,6 +770,7 @@ model ProductBundleComponent {
 model InventoryMovement {
   id            String                @id @default(uuid()) @db.Uuid
   variantId     String                @db.Uuid
+  warehouseId   String?               @db.Uuid
   type          InventoryMovementType
   quantity      Int
   referenceType String
@@ -614,9 +780,130 @@ model InventoryMovement {
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
   variant       ProductVariant        @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  warehouse     Warehouse?            @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
 
   @@index([variantId, occurredAt])
+  @@index([warehouseId, variantId, occurredAt])
   @@map("inventory_movements")
+}
+
+/// Fase 1: saldo persistido por almacen para la reserva y la triangulacion futura.
+model WarehouseInventoryBalance {
+  id                String      @id @default(uuid()) @db.Uuid
+  warehouseId       String      @db.Uuid
+  variantId         String      @db.Uuid
+  stockOnHand       Int         @default(0)
+  reservedQuantity   Int         @default(0)
+  committedQuantity  Int         @default(0)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  warehouse         Warehouse   @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  variant           ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([warehouseId, variantId])
+  @@index([variantId])
+  @@index([warehouseId])
+  @@map("warehouse_inventory_balances")
+}
+
+model WarehouseTransfer {
+  id                               String                  @id @default(uuid()) @db.Uuid
+  transferNumber                   String                  @unique
+  status                           WarehouseTransferStatus @default(reserved)
+  reason                           String
+  notes                            String?
+  originWarehouseId                String                  @db.Uuid
+  originWarehouseCodeSnapshot      String
+  originWarehouseNameSnapshot      String
+  destinationWarehouseId           String                  @db.Uuid
+  destinationWarehouseCodeSnapshot String
+  destinationWarehouseNameSnapshot String
+  requestedByUserId                String?
+  dispatchedByUserId               String?
+  receivedByUserId                 String?
+  cancelledByUserId                String?
+  reservationNote                  String?
+  dispatchNote                     String?
+  receiveNote                      String?
+  cancelNote                       String?
+  partialReceivedNote              String?
+  partialReceivedByUserId          String?
+  dispatchedAt                     DateTime?
+  partialReceivedAt                DateTime?
+  receivedAt                       DateTime?
+  cancelledAt                      DateTime?
+  createdAt                        DateTime                @default(now())
+  updatedAt                        DateTime                @updatedAt
+  originWarehouse                  Warehouse               @relation("WarehouseTransferOrigin", fields: [originWarehouseId], references: [id], onDelete: Restrict)
+  destinationWarehouse             Warehouse               @relation("WarehouseTransferDestination", fields: [destinationWarehouseId], references: [id], onDelete: Restrict)
+  lines                            WarehouseTransferLine[]
+  documents                        WarehouseTransferDocument[]
+  incident                         WarehouseTransferIncident?
+
+  @@index([status, updatedAt])
+  @@index([originWarehouseId, status, updatedAt])
+  @@index([destinationWarehouseId, status, updatedAt])
+  @@map("warehouse_transfers")
+}
+
+model WarehouseTransferLine {
+  id           String            @id @default(uuid()) @db.Uuid
+  transferId   String            @db.Uuid
+  variantId    String            @db.Uuid
+  skuSnapshot  String
+  nameSnapshot String
+  quantity     Int
+  dispatchedQuantity Int         @default(0)
+  receivedQuantity   Int         @default(0)
+  sortOrder    Int               @default(0)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  transfer     WarehouseTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  variant      ProductVariant    @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@unique([transferId, variantId])
+  @@index([variantId])
+  @@index([transferId, sortOrder])
+  @@map("warehouse_transfer_lines")
+}
+
+model WarehouseTransferDocument {
+  id              String                        @id @default(uuid()) @db.Uuid
+  transferId      String                        @db.Uuid
+  transferNumber  String
+  kind            WarehouseTransferDocumentKind
+  templateVersion String
+  referenceCode   String?
+  actorUserId     String?
+  payload         Json
+  createdAt       DateTime                      @default(now())
+  updatedAt       DateTime                      @updatedAt
+  transfer        WarehouseTransfer             @relation(fields: [transferId], references: [id], onDelete: Cascade)
+
+  @@unique([transferId, kind])
+  @@index([transferNumber, kind])
+  @@map("warehouse_transfer_documents")
+}
+
+model WarehouseTransferIncident {
+  id                  String                          @id @default(uuid()) @db.Uuid
+  transferId          String                          @unique @db.Uuid
+  transferNumber      String
+  status              WarehouseTransferIncidentStatus @default(open)
+  kind                WarehouseTransferIncidentKind
+  notes               String?
+  openedByUserId      String?
+  resolvedByUserId    String?
+  openedAt            DateTime                        @default(now())
+  resolvedAt          DateTime?
+  resolutionNote      String?
+  payload             Json
+  createdAt           DateTime                        @default(now())
+  updatedAt           DateTime                        @updatedAt
+  transfer            WarehouseTransfer               @relation(fields: [transferId], references: [id], onDelete: Cascade)
+
+  @@index([transferNumber, status, updatedAt])
+  @@map("warehouse_transfer_incidents")
 }
 
 model Promotion {
@@ -702,6 +989,7 @@ model Order {
   statusHistory      OrderStatusHistory[]
   payments           Payment[]
   commissionAttributions CommissionAttribution[]
+  fulfillmentAssignment OrderFulfillmentAssignment?
 
   @@map("orders")
 }
@@ -735,6 +1023,12 @@ model OrderAddress {
   region         String
   postalCode     String
   countryCode    String      @default("PE")
+  departmentCode String?
+  departmentName String?
+  provinceCode   String?
+  provinceName   String?
+  districtCode   String?
+  districtName   String?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
   order          Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -756,6 +1050,39 @@ model OrderStatusHistory {
   changedByUser  User?      @relation("OrderStatusChangedBy", fields: [changedByUserId], references: [id], onDelete: SetNull)
 
   @@map("order_status_history")
+}
+
+/// Fase 1: el pedido conserva un unico origen logistico confirmado.
+model OrderFulfillmentAssignment {
+  id                      String                   @id @default(uuid()) @db.Uuid
+  orderId                 String                   @unique @db.Uuid
+  warehouseId             String                   @db.Uuid
+  status                  FulfillmentAssignmentStatus @default(assigned)
+  strategy                FulfillmentAssignmentStrategy @default(warehouse_default)
+  assignedByUserId        String?                  @db.Uuid
+  assignedAt              DateTime                 @default(now())
+  notes                   String?
+  warehouseCodeSnapshot   String
+  warehouseNameSnapshot   String
+  countryCodeSnapshot     String                   @default("PE")
+  departmentCodeSnapshot  String
+  departmentNameSnapshot  String?
+  provinceCodeSnapshot    String
+  provinceNameSnapshot    String?
+  districtCodeSnapshot    String
+  districtNameSnapshot    String?
+  addressLine1Snapshot    String
+  addressLine2Snapshot    String?
+  referenceSnapshot       String?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  order                   Order                    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  warehouse               Warehouse                @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  assignedByUser          User?                    @relation("FulfillmentAssignmentAssignedBy", fields: [assignedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([warehouseId, status, assignedAt])
+  @@index([strategy, status])
+  @@map("order_fulfillment_assignments")
 }
 
 model Payment {

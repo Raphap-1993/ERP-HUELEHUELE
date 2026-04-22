@@ -13,7 +13,6 @@ import {
   CommissionTable,
   MetricCard,
   ReviewDrawer,
-  SectionHeader,
   TimelinePedido
 } from "@huelegood/ui";
 import {
@@ -221,6 +220,140 @@ function dashboardHighlights(overview: AdminRoleDashboardSummary) {
   }
 }
 
+type DashboardQuickAction = {
+  label: string;
+  value: string;
+  detail: string;
+  href: string;
+  tone: "neutral" | "success" | "warning" | "danger" | "info";
+};
+
+function dashboardQuickActions(overview: AdminRoleDashboardSummary): DashboardQuickAction[] {
+  const pendingOrdersCount = overview.recentOrders.filter(
+    (order) => order.orderStatus === "pending_payment" || order.orderStatus === "payment_under_review"
+  ).length;
+  const openPaymentsCount = overview.paymentRows.filter((payment) => payment.status !== PaymentStatus.Paid).length;
+  const activeVendorsCount = overview.vendorRows.filter((vendor) => vendor.status === "active").length;
+  const activeCommissionsCount = overview.commissionRows.filter(
+    (commission) =>
+      commission.status !== CommissionStatus.Paid &&
+      commission.status !== CommissionStatus.Cancelled &&
+      commission.status !== CommissionStatus.Reversed
+  ).length;
+  const openPayoutsCount = overview.payouts.filter(
+    (payout) => payout.status !== CommissionPayoutStatus.Paid && payout.status !== CommissionPayoutStatus.Cancelled
+  ).length;
+  const activeCampaignsCount = overview.campaigns.filter(
+    (campaign) => campaign.status === CampaignStatus.Running || campaign.status === CampaignStatus.Scheduled
+  ).length;
+  const openLeadsCount = overview.wholesaleLeads.filter(
+    (lead) => lead.status !== WholesaleLeadStatus.Won && lead.status !== WholesaleLeadStatus.Lost
+  ).length;
+  const notificationAttentionCount = overview.notifications.filter(
+    (notification) =>
+      notification.status === NotificationStatus.Pending || notification.status === NotificationStatus.Failed
+  ).length;
+
+  switch (overview.focus) {
+    case "payments":
+      return [
+        {
+          label: "Revisión manual",
+          value: String(overview.reviewQueue.length),
+          detail: "Comprobantes esperando decisión operativa.",
+          href: "/pagos",
+          tone: overview.reviewQueue.length > 0 ? "warning" : "success"
+        },
+        {
+          label: "Cobros abiertos",
+          value: String(openPaymentsCount),
+          detail: "Cobros visibles que aún no cierran conciliación.",
+          href: "/pagos",
+          tone: openPaymentsCount > 0 ? "warning" : "success"
+        },
+        {
+          label: "Pedidos sensibles",
+          value: String(pendingOrdersCount),
+          detail: "Pedidos conectados a pago pendiente o revisión.",
+          href: "/pedidos",
+          tone: pendingOrdersCount > 0 ? "warning" : "info"
+        }
+      ];
+    case "sales":
+      return [
+        {
+          label: "Vendedores activos",
+          value: String(activeVendorsCount),
+          detail: "Canales comerciales con actividad visible.",
+          href: "/vendedores",
+          tone: "info"
+        },
+        {
+          label: "Comisiones en curso",
+          value: String(activeCommissionsCount),
+          detail: "Comisiones que todavía requieren seguimiento.",
+          href: "/comisiones",
+          tone: activeCommissionsCount > 0 ? "warning" : "success"
+        },
+        {
+          label: "Liquidaciones abiertas",
+          value: String(openPayoutsCount),
+          detail: "Pagos a sellers aún no liquidados.",
+          href: "/comisiones",
+          tone: openPayoutsCount > 0 ? "warning" : "info"
+        }
+      ];
+    case "marketing":
+      return [
+        {
+          label: "Campañas activas",
+          value: String(activeCampaignsCount),
+          detail: "Campañas corriendo o ya programadas.",
+          href: "/marketing",
+          tone: activeCampaignsCount > 0 ? "info" : "neutral"
+        },
+        {
+          label: "Leads abiertos",
+          value: String(openLeadsCount),
+          detail: "Mayoristas y distribuidores en negociación.",
+          href: "/mayoristas",
+          tone: openLeadsCount > 0 ? "warning" : "neutral"
+        },
+        {
+          label: "Mensajes por revisar",
+          value: String(notificationAttentionCount),
+          detail: "Notificaciones pendientes o fallidas.",
+          href: "/notificaciones",
+          tone: notificationAttentionCount > 0 ? "warning" : "success"
+        }
+      ];
+    default:
+      return [
+        {
+          label: "Pagos por revisar",
+          value: String(overview.reviewQueue.length),
+          detail: "La cola de comprobantes sigue siendo la prioridad transversal.",
+          href: "/pagos",
+          tone: overview.reviewQueue.length > 0 ? "warning" : "success"
+        },
+        {
+          label: "Pedidos en seguimiento",
+          value: String(pendingOrdersCount),
+          detail: "Pedidos recientes con impacto operativo inmediato.",
+          href: "/pedidos",
+          tone: pendingOrdersCount > 0 ? "warning" : "info"
+        },
+        {
+          label: "Frente comercial activo",
+          value: String(activeCampaignsCount + openLeadsCount),
+          detail: "Campañas y leads que hoy piden continuidad comercial.",
+          href: "/reportes",
+          tone: activeCampaignsCount + openLeadsCount > 0 ? "info" : "neutral"
+        }
+      ];
+  }
+}
+
 function DashboardSection({
   eyebrow,
   title,
@@ -251,6 +384,7 @@ export function DashboardWorkspace() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [analyticsVisible, setAnalyticsVisible] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -441,6 +575,7 @@ export function DashboardWorkspace() {
   const timelineItems = useMemo(() => (latestOrder ? toTimeline(latestOrder.statusHistory) : []), [latestOrder]);
   const commissionRows = useMemo(() => overview?.commissionRows ?? [], [overview]);
   const highlights = useMemo(() => (overview ? dashboardHighlights(overview) : []), [overview]);
+  const quickActions = useMemo(() => (overview ? dashboardQuickActions(overview) : []), [overview]);
 
   function refresh() {
     setRefreshKey((current) => current + 1);
@@ -462,92 +597,51 @@ export function DashboardWorkspace() {
               </p>
             </div>
           </div>
-          <Button variant="secondary" onClick={refresh} disabled={loading}>
-            Refrescar
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="ghost" onClick={() => setAnalyticsVisible((current) => !current)}>
+              {analyticsVisible ? "Ocultar contexto analítico" : "Ver contexto analítico"}
+            </Button>
+            <Button variant="secondary" onClick={refresh} disabled={loading}>
+              Refrescar
+            </Button>
+          </div>
         </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-3">
-          {overview
-            ? highlights.map((item) => (
-                <div key={item} className="min-w-0 rounded-[13px] border border-[rgba(26,58,46,0.08)] bg-[#f4f6f5] px-4 py-3 text-sm leading-6 text-[#1a3a2e]">
-                  {item}
-                </div>
-              ))
-            : Array.from({ length: 3 }).map((_, index) => (
-                <div key={index} className="h-16 rounded-[13px] border border-[rgba(26,58,46,0.08)] bg-[#f4f6f5]" />
-              ))}
+        <CardContent className="grid gap-4 xl:grid-cols-[0.92fr_1.08fr]">
+          <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-1">
+            {overview
+              ? highlights.map((item) => (
+                  <div key={item} className="min-w-0 rounded-[13px] border border-[rgba(26,58,46,0.08)] bg-[#f4f6f5] px-4 py-3 text-sm leading-6 text-[#1a3a2e]">
+                    {item}
+                  </div>
+                ))
+              : Array.from({ length: 3 }).map((_, index) => (
+                  <div key={index} className="h-16 rounded-[13px] border border-[rgba(26,58,46,0.08)] bg-[#f4f6f5]" />
+                ))}
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            {overview
+              ? quickActions.map((action) => (
+                  <a
+                    key={action.label}
+                    href={action.href}
+                    className="group rounded-[1.1rem] border border-[rgba(26,58,46,0.08)] bg-white px-4 py-4 transition hover:border-[rgba(26,58,46,0.16)] hover:bg-[#f8faf8]"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-black/42">{action.label}</p>
+                      <Badge tone={action.tone}>{action.value}</Badge>
+                    </div>
+                    <p className="mt-3 text-sm font-medium text-[#1a3a2e]">{action.detail}</p>
+                    <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#2d6a4f] transition group-hover:text-[#1a3a2e]">
+                      Abrir módulo
+                    </p>
+                  </a>
+                ))
+              : Array.from({ length: 3 }).map((_, index) => (
+                  <div key={index} className="h-[118px] rounded-[1.1rem] border border-[rgba(26,58,46,0.08)] bg-white" />
+                ))}
+          </div>
         </CardContent>
       </Card>
-
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {(overview?.metrics ?? []).map((metric) => (
-          <div key={metric.label} className="min-w-0">
-            <MetricCard metric={metric} />
-          </div>
-        ))}
-      </div>
-
-      {/* Charts visuales */}
-      <div className="grid gap-4 xl:grid-cols-[1.4fr_0.9fr]">
-        {/* Gráfica de barras */}
-        <div className="min-w-0 overflow-hidden rounded-[13px] border border-[rgba(26,58,46,0.1)] bg-white p-3.5">
-          <h3 className="mb-1 text-[13px] font-semibold text-[#1c1c1c]">Ventas por semana</h3>
-          <p className="mb-3 text-[11px] text-[#6b7280]">Unidades vendidas en los últimos 7 períodos</p>
-          <svg viewBox="0 0 380 145" className="h-auto w-full max-w-full" xmlns="http://www.w3.org/2000/svg">
-            <line x1="30" y1="118" x2="370" y2="118" stroke="#f0f0ee" strokeWidth="1"/>
-            <line x1="30" y1="90"  x2="370" y2="90"  stroke="#f0f0ee" strokeWidth="1"/>
-            <line x1="30" y1="62"  x2="370" y2="62"  stroke="#f0f0ee" strokeWidth="1"/>
-            <line x1="30" y1="34"  x2="370" y2="34"  stroke="#f0f0ee" strokeWidth="1"/>
-            <text x="4" y="121" fontSize="9" fill="#c0c8c4">0</text>
-            <text x="4" y="93"  fontSize="9" fill="#c0c8c4">30</text>
-            <text x="4" y="65"  fontSize="9" fill="#c0c8c4">60</text>
-            <text x="4" y="37"  fontSize="9" fill="#c0c8c4">90</text>
-            <rect x="38"  y="62" width="26" height="56" rx="5" fill="#2d6a4f" fillOpacity=".65"/>
-            <text x="51"  y="133" textAnchor="middle" fontSize="9" fill="#9ca3af">S1</text>
-            <rect x="88"  y="46" width="26" height="72" rx="5" fill="#2d6a4f" fillOpacity=".7"/>
-            <text x="101" y="133" textAnchor="middle" fontSize="9" fill="#9ca3af">S2</text>
-            <rect x="138" y="70" width="26" height="48" rx="5" fill="#2d6a4f" fillOpacity=".65"/>
-            <text x="151" y="133" textAnchor="middle" fontSize="9" fill="#9ca3af">S3</text>
-            <rect x="188" y="28" width="26" height="90" rx="5" fill="#2d6a4f" fillOpacity=".78"/>
-            <text x="201" y="133" textAnchor="middle" fontSize="9" fill="#9ca3af">S4</text>
-            <rect x="238" y="50" width="26" height="68" rx="5" fill="#2d6a4f" fillOpacity=".72"/>
-            <text x="251" y="133" textAnchor="middle" fontSize="9" fill="#9ca3af">S5</text>
-            <rect x="288" y="20" width="26" height="98" rx="5" fill="#2d6a4f" fillOpacity=".85"/>
-            <text x="301" y="133" textAnchor="middle" fontSize="9" fill="#9ca3af">S6</text>
-            <rect x="338" y="37" width="26" height="81" rx="5" fill="#52b788"/>
-            <text x="351" y="133" textAnchor="middle" fontSize="9" fill="#6b7280" fontWeight="500">S7</text>
-            <text x="351" y="32"  textAnchor="middle" fontSize="10" fontWeight="600" fill="#2d6a4f">81</text>
-          </svg>
-        </div>
-
-        {/* Donut chart */}
-        <div className="min-w-0 overflow-hidden rounded-[13px] border border-[rgba(26,58,46,0.1)] bg-white p-3.5">
-          <h3 className="mb-1 text-[13px] font-semibold text-[#1c1c1c]">Mix de productos</h3>
-          <p className="mb-3 text-[11px] text-[#6b7280]">Distribución por SKU este mes</p>
-          <div className="flex items-center gap-4">
-            <svg viewBox="0 0 100 100" width="92" height="92" className="flex-shrink-0">
-              <circle cx="50" cy="50" r="36" fill="none" stroke="#f3f4f6" strokeWidth="17"/>
-              <circle cx="50" cy="50" r="36" fill="none" stroke="#1a3a2e" strokeWidth="17" strokeDasharray="118 226" strokeDashoffset="0" transform="rotate(-90 50 50)"/>
-              <circle cx="50" cy="50" r="36" fill="none" stroke="#52b788" strokeWidth="17" strokeDasharray="70 226" strokeDashoffset="-118" transform="rotate(-90 50 50)"/>
-              <circle cx="50" cy="50" r="36" fill="none" stroke="#c9a84c" strokeWidth="17" strokeDasharray="38 226" strokeDashoffset="-188" transform="rotate(-90 50 50)"/>
-              <text x="50" y="47" textAnchor="middle" fontSize="12" fontWeight="700" fill="#1a3a2e">438</text>
-              <text x="50" y="57" textAnchor="middle" fontSize="7" fill="#9ca3af">unidades</text>
-            </svg>
-            <div className="flex min-w-0 flex-col gap-2">
-              {[
-                { color: "#1a3a2e", label: "Negro 52%" },
-                { color: "#52b788", label: "Verde 31%" },
-                { color: "#c9a84c", label: "Packs 17%" },
-              ].map(item => (
-                <div key={item.label} className="flex items-center gap-2 text-[12px] text-[#6b7280]">
-                  <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ background: item.color }} />
-                  {item.label}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
 
       {overview?.focus === "payments" ? (
           <>
@@ -723,6 +817,95 @@ export function DashboardWorkspace() {
             </div>
           </DashboardSection>
         </>
+      ) : null}
+
+      <DashboardSection eyebrow="Pulso" title="Indicadores del momento" description="Una vez resuelta la cola urgente, aquí quedan los indicadores de lectura rápida del turno.">
+        {overview?.metrics.length ? (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {overview.metrics.map((metric) => (
+              <div key={metric.label} className="min-w-0">
+                <MetricCard metric={metric} />
+              </div>
+            ))}
+          </div>
+        ) : loading ? (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="h-[116px] rounded-[1.4rem] border border-[rgba(26,58,46,0.08)] bg-white" />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-[1.2rem] border border-dashed border-[rgba(26,58,46,0.12)] bg-white px-5 py-6 text-sm leading-6 text-black/58">
+            Esta vista no devolvió indicadores adicionales. La prioridad queda concentrada en la cola operativa superior.
+          </div>
+        )}
+      </DashboardSection>
+
+      {analyticsVisible ? (
+        <DashboardSection
+          eyebrow="Contexto"
+          title="Lectura analítica"
+          description="Los gráficos siguen disponibles, pero quedan debajo de la operación para no competir con las decisiones urgentes."
+        >
+          <div className="grid gap-4 xl:grid-cols-[1.4fr_0.9fr]">
+            <div className="min-w-0 overflow-hidden rounded-[13px] border border-[rgba(26,58,46,0.1)] bg-white p-3.5">
+              <h3 className="mb-1 text-[13px] font-semibold text-[#1c1c1c]">Ventas por semana</h3>
+              <p className="mb-3 text-[11px] text-[#6b7280]">Unidades vendidas en los últimos 7 períodos</p>
+              <svg viewBox="0 0 380 145" className="h-auto w-full max-w-full" xmlns="http://www.w3.org/2000/svg">
+                <line x1="30" y1="118" x2="370" y2="118" stroke="#f0f0ee" strokeWidth="1"/>
+                <line x1="30" y1="90"  x2="370" y2="90"  stroke="#f0f0ee" strokeWidth="1"/>
+                <line x1="30" y1="62"  x2="370" y2="62"  stroke="#f0f0ee" strokeWidth="1"/>
+                <line x1="30" y1="34"  x2="370" y2="34"  stroke="#f0f0ee" strokeWidth="1"/>
+                <text x="4" y="121" fontSize="9" fill="#c0c8c4">0</text>
+                <text x="4" y="93"  fontSize="9" fill="#c0c8c4">30</text>
+                <text x="4" y="65"  fontSize="9" fill="#c0c8c4">60</text>
+                <text x="4" y="37"  fontSize="9" fill="#c0c8c4">90</text>
+                <rect x="38"  y="62" width="26" height="56" rx="5" fill="#2d6a4f" fillOpacity=".65"/>
+                <text x="51"  y="133" textAnchor="middle" fontSize="9" fill="#9ca3af">S1</text>
+                <rect x="88"  y="46" width="26" height="72" rx="5" fill="#2d6a4f" fillOpacity=".7"/>
+                <text x="101" y="133" textAnchor="middle" fontSize="9" fill="#9ca3af">S2</text>
+                <rect x="138" y="70" width="26" height="48" rx="5" fill="#2d6a4f" fillOpacity=".65"/>
+                <text x="151" y="133" textAnchor="middle" fontSize="9" fill="#9ca3af">S3</text>
+                <rect x="188" y="28" width="26" height="90" rx="5" fill="#2d6a4f" fillOpacity=".78"/>
+                <text x="201" y="133" textAnchor="middle" fontSize="9" fill="#9ca3af">S4</text>
+                <rect x="238" y="50" width="26" height="68" rx="5" fill="#2d6a4f" fillOpacity=".72"/>
+                <text x="251" y="133" textAnchor="middle" fontSize="9" fill="#9ca3af">S5</text>
+                <rect x="288" y="20" width="26" height="98" rx="5" fill="#2d6a4f" fillOpacity=".85"/>
+                <text x="301" y="133" textAnchor="middle" fontSize="9" fill="#9ca3af">S6</text>
+                <rect x="338" y="37" width="26" height="81" rx="5" fill="#52b788"/>
+                <text x="351" y="133" textAnchor="middle" fontSize="9" fill="#6b7280" fontWeight="500">S7</text>
+                <text x="351" y="32"  textAnchor="middle" fontSize="10" fontWeight="600" fill="#2d6a4f">81</text>
+              </svg>
+            </div>
+
+            <div className="min-w-0 overflow-hidden rounded-[13px] border border-[rgba(26,58,46,0.1)] bg-white p-3.5">
+              <h3 className="mb-1 text-[13px] font-semibold text-[#1c1c1c]">Mix de productos</h3>
+              <p className="mb-3 text-[11px] text-[#6b7280]">Distribución por SKU este mes</p>
+              <div className="flex items-center gap-4">
+                <svg viewBox="0 0 100 100" width="92" height="92" className="flex-shrink-0">
+                  <circle cx="50" cy="50" r="36" fill="none" stroke="#f3f4f6" strokeWidth="17"/>
+                  <circle cx="50" cy="50" r="36" fill="none" stroke="#1a3a2e" strokeWidth="17" strokeDasharray="118 226" strokeDashoffset="0" transform="rotate(-90 50 50)"/>
+                  <circle cx="50" cy="50" r="36" fill="none" stroke="#52b788" strokeWidth="17" strokeDasharray="70 226" strokeDashoffset="-118" transform="rotate(-90 50 50)"/>
+                  <circle cx="50" cy="50" r="36" fill="none" stroke="#c9a84c" strokeWidth="17" strokeDasharray="38 226" strokeDashoffset="-188" transform="rotate(-90 50 50)"/>
+                  <text x="50" y="47" textAnchor="middle" fontSize="12" fontWeight="700" fill="#1a3a2e">438</text>
+                  <text x="50" y="57" textAnchor="middle" fontSize="7" fill="#9ca3af">unidades</text>
+                </svg>
+                <div className="flex min-w-0 flex-col gap-2">
+                  {[
+                    { color: "#1a3a2e", label: "Negro 52%" },
+                    { color: "#52b788", label: "Verde 31%" },
+                    { color: "#c9a84c", label: "Packs 17%" },
+                  ].map((item) => (
+                    <div key={item.label} className="flex items-center gap-2 text-[12px] text-[#6b7280]">
+                      <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ background: item.color }} />
+                      {item.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </DashboardSection>
       ) : null}
 
       {error ? <p className="text-sm text-rose-700">{error}</p> : null}
