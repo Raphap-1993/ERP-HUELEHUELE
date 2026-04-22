@@ -4,6 +4,7 @@ import {
   parseAuthorizationToken as parseStoredAuthorizationToken,
   resolveAuthSession,
   revokeAuthSession,
+  revokeAuthSessionsForUser as revokeStoredSessionsForUser,
   storeAuthSession
 } from "../../persistence/auth-session-store";
 
@@ -13,6 +14,10 @@ export async function storeSession(session: AuthSessionSummary) {
 
 export async function revokeSession(token: string) {
   await revokeAuthSession(token);
+}
+
+export async function revokeSessionsForUser(userId: string) {
+  await revokeStoredSessionsForUser(userId);
 }
 
 export async function resolveSession(

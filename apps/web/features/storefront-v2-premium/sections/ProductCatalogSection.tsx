@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { CatalogProduct } from "@huelegood/shared";
 import { Badge, Button, cn } from "@huelegood/ui";
+import { AddToCartLink } from "../../../components/add-to-cart-link";
 import type { PremiumProductHighlight } from "../content";
 import { StorefrontV2PremiumSectionHeading } from "../components/storefront-v2-premium-section";
 import {
@@ -112,9 +113,12 @@ export function ProductCatalogSection({
                     >
                       Ver detalle
                     </Link>
-                    <Button href="/checkout">
+                    <AddToCartLink
+                      productSlug={classicGreen.slug}
+                      className="inline-flex h-11 items-center justify-center rounded-full bg-[#61a740] px-5 text-sm font-medium text-[#163126] transition-colors hover:bg-[#577e2f] hover:text-white"
+                    >
                       Comprar
-                    </Button>
+                    </AddToCartLink>
                   </div>
                 </div>
               </div>
@@ -192,9 +196,12 @@ export function ProductCatalogSection({
                           >
                             Ver detalle
                           </Link>
-                          <Button href="/checkout">
+                          <AddToCartLink
+                            productSlug={product.slug}
+                            className="inline-flex h-11 items-center justify-center rounded-full bg-[#61a740] px-5 text-sm font-medium text-[#163126] transition-colors hover:bg-[#577e2f] hover:text-white"
+                          >
                             Comprar
-                          </Button>
+                          </AddToCartLink>
                         </div>
                       </div>
                     </div>

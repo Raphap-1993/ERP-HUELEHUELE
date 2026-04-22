@@ -4,6 +4,7 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 import { cn, Badge, Button, Card, CardContent, CardDescription, CardTitle } from "@huelegood/ui";
 import type { CatalogProduct } from "@huelegood/shared";
+import { AddToCartLink } from "./add-to-cart-link";
 import { brandArt, productArtBySlug } from "./public-brand-art";
 
 export { brandArt, productArtBySlug } from "./public-brand-art";
@@ -31,10 +32,6 @@ function formatPrice(value: number, currencyCode = "PEN") {
   } catch {
     return `S/ ${value.toFixed(2)}`;
   }
-}
-
-function resolveCheckoutHref(_product: CatalogProduct) {
-  return "/checkout";
 }
 
 export function EditorialMedia({
@@ -136,9 +133,12 @@ export function EditorialProductGrid({ products }: { products: CatalogProduct[] 
                 <Button href={`/producto/${product.slug}`} variant="secondary" size="sm">
                   Ver detalles
                 </Button>
-                <Button href={resolveCheckoutHref(product)} size="sm">
+                <AddToCartLink
+                  productSlug={product.slug}
+                  className="inline-flex h-9 items-center justify-center rounded-full bg-[#61a740] px-4 text-sm font-medium text-[#163126] transition-colors hover:bg-[#577e2f] hover:text-white"
+                >
                   Comprar ahora
-                </Button>
+                </AddToCartLink>
               </div>
             </CardContent>
           </Card>

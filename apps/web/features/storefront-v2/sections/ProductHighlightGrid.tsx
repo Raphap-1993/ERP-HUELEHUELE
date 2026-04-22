@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { Badge, Button, cn } from "@huelegood/ui";
 import type { CatalogProduct } from "@huelegood/shared";
+import { AddToCartLink } from "../../../components/add-to-cart-link";
 import { resolveStorefrontMediaSrc, storefrontProductArtBySlug, storefrontV2Media } from "../lib/media";
 import { productToneClasses } from "../tokens/storefront-tokens";
 import { StorefrontV2SectionHeading } from "../components/storefront-v2-section";
@@ -111,9 +112,12 @@ export function ProductHighlightGrid({
                     <Button href={`/producto/${product.slug}`} variant="secondary" size="sm">
                       Detalles
                     </Button>
-                    <Button href="/checkout" size="sm">
+                    <AddToCartLink
+                      productSlug={product.slug}
+                      className="inline-flex h-9 items-center justify-center rounded-full bg-[#61a740] px-4 text-sm font-medium text-[#163126] transition-colors hover:bg-[#577e2f] hover:text-white"
+                    >
                       Comprar
-                    </Button>
+                    </AddToCartLink>
                   </div>
                 </div>
               </div>

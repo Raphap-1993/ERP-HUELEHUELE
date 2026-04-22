@@ -31,6 +31,12 @@ import type {
   CommissionRuleInput,
   CommissionRuleSummary,
   CommissionSummary,
+  CommercialAccessActionEnvelope,
+  CommercialAccessCreateInput,
+  CommercialAccessResetPasswordInput,
+  CommercialAccessStatusInput,
+  CommercialAccessSummary,
+  CommercialAccessUpdateInput,
   CouponInput,
   CouponSummary,
   CustomerDetail,
@@ -465,6 +471,38 @@ export async function deleteVendor(id: string) {
 
 export async function fetchVendorCodes() {
   return requestJson<VendorCodesEnvelope>("/admin/vendors/codes");
+}
+
+export async function fetchCommercialAccesses() {
+  return requestJson<CommercialAccessesEnvelope>("/admin/commercial-accesses");
+}
+
+export async function createCommercialAccess(body: CommercialAccessCreateInput) {
+  return requestJson<CommercialAccessActionEnvelope>("/admin/commercial-accesses", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function updateCommercialAccess(id: string, body: CommercialAccessUpdateInput) {
+  return requestJson<CommercialAccessActionEnvelope>(`/admin/commercial-accesses/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function updateCommercialAccessStatus(id: string, body: CommercialAccessStatusInput) {
+  return requestJson<CommercialAccessActionEnvelope>(`/admin/commercial-accesses/${encodeURIComponent(id)}/status`, {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function resetCommercialAccessPassword(id: string, body: CommercialAccessResetPasswordInput = {}) {
+  return requestJson<CommercialAccessActionEnvelope>(`/admin/commercial-accesses/${encodeURIComponent(id)}/reset-password`, {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
 }
 
 export async function fetchCustomers() {
@@ -1101,6 +1139,11 @@ export type VendorsEnvelope = {
 
 export type VendorCodesEnvelope = {
   data: VendorCodeSummary[];
+  meta?: Record<string, unknown>;
+};
+
+export type CommercialAccessesEnvelope = {
+  data: CommercialAccessSummary[];
   meta?: Record<string, unknown>;
 };
 

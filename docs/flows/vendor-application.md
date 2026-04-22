@@ -10,6 +10,8 @@ Capturar, revisar y aprobar postulaciones de personas interesadas en vender Huel
 - web pública
 - API Huelegood
 - seller_manager
+- backoffice
+- auth
 - notificaciones
 
 ## Precondiciones
@@ -17,6 +19,7 @@ Capturar, revisar y aprobar postulaciones de personas interesadas en vender Huel
 - el formulario `trabaja con nosotros` está publicado
 - existe política mínima de validación de datos
 - el equipo comercial definió criterios de aprobación
+- las credenciales de vendedor se crean desde backoffice; no existe auto-registro comercial público
 
 ## Pasos
 
@@ -30,7 +33,8 @@ Capturar, revisar y aprobar postulaciones de personas interesadas en vender Huel
 8. Si se aprueba, se crea `vendor` activo y al menos un `vendor_code` activo.
 9. Si el vendedor operará con cobros, se registra `vendor_bank_account`.
 10. El sistema deja historial de estado y trazabilidad de la decisión.
-11. `onboarded` queda reservado para una fase posterior de acceso/panel vendedor.
+11. Backoffice crea o vincula credenciales comerciales para que el vendedor ingrese por `/cuenta`.
+12. El acceso al panel vendedor queda habilitado cuando existe cuenta web con rol `vendedor` y un `vendor` activo resoluble por `vendorCode` o email.
 
 ## Estados involucrados
 
@@ -58,7 +62,33 @@ Capturar, revisar y aprobar postulaciones de personas interesadas en vender Huel
 - `content_creator` y `other` no son tipos canónicos del vendedor; al aprobar se resuelven como `seller` salvo decisión explícita distinta.
 - La aprobación requiere confirmar el `collaborationType` final.
 - La aprobación debe quedar auditada.
-- El panel de vendedor solo se habilita cuando el onboarding está completo.
+- El panel de vendedor solo se habilita para sesiones web con rol `vendedor` o `seller_manager` y vendedor activo asociado.
+- El vendedor no debe auto-registrarse desde storefront ni recibir `seller_manager` por defecto.
+- `/cuenta` es la entrada de sesión; `/panel-vendedor` es la vista operativa específica del vendedor.
+
+## Endpoints esperados
+
+### Actuales relacionados
+
+- `POST /store/vendor-applications`
+- `GET /admin/vendor-applications`
+- `POST /admin/vendor-applications/:id/screen`
+- `POST /admin/vendor-applications/:id/approve`
+- `POST /admin/vendor-applications/:id/reject`
+- `POST /admin/vendors`
+- `PATCH /admin/vendors/:id`
+- `POST /auth/login`
+- `GET /auth/me`
+- `GET /seller/panel/overview`
+
+### Contrato objetivo de acceso
+
+- `POST /admin/vendors/:id/access`: crea o vincula credenciales del vendedor aprobado.
+- `POST /admin/commercial-accesses`: alternativa transversal para crear acceso comercial.
+- `POST /admin/commercial-accesses/:id/status`: suspende o reactiva acceso.
+- `POST /admin/commercial-accesses/:id/reset-password`: emite recuperación auditable.
+
+Ver [Accesos comerciales por cuenta](./commercial-accesses.md).
 
 ## Errores posibles
 
@@ -69,6 +99,8 @@ Capturar, revisar y aprobar postulaciones de personas interesadas en vender Huel
 | documentación faltante | postulación queda en `screening` |
 | rechazo comercial | se notifica con razón resumida |
 | error al generar código | no se marca `onboarded` hasta completar setup |
+| cuenta comercial faltante | vendedor aprobado queda sin acceso hasta creación desde backoffice |
+| intento de auto-registro vendedor | se rechaza y se deriva a flujo backoffice |
 
 ## Eventos disparados
 
@@ -91,3 +123,19 @@ Capturar, revisar y aprobar postulaciones de personas interesadas en vender Huel
 - El formulario debe ser corto, claro y orientado a conversión.
 - La información capturada debe servir tanto para evaluación comercial como para alta operativa básica.
 - En la fase actual, edad, red social y contexto libre viajan dentro de `message`; no abren campos tipados adicionales todavía.
+- La entrada pública del panel vive en `/panel-vendedor`; la API canónica es `GET /seller/panel/overview`.
+- La brecha vigente a cerrar es que el registro público no debe aceptar tipos comerciales; solo backoffice debe crear credenciales para vendedores.
+
+## Riesgos
+
+- confundir postulación pública con alta de cuenta comercial
+- entregar rol interno `seller_manager` a vendedores externos
+- aprobar vendedor sin crear acceso ni avisar credenciales
+- permitir login a vendedor suspendido
+- perder trazabilidad entre `vendor_application`, `vendor`, `user` y acceso comercial
+
+## Siguientes pasos
+
+1. Agregar atajo `POST /admin/vendors/:id/access` desde la ficha del vendedor.
+2. Fortalecer auditoría con actor real de backoffice para creación, reset, suspensión y reactivación.
+3. Cubrir pruebas de `/cuenta` y `/panel-vendedor` con vendedor activo, suspendido y sin vínculo.

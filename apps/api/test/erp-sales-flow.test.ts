@@ -7,6 +7,7 @@ import {
   OrderStatus,
   PaymentStatus,
   ProductSalesChannel,
+  RoleCode,
   VendorCollaborationType
 } from "@huelegood/shared";
 import { PeruUbigeoService } from "../src/modules/commerce/peru-ubigeo.service";
@@ -714,7 +715,15 @@ class CommissionsStub {
     return { data: [] };
   }
 
+  listCommissionsByVendorCode() {
+    return { data: [] };
+  }
+
   listPayouts() {
+    return { data: [] };
+  }
+
+  listPayoutsByVendorCode() {
     return { data: [] };
   }
 
@@ -2094,6 +2103,68 @@ test("el reporte por vendedor agrega ventas confirmadas por canal y total", asyn
   assert.equal(vendorRow.totalRevenue, 115);
   assert.equal(vendorRow.webSalesCount, 1);
   assert.equal(vendorRow.manualSalesCount, 1);
+});
+
+test("el panel vendedor muestra solo ventas y ganancias del vendedor autenticado", async () => {
+  const context = await createContext();
+  const vendor = context.vendors.createManualVendor(buildManualVendor({ email: "seller-panel@test.local" })).vendor!;
+  const otherVendor = context.vendors.createManualVendor(buildManualVendor({ email: "seller-panel-other@test.local" })).vendor!;
+
+  const sellerOrder = await context.orders.createBackofficeOrder(
+    buildBackofficeOrderInput({
+      vendorCode: vendor.code,
+      variantId: "var-premium-negro",
+      sku: "HG-PN-001",
+      productSlug: "premium-negro",
+      productName: "Premium Negro",
+      quantity: 1,
+      unitPrice: 60,
+      initialStatus: "paid"
+    })
+  );
+
+  await context.orders.createBackofficeOrder(
+    buildBackofficeOrderInput({
+      vendorCode: otherVendor.code,
+      variantId: "var-clasico-verde",
+      sku: "HG-CV-001",
+      productSlug: "clasico-verde",
+      productName: "Clasico Verde",
+      quantity: 1,
+      unitPrice: 55,
+      initialStatus: "paid"
+    })
+  );
+
+  context.vendors.applyFinancialSnapshot(vendor.code, {
+    sales: 60,
+    commissions: 9,
+    pendingCommissions: 9,
+    paidCommissions: 0,
+    ordersCount: 1
+  });
+  context.vendors.applyFinancialSnapshot(otherVendor.code, {
+    sales: 55,
+    commissions: 8.25,
+    pendingCommissions: 8.25,
+    paidCommissions: 0,
+    ordersCount: 1
+  });
+
+  const overview = context.core.getSellerPanelOverview({
+    id: "usr-seller-panel",
+    name: vendor.name,
+    email: vendor.email!,
+    roles: [{ code: RoleCode.Vendedor, label: "Vendedor" }],
+    accountType: "seller",
+    vendorCode: vendor.code
+  }).data;
+
+  assert.equal(overview.seller.code, vendor.code);
+  assert.equal(overview.seller.sales, 60);
+  assert.equal(overview.seller.pendingCommissions, 9);
+  assert.deepEqual(overview.recentOrders.map((order) => order.orderNumber), [sellerOrder.orderNumber]);
+  assert.ok(overview.metrics.some((metric) => metric.label === "Comisión pendiente"));
 });
 
 test("el reporte por producto agrega unidades e ingresos correctos", async () => {

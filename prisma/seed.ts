@@ -216,6 +216,7 @@ async function seedRolesAndPermissions() {
     { code: "marketing", name: "Marketing" },
     { code: "seller_manager", name: "Seller Manager" },
     { code: "vendedor", name: "Vendedor" },
+    { code: "mayorista", name: "Mayorista" },
     { code: "cliente", name: "Cliente" }
   ];
 

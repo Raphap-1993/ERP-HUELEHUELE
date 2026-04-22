@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { type CatalogProduct, type CatalogSummaryResponse } from "@huelegood/shared";
 import { fetchCatalogSummary } from "../lib/api";
+import { AddToCartLink } from "./add-to-cart-link";
 import {
   cloudflareImageLoader,
   isRemoteStorefrontMediaUrl,
@@ -108,10 +109,6 @@ function resolveProductImage(product: CatalogProduct) {
     remote: isRemoteStorefrontMediaUrl(resolved),
     alt: product.imageAlt ?? product.name
   };
-}
-
-function resolveCheckoutHref(_product: CatalogProduct) {
-  return "/checkout";
 }
 
 function isProductPurchasable(product: CatalogProduct) {
@@ -315,12 +312,12 @@ export function CatalogBrowser() {
                         ) : null}
                       </div>
                       {purchasable ? (
-                        <Link
-                          href={resolveCheckoutHref(product)}
+                        <AddToCartLink
+                          productSlug={product.slug}
                           className={`inline-flex h-12 min-w-[132px] items-center justify-center rounded-full px-5 text-sm font-semibold text-white transition ${style.btnClass}`}
                         >
                           {style.btnLabel}
-                        </Link>
+                        </AddToCartLink>
                       ) : (
                         <span
                           aria-disabled="true"
@@ -405,12 +402,12 @@ export function CatalogBrowser() {
                       <div className="mt-0.5 text-xs text-[#6b7280]">{style.priceNote}</div>
                     </div>
                     {purchasable ? (
-                      <Link
-                        href={resolveCheckoutHref(product)}
+                      <AddToCartLink
+                        productSlug={product.slug}
                         className={`inline-flex h-12 min-w-[132px] items-center justify-center rounded-full px-5 text-sm font-semibold text-white transition ${style.btnClass}`}
                       >
                         {style.btnLabel}
-                      </Link>
+                      </AddToCartLink>
                     ) : (
                       <span
                         aria-disabled="true"

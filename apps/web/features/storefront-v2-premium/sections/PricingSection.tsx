@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { type CatalogProduct } from "@huelegood/shared";
+import { AddToCartLink } from "../../../components/add-to-cart-link";
 import {
   isRemoteStorefrontMediaUrl,
   resolveStorefrontMediaSrc,
@@ -90,10 +91,6 @@ function resolveFeaturedCopy(product: CatalogProduct) {
   };
 }
 
-function resolveCheckoutHref(_product: CatalogProduct) {
-  return "/checkout";
-}
-
 function PricingCard({
   product,
   currencyCode
@@ -170,8 +167,8 @@ function PricingCard({
         ))}
       </ul>
 
-      <Link
-        href={resolveCheckoutHref(product)}
+      <AddToCartLink
+        productSlug={product.slug}
         className={`block w-full rounded-full py-4 text-center text-sm font-semibold text-white transition hover:-translate-y-0.5 ${
           style.featured
             ? "bg-gradient-to-r from-[#577e2f] to-[#61a740] hover:shadow-[0_8px_30px_rgba(97,167,64,0.35)]"
@@ -179,7 +176,7 @@ function PricingCard({
         }`}
       >
         {style.cta}
-      </Link>
+      </AddToCartLink>
 
       <Link
         href={`/producto/${product.slug}`}

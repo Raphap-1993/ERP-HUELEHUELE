@@ -183,6 +183,46 @@ export async function revokeAuthSession(token: string) {
   );
 }
 
+export async function revokeAuthSessionsForUser(userId: string) {
+  await withSessionStorage(
+    async (client) => {
+      let cursor = "0";
+      do {
+        const [nextCursor, keys] = await client.scan(cursor, "MATCH", `${SESSION_KEY_PREFIX}*`, "COUNT", "100");
+        cursor = nextCursor;
+        if (!keys.length) {
+          continue;
+        }
+
+        const sessions = await client.mget(keys);
+        const tokensToRevoke = sessions.flatMap((raw, index) => {
+          if (!raw) {
+            return [];
+          }
+
+          try {
+            const parsed = JSON.parse(raw) as AuthSessionSummary;
+            return parsed?.user?.id === userId ? [keys[index]] : [];
+          } catch {
+            return [keys[index]];
+          }
+        });
+
+        if (tokensToRevoke.length) {
+          await client.del(...tokensToRevoke);
+        }
+      } while (cursor !== "0");
+    },
+    async () => {
+      for (const [token, session] of memorySessions.entries()) {
+        if (session.user.id === userId) {
+          memorySessions.delete(token);
+        }
+      }
+    }
+  );
+}
+
 export async function resolveAuthSession(
   authorization?: string | string[],
   options: {

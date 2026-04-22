@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { RoleCode, type AuthSessionSummary, type LoyaltyAccountSummary } from "@huelegood/shared";
 import { clearStoredSessionToken, readStoredSessionToken, writeStoredSessionToken } from "../lib/session";
-import { fetchLoyaltySummary, fetchSession, login, logout, register } from "../lib/api";
+import { fetchLoyaltySummary, fetchSession, login, logout } from "../lib/api";
 
 function splitName(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -34,26 +35,61 @@ function redemptionLabel(status: LoyaltyAccountSummary["redemptionStatus"]) {
   return labels[status];
 }
 
-function AccountDetail({
-  label,
-  value,
-  helper
-}: {
-  label: string;
-  value: string;
-  helper: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-[#eef6e8] bg-[#f7f8f4] px-4 py-4">
-      <p className="text-[11px] uppercase tracking-[0.24em] text-black/40">{label}</p>
-      <p className="mt-3 text-xl font-semibold text-[#1a3a2e]">{value}</p>
-      <p className="mt-2 text-sm leading-6 text-black/56">{helper}</p>
-    </div>
-  );
+const sellerPanelPath = "/panel-vendedor";
+const wholesalePanelPath = "/panel-mayorista";
+
+function getRoleCodes(session: AuthSessionSummary) {
+  return session.user.roles.map((role) => role.code);
+}
+
+function hasSellerAccess(session: AuthSessionSummary) {
+  const roles = getRoleCodes(session);
+  return roles.includes(RoleCode.Vendedor) || roles.includes(RoleCode.SellerManager) || session.user.accountType === "seller";
+}
+
+function hasWholesaleAccess(session: AuthSessionSummary) {
+  const roles = getRoleCodes(session);
+  return roles.includes(RoleCode.Mayorista) || session.user.accountType === "wholesale";
+}
+
+function resolveCommercialPanelHref(session: AuthSessionSummary | null) {
+  if (!session) {
+    return null;
+  }
+
+  if (hasSellerAccess(session)) {
+    return sellerPanelPath;
+  }
+
+  if (hasWholesaleAccess(session)) {
+    return wholesalePanelPath;
+  }
+
+  return null;
+}
+
+function accountTypeLabel(accountType: AuthSessionSummary["user"]["accountType"]) {
+  if (accountType === "wholesale") {
+    return "Mayorista";
+  }
+
+  if (accountType === "seller") {
+    return "Vendedor";
+  }
+
+  if (accountType === "admin") {
+    return "Admin";
+  }
+
+  if (accountType === "operator") {
+    return "Operador";
+  }
+
+  return "Cliente";
 }
 
 export function AccountWorkspace() {
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const router = useRouter();
   const [session, setSession] = useState<AuthSessionSummary | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
   const [loadingLoyalty, setLoadingLoyalty] = useState(true);
@@ -63,13 +99,6 @@ export function AccountWorkspace() {
   const [activePanel, setActivePanel] = useState<"pedidos" | "tracking" | "favoritos" | "direcciones" | "configuracion">("pedidos");
 
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
-  const [registerForm, setRegisterForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-    accountType: "customer" as "customer" | "seller",
-    phone: ""
-  });
 
   useEffect(() => {
     let active = true;
@@ -109,6 +138,18 @@ export function AccountWorkspace() {
       active = false;
     };
   }, []);
+
+  const commercialPanelHref = useMemo(() => resolveCommercialPanelHref(session), [session]);
+
+  useEffect(() => {
+    if (commercialPanelHref === sellerPanelPath) {
+      router.replace(commercialPanelHref);
+    }
+
+    if (commercialPanelHref === wholesalePanelPath) {
+      setActivePanel("configuracion");
+    }
+  }, [commercialPanelHref, router]);
 
   useEffect(() => {
     let active = true;
@@ -158,14 +199,8 @@ export function AccountWorkspace() {
     return splitName(session.user.name);
   }, [session]);
 
-  const hasSellerPanelAccess = useMemo(() => {
-    if (!session) {
-      return false;
-    }
-
-    const roles = session.user.roles.map((role) => role.code);
-    return roles.includes(RoleCode.Vendedor) || roles.includes(RoleCode.SellerManager);
-  }, [session]);
+  const hasSellerPanelAccess = commercialPanelHref === sellerPanelPath;
+  const hasWholesalePanelAccess = commercialPanelHref === wholesalePanelPath;
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -180,24 +215,6 @@ export function AccountWorkspace() {
       }
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : "No pudimos iniciar sesión.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleRegister(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSubmitting(true);
-    setError(null);
-
-    try {
-      const response = await register(registerForm);
-      if (response.data) {
-        setSession(response.data);
-        writeStoredSessionToken(response.data.token);
-      }
-    } catch (registerError) {
-      setError(registerError instanceof Error ? registerError.message : "No pudimos crear la cuenta.");
     } finally {
       setSubmitting(false);
     }
@@ -229,15 +246,15 @@ export function AccountWorkspace() {
 
           {/* Left: copy */}
           <div className="rounded-[22px] bg-[#577e2f] p-10 text-white">
-            <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40">Mi cuenta</p>
+            <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40">Ingreso comercial</p>
             <h1 className="mb-4 font-serif text-[2.4rem] font-bold leading-[1.1] text-white">
-              Acceso simple para compras, puntos y seguimiento.
+              Acceso para vendedores y mayoristas.
             </h1>
             <p className="mb-8 text-[14px] leading-7 text-white/60">
-              Ingresa con tu cuenta para consultar compras, beneficios y estado de tu experiencia Huele Huele desde un mismo lugar.
+              Ingresa con las credenciales asignadas por Huele Huele para consultar tu operación comercial desde la web.
             </p>
             <div className="space-y-3">
-              {["Historial de pedidos en un clic.", "Puntos de lealtad siempre visibles.", "Acceso a panel comercial si eres vendedor."].map((item) => (
+              {["Panel vendedor con ventas y ganancias.", "Acceso para seguimiento comercial mayorista.", "Credenciales entregadas por el equipo Huele Huele."].map((item) => (
                 <div key={item} className="flex items-center gap-3 text-[13px] text-white/70">
                   <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[#61a740] text-[10px] text-white">✓</div>
                   {item}
@@ -245,7 +262,7 @@ export function AccountWorkspace() {
               ))}
             </div>
             <div className="mt-10 grid grid-cols-3 gap-3">
-              {[{ n: "6+", l: "Pedidos típicos" }, { n: "S/400+", l: "Por cliente" }, { n: "24h", l: "Soporte" }].map((stat) => (
+              {[{ n: "24/7", l: "Web" }, { n: "S/", l: "Ganancias" }, { n: "HH", l: "Soporte" }].map((stat) => (
                 <div key={stat.l} className="rounded-[12px] border border-white/10 bg-white/6 p-3 text-center">
                   <div className="font-serif text-[20px] font-black text-[#61a740]">{stat.n}</div>
                   <div className="mt-1 text-[10px] text-white/35">{stat.l}</div>
@@ -256,121 +273,50 @@ export function AccountWorkspace() {
 
           {/* Right: form card */}
           <div className="rounded-[22px] border border-[rgba(26,58,46,0.1)] bg-white p-8 shadow-[0_18px_54px_rgba(26,58,46,0.06)]">
-            <h2 className="mb-1.5 font-serif text-[22px] font-bold text-[#1a3a2e]">Entrar o crear cuenta</h2>
-            <p className="mb-6 text-[13px] text-[#6b7280]">Accede con tu correo o crea una cuenta nueva.</p>
-
-            {/* Mode switcher */}
-            <div className="mb-6 inline-flex overflow-hidden rounded-full border border-[rgba(26,58,46,0.1)] bg-[#f4f4f0] p-1">
-              <button
-                type="button"
-                onClick={() => setMode("login")}
-                className={`rounded-full px-5 py-2 text-[13px] font-medium transition ${mode === "login" ? "bg-[#577e2f] text-white" : "text-[#1a3a2e]"}`}
-              >
-                Ingresar
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode("register")}
-                className={`rounded-full px-5 py-2 text-[13px] font-medium transition ${mode === "register" ? "bg-[#577e2f] text-white" : "text-[#1a3a2e]"}`}
-              >
-                Crear cuenta
-              </button>
-            </div>
+            <h2 className="mb-1.5 font-serif text-[22px] font-bold text-[#1a3a2e]">Ingresar</h2>
+            <p className="mb-6 text-[13px] text-[#6b7280]">Accede con el correo y contraseña asignados por el equipo comercial.</p>
 
             {error ? (
               <div className="mb-5 rounded-[11px] bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
             ) : null}
 
-            {mode === "login" ? (
-              <form className="space-y-4" onSubmit={handleLogin}>
-                <div>
-                  <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Correo electrónico</label>
-                  <input
-                    type="email"
-                    autoComplete="username"
-                    required
-                    value={loginForm.email}
-                    onChange={(e) => setLoginForm((c) => ({ ...c, email: e.target.value }))}
-                    placeholder="tu@correo.com"
-                    className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#61a740] focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Contraseña</label>
-                  <input
-                    type="password"
-                    autoComplete="current-password"
-                    required
-                    value={loginForm.password}
-                    onChange={(e) => setLoginForm((c) => ({ ...c, password: e.target.value }))}
-                    placeholder="••••••••"
-                    className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#61a740] focus:bg-white"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full rounded-[11px] bg-[#61a740] py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#577e2f] hover:-translate-y-px disabled:opacity-60"
-                >
-                  {submitting ? "Validando..." : "Ingresar →"}
-                </button>
-              </form>
-            ) : (
-              <form className="space-y-4" onSubmit={handleRegister}>
-                <div>
-                  <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Nombre y apellido</label>
-                  <input
-                    type="text"
-                    required
-                    value={registerForm.name}
-                    onChange={(e) => setRegisterForm((c) => ({ ...c, name: e.target.value, accountType: "customer" }))}
-                    placeholder="Tu nombre completo"
-                    className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#61a740] focus:bg-white"
-                  />
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Correo electrónico</label>
-                    <input
-                      type="email"
-                      required
-                      value={registerForm.email}
-                      onChange={(e) => setRegisterForm((c) => ({ ...c, email: e.target.value }))}
-                      placeholder="tu@correo.com"
-                      className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#61a740] focus:bg-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Contraseña</label>
-                    <input
-                      type="password"
-                      required
-                      value={registerForm.password}
-                      onChange={(e) => setRegisterForm((c) => ({ ...c, password: e.target.value, accountType: "customer" }))}
-                      placeholder="••••••••"
-                      className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#61a740] focus:bg-white"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">WhatsApp (opcional)</label>
-                  <input
-                    type="tel"
-                    value={registerForm.phone}
-                    onChange={(e) => setRegisterForm((c) => ({ ...c, phone: e.target.value, accountType: "customer" }))}
-                    placeholder="+51 999 000 000"
-                    className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#61a740] focus:bg-white"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full rounded-[11px] bg-[#61a740] py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#577e2f] hover:-translate-y-px disabled:opacity-60"
-                >
-                  {submitting ? "Creando cuenta..." : "Crear cuenta →"}
-                </button>
-              </form>
-            )}
+            <form className="space-y-4" onSubmit={handleLogin}>
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Correo electrónico</label>
+                <input
+                  type="email"
+                  autoComplete="username"
+                  required
+                  value={loginForm.email}
+                  onChange={(e) => setLoginForm((c) => ({ ...c, email: e.target.value }))}
+                  placeholder="vendedor@correo.com"
+                  className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#61a740] focus:bg-white"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Contraseña</label>
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={loginForm.password}
+                  onChange={(e) => setLoginForm((c) => ({ ...c, password: e.target.value }))}
+                  placeholder="••••••••"
+                  className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#61a740] focus:bg-white"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full rounded-[11px] bg-[#61a740] py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#577e2f] hover:-translate-y-px disabled:opacity-60"
+              >
+                {submitting ? "Validando..." : "Ingresar →"}
+              </button>
+            </form>
+
+            <p className="mt-5 text-center text-[12px] leading-6 text-[#6b7280]">
+              Si aún no tienes acceso, solicita el alta al equipo comercial.
+            </p>
           </div>
 
         </div>
@@ -596,7 +542,7 @@ export function AccountWorkspace() {
                   <div>
                     <p className="text-[14px] font-semibold text-[#1a3a2e]">{session.user.name}</p>
                     <p className="mt-0.5 text-[12px] text-[#6b7280]">{session.user.email}</p>
-                    <p className="mt-1.5 text-[11px] text-[#6b7280]">{session.user.accountType === "customer" ? "Cliente" : "Vendedor"}</p>
+                    <p className="mt-1.5 text-[11px] text-[#6b7280]">{accountTypeLabel(session.user.accountType)}</p>
                   </div>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -652,8 +598,19 @@ export function AccountWorkspace() {
                   <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40">Acceso comercial</p>
                   <h3 className="mb-2 font-serif text-[22px] font-bold text-white">Tu cuenta tiene panel vendedor.</h3>
                   <p className="mb-6 text-[13px] leading-7 text-white/60">Revisa pedidos atribuidos, comisiones y liquidaciones desde un solo lugar.</p>
-                  <a href="/panel-vendedor" className="inline-block rounded-full bg-[#61a740] px-6 py-3 text-[13px] font-semibold text-[#1a3a2e] transition hover:bg-[#eef6e8]">
+                  <a href={sellerPanelPath} className="inline-block rounded-full bg-[#61a740] px-6 py-3 text-[13px] font-semibold text-[#1a3a2e] transition hover:bg-[#eef6e8]">
                     Ir al panel vendedor →
+                  </a>
+                </div>
+              ) : null}
+
+              {hasWholesalePanelAccess ? (
+                <div className="rounded-[22px] border border-[rgba(26,58,46,0.1)] bg-white p-8">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#61a740]">Acceso mayorista</p>
+                  <h3 className="mb-2 font-serif text-[22px] font-bold text-[#1a3a2e]">Tu cuenta mayorista está lista.</h3>
+                  <p className="mb-6 text-[13px] leading-7 text-[#6b7280]">El panel mayorista queda reservado para la siguiente fase; por ahora usa el canal B2B público.</p>
+                  <a href="/mayoristas" className="inline-block rounded-full bg-[#61a740] px-6 py-3 text-[13px] font-semibold text-[#1a3a2e] transition hover:bg-[#eef6e8]">
+                    Ir a mayoristas
                   </a>
                 </div>
               ) : null}

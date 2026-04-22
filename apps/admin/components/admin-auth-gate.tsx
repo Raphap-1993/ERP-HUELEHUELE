@@ -20,6 +20,7 @@ const roleLabels: Record<RoleCode, string> = {
   [RoleCode.Marketing]: "Marketing",
   [RoleCode.SellerManager]: "Seller Manager",
   [RoleCode.Vendedor]: "Vendedor",
+  [RoleCode.Mayorista]: "Mayorista",
   [RoleCode.Cliente]: "Cliente"
 };
 

@@ -1,5 +1,5 @@
-import { BadRequestException, ConflictException, Injectable, OnModuleDestroy, OnModuleInit, UnauthorizedException } from "@nestjs/common";
-import { LifecycleStatus, Prisma, VendorCodeStatus, VendorStatus } from "@prisma/client";
+import { BadRequestException, ConflictException, Injectable, NotFoundException, OnModuleDestroy, OnModuleInit, UnauthorizedException } from "@nestjs/common";
+import { LifecycleStatus, Prisma, VendorCodeStatus } from "@prisma/client";
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
 import {
   RoleCode,
@@ -7,14 +7,28 @@ import {
   type AuthRegisterInput,
   type AuthRoleSummary,
   type AuthSessionSummary,
-  type AuthUserSummary
+  type AuthUserSummary,
+  type CommercialAccessAccountType,
+  type CommercialAccessCreateInput,
+  type CommercialAccessResetPasswordInput,
+  type CommercialAccessStatus,
+  type CommercialAccessStatusInput,
+  type CommercialAccessSummary,
+  type CommercialAccessUpdateInput
 } from "@huelegood/shared";
 import { isConfigured, isProductionRuntime } from "../../common/env";
 import { actionResponse, wrapResponse } from "../../common/response";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { ModuleStateService } from "../../persistence/module-state.service";
-import { closeSessionStore, parseAuthorizationToken, resolveSession as resolveStoredSession, revokeSession, storeSession } from "./auth-session";
+import {
+  closeSessionStore,
+  parseAuthorizationToken,
+  resolveSession as resolveStoredSession,
+  revokeSession,
+  revokeSessionsForUser,
+  storeSession
+} from "./auth-session";
 
 type AccountType = AuthUserSummary["accountType"];
 
@@ -27,11 +41,32 @@ interface AuthRecord {
   accountType: AccountType;
   roles: AuthRoleSummary[];
   vendorCode?: string;
+  wholesaleLeadId?: string;
+  status?: CommercialAccessStatus;
+  lastLoginAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface AuthSnapshot {
   accounts: AuthRecord[];
   userSequence: number;
+}
+
+interface CommercialAccessMetadata {
+  userId: string;
+  name: string;
+  email: string;
+  accountType: CommercialAccessAccountType;
+  phone?: string;
+  vendorCode?: string;
+  wholesaleLeadId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface CommercialAccessesSnapshot {
+  records: CommercialAccessMetadata[];
 }
 
 const roleLabels: Record<RoleCode, string> = {
@@ -42,6 +77,7 @@ const roleLabels: Record<RoleCode, string> = {
   [RoleCode.Marketing]: "Marketing",
   [RoleCode.SellerManager]: "Seller Manager",
   [RoleCode.Vendedor]: "Vendedor",
+  [RoleCode.Mayorista]: "Mayorista",
   [RoleCode.Cliente]: "Cliente"
 };
 
@@ -55,6 +91,88 @@ let userSequence = 5;
 
 function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
+}
+
+function normalizeOptionalText(value?: string) {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
+}
+
+function normalizeStatus(value?: string): CommercialAccessStatus {
+  if (value === "inactive" || value === "suspended") {
+    return value;
+  }
+
+  return "active";
+}
+
+function parseCommercialAccessStatus(value?: string): CommercialAccessStatus {
+  if (value === "active" || value === "inactive" || value === "suspended") {
+    return value;
+  }
+
+  throw new BadRequestException("Estado de acceso comercial inválido.");
+}
+
+function toLifecycleStatus(status: CommercialAccessStatus) {
+  if (status === "suspended") {
+    return LifecycleStatus.suspended;
+  }
+
+  if (status === "inactive") {
+    return LifecycleStatus.inactive;
+  }
+
+  return LifecycleStatus.active;
+}
+
+function normalizeCommercialAccountType(value?: string): CommercialAccessAccountType {
+  return value === "wholesale" ? "wholesale" : "seller";
+}
+
+function normalizeVendorCode(value?: string) {
+  return normalizeOptionalText(value)?.toUpperCase();
+}
+
+function generateTemporaryPassword() {
+  return `HH-${randomBytes(4).toString("hex").toUpperCase()}`;
+}
+
+function commercialRolesFor(accountType: CommercialAccessAccountType) {
+  return accountType === "wholesale" ? [RoleCode.Cliente, RoleCode.Mayorista] : [RoleCode.Cliente, RoleCode.Vendedor];
+}
+
+function isInternalBackofficeRole(code: RoleCode) {
+  return (
+    code === RoleCode.SuperAdmin ||
+    code === RoleCode.Admin ||
+    code === RoleCode.OperadorPagos ||
+    code === RoleCode.Ventas ||
+    code === RoleCode.Marketing ||
+    code === RoleCode.SellerManager
+  );
+}
+
+function isCommercialAccess(account: AuthRecord) {
+  const roleCodes = account.roles.map((role) => role.code);
+  return roleCodes.includes(RoleCode.Vendedor) || roleCodes.includes(RoleCode.Mayorista);
+}
+
+function toCommercialAccessSummary(account: AuthRecord): CommercialAccessSummary {
+  return {
+    id: account.id,
+    name: account.name,
+    email: account.email,
+    phone: account.phone,
+    accountType: account.accountType === "wholesale" ? "wholesale" : "seller",
+    status: normalizeStatus(account.status),
+    roles: account.roles,
+    vendorCode: account.vendorCode,
+    wholesaleLeadId: account.wholesaleLeadId,
+    lastLoginAt: account.lastLoginAt,
+    createdAt: account.createdAt,
+    updatedAt: account.updatedAt
+  };
 }
 
 function envOrFallback(name: string, fallback: string) {
@@ -74,7 +192,8 @@ async function createSession(account: AuthRecord): Promise<AuthSessionSummary> {
       email: account.email,
       roles: account.roles,
       accountType: account.accountType,
-      vendorCode: account.vendorCode
+      vendorCode: account.vendorCode,
+      wholesaleLeadId: account.wholesaleLeadId
     }
   };
 
@@ -165,6 +284,10 @@ function resolveAccountType(roleCodes: readonly RoleCode[]): AccountType {
 
   if (roleCodes.includes(RoleCode.SellerManager) || roleCodes.includes(RoleCode.Vendedor)) {
     return "seller";
+  }
+
+  if (roleCodes.includes(RoleCode.Mayorista)) {
+    return "wholesale";
   }
 
   return "customer";
@@ -260,9 +383,13 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
     }
 
     const account = accounts.get(normalizeEmail(body.email));
-    if (!account || account.password !== body.password) {
+    if (!account || account.password !== body.password || normalizeStatus(account.status) !== "active") {
       throw new UnauthorizedException("No pudimos validar esas credenciales.");
     }
+
+    account.lastLoginAt = new Date().toISOString();
+    account.updatedAt = account.lastLoginAt;
+    void this.persistState();
 
     const session = await createSession(account);
     this.auditService.recordAudit({
@@ -292,6 +419,10 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
 
     if (body.password.trim().length < 6) {
       throw new BadRequestException("La contraseña debe tener al menos 6 caracteres.");
+    }
+
+    if ((body.accountType ?? "customer") !== "customer") {
+      throw new BadRequestException("Los accesos comerciales se crean desde backoffice.");
     }
 
     if (databaseAuthEnabled()) {
@@ -380,6 +511,521 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
     }
 
     return actionResponse("ok", "Sesión cerrada correctamente.");
+  }
+
+  async listCommercialAccesses() {
+    if (databaseAuthEnabled()) {
+      return this.listCommercialAccessesFromDatabase();
+    }
+
+    const accesses = Array.from(accounts.values())
+      .filter((account) => isCommercialAccess(account))
+      .sort((left, right) => (right.updatedAt ?? "").localeCompare(left.updatedAt ?? ""))
+      .map((account) => toCommercialAccessSummary(account));
+
+    return wrapResponse(accesses, {
+      total: accesses.length,
+      active: accesses.filter((access) => access.status === "active").length,
+      suspended: accesses.filter((access) => access.status === "suspended").length
+    });
+  }
+
+  async createCommercialAccess(body: CommercialAccessCreateInput) {
+    if (!body.name?.trim() || !body.email?.trim()) {
+      throw new BadRequestException("Nombre y email son obligatorios.");
+    }
+
+    const accountType = normalizeCommercialAccountType(body.accountType);
+    const email = normalizeEmail(body.email);
+    const temporaryPassword = normalizeOptionalText(body.password) ?? generateTemporaryPassword();
+
+    if (temporaryPassword.length < 6) {
+      throw new BadRequestException("La contraseña debe tener al menos 6 caracteres.");
+    }
+
+    if (accountType === "seller" && !normalizeVendorCode(body.vendorCode)) {
+      throw new BadRequestException("Debes asociar un código de vendedor para crear el acceso.");
+    }
+
+    if (accountType === "wholesale" && !normalizeOptionalText(body.wholesaleLeadId)) {
+      throw new BadRequestException("Debes asociar un lead mayorista para crear el acceso.");
+    }
+
+    if (databaseAuthEnabled()) {
+      return this.createCommercialAccessWithDatabase({ ...body, email, accountType }, temporaryPassword);
+    }
+
+    const existingAccount = accounts.get(email);
+    if (existingAccount) {
+      if (isCommercialAccess(existingAccount)) {
+        throw new ConflictException("Ese email ya tiene un acceso comercial. Edita el acceso existente o resetea la clave.");
+      }
+
+      const existingRoleCodes = existingAccount.roles.map((role) => role.code);
+      if (existingRoleCodes.some((role) => isInternalBackofficeRole(role))) {
+        throw new BadRequestException("Ese email pertenece a un usuario interno. Usa otro email para el acceso comercial.");
+      }
+
+      const now = new Date().toISOString();
+      const mergedRoleCodes = Array.from(new Set([...existingRoleCodes, ...commercialRolesFor(accountType)]));
+      existingAccount.name = body.name.trim();
+      existingAccount.phone = normalizeOptionalText(body.phone) ?? existingAccount.phone;
+      existingAccount.password = temporaryPassword;
+      existingAccount.accountType = accountType;
+      existingAccount.roles = buildRoles(mergedRoleCodes);
+      existingAccount.vendorCode = accountType === "seller" ? normalizeVendorCode(body.vendorCode) : undefined;
+      existingAccount.wholesaleLeadId = accountType === "wholesale" ? normalizeOptionalText(body.wholesaleLeadId) : undefined;
+      existingAccount.status = "active";
+      existingAccount.createdAt = existingAccount.createdAt ?? now;
+      existingAccount.updatedAt = now;
+      await revokeSessionsForUser(existingAccount.id);
+      void this.persistState();
+      this.auditService.recordAdminAction({
+        actionType: "commercial_access.linked",
+        targetType: "user",
+        targetId: existingAccount.id,
+        summary: `Se vinculó acceso ${accountType} para ${existingAccount.email}.`,
+        actorName: "admin",
+        metadata: {
+          accountType,
+          email,
+          vendorCode: existingAccount.vendorCode,
+          wholesaleLeadId: existingAccount.wholesaleLeadId
+        }
+      });
+
+      return {
+        ...actionResponse("ok", "El acceso comercial fue vinculado a la cuenta existente.", existingAccount.id),
+        access: toCommercialAccessSummary(existingAccount),
+        temporaryPassword
+      };
+    }
+
+    const now = new Date().toISOString();
+    const account: AuthRecord = {
+      id: `usr-${String(userSequence).padStart(3, "0")}`,
+      name: body.name.trim(),
+      email,
+      phone: normalizeOptionalText(body.phone),
+      password: temporaryPassword,
+      accountType,
+      roles: buildRoles(commercialRolesFor(accountType)),
+      vendorCode: accountType === "seller" ? normalizeVendorCode(body.vendorCode) : undefined,
+      wholesaleLeadId: accountType === "wholesale" ? normalizeOptionalText(body.wholesaleLeadId) : undefined,
+      status: "active",
+      createdAt: now,
+      updatedAt: now
+    };
+
+    userSequence += 1;
+    accounts.set(email, account);
+    void this.persistState();
+    this.auditService.recordAdminAction({
+      actionType: "commercial_access.created",
+      targetType: "user",
+      targetId: account.id,
+      summary: `Se creó acceso ${accountType} para ${account.email}.`,
+      actorName: "admin",
+      metadata: {
+        accountType,
+        email,
+        vendorCode: account.vendorCode,
+        wholesaleLeadId: account.wholesaleLeadId
+      }
+    });
+
+    return {
+      ...actionResponse("ok", "El acceso comercial fue creado.", account.id),
+      access: toCommercialAccessSummary(account),
+      temporaryPassword
+    };
+  }
+
+  async updateCommercialAccess(id: string, body: CommercialAccessUpdateInput) {
+    if (databaseAuthEnabled()) {
+      return this.updateCommercialAccessWithDatabase(id, body);
+    }
+
+    const account = this.requireLocalCommercialAccess(id);
+    const now = new Date().toISOString();
+
+    account.name = normalizeOptionalText(body.name) ?? account.name;
+    account.phone = normalizeOptionalText(body.phone);
+    if (account.accountType === "seller" && body.vendorCode !== undefined) {
+      const vendorCode = normalizeVendorCode(body.vendorCode);
+      if (!vendorCode) {
+        throw new BadRequestException("El acceso vendedor debe mantener un código asociado.");
+      }
+      account.vendorCode = vendorCode;
+    }
+    if (account.accountType === "wholesale" && body.wholesaleLeadId !== undefined) {
+      const wholesaleLeadId = normalizeOptionalText(body.wholesaleLeadId);
+      if (!wholesaleLeadId) {
+        throw new BadRequestException("El acceso mayorista debe mantener un lead asociado.");
+      }
+      account.wholesaleLeadId = wholesaleLeadId;
+    }
+    account.updatedAt = now;
+    void this.persistState();
+
+    return {
+      ...actionResponse("ok", "El acceso comercial fue actualizado.", account.id),
+      access: toCommercialAccessSummary(account)
+    };
+  }
+
+  async setCommercialAccessStatus(id: string, body: CommercialAccessStatusInput) {
+    const status = parseCommercialAccessStatus(body.status);
+    if (databaseAuthEnabled()) {
+      return this.setCommercialAccessStatusWithDatabase(id, status);
+    }
+
+    const account = this.requireLocalCommercialAccess(id);
+    account.status = status;
+    account.updatedAt = new Date().toISOString();
+    if (status !== "active") {
+      await revokeSessionsForUser(account.id);
+    }
+    void this.persistState();
+
+    return {
+      ...actionResponse("ok", `El acceso comercial quedó ${status}.`, account.id),
+      access: toCommercialAccessSummary(account)
+    };
+  }
+
+  async resetCommercialAccessPassword(id: string, body: CommercialAccessResetPasswordInput = {}) {
+    const temporaryPassword = normalizeOptionalText(body.password) ?? generateTemporaryPassword();
+    if (temporaryPassword.length < 6) {
+      throw new BadRequestException("La contraseña debe tener al menos 6 caracteres.");
+    }
+
+    if (databaseAuthEnabled()) {
+      return this.resetCommercialAccessPasswordWithDatabase(id, temporaryPassword);
+    }
+
+    const account = this.requireLocalCommercialAccess(id);
+    account.password = temporaryPassword;
+    account.updatedAt = new Date().toISOString();
+    await revokeSessionsForUser(account.id);
+    void this.persistState();
+
+    return {
+      ...actionResponse("ok", "La contraseña temporal fue generada.", account.id),
+      access: toCommercialAccessSummary(account),
+      temporaryPassword
+    };
+  }
+
+  private requireLocalCommercialAccess(id: string) {
+    const account = Array.from(accounts.values()).find((entry) => entry.id === id.trim());
+    if (!account || !isCommercialAccess(account)) {
+      throw new NotFoundException(`No encontramos un acceso comercial con id ${id}.`);
+    }
+
+    return account;
+  }
+
+  private async listCommercialAccessesFromDatabase() {
+    const users = await this.prisma.user.findMany({
+      where: {
+        roles: {
+          some: {
+            role: {
+              code: {
+                in: [RoleCode.Vendedor, RoleCode.Mayorista]
+              }
+            }
+          }
+        }
+      },
+      include: databaseAuthUserInclude,
+      orderBy: {
+        updatedAt: "desc"
+      }
+    });
+    const metadataByUser = await this.loadCommercialAccessMetadataMap();
+    const accesses = users.map((user) => this.toCommercialAccessSummary(user, metadataByUser.get(user.id)));
+
+    return wrapResponse(accesses, {
+      total: accesses.length,
+      active: accesses.filter((access) => access.status === "active").length,
+      suspended: accesses.filter((access) => access.status === "suspended").length
+    });
+  }
+
+  private async createCommercialAccessWithDatabase(
+    body: CommercialAccessCreateInput & { accountType: CommercialAccessAccountType },
+    temporaryPassword: string
+  ) {
+    const email = normalizeEmail(body.email);
+    const existing = await this.prisma.user.findUnique({
+      where: {
+        email
+      },
+      include: databaseAuthUserInclude
+    });
+
+    const phone = normalizeOptionalText(body.phone);
+    if (phone) {
+      const existingPhone = await this.prisma.user.findUnique({
+        where: {
+          phone
+        }
+      });
+
+      if (existingPhone && existingPhone.id !== existing?.id) {
+        throw new ConflictException("Ya existe una cuenta con ese teléfono.");
+      }
+    }
+
+    const roles = await this.ensureRolesExist(commercialRolesFor(body.accountType));
+    const vendorCode = normalizeVendorCode(body.vendorCode);
+    const wholesaleLeadId = normalizeOptionalText(body.wholesaleLeadId);
+    const now = new Date().toISOString();
+
+    if (existing) {
+      const existingRoleCodes = existing.roles.flatMap((userRole) => (isRoleCode(userRole.role.code) ? [userRole.role.code] : []));
+      if (existingRoleCodes.includes(RoleCode.Vendedor) || existingRoleCodes.includes(RoleCode.Mayorista)) {
+        throw new ConflictException("Ese email ya tiene un acceso comercial. Edita el acceso existente o resetea la clave.");
+      }
+
+      if (existingRoleCodes.some((role) => isInternalBackofficeRole(role))) {
+        throw new BadRequestException("Ese email pertenece a un usuario interno. Usa otro email para el acceso comercial.");
+      }
+
+      const missingRoles = roles.filter((role) => !existing.roles.some((userRole) => userRole.roleId === role.id));
+      if (missingRoles.length) {
+        await this.prisma.userRole.createMany({
+          data: missingRoles.map((role) => ({
+            userId: existing.id,
+            roleId: role.id
+          })),
+          skipDuplicates: true
+        });
+      }
+
+      await this.prisma.user.update({
+        where: {
+          id: existing.id
+        },
+        data: {
+          phone: phone ?? existing.phone,
+          passwordHash: hashPassword(temporaryPassword),
+          status: LifecycleStatus.active
+        }
+      });
+
+      await this.upsertCommercialAccessMetadata({
+        userId: existing.id,
+        name: body.name.trim(),
+        email,
+        phone: phone ?? existing.phone ?? undefined,
+        accountType: body.accountType,
+        vendorCode: body.accountType === "seller" ? vendorCode : undefined,
+        wholesaleLeadId: body.accountType === "wholesale" ? wholesaleLeadId : undefined,
+        createdAt: existing.createdAt.toISOString(),
+        updatedAt: now
+      });
+
+      await revokeSessionsForUser(existing.id);
+      const user = await this.requireDatabaseCommercialAccess(existing.id);
+      const metadata = (await this.loadCommercialAccessMetadataMap()).get(user.id);
+      this.auditService.recordAdminAction({
+        actionType: "commercial_access.linked",
+        targetType: "user",
+        targetId: user.id,
+        summary: `Se vinculó acceso ${body.accountType} para ${user.email}.`,
+        actorName: "admin",
+        metadata: {
+          accountType: body.accountType,
+          email: user.email,
+          vendorCode,
+          wholesaleLeadId
+        }
+      });
+
+      return {
+        ...actionResponse("ok", "El acceso comercial fue vinculado a la cuenta existente.", user.id),
+        access: this.toCommercialAccessSummary(user, metadata),
+        temporaryPassword
+      };
+    }
+
+    const created = await this.prisma.user.create({
+      data: {
+        email,
+        phone,
+        passwordHash: hashPassword(temporaryPassword),
+        status: LifecycleStatus.active,
+        roles: {
+          create: roles.map((role) => ({
+            roleId: role.id
+          }))
+        }
+      }
+    });
+
+    await this.upsertCommercialAccessMetadata({
+      userId: created.id,
+      name: body.name.trim(),
+      email,
+      phone,
+      accountType: body.accountType,
+      vendorCode: body.accountType === "seller" ? vendorCode : undefined,
+      wholesaleLeadId: body.accountType === "wholesale" ? wholesaleLeadId : undefined,
+      createdAt: created.createdAt.toISOString(),
+      updatedAt: now
+    });
+
+    const user = await this.requireDatabaseCommercialAccess(created.id);
+    const metadata = (await this.loadCommercialAccessMetadataMap()).get(user.id);
+    this.auditService.recordAdminAction({
+      actionType: "commercial_access.created",
+      targetType: "user",
+      targetId: user.id,
+      summary: `Se creó acceso ${body.accountType} para ${user.email}.`,
+      actorName: "admin",
+      metadata: {
+        accountType: body.accountType,
+        email: user.email,
+        vendorCode,
+        wholesaleLeadId
+      }
+    });
+
+    return {
+      ...actionResponse("ok", "El acceso comercial fue creado.", user.id),
+      access: this.toCommercialAccessSummary(user, metadata),
+      temporaryPassword
+    };
+  }
+
+  private async updateCommercialAccessWithDatabase(id: string, body: CommercialAccessUpdateInput) {
+    const user = await this.requireDatabaseCommercialAccess(id);
+    const metadataByUser = await this.loadCommercialAccessMetadataMap();
+    const currentMetadata = metadataByUser.get(user.id);
+    const accountType =
+      currentMetadata?.accountType ?? normalizeCommercialAccountType(resolveAccountType(user.roles.map((userRole) => userRole.role.code as RoleCode)));
+    const data: Prisma.UserUpdateInput = {};
+
+    if (body.phone !== undefined) {
+      data.phone = normalizeOptionalText(body.phone);
+    }
+
+    if (Object.keys(data).length) {
+      await this.prisma.user.update({
+        where: {
+          id: user.id
+        },
+        data
+      });
+    }
+
+    const vendorCode =
+      accountType === "seller"
+        ? body.vendorCode !== undefined
+          ? normalizeVendorCode(body.vendorCode)
+          : currentMetadata?.vendorCode ?? user.vendor?.codes[0]?.code
+        : undefined;
+    if (accountType === "seller" && !vendorCode) {
+      throw new BadRequestException("El acceso vendedor debe mantener un código asociado.");
+    }
+    const wholesaleLeadId =
+      accountType === "wholesale"
+        ? body.wholesaleLeadId !== undefined
+          ? normalizeOptionalText(body.wholesaleLeadId)
+          : currentMetadata?.wholesaleLeadId
+        : undefined;
+    if (accountType === "wholesale" && !wholesaleLeadId) {
+      throw new BadRequestException("El acceso mayorista debe mantener un lead asociado.");
+    }
+
+    await this.upsertCommercialAccessMetadata({
+      userId: user.id,
+      name: normalizeOptionalText(body.name) ?? currentMetadata?.name ?? resolveDisplayName(user),
+      email: user.email,
+      phone: body.phone !== undefined ? normalizeOptionalText(body.phone) : currentMetadata?.phone ?? user.phone ?? undefined,
+      accountType,
+      vendorCode,
+      wholesaleLeadId,
+      createdAt: currentMetadata?.createdAt ?? user.createdAt.toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    const updated = await this.requireDatabaseCommercialAccess(user.id);
+    const metadata = (await this.loadCommercialAccessMetadataMap()).get(updated.id);
+    return {
+      ...actionResponse("ok", "El acceso comercial fue actualizado.", updated.id),
+      access: this.toCommercialAccessSummary(updated, metadata)
+    };
+  }
+
+  private async setCommercialAccessStatusWithDatabase(id: string, status: CommercialAccessStatus) {
+    const user = await this.requireDatabaseCommercialAccess(id);
+    const updated = await this.prisma.user.update({
+      where: {
+        id: user.id
+      },
+      data: {
+        status: toLifecycleStatus(status)
+      },
+      include: databaseAuthUserInclude
+    });
+    if (status !== "active") {
+      await revokeSessionsForUser(user.id);
+    }
+    const metadata = (await this.loadCommercialAccessMetadataMap()).get(updated.id);
+
+    return {
+      ...actionResponse("ok", `El acceso comercial quedó ${status}.`, updated.id),
+      access: this.toCommercialAccessSummary(updated, metadata)
+    };
+  }
+
+  private async resetCommercialAccessPasswordWithDatabase(id: string, temporaryPassword: string) {
+    const user = await this.requireDatabaseCommercialAccess(id);
+    const updated = await this.prisma.user.update({
+      where: {
+        id: user.id
+      },
+      data: {
+        passwordHash: hashPassword(temporaryPassword)
+      },
+      include: databaseAuthUserInclude
+    });
+    await revokeSessionsForUser(user.id);
+    const metadata = (await this.loadCommercialAccessMetadataMap()).get(updated.id);
+
+    return {
+      ...actionResponse("ok", "La contraseña temporal fue generada.", updated.id),
+      access: this.toCommercialAccessSummary(updated, metadata),
+      temporaryPassword
+    };
+  }
+
+  private async requireDatabaseCommercialAccess(id: string) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: id.trim()
+      },
+      include: databaseAuthUserInclude
+    });
+
+    if (!user) {
+      throw new NotFoundException(`No encontramos un acceso comercial con id ${id}.`);
+    }
+
+    const roleCodes = user.roles.flatMap((userRole) => (isRoleCode(userRole.role.code) ? [userRole.role.code] : []));
+    if (!roleCodes.includes(RoleCode.Vendedor) && !roleCodes.includes(RoleCode.Mayorista)) {
+      throw new NotFoundException(`No encontramos un acceso comercial con id ${id}.`);
+    }
+
+    return user;
+  }
+
+  private toCommercialAccessSummary(user: DatabaseAuthUser, metadata?: CommercialAccessMetadata): CommercialAccessSummary {
+    return toCommercialAccessSummary(this.toAuthRecord(user, metadata));
   }
 
   private async loginWithDatabase(body: AuthCredentialsInput) {
@@ -560,6 +1206,25 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  private async loadCommercialAccessMetadata() {
+    const snapshot = await this.moduleStateService.load<CommercialAccessesSnapshot>("commercial_accesses");
+    return snapshot?.records ?? [];
+  }
+
+  private async loadCommercialAccessMetadataMap() {
+    const records = await this.loadCommercialAccessMetadata();
+    return new Map(records.map((record) => [record.userId, record]));
+  }
+
+  private async upsertCommercialAccessMetadata(record: CommercialAccessMetadata) {
+    const records = await this.loadCommercialAccessMetadata();
+    const nextRecords = records.filter((entry) => entry.userId !== record.userId);
+    nextRecords.push(record);
+    await this.moduleStateService.save<CommercialAccessesSnapshot>("commercial_accesses", {
+      records: nextRecords
+    });
+  }
+
   private async findDatabaseAccount(email: string): Promise<AuthRecord | null> {
     const user = await this.prisma.user.findUnique({
       where: {
@@ -572,21 +1237,30 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
       return null;
     }
 
-    return this.toAuthRecord(user);
+    const metadata = (await this.loadCommercialAccessMetadataMap()).get(user.id);
+    return this.toAuthRecord(user, metadata);
   }
 
-  private toAuthRecord(user: DatabaseAuthUser): AuthRecord {
+  private toAuthRecord(user: DatabaseAuthUser, metadata?: CommercialAccessMetadata): AuthRecord {
     const roleCodes = user.roles.flatMap((userRole) => (isRoleCode(userRole.role.code) ? [userRole.role.code] : []));
+    const accountType = resolveAccountType(roleCodes);
+    const userUpdatedAt = user.updatedAt.toISOString();
+    const updatedAt = metadata?.updatedAt && metadata.updatedAt > userUpdatedAt ? metadata.updatedAt : userUpdatedAt;
 
     return {
       id: user.id,
-      name: resolveDisplayName(user),
+      name: metadata?.name ?? resolveDisplayName(user),
       email: user.email,
-      phone: user.phone ?? undefined,
+      phone: user.phone ?? metadata?.phone ?? undefined,
       password: user.passwordHash,
-      accountType: resolveAccountType(roleCodes),
+      accountType,
       roles: buildRoles(roleCodes),
-      vendorCode: user.vendor?.codes[0]?.code
+      vendorCode: accountType === "seller" ? metadata?.vendorCode ?? user.vendor?.codes[0]?.code : undefined,
+      wholesaleLeadId: accountType === "wholesale" ? metadata?.wholesaleLeadId : undefined,
+      status: normalizeStatus(user.status),
+      lastLoginAt: user.lastLoginAt?.toISOString(),
+      createdAt: metadata?.createdAt ?? user.createdAt.toISOString(),
+      updatedAt
     };
   }
 

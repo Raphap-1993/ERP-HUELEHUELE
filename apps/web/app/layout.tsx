@@ -30,17 +30,46 @@ function isExternal(item: NavigationItem) {
   return Boolean(item.external) || /^https?:\/\//.test(item.href);
 }
 
-function NavLink({ item, className }: { item: NavigationItem; className: string }) {
+const compactHeaderIcons: Record<string, ReactNode> = {
+  "/cuenta": (
+    <svg className="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.9} aria-hidden="true">
+      <path d="M3 21h18" />
+      <path d="M7 17V9" />
+      <path d="M12 17V5" />
+      <path d="M17 17v-6" />
+      <path d="M5 7l7-4 7 4" />
+    </svg>
+  ),
+  "/checkout": (
+    <svg className="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.9} aria-hidden="true">
+      <circle cx="9" cy="20" r="1.5" />
+      <circle cx="18" cy="20" r="1.5" />
+      <path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 1.9-1.4L21 8H6" />
+    </svg>
+  )
+};
+
+function NavLink({ item, className, compact = false }: { item: NavigationItem; className: string; compact?: boolean }) {
+  const icon = compact ? compactHeaderIcons[item.href] : null;
+  const content = icon ? (
+    <>
+      {icon}
+      <span className="sr-only">{item.label}</span>
+    </>
+  ) : (
+    item.label
+  );
+
   if (isExternal(item)) {
     return (
-      <a href={item.href} className={className} target="_blank" rel="noreferrer">
-        {item.label}
+      <a href={item.href} className={className} target="_blank" rel="noreferrer" aria-label={icon ? item.label : undefined} title={icon ? item.label : undefined}>
+        {content}
       </a>
     );
   }
   return (
-    <Link href={item.href} className={className}>
-      {item.label}
+    <Link href={item.href} className={className} aria-label={icon ? item.label : undefined} title={icon ? item.label : undefined}>
+      {content}
     </Link>
   );
 }
@@ -116,7 +145,12 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                     <NavLink
                       key={`${item.href}-${item.label}`}
                       item={item}
-                      className="rounded-full px-3.5 py-2 text-sm text-black/60 transition hover:bg-[#eef6e8] hover:text-[#1a3a2e]"
+                      compact={Boolean(compactHeaderIcons[item.href])}
+                      className={
+                        compactHeaderIcons[item.href]
+                          ? "inline-flex h-10 w-10 items-center justify-center rounded-full text-black/60 transition hover:bg-[#eef6e8] hover:text-[#1a3a2e]"
+                          : "rounded-full px-3.5 py-2 text-sm text-black/60 transition hover:bg-[#eef6e8] hover:text-[#1a3a2e]"
+                      }
                     />
                   ))}
                 </nav>

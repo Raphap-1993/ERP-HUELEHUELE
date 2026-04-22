@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AddToCartLink } from "../../../components/add-to-cart-link";
 import { fetchProductBySlug } from "../../../lib/api";
 import {
   resolveStorefrontMediaSrc,
@@ -98,7 +99,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const variants = (product.variants ?? []).filter((variant) => variant.status === "active");
   const hasMultipleVariants = variants.length > 1;
-  const checkoutHref = "/checkout";
   const bundleComponents = product.bundleComponents ?? [];
   const purchasable = isPurchasable(product);
   const stockBadge = resolveStockBadge(product);
@@ -119,12 +119,12 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             <span className="text-[#1a3a2e]">{product.name}</span>
           </div>
           {purchasable ? (
-            <Link
-              href={checkoutHref}
+            <AddToCartLink
+              productSlug={product.slug}
               className="rounded-full bg-[#61a740] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#577e2f]"
             >
               Comprar ahora
-            </Link>
+            </AddToCartLink>
           ) : (
             <span
               aria-disabled="true"
@@ -214,12 +214,12 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
               <div className="mt-6 flex flex-wrap gap-3">
                 {purchasable ? (
-                  <Link
-                    href={checkoutHref}
+                  <AddToCartLink
+                    productSlug={product.slug}
                     className="rounded-full bg-[#61a740] px-7 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#577e2f]"
                   >
                     Comprar ahora
-                  </Link>
+                  </AddToCartLink>
                 ) : (
                   <span
                     aria-disabled="true"
@@ -282,12 +282,13 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                       <div className="flex items-center gap-4">
                         <div className="text-sm font-bold text-[#1a3a2e]">{formatPrice(variant.price, currencyCode)}</div>
                         {isPurchasable(variant) ? (
-                          <Link
-                            href="/checkout"
+                          <AddToCartLink
+                            productSlug={product.slug}
+                            variantId={variant.id}
                             className="rounded-full bg-[#577e2f] px-4 py-2 text-xs font-semibold text-white transition hover:bg-black"
                           >
                             Comprar
-                          </Link>
+                          </AddToCartLink>
                         ) : (
                           <span
                             aria-disabled="true"

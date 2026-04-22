@@ -141,6 +141,7 @@ const roleLabels: Record<RoleCode, string> = {
   [RoleCode.Marketing]: "Marketing",
   [RoleCode.SellerManager]: "Seller Manager",
   [RoleCode.Vendedor]: "Vendedor",
+  [RoleCode.Mayorista]: "Mayorista",
   [RoleCode.Cliente]: "Cliente"
 };
 const customerDocumentTypes = new Set<CheckoutDocumentType>(CHECKOUT_DOCUMENT_TYPE_OPTIONS.map((option) => option.value));

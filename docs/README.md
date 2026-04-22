@@ -45,7 +45,9 @@ El codigo local es la fuente de verdad de aplicacion; produccion debe homologars
 - [Fulfillment por almacenes](./flows/warehouse-fulfillment-triangulation.md)
 - [Transferencias, GRE y stickers](./flows/warehouse-transfers-sunat-guides-and-package-labels.md)
 - [Vendedores y comisiones](./flows/vendors-and-commissions.md)
+- [Postulación de vendedores](./flows/vendor-application.md)
 - [Mayoristas](./flows/wholesale-flow.md)
+- [Accesos comerciales por cuenta](./flows/commercial-accesses.md)
 
 ### Datos
 
@@ -113,6 +115,7 @@ Si una decision historica sigue aplicando, debe estar reflejada en los documento
 - `/reportes`
 - `/vendedores`
 - `/comisiones`
+- `/accesos`
 - `/crm`
 - `/cms`
 - `/auditoria`

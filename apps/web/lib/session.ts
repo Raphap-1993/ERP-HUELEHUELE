@@ -59,12 +59,13 @@ export function clearStoredCart() {
 export function addStoredCartItem(item: CheckoutItemInput) {
   const current = readStoredCart();
   const next = [...current];
-  const index = next.findIndex((entry) => entry.slug === item.slug);
+  const index = next.findIndex((entry) => entry.slug === item.slug && (entry.variantId ?? "") === (item.variantId ?? ""));
 
   if (index >= 0) {
     next[index] = {
       slug: item.slug,
-      quantity: next[index].quantity + item.quantity
+      quantity: next[index].quantity + item.quantity,
+      ...(item.variantId ? { variantId: item.variantId } : {})
     };
   } else {
     next.push(item);

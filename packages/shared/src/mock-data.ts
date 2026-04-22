@@ -115,7 +115,8 @@ export const adminNavigation: AdminNavigationGroup[] = [
     items: [
       { label: "Vendedores", href: "/vendedores", requiredRoles: adminAccessRoles.vendors },
       { label: "Comisiones", href: "/comisiones", requiredRoles: adminAccessRoles.commissions },
-      { label: "Mayoristas", href: "/mayoristas", requiredRoles: adminAccessRoles.wholesale }
+      { label: "Mayoristas", href: "/mayoristas", requiredRoles: adminAccessRoles.wholesale },
+      { label: "Accesos", href: "/accesos", requiredRoles: adminAccessRoles.commercialAccesses }
     ]
   },
   {
@@ -521,4 +522,4 @@ export const paymentReviews = [
   }
 ];
 
-export const webRoles: RoleCode[] = [RoleCode.Cliente, RoleCode.Vendedor];
+export const webRoles: RoleCode[] = [RoleCode.Cliente, RoleCode.Vendedor, RoleCode.Mayorista];

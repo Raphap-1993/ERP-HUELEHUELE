@@ -94,8 +94,9 @@ export interface AuthUserSummary {
   name: string;
   email: string;
   roles: AuthRoleSummary[];
-  accountType: "admin" | "seller" | "customer" | "operator";
+  accountType: "admin" | "seller" | "wholesale" | "customer" | "operator";
   vendorCode?: string;
+  wholesaleLeadId?: string;
 }
 
 export interface AuthSessionSummary {
@@ -140,6 +141,55 @@ export interface AuthRegisterInput extends AuthCredentialsInput {
   name: string;
   accountType?: "customer" | "seller";
   phone?: string;
+}
+
+export type CommercialAccessAccountType = "seller" | "wholesale";
+
+export type CommercialAccessStatus = "active" | "inactive" | "suspended";
+
+export interface CommercialAccessSummary {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  accountType: CommercialAccessAccountType;
+  status: CommercialAccessStatus;
+  roles: AuthRoleSummary[];
+  vendorCode?: string;
+  wholesaleLeadId?: string;
+  lastLoginAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CommercialAccessCreateInput {
+  name: string;
+  email: string;
+  accountType: CommercialAccessAccountType;
+  phone?: string;
+  password?: string;
+  vendorCode?: string;
+  wholesaleLeadId?: string;
+}
+
+export interface CommercialAccessUpdateInput {
+  name?: string;
+  phone?: string;
+  vendorCode?: string;
+  wholesaleLeadId?: string;
+}
+
+export interface CommercialAccessStatusInput {
+  status: CommercialAccessStatus;
+}
+
+export interface CommercialAccessResetPasswordInput {
+  password?: string;
+}
+
+export interface CommercialAccessActionEnvelope extends ActionEnvelope {
+  access?: CommercialAccessSummary;
+  temporaryPassword?: string;
 }
 
 export type VendorApplicationIntent = "affiliate" | "seller" | "content_creator" | "other";

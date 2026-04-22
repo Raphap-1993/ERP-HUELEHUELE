@@ -6,7 +6,8 @@ La API se separa por superficie:
 
 - `/store`: storefront publico.
 - `/admin`: backoffice.
-- `/vendor`: panel seller cuando aplique.
+- `/seller`: panel vendedor autenticado.
+- `/auth`: sesiones compartidas por web y admin.
 - `/health`: salud operativa.
 
 Las respuestas siguen el patron:
@@ -25,6 +26,18 @@ Las respuestas siguen el patron:
 - `GET /health/operational`
 
 ## Store
+
+### Auth Publico Y Comercial
+
+- `POST /auth/login`
+- `POST /auth/register`
+- `GET /auth/me`
+- `POST /auth/logout`
+
+Reglas:
+
+- `POST /auth/register` solo puede crear cliente final.
+- Vendedores y mayoristas reciben credenciales desde backoffice, no por auto-registro publico.
 
 ### Catalogo Y CMS
 
@@ -64,9 +77,9 @@ Reglas:
 
 ### Auth Y Dashboard
 
-- `POST /admin/auth/login`
-- `POST /admin/auth/logout`
-- `GET /admin/me`
+- `POST /auth/login`
+- `POST /auth/logout`
+- `GET /auth/me`
 - `GET /admin/dashboard/overview`
 
 ### Productos, CMS Y Media
@@ -190,18 +203,36 @@ Reglas:
 
 - `GET /admin/vendors`
 - `POST /admin/vendors`
+- `PATCH /admin/vendors/:id`
 - `GET /admin/vendor-applications`
 - `POST /admin/vendor-applications/:id/screen`
 - `POST /admin/vendor-applications/:id/approve`
 - `POST /admin/vendor-applications/:id/reject`
+- `GET /admin/commercial-accesses`
+- `POST /admin/commercial-accesses`
+- `PATCH /admin/commercial-accesses/:id`
+- `POST /admin/commercial-accesses/:id/status`
+- `POST /admin/commercial-accesses/:id/reset-password`
 - `GET /admin/commissions`
 - `GET /admin/commission-payouts`
 - `POST /admin/commission-payouts`
 
+### Panel Vendedor
+
+- `GET /seller/panel/overview`
+
+Reglas:
+
+- requiere sesion con rol `vendedor` o `seller_manager`.
+- la cuenta debe tener `vendorCode` resoluble para mostrar ventas, comisiones y liquidaciones.
+
 ### Mayoristas, Marketing, Loyalty Y Notificaciones
 
-- `GET /admin/wholesale`
-- `POST /admin/wholesale/:id/status`
+- `GET /admin/wholesale-leads`
+- `POST /admin/wholesale-leads/:id/status`
+- `GET /admin/wholesale-quotes`
+- `POST /admin/wholesale-quotes`
+- `GET /admin/wholesale-tiers`
 - `GET /admin/marketing`
 - `POST /admin/marketing/campaigns`
 - `GET /admin/loyalty`

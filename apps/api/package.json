@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "tsc --noEmit -p tsconfig.json",
     "test:erp-sales": "npm run build -w @huelegood/shared && node --import tsx --test test/erp-sales-flow.test.ts",
+    "test:commercial-accesses": "npm run build -w @huelegood/shared && node --import tsx --test test/commercial-accesses.test.ts",
     "prisma:generate": "prisma generate --schema ../../prisma/schema.prisma",
     "db:push": "prisma db push --schema ../../prisma/schema.prisma",
     "seed": "tsx ../../prisma/seed.ts"

@@ -6,6 +6,7 @@ export enum RoleCode {
   Marketing = "marketing",
   SellerManager = "seller_manager",
   Vendedor = "vendedor",
+  Mayorista = "mayorista",
   Cliente = "cliente"
 }
 
