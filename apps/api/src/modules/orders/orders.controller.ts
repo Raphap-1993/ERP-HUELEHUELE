@@ -1,6 +1,8 @@
 import { Body, Controller, Delete, Get, Param, Post, Req } from "@nestjs/common";
 import {
   adminAccessRoles,
+  type AdminBackofficeOrderBulkInput,
+  type AdminBackofficeOrderInput,
   type AdminDispatchLabelPrintInput,
   type AdminManualPaymentCreateInput,
   type AdminOrderStatusTransitionInput,
@@ -31,26 +33,17 @@ export class OrdersController {
   }
 
   @Post()
-  createBackofficeOrder(
-    @Body() body: {
-      customer: { firstName: string; lastName: string; email: string; phone: string };
-      address: {
-        line1: string;
-        line2?: string;
-        city?: string;
-        region?: string;
-        countryCode?: string;
-        departmentCode?: string;
-        provinceCode?: string;
-        districtCode?: string;
-      };
-      items: Array<{ slug: string; name: string; sku: string; variantId?: string; quantity: number; unitPrice: number }>;
-      initialStatus: "paid" | "pending_payment";
-      notes?: string;
-      vendorCode?: string;
-    }
-  ) {
+  createBackofficeOrder(@Body() body: AdminBackofficeOrderInput) {
     return this.ordersService.createBackofficeOrder({ ...body, reviewer: "admin" });
+  }
+
+  @Post("bulk")
+  createBackofficeOrdersBulk(@Body() body: AdminBackofficeOrderBulkInput) {
+    return this.ordersService.createBackofficeOrdersBulk({
+      ...body,
+      reviewer: "admin",
+      orders: Array.isArray(body.orders) ? body.orders : []
+    });
   }
 
   @Get(":orderNumber")

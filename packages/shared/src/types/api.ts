@@ -1247,6 +1247,47 @@ export interface AdminPaymentSummary {
   updatedAt: string;
 }
 
+export interface AdminBackofficeOrderCustomerInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+}
+
+export interface AdminBackofficeOrderAddressInput {
+  line1: string;
+  line2?: string;
+  city?: string;
+  region?: string;
+  countryCode?: string;
+  departmentCode?: string;
+  departmentName?: string;
+  provinceCode?: string;
+  provinceName?: string;
+  districtCode?: string;
+  districtName?: string;
+}
+
+export interface AdminBackofficeOrderItemInput {
+  slug?: string;
+  name?: string;
+  sku?: string;
+  variantId?: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+export interface AdminBackofficeOrderInput {
+  clientReference?: string;
+  customer: AdminBackofficeOrderCustomerInput;
+  address: AdminBackofficeOrderAddressInput;
+  items: AdminBackofficeOrderItemInput[];
+  initialStatus: "paid" | "pending_payment";
+  notes?: string;
+  vendorCode?: string;
+  reviewer?: string;
+}
+
 export interface AdminManualPaymentCreateInput {
   reviewer?: string;
   reference?: string;
@@ -1447,6 +1488,35 @@ export interface AdminDispatchLabelPrintInput {
   templateVersion?: "dispatch-label-v1";
   format?: "html" | "pdf";
   channel?: "single" | "batch";
+}
+
+export interface AdminBackofficeOrderActionEnvelope {
+  status: "ok";
+  message: string;
+  orderNumber: string;
+  order: AdminOrderSummary;
+}
+
+export interface AdminBackofficeOrderBulkInput {
+  orders: AdminBackofficeOrderInput[];
+  reviewer?: string;
+}
+
+export interface AdminBackofficeOrderBulkResult {
+  index: number;
+  clientReference?: string;
+  status: "created" | "rejected";
+  message: string;
+  orderNumber?: string;
+  order?: AdminOrderSummary;
+}
+
+export interface AdminBackofficeOrderBulkActionEnvelope {
+  status: "ok" | "partial" | "rejected";
+  message: string;
+  createdCount: number;
+  failedCount: number;
+  results: AdminBackofficeOrderBulkResult[];
 }
 
 export interface AdminOrderVendorAssignmentInput {

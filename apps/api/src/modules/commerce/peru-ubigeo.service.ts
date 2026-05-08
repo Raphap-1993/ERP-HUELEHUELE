@@ -39,6 +39,18 @@ function normalizeCode(value?: string) {
   return normalized || undefined;
 }
 
+function normalizeName(value?: string) {
+  const normalized = value
+    ?.trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("es-PE")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+  return normalized || undefined;
+}
+
 function toTitleCase(value: string) {
   return value
     .trim()
@@ -170,6 +182,90 @@ export class PeruUbigeoService {
       districtCode: district.code,
       districtName: district.name
     };
+  }
+
+  resolveFlexibleSelection(input: {
+    departmentCode?: string;
+    departmentName?: string;
+    provinceCode?: string;
+    provinceName?: string;
+    districtCode?: string;
+    districtName?: string;
+  }) {
+    if (input.departmentCode && input.provinceCode && input.districtCode) {
+      return this.resolveSelection({
+        departmentCode: input.departmentCode,
+        provinceCode: input.provinceCode,
+        districtCode: input.districtCode
+      });
+    }
+
+    const department = input.departmentCode
+      ? this.departmentsByCode.get(this.requireDepartmentCode(input.departmentCode))
+      : this.findDepartmentByName(input.departmentName);
+
+    if (!department) {
+      throw new BadRequestException("Selecciona un departamento válido de Perú.");
+    }
+
+    const province = input.provinceCode
+      ? this.provincesByCode.get(this.requireProvinceCode(input.provinceCode))
+      : this.findProvinceByName(input.provinceName, department.code);
+
+    if (!province || province.departmentCode !== department.code) {
+      throw new BadRequestException("Selecciona una provincia válida para el departamento elegido.");
+    }
+
+    const district = input.districtCode
+      ? this.districtsByCode.get(this.requireDistrictCode(input.districtCode))
+      : this.findDistrictByName(input.districtName, department.code, province.code);
+
+    if (!district || district.departmentCode !== department.code || district.provinceCode !== province.code) {
+      throw new BadRequestException("Selecciona un distrito válido para la provincia elegida.");
+    }
+
+    return {
+      departmentCode: department.code,
+      departmentName: department.name,
+      provinceCode: province.code,
+      provinceName: province.name,
+      districtCode: district.code,
+      districtName: district.name
+    };
+  }
+
+  private findDepartmentByName(value?: string) {
+    const normalized = normalizeName(value);
+    if (!normalized) {
+      return undefined;
+    }
+
+    return this.departments.find((record) => normalizeName(record.name) === normalized);
+  }
+
+  private findProvinceByName(value: string | undefined, departmentCode: string) {
+    const normalized = normalizeName(value);
+    if (!normalized) {
+      return undefined;
+    }
+
+    return this.provinces.find(
+      (record) => record.departmentCode === departmentCode && normalizeName(record.name) === normalized
+    );
+  }
+
+  private findDistrictByName(value: string | undefined, departmentCode: string, provinceCode: string) {
+    const normalized = normalizeName(value);
+    if (!normalized) {
+      return undefined;
+    }
+
+    return this.districts.find(
+      (record) =>
+        record.departmentCode === departmentCode &&
+        record.provinceCode === provinceCode &&
+        normalizeName(record.name) === normalized
+    );
   }
 
   private requireDepartmentCode(value?: string) {

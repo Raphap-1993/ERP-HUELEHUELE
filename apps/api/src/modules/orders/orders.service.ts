@@ -1,6 +1,9 @@
 import { BadRequestException, ConflictException, Inject, Injectable, InternalServerErrorException, NotFoundException, OnModuleInit, forwardRef } from "@nestjs/common";
 import { createHash } from "node:crypto";
 import {
+  type AdminBackofficeOrderBulkInput,
+  type AdminBackofficeOrderBulkResult,
+  type AdminBackofficeOrderInput,
   type AdminDispatchLabelAvailabilitySummary,
   type AdminDispatchLabelPrintInput,
   type AdminDispatchLabelSummary,
@@ -147,6 +150,7 @@ const dispatchLabelStatuses = new Set<OrderStatus>([
   OrderStatus.Completed
 ]);
 const validCheckoutDocumentTypes = new Set<CheckoutDocumentType>(["dni", "ce", "ruc", "passport", "other_sunat"]);
+const maxBackofficeBulkOrders = 100;
 
 function normalizeCode(value?: string) {
   return value?.trim().toUpperCase() || undefined;
@@ -303,6 +307,14 @@ function fullName(customer: CheckoutCustomerInput) {
 
 function totalOrderUnits(items: OrderItemSummary[]) {
   return items.reduce((total, item) => total + item.quantity, 0);
+}
+
+function formatUnexpectedErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  return fallback;
 }
 
 function dispatchLabelActionLabel(status?: OrderStatus): "Imprimir etiqueta" | "Reimprimir etiqueta" {
@@ -847,24 +859,76 @@ export class OrdersService implements OnModuleInit {
     return order;
   }
 
-  async createBackofficeOrder(input: {
-    customer: { firstName: string; lastName: string; email: string; phone: string };
-    address: {
-      line1: string;
-      line2?: string;
-      city?: string;
-      region?: string;
-      countryCode?: string;
-      departmentCode?: string;
-      provinceCode?: string;
-      districtCode?: string;
+  async createBackofficeOrder(input: AdminBackofficeOrderInput) {
+    const created = await this.createBackofficeOrderRecord(input);
+
+    return {
+      status: "ok" as const,
+      message: created.message,
+      orderNumber: created.orderNumber,
+      order: created.order
     };
-    items: Array<{ slug: string; name: string; sku: string; variantId?: string; quantity: number; unitPrice: number }>;
-    initialStatus: "paid" | "pending_payment";
-    notes?: string;
-    vendorCode?: string;
-    reviewer?: string;
-  }) {
+  }
+
+  async createBackofficeOrdersBulk(input: AdminBackofficeOrderBulkInput) {
+    const orders = Array.isArray(input.orders) ? input.orders : [];
+    if (!orders.length) {
+      throw new BadRequestException("Debes enviar al menos un pedido para la carga masiva.");
+    }
+
+    if (orders.length > maxBackofficeBulkOrders) {
+      throw new BadRequestException(`La carga masiva admite hasta ${maxBackofficeBulkOrders} pedidos por lote.`);
+    }
+
+    const reviewer = normalizeText(input.reviewer) ?? "backoffice";
+    const results: AdminBackofficeOrderBulkResult[] = [];
+    let createdCount = 0;
+
+    for (const [index, orderInput] of orders.entries()) {
+      try {
+        const created = await this.createBackofficeOrderRecord({
+          ...orderInput,
+          reviewer: normalizeText(orderInput.reviewer) ?? reviewer
+        });
+
+        results.push({
+          index,
+          clientReference: normalizeText(orderInput.clientReference),
+          status: "created",
+          message: created.message,
+          orderNumber: created.orderNumber,
+          order: created.order
+        });
+        createdCount += 1;
+      } catch (error) {
+        results.push({
+          index,
+          clientReference: normalizeText(orderInput.clientReference),
+          status: "rejected",
+          message: formatUnexpectedErrorMessage(error, "No se pudo registrar el pedido.")
+        });
+      }
+    }
+
+    const failedCount = results.length - createdCount;
+    const status = createdCount === results.length ? "ok" : createdCount === 0 ? "rejected" : "partial";
+    const message =
+      status === "ok"
+        ? `Se registraron ${createdCount} pedido(s) correctamente.`
+        : status === "rejected"
+          ? `No se pudo registrar ningún pedido del lote (${failedCount} rechazado(s)).`
+          : `Se registraron ${createdCount} pedido(s) y ${failedCount} quedaron rechazados.`;
+
+    return {
+      status,
+      message,
+      createdCount,
+      failedCount,
+      results
+    };
+  }
+
+  private async createBackofficeOrderRecord(input: AdminBackofficeOrderInput) {
     if (!input.items?.length) throw new BadRequestException("El pedido debe tener al menos un ítem.");
     if (!input.customer?.firstName?.trim()) throw new BadRequestException("El nombre del cliente es obligatorio.");
 
@@ -880,16 +944,16 @@ export class OrdersService implements OnModuleInit {
 
     const orderItems = await this.inventoryService.hydrateOrderItems(
       input.items.map((item) => ({
-      slug: item.slug,
-      name: item.name,
-      sku: item.sku,
-      variantId: item.variantId,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-      lineTotal: item.unitPrice * item.quantity,
-      imageUrl: undefined,
-      originalUnitPrice: item.unitPrice,
-      discountApplied: 0
+        slug: item.slug ?? "",
+        name: item.name ?? "",
+        sku: item.sku ?? "",
+        variantId: item.variantId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        lineTotal: item.unitPrice * item.quantity,
+        imageUrl: undefined,
+        originalUnitPrice: item.unitPrice,
+        discountApplied: 0
       }))
     );
 
@@ -1014,7 +1078,6 @@ export class OrdersService implements OnModuleInit {
     await this.persistState();
 
     return {
-      status: "ok" as const,
       message: `Pedido ${orderNumber} registrado correctamente.`,
       orderNumber,
       order: this.toOrderSummary(order)
@@ -1030,26 +1093,33 @@ export class OrdersService implements OnModuleInit {
       region?: string;
       countryCode?: string;
       departmentCode?: string;
+      departmentName?: string;
       provinceCode?: string;
+      provinceName?: string;
       districtCode?: string;
+      districtName?: string;
     }
   ) {
     const recipientName = [customer.firstName, customer.lastName].filter(Boolean).join(" ");
     const countryCode = normalizeText(address.countryCode)?.toUpperCase() || "PE";
     const departmentCode = normalizeText(address.departmentCode);
+    const departmentName = normalizeText(address.departmentName);
     const provinceCode = normalizeText(address.provinceCode);
+    const provinceName = normalizeText(address.provinceName);
     const districtCode = normalizeText(address.districtCode);
-    const hasAnyUbigeo = Boolean(departmentCode || provinceCode || districtCode);
+    const districtName = normalizeText(address.districtName);
+    const hasAnyUbigeo = Boolean(
+      departmentCode || departmentName || provinceCode || provinceName || districtCode || districtName
+    );
 
     if (countryCode === "PE" && hasAnyUbigeo) {
-      if (!departmentCode || !provinceCode || !districtCode) {
-        throw new BadRequestException("Debes completar departamento, provincia y distrito para pedidos manuales en Perú.");
-      }
-
-      const ubigeo = this.peruUbigeoService.resolveSelection({
+      const ubigeo = this.peruUbigeoService.resolveFlexibleSelection({
         departmentCode,
+        departmentName,
         provinceCode,
-        districtCode
+        provinceName,
+        districtCode,
+        districtName
       });
 
       return normalizeAddress({

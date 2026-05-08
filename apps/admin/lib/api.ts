@@ -1,4 +1,8 @@
 import type {
+  AdminBackofficeOrderActionEnvelope,
+  AdminBackofficeOrderBulkActionEnvelope,
+  AdminBackofficeOrderBulkInput,
+  AdminBackofficeOrderInput,
   AuthCredentialsInput,
   AdminReportFiltersInput,
   AdminDispatchLabelPrintInput,
@@ -345,27 +349,15 @@ export async function resendOrderApprovalEmail(orderNumber: string) {
   });
 }
 
-export async function createBackofficeOrder(body: {
-  customer: { firstName: string; lastName: string; email: string; phone: string };
-  address: {
-    line1: string;
-    line2?: string;
-    city?: string;
-    region?: string;
-    countryCode?: string;
-    departmentCode?: string;
-    departmentName?: string;
-    provinceCode?: string;
-    provinceName?: string;
-    districtCode?: string;
-    districtName?: string;
-  };
-  items: Array<{ slug: string; name: string; sku: string; variantId?: string; quantity: number; unitPrice: number }>;
-  initialStatus: "paid" | "pending_payment";
-  notes?: string;
-  vendorCode?: string;
-}) {
-  return requestJson<{ status: string; message: string; orderNumber: string }>("/admin/orders", {
+export async function createBackofficeOrder(body: AdminBackofficeOrderInput) {
+  return requestJson<AdminBackofficeOrderActionEnvelope>("/admin/orders", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function createBackofficeOrdersBulk(body: AdminBackofficeOrderBulkInput) {
+  return requestJson<AdminBackofficeOrderBulkActionEnvelope>("/admin/orders/bulk", {
     method: "POST",
     body: JSON.stringify(body)
   });

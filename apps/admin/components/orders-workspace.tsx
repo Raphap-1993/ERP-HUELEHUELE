@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
 import { AdminDataTable, Badge, Button, Combobox, Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Separator, StatusBadge, TimelinePedido, type ComboboxOption } from "@huelegood/ui";
 import {
   CHECKOUT_DOCUMENT_TYPE_OPTIONS,
@@ -26,6 +26,7 @@ import {
   assignOrderFulfillment,
   confirmOnlinePayment,
   createBackofficeOrder,
+  createBackofficeOrdersBulk,
   deleteOrder,
   fetchAdminProducts,
   fetchOrder,
@@ -41,6 +42,7 @@ import {
   transitionOrderStatus,
   updateOrderVendor
 } from "../lib/api";
+import { downloadBulkOrdersTemplate, parseBulkOrdersInput } from "../lib/order-bulk-import";
 import { useAdminSession } from "./admin-session-provider";
 
 function formatCurrency(value: number) {
@@ -436,6 +438,8 @@ type VendorPickerOption = ComboboxOption & {
   vendor: AdminOrderVendorOption;
 };
 
+type BulkCreateResult = Awaited<ReturnType<typeof createBackofficeOrdersBulk>>;
+
 export function OrdersWorkspace() {
   const { session } = useAdminSession();
   const [orders, setOrders] = useState<AdminOrderSummary[]>([]);
@@ -489,6 +493,12 @@ export function OrdersWorkspace() {
   const [createDistricts, setCreateDistricts] = useState<PeruDistrictSummary[]>([]);
   const [productSearch, setProductSearch] = useState("");
   const [vendorSearch, setVendorSearch] = useState("");
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkSource, setBulkSource] = useState("");
+  const [bulkSourceName, setBulkSourceName] = useState<string | null>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [bulkResult, setBulkResult] = useState<BulkCreateResult | null>(null);
   const activeOrder = selectedOrder?.orderNumber === selectedOrderNumber ? selectedOrder : null;
 
   useEffect(() => {
@@ -797,6 +807,15 @@ export function OrdersWorkspace() {
         vendor
       })),
     [visibleSelectableVendors]
+  );
+  const bulkPreview = useMemo(() => parseBulkOrdersInput(bulkSource), [bulkSource]);
+  const bulkPreviewUnits = useMemo(
+    () => bulkPreview.orders.reduce((total, order) => total + order.items.reduce((sum, item) => sum + item.quantity, 0), 0),
+    [bulkPreview]
+  );
+  const bulkCreatedResults = useMemo(
+    () => bulkResult?.results.filter((result) => result.status === "created") ?? [],
+    [bulkResult]
   );
 
   function openApproveConfirm() {
@@ -1118,6 +1137,65 @@ export function OrdersWorkspace() {
     }
   }
 
+  function openBulkModal() {
+    setBulkSource("");
+    setBulkSourceName(null);
+    setBulkError(null);
+    setBulkResult(null);
+    setBulkOpen(true);
+  }
+
+  async function handleBulkFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setBulkSourceName(null);
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      setBulkSource(text);
+      setBulkSourceName(file.name);
+      setBulkError(null);
+      setBulkResult(null);
+    } catch (error) {
+      setBulkError(error instanceof Error ? error.message : "No se pudo leer el archivo.");
+    } finally {
+      event.target.value = "";
+    }
+  }
+
+  async function handleBulkImport() {
+    if (!bulkPreview.orders.length || bulkPreview.issues.length > 0) {
+      return;
+    }
+
+    setBulkLoading(true);
+    setBulkError(null);
+    setBulkResult(null);
+
+    try {
+      const response = await createBackofficeOrdersBulk({
+        orders: bulkPreview.orders
+      });
+
+      setBulkResult(response);
+
+      const firstCreatedOrder = response.results.find((result) => result.status === "created" && result.orderNumber)?.orderNumber;
+      if (firstCreatedOrder) {
+        setSelectedOrderNumber(firstCreatedOrder);
+      }
+
+      if (response.createdCount > 0) {
+        setRefreshKey((current) => current + 1);
+      }
+    } catch (error) {
+      setBulkError(error instanceof Error ? error.message : "No se pudo procesar la carga masiva.");
+    } finally {
+      setBulkLoading(false);
+    }
+  }
+
   function addItem(product: ProductAdminSummary) {
     setCreateItems((prev) => {
       const existing = prev.find((i) => i.slug === product.slug);
@@ -1263,6 +1341,9 @@ export function OrdersWorkspace() {
           <Button type="button" variant="secondary" onClick={() => setRefreshKey((k) => k + 1)} disabled={loading}>
             {loading ? "Actualizando..." : "Refrescar"}
           </Button>
+          <Button type="button" variant="secondary" onClick={openBulkModal}>
+            Carga masiva
+          </Button>
           <button
             type="button"
             onClick={openCreateModal}
@@ -1280,6 +1361,165 @@ export function OrdersWorkspace() {
         headers={["Pedido", "Cliente", "Total", "Estado", "Pago", "Solicitud manual", "Vendedor"]}
         rows={allOrdersRows}
       />
+
+      <Dialog open={bulkOpen} onClose={() => { if (!bulkLoading) setBulkOpen(false); }} size="lg">
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Carga masiva de pedidos</DialogTitle>
+            <DialogDescription className="mt-2 text-sm text-black/55">
+              Pega un CSV/TSV o sube un archivo. Repite el mismo <span className="font-medium text-[#132016]">pedido_ref</span> cuando un pedido tenga varias líneas.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="space-y-5">
+            <div className="rounded-[16px] border border-[#d9e9df] bg-[#f8fcf9] p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-[#132016]">Plantilla operativa</p>
+                  <p className="text-xs text-black/55">
+                    Soporta <span className="font-medium">producto_sku</span> o <span className="font-medium">variant_id</span>, y destino por ubigeo o por ciudad.
+                  </p>
+                </div>
+                <Button type="button" variant="secondary" onClick={downloadBulkOrdersTemplate}>
+                  Descargar plantilla
+                </Button>
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <label className="inline-flex cursor-pointer items-center rounded-[10px] border border-black/10 bg-white px-3 py-2 text-sm font-medium text-[#132016] transition hover:border-[#52b788] hover:bg-[#f5fbf7]">
+                  Subir archivo
+                  <input type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values,text/plain" className="hidden" onChange={handleBulkFileChange} />
+                </label>
+                {bulkSourceName ? <span className="text-xs text-black/55">Archivo: {bulkSourceName}</span> : null}
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-[11px] text-black/50">CSV o TSV</label>
+              <textarea
+                value={bulkSource}
+                onChange={(event) => {
+                  setBulkSource(event.target.value);
+                  setBulkError(null);
+                  setBulkResult(null);
+                }}
+                rows={12}
+                placeholder="pedido_ref,cliente_nombre,..."
+                className="w-full rounded-[12px] border border-black/15 bg-white px-3 py-3 font-mono text-xs outline-none focus:border-[#52b788]"
+              />
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-4">
+              <SummaryTile label="Pedidos listos" value={String(bulkPreview.orders.length)} />
+              <SummaryTile label="Líneas válidas" value={String(bulkPreview.itemCount)} />
+              <SummaryTile label="Unidades" value={String(bulkPreviewUnits)} />
+              <SummaryTile label="Observaciones" value={String(bulkPreview.issues.length)} />
+            </div>
+
+            {bulkPreview.issues.length > 0 ? (
+              <div className="rounded-[14px] border border-amber-200 bg-amber-50 px-4 py-4">
+                <p className="text-sm font-semibold text-amber-950">Corrige el archivo antes de importar</p>
+                <div className="mt-3 space-y-2 text-sm text-amber-950/80">
+                  {bulkPreview.issues.slice(0, 6).map((issue) => (
+                    <p key={`${issue.row}-${issue.clientReference ?? "sin-ref"}-${issue.message}`}>
+                      Fila {issue.row}{issue.clientReference ? ` · ${issue.clientReference}` : ""}: {issue.message}
+                    </p>
+                  ))}
+                  {bulkPreview.issues.length > 6 ? (
+                    <p className="text-xs text-amber-950/65">Hay {bulkPreview.issues.length - 6} observación(es) adicional(es).</p>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+
+            {bulkPreview.orders.length > 0 ? (
+              <div className="rounded-[16px] border border-black/10 bg-[#fbfbf8] p-4">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-[#132016]">Preview del lote</p>
+                    <p className="text-xs text-black/55">Se muestran los primeros 5 pedidos listos para importar.</p>
+                  </div>
+                  <Badge tone={bulkPreview.issues.length === 0 ? "success" : "warning"}>
+                    {bulkPreview.issues.length === 0 ? "Lote listo" : "Revisar archivo"}
+                  </Badge>
+                </div>
+                <div className="space-y-3">
+                  {bulkPreview.orders.slice(0, 5).map((order) => (
+                    <div key={order.clientReference} className="rounded-[12px] border border-black/10 bg-white px-3 py-3">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-[#132016]">{order.clientReference}</p>
+                          <p className="text-xs text-black/55">
+                            {order.customer.firstName} {order.customer.lastName || ""} · {order.address.districtName ?? order.address.city ?? "Sin destino"}
+                          </p>
+                        </div>
+                        <div className="rounded-full bg-[#eef7f1] px-3 py-1 text-xs font-semibold text-[#2d6a4f]">
+                          {order.initialStatus === "paid" ? "Cobrado" : "Pendiente"}
+                        </div>
+                      </div>
+                      <div className="mt-3 space-y-1.5 text-xs text-black/65">
+                        {order.items.map((item, index) => (
+                          <p key={`${order.clientReference}-${item.sku ?? item.variantId ?? index}`}>
+                            {(item.sku ?? item.variantId) || "Item"} · {item.quantity} u. · S/ {item.unitPrice.toFixed(2)}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {bulkResult ? (
+              <div className="rounded-[16px] border border-black/10 bg-white p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-[#132016]">Resultado del lote</p>
+                    <p className="text-xs text-black/55">{bulkResult.message}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge tone={bulkResult.failedCount === 0 ? "success" : "warning"}>
+                      {bulkResult.createdCount} creado(s)
+                    </Badge>
+                    {bulkResult.failedCount > 0 ? <Badge tone="danger">{bulkResult.failedCount} rechazado(s)</Badge> : null}
+                  </div>
+                </div>
+                <div className="mt-3 space-y-2 text-sm">
+                  {bulkResult.results.slice(0, 8).map((result) => (
+                    <div key={`${result.index}-${result.clientReference ?? "sin-ref"}`} className="rounded-[10px] border border-black/10 bg-[#fbfbf8] px-3 py-2">
+                      <p className="font-medium text-[#132016]">
+                        {result.clientReference ?? `Pedido ${result.index + 1}`} · {result.status === "created" ? "Creado" : "Rechazado"}
+                      </p>
+                      <p className="text-xs text-black/60">
+                        {result.orderNumber ? `${result.orderNumber} · ` : ""}{result.message}
+                      </p>
+                    </div>
+                  ))}
+                  {bulkResult.results.length > 8 ? (
+                    <p className="text-xs text-black/45">Se omitieron {bulkResult.results.length - 8} resultado(s) adicionales en esta vista.</p>
+                  ) : null}
+                </div>
+                {bulkCreatedResults.length > 0 ? (
+                  <p className="mt-3 text-xs text-[#2d6a4f]">
+                    El listado principal ya puede refrescarse con los pedidos creados; se seleccionó el primero del lote para revisión rápida.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
+            {bulkError ? <p className="text-sm text-red-600">{bulkError}</p> : null}
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setBulkOpen(false)} disabled={bulkLoading}>Cerrar</Button>
+            <button
+              type="button"
+              onClick={handleBulkImport}
+              disabled={bulkLoading || bulkPreview.orders.length === 0 || bulkPreview.issues.length > 0}
+              className="rounded-[10px] bg-[#1a3a2e] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#2d6a4f] disabled:opacity-50"
+            >
+              {bulkLoading ? "Importando..." : "Importar pedidos"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal crear pedido manual */}
       <Dialog open={createOpen} onClose={() => { if (!createLoading) setCreateOpen(false); }} size="lg">

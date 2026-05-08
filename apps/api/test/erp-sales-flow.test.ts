@@ -17,6 +17,37 @@ import { OrdersService } from "../src/modules/orders/orders.service";
 import { TransfersService } from "../src/modules/transfers/transfers.service";
 import { VendorsService } from "../src/modules/vendors/vendors.service";
 
+const RealDate = Date;
+const FIXED_TEST_NOW = new RealDate("2026-04-15T12:00:00.000Z");
+
+class FixedDate extends RealDate {
+  constructor(value?: string | number | Date) {
+    super(value ?? FIXED_TEST_NOW.toISOString());
+  }
+
+  static now() {
+    return FIXED_TEST_NOW.getTime();
+  }
+
+  static parse(value: string) {
+    return RealDate.parse(value);
+  }
+
+  static UTC(
+    year: number,
+    monthIndex?: number,
+    date?: number,
+    hours?: number,
+    minutes?: number,
+    seconds?: number,
+    ms?: number
+  ) {
+    return RealDate.UTC(year, monthIndex, date, hours, minutes, seconds, ms);
+  }
+}
+
+globalThis.Date = FixedDate as unknown as DateConstructor;
+
 type BackofficeOrderInput = Parameters<OrdersService["createBackofficeOrder"]>[0];
 type CheckoutOrderInput = Parameters<OrdersService["createCheckoutOrder"]>[0];
 
@@ -1325,6 +1356,156 @@ test("una venta manual confirmada guarda vendedor, canal y fecha de venta", asyn
   assert.equal(detail.salesChannel, "manual");
   assert.equal(detail.paymentStatus, PaymentStatus.Paid);
   assert.ok(detail.confirmedAt);
+});
+
+test("la carga masiva crea pedidos manuales y completa producto y ubigeo desde referencias operativas", async () => {
+  const context = await createContext();
+  const vendor = context.vendors.createManualVendor(buildManualVendor({ email: "seller-bulk@test.local" })).vendor!;
+
+  const result = await context.orders.createBackofficeOrdersBulk({
+    reviewer: "qa",
+    orders: [
+      {
+        clientReference: "WSP-001",
+        customer: {
+          firstName: "Laura",
+          lastName: "Mendoza",
+          email: "laura-bulk@test.local",
+          phone: "999111222"
+        },
+        address: {
+          line1: "Av. Principal 123",
+          countryCode: "PE",
+          departmentName: "Lima",
+          provinceName: "Lima",
+          districtName: "Lima"
+        },
+        items: [
+          {
+            sku: "HG-PN-001",
+            quantity: 2,
+            unitPrice: 60
+          },
+          {
+            sku: "HG-CV-001",
+            quantity: 1,
+            unitPrice: 55
+          }
+        ],
+        initialStatus: "paid",
+        vendorCode: vendor.code,
+        notes: "Importado por lote."
+      },
+      {
+        clientReference: "WSP-002",
+        customer: {
+          firstName: "Carlos",
+          lastName: "Rojas",
+          email: "",
+          phone: "999333444"
+        },
+        address: {
+          line1: "Jr. Comercio 456",
+          city: "Lima",
+          region: "Lima",
+          countryCode: "PE"
+        },
+        items: [
+          {
+            variantId: "var-premium-negro",
+            quantity: 1,
+            unitPrice: 60
+          }
+        ],
+        initialStatus: "pending_payment"
+      }
+    ]
+  });
+
+  assert.equal(result.status, "ok");
+  assert.equal(result.createdCount, 2);
+  assert.equal(result.failedCount, 0);
+  assert.equal(result.results.every((item) => item.status === "created"), true);
+
+  const firstOrderNumber = result.results[0]?.orderNumber;
+  assert.ok(firstOrderNumber);
+
+  const firstOrder = context.orders.getOrder(firstOrderNumber).data;
+  assert.equal(firstOrder.items[0]?.slug, "premium-negro");
+  assert.equal(firstOrder.items[0]?.name, "Premium Negro");
+  assert.equal(firstOrder.address.departmentName, "Lima");
+  assert.equal(firstOrder.address.provinceName, "Lima");
+  assert.equal(firstOrder.address.districtName, "Lima");
+  assert.equal(firstOrder.vendorCode, vendor.code);
+});
+
+test("la carga masiva reporta rechazos parciales sin perder los pedidos validos", async () => {
+  const context = await createContext();
+
+  const result = await context.orders.createBackofficeOrdersBulk({
+    reviewer: "qa",
+    orders: [
+      {
+        clientReference: "BATCH-OK",
+        customer: {
+          firstName: "Ana",
+          lastName: "Lopez",
+          email: "",
+          phone: "999888777"
+        },
+        address: {
+          line1: "Av. Siempre Viva 742",
+          city: "Lima",
+          region: "Lima",
+          countryCode: "PE"
+        },
+        items: [
+          {
+            sku: "HG-PN-001",
+            quantity: 1,
+            unitPrice: 60
+          }
+        ],
+        initialStatus: "paid"
+      },
+      {
+        clientReference: "BATCH-FAIL",
+        customer: {
+          firstName: "Mario",
+          lastName: "Quispe",
+          email: "",
+          phone: "999222111"
+        },
+        address: {
+          line1: "Calle Falsa 123",
+          city: "Lima",
+          region: "Lima",
+          countryCode: "PE"
+        },
+        items: [
+          {
+            sku: "SKU-NO-EXISTE",
+            quantity: 1,
+            unitPrice: 60
+          }
+        ],
+        initialStatus: "pending_payment"
+      }
+    ]
+  });
+
+  assert.equal(result.status, "partial");
+  assert.equal(result.createdCount, 1);
+  assert.equal(result.failedCount, 1);
+
+  const created = result.results.find((item) => item.clientReference === "BATCH-OK");
+  const rejected = result.results.find((item) => item.clientReference === "BATCH-FAIL");
+
+  assert.equal(created?.status, "created");
+  assert.ok(created?.orderNumber);
+  assert.equal(rejected?.status, "rejected");
+  assert.match(rejected?.message ?? "", /SKU-NO-EXISTE/);
+  assert.equal(context.orders.getOrder(created!.orderNumber!).data.customer.firstName, "Ana");
 });
 
 test("permite asignar, cambiar y retirar vendedor desde un pedido existente", async () => {

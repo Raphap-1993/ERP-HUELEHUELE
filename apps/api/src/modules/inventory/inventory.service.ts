@@ -222,6 +222,8 @@ export class InventoryService implements OnModuleInit {
       const resolved = await this.resolveItemReference(item);
       hydrated.push({
         ...item,
+        slug: normalizeText(item.slug) ?? resolved.variant.product.slug,
+        name: normalizeText(item.name) ?? resolved.variant.product.name,
         variantId: resolved.variant.id,
         sku: normalizeText(item.sku) ?? resolved.variant.sku,
         inventoryAllocations: resolved.allocations

@@ -6,8 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
-    "lint": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit --incremental false -p tsconfig.json",
+    "lint": "tsc --noEmit --incremental false -p tsconfig.json"
   },
   "dependencies": {
     "@huelegood/shared": "^0.1.0",
