@@ -1,4 +1,9 @@
-import type { AdminBackofficeOrderInput, AdminBackofficeOrderItemInput } from "@huelegood/shared";
+import type {
+  AdminBackofficeOrderInput,
+  AdminBackofficeOrderItemInput,
+  AdminOrderVendorOption,
+  ProductAdminSummary
+} from "@huelegood/shared";
 
 export interface BulkOrderImportIssue {
   row: number;
@@ -13,6 +18,11 @@ export interface ParsedBulkOrderBatch {
   itemCount: number;
   orders: AdminBackofficeOrderInput[];
   issues: BulkOrderImportIssue[];
+}
+
+export interface BulkOrdersTemplateOptions {
+  products?: ProductAdminSummary[];
+  vendors?: AdminOrderVendorOption[];
 }
 
 type CanonicalField =
@@ -59,10 +69,10 @@ const headerAliases: Record<CanonicalField, string[]> = {
   provinceName: ["provincia", "province"],
   districtCode: ["distrito_codigo", "district_code"],
   districtName: ["distrito", "district"],
-  initialStatus: ["estado_pago", "initial_status", "payment_status", "estado"],
-  vendorCode: ["vendedor_codigo", "vendor_code", "seller_code"],
+  initialStatus: ["estado_pago", "initial_status", "payment_status", "estado", "estado_selector"],
+  vendorCode: ["vendedor_codigo", "vendor_code", "seller_code", "vendedor_selector"],
   notes: ["notas", "notes", "observaciones"],
-  sku: ["producto_sku", "sku"],
+  sku: ["producto_sku", "sku", "producto_selector", "producto_referencia"],
   slug: ["producto_slug", "slug"],
   name: ["producto_nombre", "product_name", "name"],
   variantId: ["variant_id", "producto_variant_id", "variantid"],
@@ -142,6 +152,17 @@ const templateRows = [
   ]
 ] as const;
 
+const xlsxMimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const xlsxFileName = "pedidos-masivos-template.xlsx";
+const csvFileName = "pedidos-masivos-template.csv";
+const statusDropdownOptions = [
+  "pending_payment | Pendiente de cobro",
+  "paid | Cobrado confirmado"
+] as const;
+
+const templateProductGuideLimit = 200;
+const templateVendorGuideLimit = 200;
+
 function normalizeHeader(value: string) {
   return value
     .trim()
@@ -155,6 +176,16 @@ function normalizeHeader(value: string) {
 function normalizeText(value?: string) {
   const normalized = value?.trim();
   return normalized ? normalized : undefined;
+}
+
+function extractSelectableCode(value?: string) {
+  const normalized = normalizeText(value);
+  if (!normalized) {
+    return undefined;
+  }
+
+  const [firstSegment] = normalized.split("|");
+  return normalizeText(firstSegment) ?? normalized;
 }
 
 function detectDelimiter(headerLine: string) {
@@ -207,7 +238,7 @@ function serializeCsvCell(value: string) {
 }
 
 function parseStatus(value?: string): AdminBackofficeOrderInput["initialStatus"] | undefined {
-  const normalized = normalizeHeader(value ?? "");
+  const normalized = normalizeHeader(extractSelectableCode(value) ?? "");
   if (!normalized) {
     return "pending_payment";
   }
@@ -293,14 +324,302 @@ function sameOrderShape(left: AdminBackofficeOrderInput, right: AdminBackofficeO
   });
 }
 
-export function downloadBulkOrdersTemplate() {
-  const csv = [templateHeaders.join(","), ...templateRows.map((row) => row.map(serializeCsvCell).join(","))].join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+function downloadBlob(blob: Blob, fileName: string) {
   const anchor = document.createElement("a");
   anchor.href = URL.createObjectURL(blob);
-  anchor.download = "pedidos-masivos-template.csv";
+  anchor.download = fileName;
   anchor.click();
   URL.revokeObjectURL(anchor.href);
+}
+
+function downloadBulkOrdersCsvTemplate() {
+  const csv = [templateHeaders.join(","), ...templateRows.map((row) => row.map(serializeCsvCell).join(","))].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  downloadBlob(blob, csvFileName);
+}
+
+function productKindLabel(productKind?: ProductAdminSummary["productKind"]) {
+  return productKind === "bundle" ? "combo virtual" : "producto simple";
+}
+
+function formatTemplatePrice(price: number, currencyCode = "PEN") {
+  return new Intl.NumberFormat("es-PE", {
+    style: "currency",
+    currency: currencyCode,
+    maximumFractionDigits: 0
+  }).format(price);
+}
+
+function buildProductSelectorLabel(product: ProductAdminSummary) {
+  return [
+    product.sku,
+    product.name,
+    productKindLabel(product.productKind),
+    formatTemplatePrice(product.price, product.currencyCode)
+  ].join(" | ");
+}
+
+function buildVendorSelectorLabel(vendor: AdminOrderVendorOption) {
+  const fragments = [vendor.code, vendor.name];
+  if (vendor.city) {
+    fragments.push(vendor.city);
+  }
+
+  return fragments.join(" | ");
+}
+
+async function loadExcelJs() {
+  return import("exceljs");
+}
+
+function cellValueToText(value: unknown): string {
+  if (value == null) {
+    return "";
+  }
+
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (typeof value === "object") {
+    if ("text" in value && typeof value.text === "string") {
+      return value.text;
+    }
+
+    if ("result" in value && value.result != null) {
+      return String(value.result);
+    }
+
+    if ("hyperlink" in value && typeof value.hyperlink === "string" && "text" in value && typeof value.text === "string") {
+      return value.text;
+    }
+
+    if ("richText" in value && Array.isArray(value.richText)) {
+      return value.richText
+        .map((entry) => (entry && typeof entry === "object" && "text" in entry ? String(entry.text ?? "") : ""))
+        .join("");
+    }
+  }
+
+  return String(value);
+}
+
+function worksheetToCsvSource(worksheet: { rowCount: number; actualColumnCount: number; getRow: (rowNumber: number) => { getCell: (columnNumber: number) => { value: unknown } } }) {
+  const columnCount = Math.max(worksheet.actualColumnCount, templateHeaders.length);
+  const lines: string[] = [];
+
+  for (let rowNumber = 1; rowNumber <= worksheet.rowCount; rowNumber += 1) {
+    const row = worksheet.getRow(rowNumber);
+    const values = Array.from({ length: columnCount }, (_, index) => {
+      const text = cellValueToText(row.getCell(index + 1).value).trim();
+      return serializeCsvCell(text);
+    });
+
+    if (!values.some((value) => value.replace(/^"|"$/g, "").trim().length > 0)) {
+      continue;
+    }
+
+    lines.push(values.join(","));
+  }
+
+  return lines.join("\n");
+}
+
+async function parseBulkOrdersSpreadsheet(file: File) {
+  const ExcelJS = await loadExcelJs();
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(await file.arrayBuffer());
+
+  const worksheet =
+    workbook.getWorksheet("Pedidos") ??
+    workbook.worksheets.find((sheet) => sheet.state !== "hidden") ??
+    workbook.worksheets[0];
+
+  if (!worksheet) {
+    throw new Error("No encontramos una hoja válida en el archivo XLSX.");
+  }
+
+  return worksheetToCsvSource(worksheet);
+}
+
+export async function readBulkOrdersFile(file: File) {
+  const lowerName = file.name.toLowerCase();
+  const isSpreadsheet =
+    lowerName.endsWith(".xlsx") ||
+    file.type === xlsxMimeType;
+
+  if (isSpreadsheet) {
+    return parseBulkOrdersSpreadsheet(file);
+  }
+
+  return file.text();
+}
+
+export async function downloadBulkOrdersTemplate(options: BulkOrdersTemplateOptions = {}) {
+  const productOptions = (options.products ?? [])
+    .filter((product) => product.status === "active" || product.status === "draft")
+    .sort((left, right) => left.name.localeCompare(right.name, "es"))
+    .slice(0, templateProductGuideLimit);
+  const vendorOptions = (options.vendors ?? [])
+    .filter((vendor) => vendor.status === "active")
+    .sort((left, right) => left.name.localeCompare(right.name, "es"))
+    .slice(0, templateVendorGuideLimit);
+
+  if (!productOptions.length) {
+    downloadBulkOrdersCsvTemplate();
+    return;
+  }
+
+  const ExcelJS = await loadExcelJs();
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "Huelegood Admin";
+  workbook.lastModifiedBy = "Huelegood Admin";
+  workbook.created = new Date();
+  workbook.modified = new Date();
+
+  const ordersSheet = workbook.addWorksheet("Pedidos");
+  const helpSheet = workbook.addWorksheet("Ayuda");
+  const productsSheet = workbook.addWorksheet("Catalogo");
+  const vendorsSheet = workbook.addWorksheet("Vendedores");
+  const listsSheet = workbook.addWorksheet("Listas");
+
+  ordersSheet.columns = [
+    { header: "pedido_ref", key: "pedido_ref", width: 18 },
+    { header: "cliente_nombre", key: "cliente_nombre", width: 18 },
+    { header: "cliente_apellido", key: "cliente_apellido", width: 18 },
+    { header: "cliente_email", key: "cliente_email", width: 24 },
+    { header: "cliente_telefono", key: "cliente_telefono", width: 18 },
+    { header: "direccion_1", key: "direccion_1", width: 26 },
+    { header: "departamento", key: "departamento", width: 18 },
+    { header: "provincia", key: "provincia", width: 18 },
+    { header: "distrito", key: "distrito", width: 18 },
+    { header: "estado_pago", key: "estado_pago", width: 24 },
+    { header: "vendedor_codigo", key: "vendedor_codigo", width: 32 },
+    { header: "notas", key: "notas", width: 28 },
+    { header: "producto_sku", key: "producto_sku", width: 42 },
+    { header: "cantidad", key: "cantidad", width: 12 },
+    { header: "precio_unitario", key: "precio_unitario", width: 16 }
+  ];
+
+  templateRows.forEach((row) => {
+    ordersSheet.addRow(row);
+  });
+
+  ordersSheet.views = [{ state: "frozen", ySplit: 1 }];
+  ordersSheet.autoFilter = {
+    from: "A1",
+    to: "O1"
+  };
+
+  ordersSheet.getRow(1).font = { bold: true };
+  ordersSheet.getRow(1).fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFE7EFE8" }
+  };
+
+  helpSheet.columns = [
+    { header: "columna", key: "columna", width: 20 },
+    { header: "como_usarla", key: "como_usarla", width: 42 },
+    { header: "nota_operativa", key: "nota_operativa", width: 52 }
+  ];
+  helpSheet.addRows([
+    ["pedido_ref", "Identificador del pedido", "Repite el mismo pedido_ref si el pedido tiene varias lineas/productos."],
+    ["estado_pago", "Usa el combo desplegable", "pending_payment crea el pedido pendiente; paid lo registra ya cobrado."],
+    ["vendedor_codigo", "Usa el combo desplegable o deja vacio", "La lista trae vendedores activos con codigo y nombre para seleccion rapida."],
+    ["producto_sku", "Usa el combo desplegable del catalogo", "La lista muestra SKU, nombre, tipo y precio sugerido. El importador toma el SKU."],
+    ["cantidad", "Numero entero mayor a cero", "Una fila = una linea del pedido."],
+    ["precio_unitario", "Monto editable", "Puedes respetar el sugerido del catalogo o ajustar el precio comercial del pedido."],
+    ["departamento / provincia / distrito", "Destino del pedido", "Completa los tres para ubigeo Peru. Si un pedido tiene varias lineas, repite los mismos datos."]
+  ]);
+  helpSheet.views = [{ state: "frozen", ySplit: 1 }];
+  helpSheet.getRow(1).font = { bold: true };
+
+  productsSheet.columns = [
+    { header: "selector", key: "selector", width: 42 },
+    { header: "sku", key: "sku", width: 18 },
+    { header: "nombre", key: "nombre", width: 26 },
+    { header: "tipo", key: "tipo", width: 18 },
+    { header: "precio_sugerido", key: "precio_sugerido", width: 16 },
+    { header: "variant_id", key: "variant_id", width: 22 },
+    { header: "estado", key: "estado", width: 12 },
+    { header: "categoria", key: "categoria", width: 18 }
+  ];
+  productOptions.forEach((product) => {
+    productsSheet.addRow([
+      buildProductSelectorLabel(product),
+      product.sku,
+      product.name,
+      productKindLabel(product.productKind),
+      product.price,
+      product.defaultVariantId ?? "",
+      product.status,
+      product.categoryName ?? ""
+    ]);
+  });
+  productsSheet.views = [{ state: "frozen", ySplit: 1 }];
+  productsSheet.getRow(1).font = { bold: true };
+
+  vendorsSheet.columns = [
+    { header: "selector", key: "selector", width: 32 },
+    { header: "codigo", key: "codigo", width: 18 },
+    { header: "nombre", key: "nombre", width: 24 },
+    { header: "ciudad", key: "ciudad", width: 18 },
+    { header: "estado", key: "estado", width: 12 }
+  ];
+  vendorOptions.forEach((vendor) => {
+    vendorsSheet.addRow([
+      buildVendorSelectorLabel(vendor),
+      vendor.code,
+      vendor.name,
+      vendor.city ?? "",
+      vendor.status
+    ]);
+  });
+  vendorsSheet.views = [{ state: "frozen", ySplit: 1 }];
+  vendorsSheet.getRow(1).font = { bold: true };
+
+  listsSheet.getColumn(1).values = ["estado_pago", ...statusDropdownOptions];
+  listsSheet.getColumn(3).values = ["vendedor_codigo", ...vendorOptions.map(buildVendorSelectorLabel)];
+  listsSheet.getColumn(5).values = ["producto_sku", ...productOptions.map(buildProductSelectorLabel)];
+  listsSheet.state = "hidden";
+
+  for (let rowNumber = 2; rowNumber <= 250; rowNumber += 1) {
+    ordersSheet.getCell(`J${rowNumber}`).dataValidation = {
+      type: "list",
+      allowBlank: false,
+      formulae: [`'Listas'!$A$2:$A$${statusDropdownOptions.length + 1}`],
+      showErrorMessage: true,
+      errorTitle: "Estado inválido",
+      error: "Selecciona un estado de pago permitido."
+    };
+
+    ordersSheet.getCell(`K${rowNumber}`).dataValidation = {
+      type: "list",
+      allowBlank: true,
+      formulae: [`'Listas'!$C$2:$C$${Math.max(vendorOptions.length + 1, 2)}`],
+      showErrorMessage: true,
+      errorTitle: "Vendedor inválido",
+      error: "Selecciona un vendedor de la lista o deja la celda vacía."
+    };
+
+    ordersSheet.getCell(`M${rowNumber}`).dataValidation = {
+      type: "list",
+      allowBlank: false,
+      formulae: [`'Listas'!$E$2:$E$${Math.max(productOptions.length + 1, 2)}`],
+      showErrorMessage: true,
+      errorTitle: "Producto inválido",
+      error: "Selecciona un producto del catálogo sugerido."
+    };
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: xlsxMimeType });
+  downloadBlob(blob, xlsxFileName);
 }
 
 export function parseBulkOrdersInput(source: string): ParsedBulkOrderBatch {
@@ -355,8 +674,8 @@ export function parseBulkOrdersInput(source: string): ParsedBulkOrderBatch {
     const quantity = parseInteger(row.get("quantity"));
     const unitPrice = parseCurrency(row.get("unitPrice"));
     const initialStatus = parseStatus(row.get("initialStatus"));
-    const sku = normalizeText(row.get("sku"));
-    const variantId = normalizeText(row.get("variantId"));
+    const sku = extractSelectableCode(row.get("sku"));
+    const variantId = extractSelectableCode(row.get("variantId"));
     const departmentCode = normalizeText(row.get("departmentCode"));
     const departmentName = normalizeText(row.get("departmentName"));
     const provinceCode = normalizeText(row.get("provinceCode"));
@@ -445,7 +764,7 @@ export function parseBulkOrdersInput(source: string): ParsedBulkOrderBatch {
       ],
       initialStatus: initialStatus ?? "pending_payment",
       notes: normalizeText(row.get("notes")),
-      vendorCode: normalizeText(row.get("vendorCode"))
+      vendorCode: extractSelectableCode(row.get("vendorCode"))
     };
 
     const existingOrder = groupedOrders.get(clientReference);

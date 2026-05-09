@@ -42,7 +42,7 @@ import {
   transitionOrderStatus,
   updateOrderVendor
 } from "../lib/api";
-import { downloadBulkOrdersTemplate, parseBulkOrdersInput } from "../lib/order-bulk-import";
+import { downloadBulkOrdersTemplate, parseBulkOrdersInput, readBulkOrdersFile } from "../lib/order-bulk-import";
 import { useAdminSession } from "./admin-session-provider";
 
 function formatCurrency(value: number) {
@@ -499,6 +499,9 @@ export function OrdersWorkspace() {
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [bulkResult, setBulkResult] = useState<BulkCreateResult | null>(null);
+  const [bulkOptionsLoading, setBulkOptionsLoading] = useState(false);
+  const [bulkOptionsNotice, setBulkOptionsNotice] = useState<string | null>(null);
+  const [bulkTemplateLoading, setBulkTemplateLoading] = useState(false);
   const activeOrder = selectedOrder?.orderNumber === selectedOrderNumber ? selectedOrder : null;
 
   useEffect(() => {
@@ -816,6 +819,18 @@ export function OrdersWorkspace() {
   const bulkCreatedResults = useMemo(
     () => bulkResult?.results.filter((result) => result.status === "created") ?? [],
     [bulkResult]
+  );
+  const bulkCatalogProducts = useMemo(
+    () =>
+      selectableProducts
+        .slice()
+        .sort((left, right) => left.name.localeCompare(right.name, "es"))
+        .slice(0, 6),
+    [selectableProducts]
+  );
+  const bulkCatalogBundlesCount = useMemo(
+    () => selectableProducts.filter((product) => product.productKind === "bundle").length,
+    [selectableProducts]
   );
 
   function openApproveConfirm() {
@@ -1137,12 +1152,78 @@ export function OrdersWorkspace() {
     }
   }
 
+  async function ensureBulkTemplateOptionsLoaded() {
+    const shouldLoadProducts = availableProducts.length === 0;
+    const shouldLoadVendors = availableVendors.length === 0;
+
+    if (!shouldLoadProducts && !shouldLoadVendors) {
+      setBulkOptionsNotice(null);
+      return {
+        products: availableProducts,
+        vendors: availableVendors
+      };
+    }
+
+    setBulkOptionsLoading(true);
+
+    try {
+      const [productsResponse, vendorsResponse] = await Promise.allSettled([
+        shouldLoadProducts ? fetchAdminProducts() : Promise.resolve({ data: availableProducts }),
+        shouldLoadVendors ? fetchOrderVendorOptions() : Promise.resolve({ data: availableVendors })
+      ]);
+
+      const notices: string[] = [];
+      const nextProducts = productsResponse.status === "fulfilled" ? (productsResponse.value.data ?? []) : availableProducts;
+      const nextVendors = vendorsResponse.status === "fulfilled" ? (vendorsResponse.value.data ?? []) : availableVendors;
+
+      if (productsResponse.status === "fulfilled") {
+        setAvailableProducts(nextProducts);
+      } else {
+        notices.push("No pudimos cargar el catálogo para enriquecer la plantilla.");
+      }
+
+      if (vendorsResponse.status === "fulfilled") {
+        setAvailableVendors(nextVendors);
+      } else {
+        notices.push("No pudimos cargar vendedores para los combos del archivo.");
+      }
+
+      setBulkOptionsNotice(notices.length ? notices.join(" ") : null);
+
+      return {
+        products: nextProducts,
+        vendors: nextVendors
+      };
+    } finally {
+      setBulkOptionsLoading(false);
+    }
+  }
+
   function openBulkModal() {
     setBulkSource("");
     setBulkSourceName(null);
     setBulkError(null);
     setBulkResult(null);
+    setBulkOptionsNotice(null);
     setBulkOpen(true);
+    void ensureBulkTemplateOptionsLoaded();
+  }
+
+  async function handleDownloadBulkTemplate() {
+    setBulkError(null);
+    setBulkTemplateLoading(true);
+
+    try {
+      const { products, vendors } = await ensureBulkTemplateOptionsLoaded();
+      await downloadBulkOrdersTemplate({
+        products,
+        vendors
+      });
+    } catch (error) {
+      setBulkError(error instanceof Error ? error.message : "No se pudo generar la plantilla.");
+    } finally {
+      setBulkTemplateLoading(false);
+    }
   }
 
   async function handleBulkFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -1153,7 +1234,7 @@ export function OrdersWorkspace() {
     }
 
     try {
-      const text = await file.text();
+      const text = await readBulkOrdersFile(file);
       setBulkSource(text);
       setBulkSourceName(file.name);
       setBulkError(null);
@@ -1367,7 +1448,7 @@ export function OrdersWorkspace() {
           <DialogHeader>
             <DialogTitle>Carga masiva de pedidos</DialogTitle>
             <DialogDescription className="mt-2 text-sm text-black/55">
-              Pega un CSV/TSV o sube un archivo. Repite el mismo <span className="font-medium text-[#132016]">pedido_ref</span> cuando un pedido tenga varias líneas.
+              Pega un CSV/TSV o sube un archivo. La plantilla XLSX trae combos desplegables para <span className="font-medium text-[#132016]">estado_pago</span>, <span className="font-medium text-[#132016]">producto_sku</span> y <span className="font-medium text-[#132016]">vendedor_codigo</span>. Repite el mismo <span className="font-medium text-[#132016]">pedido_ref</span> cuando un pedido tenga varias líneas.
             </DialogDescription>
           </DialogHeader>
           <DialogBody className="space-y-5">
@@ -1376,24 +1457,51 @@ export function OrdersWorkspace() {
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-[#132016]">Plantilla operativa</p>
                   <p className="text-xs text-black/55">
-                    Soporta <span className="font-medium">producto_sku</span> o <span className="font-medium">variant_id</span>, y destino por ubigeo o por ciudad.
+                    Soporta <span className="font-medium">producto_sku</span> o <span className="font-medium">variant_id</span>, y destino por ubigeo o por ciudad. Si abres el XLSX en Excel, Numbers o Google Sheets compatibles, verás combos guiados para acelerar la carga.
                   </p>
                 </div>
-                <Button type="button" variant="secondary" onClick={downloadBulkOrdersTemplate}>
-                  Descargar plantilla
+                <Button type="button" variant="secondary" onClick={() => void handleDownloadBulkTemplate()} disabled={bulkTemplateLoading || bulkOptionsLoading}>
+                  {bulkTemplateLoading ? "Generando..." : "Descargar plantilla XLSX"}
                 </Button>
               </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-4">
+                <SummaryTile label="Productos guía" value={String(selectableProducts.length)} />
+                <SummaryTile label="Combos virtuales" value={String(bulkCatalogBundlesCount)} />
+                <SummaryTile label="Vendedores activos" value={String(selectableVendors.length)} />
+                <SummaryTile label="Estados guiados" value="2" />
+              </div>
+              {bulkCatalogProducts.length > 0 ? (
+                <div className="mt-4 rounded-[12px] border border-black/10 bg-white px-3 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-black/40">Referencia rápida</p>
+                  <div className="mt-2 space-y-1.5 text-xs text-black/60">
+                    {bulkCatalogProducts.map((product) => (
+                      <p key={product.id}>
+                        <span className="font-medium text-[#132016]">{product.sku}</span> · {product.name} · {product.productKind === "bundle" ? "Combo virtual" : "Producto simple"}
+                      </p>
+                    ))}
+                    {selectableProducts.length > bulkCatalogProducts.length ? (
+                      <p className="text-black/45">La plantilla XLSX incluye más productos del catálogo en su hoja de ayuda.</p>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+              {bulkOptionsNotice ? <p className="mt-3 text-xs text-amber-900/80">{bulkOptionsNotice}</p> : null}
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <label className="inline-flex cursor-pointer items-center rounded-[10px] border border-black/10 bg-white px-3 py-2 text-sm font-medium text-[#132016] transition hover:border-[#52b788] hover:bg-[#f5fbf7]">
                   Subir archivo
-                  <input type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values,text/plain" className="hidden" onChange={handleBulkFileChange} />
+                  <input
+                    type="file"
+                    accept=".csv,.tsv,.xlsx,text/csv,text/tab-separated-values,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    className="hidden"
+                    onChange={handleBulkFileChange}
+                  />
                 </label>
                 {bulkSourceName ? <span className="text-xs text-black/55">Archivo: {bulkSourceName}</span> : null}
               </div>
             </div>
 
             <div>
-              <label className="mb-1 block text-[11px] text-black/50">CSV o TSV</label>
+              <label className="mb-1 block text-[11px] text-black/50">CSV, TSV o contenido extraído de XLSX</label>
               <textarea
                 value={bulkSource}
                 onChange={(event) => {
