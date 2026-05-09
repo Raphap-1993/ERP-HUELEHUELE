@@ -3,6 +3,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException, 
 import { InventoryMovementType, ProductKind, type ProductImage, type ProductVariant, type WarehouseInventoryBalance } from "@prisma/client";
 import {
   ProductSalesChannel,
+  type AdminBackofficeOrderItemInput,
   type InventoryStockAdjustmentInput,
   type InventoryReportRow,
   type InventoryReportSummary,
@@ -226,6 +227,44 @@ export class InventoryService implements OnModuleInit {
         name: normalizeText(item.name) ?? resolved.variant.product.name,
         variantId: resolved.variant.id,
         sku: normalizeText(item.sku) ?? resolved.variant.sku,
+        inventoryAllocations: resolved.allocations
+      });
+    }
+
+    return hydrated;
+  }
+
+  async hydrateBackofficeOrderItems(items: AdminBackofficeOrderItemInput[]) {
+    const hydrated: OrderItemSummary[] = [];
+
+    for (const item of items) {
+      const quantity = Math.trunc(Number(item.quantity));
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        throw new BadRequestException(`Cantidad inválida en inventario para ${item.slug ?? item.sku ?? item.variantId ?? "item"}.`);
+      }
+
+      const resolved = await this.resolveItemReference({
+        slug: item.slug ?? "",
+        name: item.name ?? "",
+        sku: item.sku ?? "",
+        variantId: item.variantId,
+        quantity,
+        unitPrice: 0,
+        lineTotal: 0
+      });
+      const resolvedUnitPrice =
+        typeof item.unitPrice === "number" && Number.isFinite(item.unitPrice) && item.unitPrice >= 0
+          ? item.unitPrice
+          : Number(resolved.variant.price);
+
+      hydrated.push({
+        slug: normalizeText(item.slug) ?? resolved.variant.product.slug,
+        name: normalizeText(item.name) ?? resolved.variant.product.name,
+        variantId: resolved.variant.id,
+        sku: normalizeText(item.sku) ?? resolved.variant.sku,
+        quantity,
+        unitPrice: resolvedUnitPrice,
+        lineTotal: resolvedUnitPrice * quantity,
         inventoryAllocations: resolved.allocations
       });
     }

@@ -1123,6 +1123,12 @@ export interface PeruDistrictSummary {
   provinceCode: string;
 }
 
+export interface PeruUbigeoCatalog {
+  departments: PeruDepartmentSummary[];
+  provinces: PeruProvinceSummary[];
+  districts: PeruDistrictSummary[];
+}
+
 export interface CheckoutQuoteItemSummary {
   slug: string;
   name: string;
@@ -1274,7 +1280,7 @@ export interface AdminBackofficeOrderItemInput {
   sku?: string;
   variantId?: string;
   quantity: number;
-  unitPrice: number;
+  unitPrice?: number;
 }
 
 export interface AdminBackofficeOrderInput {

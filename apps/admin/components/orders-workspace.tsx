@@ -18,6 +18,7 @@ import {
   type PeruDepartmentSummary,
   type PeruDistrictSummary,
   type PeruProvinceSummary,
+  type PeruUbigeoCatalog,
   type ProductAdminSummary,
   type AdminOrderVendorOption
 } from "@huelegood/shared";
@@ -35,6 +36,7 @@ import {
   fetchPeruDepartments,
   fetchPeruDistricts,
   fetchPeruProvinces,
+  fetchPeruUbigeoCatalog,
   registerAdminManualPayment,
   rejectManualPaymentRequest,
   resendOrderApprovalEmail,
@@ -502,6 +504,7 @@ export function OrdersWorkspace() {
   const [bulkOptionsLoading, setBulkOptionsLoading] = useState(false);
   const [bulkOptionsNotice, setBulkOptionsNotice] = useState<string | null>(null);
   const [bulkTemplateLoading, setBulkTemplateLoading] = useState(false);
+  const [bulkUbigeoCatalog, setBulkUbigeoCatalog] = useState<PeruUbigeoCatalog | null>(null);
   const activeOrder = selectedOrder?.orderNumber === selectedOrderNumber ? selectedOrder : null;
 
   useEffect(() => {
@@ -832,6 +835,8 @@ export function OrdersWorkspace() {
     () => selectableProducts.filter((product) => product.productKind === "bundle").length,
     [selectableProducts]
   );
+  const bulkProvinceCount = bulkUbigeoCatalog?.provinces.length ?? 0;
+  const bulkDistrictCount = bulkUbigeoCatalog?.districts.length ?? 0;
 
   function openApproveConfirm() {
     if (!activeOrder?.manualRequest) return;
@@ -1155,26 +1160,30 @@ export function OrdersWorkspace() {
   async function ensureBulkTemplateOptionsLoaded() {
     const shouldLoadProducts = availableProducts.length === 0;
     const shouldLoadVendors = availableVendors.length === 0;
+    const shouldLoadUbigeo = !bulkUbigeoCatalog;
 
-    if (!shouldLoadProducts && !shouldLoadVendors) {
+    if (!shouldLoadProducts && !shouldLoadVendors && !shouldLoadUbigeo) {
       setBulkOptionsNotice(null);
       return {
         products: availableProducts,
-        vendors: availableVendors
+        vendors: availableVendors,
+        peruUbigeo: bulkUbigeoCatalog
       };
     }
 
     setBulkOptionsLoading(true);
 
     try {
-      const [productsResponse, vendorsResponse] = await Promise.allSettled([
+      const [productsResponse, vendorsResponse, ubigeoResponse] = await Promise.allSettled([
         shouldLoadProducts ? fetchAdminProducts() : Promise.resolve({ data: availableProducts }),
-        shouldLoadVendors ? fetchOrderVendorOptions() : Promise.resolve({ data: availableVendors })
+        shouldLoadVendors ? fetchOrderVendorOptions() : Promise.resolve({ data: availableVendors }),
+        shouldLoadUbigeo ? fetchPeruUbigeoCatalog() : Promise.resolve({ data: bulkUbigeoCatalog })
       ]);
 
       const notices: string[] = [];
       const nextProducts = productsResponse.status === "fulfilled" ? (productsResponse.value.data ?? []) : availableProducts;
       const nextVendors = vendorsResponse.status === "fulfilled" ? (vendorsResponse.value.data ?? []) : availableVendors;
+      const nextPeruUbigeo = ubigeoResponse.status === "fulfilled" ? (ubigeoResponse.value.data ?? bulkUbigeoCatalog) : bulkUbigeoCatalog;
 
       if (productsResponse.status === "fulfilled") {
         setAvailableProducts(nextProducts);
@@ -1188,11 +1197,18 @@ export function OrdersWorkspace() {
         notices.push("No pudimos cargar vendedores para los combos del archivo.");
       }
 
+      if (ubigeoResponse.status === "fulfilled") {
+        setBulkUbigeoCatalog(nextPeruUbigeo);
+      } else {
+        notices.push("No pudimos cargar el catálogo completo de ubigeo para los combos de destino.");
+      }
+
       setBulkOptionsNotice(notices.length ? notices.join(" ") : null);
 
       return {
         products: nextProducts,
-        vendors: nextVendors
+        vendors: nextVendors,
+        peruUbigeo: nextPeruUbigeo
       };
     } finally {
       setBulkOptionsLoading(false);
@@ -1214,10 +1230,11 @@ export function OrdersWorkspace() {
     setBulkTemplateLoading(true);
 
     try {
-      const { products, vendors } = await ensureBulkTemplateOptionsLoaded();
+      const { products, vendors, peruUbigeo } = await ensureBulkTemplateOptionsLoaded();
       await downloadBulkOrdersTemplate({
         products,
-        vendors
+        vendors,
+        peruUbigeo: peruUbigeo ?? undefined
       });
     } catch (error) {
       setBulkError(error instanceof Error ? error.message : "No se pudo generar la plantilla.");
@@ -1448,7 +1465,7 @@ export function OrdersWorkspace() {
           <DialogHeader>
             <DialogTitle>Carga masiva de pedidos</DialogTitle>
             <DialogDescription className="mt-2 text-sm text-black/55">
-              Pega un CSV/TSV o sube un archivo. La plantilla XLSX trae combos desplegables para <span className="font-medium text-[#132016]">estado_pago</span>, <span className="font-medium text-[#132016]">producto_sku</span> y <span className="font-medium text-[#132016]">vendedor_codigo</span>. Repite el mismo <span className="font-medium text-[#132016]">pedido_ref</span> cuando un pedido tenga varias líneas.
+              Pega un CSV/TSV o sube un archivo. La plantilla XLSX trae combos desplegables para <span className="font-medium text-[#132016]">estado_pago</span>, <span className="font-medium text-[#132016]">producto_sku</span>, <span className="font-medium text-[#132016]">vendedor_codigo</span> y el ubigeo de <span className="font-medium text-[#132016]">departamento / provincia / distrito</span>. Repite el mismo <span className="font-medium text-[#132016]">pedido_ref</span> cuando un pedido tenga varias líneas.
             </DialogDescription>
           </DialogHeader>
           <DialogBody className="space-y-5">
@@ -1457,7 +1474,7 @@ export function OrdersWorkspace() {
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-[#132016]">Plantilla operativa</p>
                   <p className="text-xs text-black/55">
-                    Soporta <span className="font-medium">producto_sku</span> o <span className="font-medium">variant_id</span>, y destino por ubigeo o por ciudad. Si abres el XLSX en Excel, Numbers o Google Sheets compatibles, verás combos guiados para acelerar la carga.
+                    Soporta <span className="font-medium">producto_sku</span> o <span className="font-medium">variant_id</span>. El precio se infiere desde el producto elegido y el XLSX te guía con combos de ubigeo para acelerar la carga en Excel, Numbers o Google Sheets compatibles.
                   </p>
                 </div>
                 <Button type="button" variant="secondary" onClick={() => void handleDownloadBulkTemplate()} disabled={bulkTemplateLoading || bulkOptionsLoading}>
@@ -1467,7 +1484,12 @@ export function OrdersWorkspace() {
               <div className="mt-4 grid gap-3 md:grid-cols-4">
                 <SummaryTile label="Productos guía" value={String(selectableProducts.length)} />
                 <SummaryTile label="Combos virtuales" value={String(bulkCatalogBundlesCount)} />
+                <SummaryTile label="Distritos guiados" value={String(bulkDistrictCount)} />
                 <SummaryTile label="Vendedores activos" value={String(selectableVendors.length)} />
+              </div>
+              <div className="mt-3 grid gap-3 md:grid-cols-3">
+                <SummaryTile label="Departamentos" value={String(bulkUbigeoCatalog?.departments.length ?? 0)} />
+                <SummaryTile label="Provincias" value={String(bulkProvinceCount)} />
                 <SummaryTile label="Estados guiados" value="2" />
               </div>
               {bulkCatalogProducts.length > 0 ? (
@@ -1476,12 +1498,10 @@ export function OrdersWorkspace() {
                   <div className="mt-2 space-y-1.5 text-xs text-black/60">
                     {bulkCatalogProducts.map((product) => (
                       <p key={product.id}>
-                        <span className="font-medium text-[#132016]">{product.sku}</span> · {product.name} · {product.productKind === "bundle" ? "Combo virtual" : "Producto simple"}
+                        <span className="font-medium text-[#132016]">{product.sku}</span> · {product.name} · {product.productKind === "bundle" ? "Combo virtual" : "Producto simple"} · {formatCurrency(product.price)}
                       </p>
                     ))}
-                    {selectableProducts.length > bulkCatalogProducts.length ? (
-                      <p className="text-black/45">La plantilla XLSX incluye más productos del catálogo en su hoja de ayuda.</p>
-                    ) : null}
+                    <p className="text-black/45">La plantilla XLSX incluye más productos, vendedores y ubigeo en sus hojas auxiliares.</p>
                   </div>
                 </div>
               ) : null}
@@ -1566,7 +1586,7 @@ export function OrdersWorkspace() {
                       <div className="mt-3 space-y-1.5 text-xs text-black/65">
                         {order.items.map((item, index) => (
                           <p key={`${order.clientReference}-${item.sku ?? item.variantId ?? index}`}>
-                            {(item.sku ?? item.variantId) || "Item"} · {item.quantity} u. · S/ {item.unitPrice.toFixed(2)}
+                            {(item.sku ?? item.variantId) || "Item"} · {item.quantity} u. · {typeof item.unitPrice === "number" ? `S/ ${item.unitPrice.toFixed(2)}` : "precio catálogo"}
                           </p>
                         ))}
                       </div>

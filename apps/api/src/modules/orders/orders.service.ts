@@ -942,20 +942,7 @@ export class OrdersService implements OnModuleInit {
     });
     const address = this.normalizeBackofficeAddress(customer, input.address);
 
-    const orderItems = await this.inventoryService.hydrateOrderItems(
-      input.items.map((item) => ({
-        slug: item.slug ?? "",
-        name: item.name ?? "",
-        sku: item.sku ?? "",
-        variantId: item.variantId,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        lineTotal: item.unitPrice * item.quantity,
-        imageUrl: undefined,
-        originalUnitPrice: item.unitPrice,
-        discountApplied: 0
-      }))
-    );
+    const orderItems = await this.inventoryService.hydrateBackofficeOrderItems(input.items);
 
     const subtotal = orderItems.reduce((sum, i) => sum + i.lineTotal, 0);
     const isPaid = input.initialStatus === "paid";

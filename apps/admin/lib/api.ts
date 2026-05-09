@@ -3,6 +3,7 @@ import type {
   AdminBackofficeOrderBulkActionEnvelope,
   AdminBackofficeOrderBulkInput,
   AdminBackofficeOrderInput,
+  ApiEnvelope,
   AuthCredentialsInput,
   AdminReportFiltersInput,
   AdminDispatchLabelPrintInput,
@@ -80,6 +81,7 @@ import type {
   ProductUpsertInput,
   PeruDepartmentSummary,
   PeruDistrictSummary,
+  PeruUbigeoCatalog,
   PeruProvinceSummary,
   WarehouseActionEnvelope,
   WarehouseTransferActionEnvelope,
@@ -859,6 +861,12 @@ export async function fetchPeruProvinces(departmentCode: string) {
 
 export async function fetchPeruDistricts(provinceCode: string) {
   return requestJson<PeruDistrictsEnvelope>(`/store/checkout/ubigeo/districts/${encodeURIComponent(provinceCode)}`, {
+    cache: "no-store"
+  });
+}
+
+export async function fetchPeruUbigeoCatalog() {
+  return requestJson<ApiEnvelope<PeruUbigeoCatalog>>("/store/checkout/ubigeo/catalog", {
     cache: "no-store"
   });
 }

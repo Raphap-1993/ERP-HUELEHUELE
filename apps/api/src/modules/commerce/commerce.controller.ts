@@ -37,6 +37,11 @@ export class CommerceController {
     return this.commerceService.listPeruDistricts(provinceCode);
   }
 
+  @Get("ubigeo/catalog")
+  listPeruUbigeoCatalog() {
+    return this.commerceService.listPeruUbigeoCatalog();
+  }
+
   @Post("openpay")
   openpay(@Body() body: CheckoutRequestInput) {
     return this.commerceService.createOpenpayCheckout(body);

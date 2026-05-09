@@ -2,6 +2,10 @@ import type {
   AdminBackofficeOrderInput,
   AdminBackofficeOrderItemInput,
   AdminOrderVendorOption,
+  PeruDepartmentSummary,
+  PeruDistrictSummary,
+  PeruProvinceSummary,
+  PeruUbigeoCatalog,
   ProductAdminSummary
 } from "@huelegood/shared";
 
@@ -23,6 +27,7 @@ export interface ParsedBulkOrderBatch {
 export interface BulkOrdersTemplateOptions {
   products?: ProductAdminSummary[];
   vendors?: AdminOrderVendorOption[];
+  peruUbigeo?: PeruUbigeoCatalog;
 }
 
 type CanonicalField =
@@ -94,8 +99,7 @@ const templateHeaders = [
   "vendedor_codigo",
   "notas",
   "producto_sku",
-  "cantidad",
-  "precio_unitario"
+  "cantidad"
 ] as const;
 
 const templateRows = [
@@ -113,8 +117,7 @@ const templateRows = [
     "VEND-001",
     "Pedido por WhatsApp",
     "HG-PN-001",
-    "2",
-    "60"
+    "2"
   ],
   [
     "WSP-001",
@@ -130,8 +133,7 @@ const templateRows = [
     "VEND-001",
     "Pedido por WhatsApp",
     "HG-CV-001",
-    "1",
-    "55"
+    "1"
   ],
   [
     "WSP-002",
@@ -147,8 +149,7 @@ const templateRows = [
     "",
     "Pendiente de transferencia",
     "HG-PN-001",
-    "1",
-    "60"
+    "1"
   ]
 ] as const;
 
@@ -162,6 +163,7 @@ const statusDropdownOptions = [
 
 const templateProductGuideLimit = 200;
 const templateVendorGuideLimit = 200;
+type UbigeoScope = "department" | "province" | "district";
 
 function normalizeHeader(value: string) {
   return value
@@ -186,6 +188,62 @@ function extractSelectableCode(value?: string) {
 
   const [firstSegment] = normalized.split("|");
   return normalizeText(firstSegment) ?? normalized;
+}
+
+function selectorSegments(value?: string) {
+  return normalizeText(value)
+    ?.split("|")
+    .map((segment) => segment.trim())
+    .filter(Boolean) ?? [];
+}
+
+function buildDepartmentSelectorLabel(department: PeruDepartmentSummary) {
+  return [department.code, department.name].join(" | ");
+}
+
+function buildProvinceSelectorLabel(province: PeruProvinceSummary, departmentsByCode: Map<string, string>) {
+  return [province.code, province.name, departmentsByCode.get(province.departmentCode) ?? province.departmentCode].join(" | ");
+}
+
+function buildDistrictSelectorLabel(
+  district: PeruDistrictSummary,
+  provincesByCode: Map<string, string>,
+  departmentsByCode: Map<string, string>
+) {
+  return [
+    district.code,
+    district.name,
+    provincesByCode.get(district.provinceCode) ?? district.provinceCode,
+    departmentsByCode.get(district.departmentCode) ?? district.departmentCode
+  ].join(" | ");
+}
+
+function parseLocationSelection(value: string | undefined, scope: UbigeoScope) {
+  const normalized = normalizeText(value);
+  if (!normalized) {
+    return { code: undefined, name: undefined };
+  }
+
+  const segments = selectorSegments(normalized);
+  const firstSegment = segments[0];
+  const validCode =
+    scope === "department"
+      ? /^\d{2}$/.test(firstSegment ?? "")
+      : scope === "province"
+        ? /^\d{4}$/.test(firstSegment ?? "")
+        : /^\d{6}$/.test(firstSegment ?? "");
+
+  if (validCode) {
+    return {
+      code: firstSegment,
+      name: normalizeText(segments[1])
+    };
+  }
+
+  return {
+    code: undefined,
+    name: normalized
+  };
 }
 
 function detectDelimiter(headerLine: string) {
@@ -468,6 +526,33 @@ export async function downloadBulkOrdersTemplate(options: BulkOrdersTemplateOpti
     .filter((vendor) => vendor.status === "active")
     .sort((left, right) => left.name.localeCompare(right.name, "es"))
     .slice(0, templateVendorGuideLimit);
+  const departmentOptions = [...(options.peruUbigeo?.departments ?? [])].sort((left, right) => left.name.localeCompare(right.name, "es"));
+  const departmentsByCode = new Map(departmentOptions.map((department) => [department.code, department.name] as const));
+  const provinceOptions = [...(options.peruUbigeo?.provinces ?? [])].sort((left, right) => {
+    const departmentRank = (departmentsByCode.get(left.departmentCode) ?? "").localeCompare(departmentsByCode.get(right.departmentCode) ?? "", "es");
+    if (departmentRank !== 0) {
+      return departmentRank;
+    }
+
+    return left.name.localeCompare(right.name, "es");
+  });
+  const provincesByCode = new Map(provinceOptions.map((province) => [province.code, province.name] as const));
+  const districtOptions = [...(options.peruUbigeo?.districts ?? [])].sort((left, right) => {
+    const departmentRank = (departmentsByCode.get(left.departmentCode) ?? "").localeCompare(departmentsByCode.get(right.departmentCode) ?? "", "es");
+    if (departmentRank !== 0) {
+      return departmentRank;
+    }
+
+    const provinceRank = (provincesByCode.get(left.provinceCode) ?? "").localeCompare(provincesByCode.get(right.provinceCode) ?? "", "es");
+    if (provinceRank !== 0) {
+      return provinceRank;
+    }
+
+    return left.name.localeCompare(right.name, "es");
+  });
+  const departmentLabels = departmentOptions.map(buildDepartmentSelectorLabel);
+  const provinceLabels = provinceOptions.map((province) => buildProvinceSelectorLabel(province, departmentsByCode));
+  const districtLabels = districtOptions.map((district) => buildDistrictSelectorLabel(district, provincesByCode, departmentsByCode));
 
   if (!productOptions.length) {
     downloadBulkOrdersCsvTemplate();
@@ -485,7 +570,85 @@ export async function downloadBulkOrdersTemplate(options: BulkOrdersTemplateOpti
   const helpSheet = workbook.addWorksheet("Ayuda");
   const productsSheet = workbook.addWorksheet("Catalogo");
   const vendorsSheet = workbook.addWorksheet("Vendedores");
+  const ubigeoSheet = workbook.addWorksheet("Ubigeo");
   const listsSheet = workbook.addWorksheet("Listas");
+
+  const sampleDepartment =
+    departmentOptions.find((department) => department.name === "Lima") ??
+    departmentOptions[0];
+  const sampleProvince =
+    provinceOptions.find((province) => province.departmentCode === sampleDepartment?.code && province.name === "Lima") ??
+    provinceOptions.find((province) => province.departmentCode === sampleDepartment?.code) ??
+    provinceOptions[0];
+  const sampleDistrictPrimary =
+    districtOptions.find((district) => district.provinceCode === sampleProvince?.code && district.name === "Miraflores") ??
+    districtOptions.find((district) => district.provinceCode === sampleProvince?.code && district.name === "Lima") ??
+    districtOptions.find((district) => district.provinceCode === sampleProvince?.code) ??
+    districtOptions[0];
+  const sampleDistrictSecondary =
+    districtOptions.find((district) => district.provinceCode === sampleProvince?.code && district.name === "San Isidro") ??
+    districtOptions.find((district) => district.provinceCode === sampleProvince?.code && district.code !== sampleDistrictPrimary?.code) ??
+    sampleDistrictPrimary;
+
+  const sampleDepartmentLabel = sampleDepartment ? buildDepartmentSelectorLabel(sampleDepartment) : "Lima";
+  const sampleProvinceLabel = sampleProvince ? buildProvinceSelectorLabel(sampleProvince, departmentsByCode) : "Lima";
+  const sampleDistrictPrimaryLabel =
+    sampleDistrictPrimary ? buildDistrictSelectorLabel(sampleDistrictPrimary, provincesByCode, departmentsByCode) : "Lima";
+  const sampleDistrictSecondaryLabel =
+    sampleDistrictSecondary ? buildDistrictSelectorLabel(sampleDistrictSecondary, provincesByCode, departmentsByCode) : sampleDistrictPrimaryLabel;
+  const sampleVendorLabel = vendorOptions[0] ? buildVendorSelectorLabel(vendorOptions[0]) : "";
+  const sampleProductPrimaryLabel = buildProductSelectorLabel(productOptions[0]!);
+  const sampleProductSecondaryLabel = buildProductSelectorLabel(productOptions[1] ?? productOptions[0]!);
+  const sampleRows = [
+    [
+      "WSP-001",
+      "Laura",
+      "Mendoza",
+      "laura@example.com",
+      "999111222",
+      "Av. Principal 123",
+      sampleDepartmentLabel,
+      sampleProvinceLabel,
+      sampleDistrictPrimaryLabel,
+      statusDropdownOptions[1],
+      sampleVendorLabel,
+      "Pedido por WhatsApp",
+      sampleProductPrimaryLabel,
+      "2"
+    ],
+    [
+      "WSP-001",
+      "Laura",
+      "Mendoza",
+      "laura@example.com",
+      "999111222",
+      "Av. Principal 123",
+      sampleDepartmentLabel,
+      sampleProvinceLabel,
+      sampleDistrictPrimaryLabel,
+      statusDropdownOptions[1],
+      sampleVendorLabel,
+      "Pedido por WhatsApp",
+      sampleProductSecondaryLabel,
+      "1"
+    ],
+    [
+      "WSP-002",
+      "Carlos",
+      "Rojas",
+      "",
+      "999333444",
+      "Jr. Comercio 456",
+      sampleDepartmentLabel,
+      sampleProvinceLabel,
+      sampleDistrictSecondaryLabel,
+      statusDropdownOptions[0],
+      "",
+      "Pendiente de transferencia",
+      sampleProductPrimaryLabel,
+      "1"
+    ]
+  ];
 
   ordersSheet.columns = [
     { header: "pedido_ref", key: "pedido_ref", width: 18 },
@@ -494,25 +657,24 @@ export async function downloadBulkOrdersTemplate(options: BulkOrdersTemplateOpti
     { header: "cliente_email", key: "cliente_email", width: 24 },
     { header: "cliente_telefono", key: "cliente_telefono", width: 18 },
     { header: "direccion_1", key: "direccion_1", width: 26 },
-    { header: "departamento", key: "departamento", width: 18 },
-    { header: "provincia", key: "provincia", width: 18 },
-    { header: "distrito", key: "distrito", width: 18 },
+    { header: "departamento", key: "departamento", width: 24 },
+    { header: "provincia", key: "provincia", width: 28 },
+    { header: "distrito", key: "distrito", width: 34 },
     { header: "estado_pago", key: "estado_pago", width: 24 },
     { header: "vendedor_codigo", key: "vendedor_codigo", width: 32 },
     { header: "notas", key: "notas", width: 28 },
     { header: "producto_sku", key: "producto_sku", width: 42 },
-    { header: "cantidad", key: "cantidad", width: 12 },
-    { header: "precio_unitario", key: "precio_unitario", width: 16 }
+    { header: "cantidad", key: "cantidad", width: 12 }
   ];
 
-  templateRows.forEach((row) => {
+  sampleRows.forEach((row) => {
     ordersSheet.addRow(row);
   });
 
   ordersSheet.views = [{ state: "frozen", ySplit: 1 }];
   ordersSheet.autoFilter = {
     from: "A1",
-    to: "O1"
+    to: "N1"
   };
 
   ordersSheet.getRow(1).font = { bold: true };
@@ -531,10 +693,10 @@ export async function downloadBulkOrdersTemplate(options: BulkOrdersTemplateOpti
     ["pedido_ref", "Identificador del pedido", "Repite el mismo pedido_ref si el pedido tiene varias lineas/productos."],
     ["estado_pago", "Usa el combo desplegable", "pending_payment crea el pedido pendiente; paid lo registra ya cobrado."],
     ["vendedor_codigo", "Usa el combo desplegable o deja vacio", "La lista trae vendedores activos con codigo y nombre para seleccion rapida."],
-    ["producto_sku", "Usa el combo desplegable del catalogo", "La lista muestra SKU, nombre, tipo y precio sugerido. El importador toma el SKU."],
+    ["producto_sku", "Usa el combo desplegable del catalogo", "La lista muestra SKU, nombre, tipo y precio sugerido. El importador toma el SKU y resuelve el precio actual del producto."],
     ["cantidad", "Numero entero mayor a cero", "Una fila = una linea del pedido."],
-    ["precio_unitario", "Monto editable", "Puedes respetar el sugerido del catalogo o ajustar el precio comercial del pedido."],
-    ["departamento / provincia / distrito", "Destino del pedido", "Completa los tres para ubigeo Peru. Si un pedido tiene varias lineas, repite los mismos datos."]
+    ["departamento / provincia / distrito", "Usa los combos desplegables", "La plantilla guarda codigo y nombre en el selector. El importador toma el ubigeo correcto sin que lo escribas a mano."],
+    ["precio_unitario (opcional)", "No viene en la plantilla", "Si algun caso excepcional requiere precio manual, puedes agregar esa columna en un CSV legado. Si no la envias, el sistema usa el precio del catalogo activo."]
   ]);
   helpSheet.views = [{ state: "frozen", ySplit: 1 }];
   helpSheet.getRow(1).font = { bold: true };
@@ -583,12 +745,88 @@ export async function downloadBulkOrdersTemplate(options: BulkOrdersTemplateOpti
   vendorsSheet.views = [{ state: "frozen", ySplit: 1 }];
   vendorsSheet.getRow(1).font = { bold: true };
 
+  ubigeoSheet.columns = [
+    { header: "nivel", key: "nivel", width: 14 },
+    { header: "selector", key: "selector", width: 40 },
+    { header: "codigo", key: "codigo", width: 14 },
+    { header: "nombre", key: "nombre", width: 22 },
+    { header: "referencia", key: "referencia", width: 28 }
+  ];
+  departmentOptions.forEach((department) => {
+    ubigeoSheet.addRow([
+      "departamento",
+      buildDepartmentSelectorLabel(department),
+      department.code,
+      department.name,
+      "Perú"
+    ]);
+  });
+  provinceOptions.forEach((province) => {
+    ubigeoSheet.addRow([
+      "provincia",
+      buildProvinceSelectorLabel(province, departmentsByCode),
+      province.code,
+      province.name,
+      departmentsByCode.get(province.departmentCode) ?? province.departmentCode
+    ]);
+  });
+  districtOptions.forEach((district) => {
+    ubigeoSheet.addRow([
+      "distrito",
+      buildDistrictSelectorLabel(district, provincesByCode, departmentsByCode),
+      district.code,
+      district.name,
+      [
+        provincesByCode.get(district.provinceCode) ?? district.provinceCode,
+        departmentsByCode.get(district.departmentCode) ?? district.departmentCode
+      ].join(" / ")
+    ]);
+  });
+  ubigeoSheet.views = [{ state: "frozen", ySplit: 1 }];
+  ubigeoSheet.getRow(1).font = { bold: true };
+
   listsSheet.getColumn(1).values = ["estado_pago", ...statusDropdownOptions];
   listsSheet.getColumn(3).values = ["vendedor_codigo", ...vendorOptions.map(buildVendorSelectorLabel)];
   listsSheet.getColumn(5).values = ["producto_sku", ...productOptions.map(buildProductSelectorLabel)];
+  listsSheet.getColumn(7).values = ["departamento", ...departmentLabels];
+  listsSheet.getColumn(9).values = ["provincia", ...provinceLabels];
+  listsSheet.getColumn(11).values = ["distrito", ...districtLabels];
   listsSheet.state = "hidden";
 
   for (let rowNumber = 2; rowNumber <= 250; rowNumber += 1) {
+    if (departmentLabels.length > 0) {
+      ordersSheet.getCell(`G${rowNumber}`).dataValidation = {
+        type: "list",
+        allowBlank: true,
+        formulae: [`'Listas'!$G$2:$G$${departmentLabels.length + 1}`],
+        showErrorMessage: true,
+        errorTitle: "Departamento inválido",
+        error: "Selecciona un departamento de la lista sugerida."
+      };
+    }
+
+    if (provinceLabels.length > 0) {
+      ordersSheet.getCell(`H${rowNumber}`).dataValidation = {
+        type: "list",
+        allowBlank: true,
+        formulae: [`'Listas'!$I$2:$I$${provinceLabels.length + 1}`],
+        showErrorMessage: true,
+        errorTitle: "Provincia inválida",
+        error: "Selecciona una provincia de la lista sugerida."
+      };
+    }
+
+    if (districtLabels.length > 0) {
+      ordersSheet.getCell(`I${rowNumber}`).dataValidation = {
+        type: "list",
+        allowBlank: true,
+        formulae: [`'Listas'!$K$2:$K$${districtLabels.length + 1}`],
+        showErrorMessage: true,
+        errorTitle: "Distrito inválido",
+        error: "Selecciona un distrito de la lista sugerida."
+      };
+    }
+
     ordersSheet.getCell(`J${rowNumber}`).dataValidation = {
       type: "list",
       allowBlank: false,
@@ -672,16 +910,23 @@ export function parseBulkOrdersInput(source: string): ParsedBulkOrderBatch {
     const clientReference = normalizeText(row.get("orderRef")) ?? `fila-${rowNumber}`;
     const firstName = normalizeText(row.get("firstName"));
     const quantity = parseInteger(row.get("quantity"));
+    const unitPriceRaw = normalizeText(row.get("unitPrice"));
     const unitPrice = parseCurrency(row.get("unitPrice"));
     const initialStatus = parseStatus(row.get("initialStatus"));
     const sku = extractSelectableCode(row.get("sku"));
     const variantId = extractSelectableCode(row.get("variantId"));
-    const departmentCode = normalizeText(row.get("departmentCode"));
-    const departmentName = normalizeText(row.get("departmentName"));
-    const provinceCode = normalizeText(row.get("provinceCode"));
-    const provinceName = normalizeText(row.get("provinceName"));
-    const districtCode = normalizeText(row.get("districtCode"));
-    const districtName = normalizeText(row.get("districtName"));
+    const departmentFromCode = parseLocationSelection(row.get("departmentCode"), "department");
+    const departmentFromName = parseLocationSelection(row.get("departmentName"), "department");
+    const provinceFromCode = parseLocationSelection(row.get("provinceCode"), "province");
+    const provinceFromName = parseLocationSelection(row.get("provinceName"), "province");
+    const districtFromCode = parseLocationSelection(row.get("districtCode"), "district");
+    const districtFromName = parseLocationSelection(row.get("districtName"), "district");
+    const departmentCode = departmentFromCode.code ?? departmentFromName.code;
+    const departmentName = departmentFromName.name ?? departmentFromCode.name;
+    const provinceCode = provinceFromCode.code ?? provinceFromName.code;
+    const provinceName = provinceFromName.name ?? provinceFromCode.name;
+    const districtCode = districtFromCode.code ?? districtFromName.code;
+    const districtName = districtFromName.name ?? districtFromCode.name;
     const city = normalizeText(row.get("city"));
     const hasUbigeo = Boolean(
       departmentCode || departmentName || provinceCode || provinceName || districtCode || districtName
@@ -705,7 +950,7 @@ export function parseBulkOrdersInput(source: string): ParsedBulkOrderBatch {
       rowIssues.push("La cantidad debe ser un entero mayor a cero.");
     }
 
-    if (unitPrice === undefined || unitPrice < 0) {
+    if (unitPriceRaw && (unitPrice === undefined || unitPrice < 0)) {
       rowIssues.push("El precio unitario debe ser un numero valido mayor o igual a cero.");
     }
 
@@ -759,7 +1004,7 @@ export function parseBulkOrdersInput(source: string): ParsedBulkOrderBatch {
           slug: normalizeText(row.get("slug")),
           name: normalizeText(row.get("name")),
           quantity: quantity ?? 0,
-          unitPrice: unitPrice ?? 0
+          ...(unitPrice !== undefined ? { unitPrice } : {})
         }
       ],
       initialStatus: initialStatus ?? "pending_payment",

@@ -12,6 +12,7 @@ import {
   type CheckoutShippingInput,
   type PeruDepartmentSummary,
   type PeruDistrictSummary,
+  type PeruUbigeoCatalog,
   type PeruProvinceSummary,
   ManualPaymentRequestStatus,
   OrderStatus,
@@ -155,6 +156,10 @@ export class CommerceService {
 
   listPeruDistricts(provinceCode: string) {
     return wrapResponse<PeruDistrictSummary[]>(this.peruUbigeoService.listDistricts(provinceCode));
+  }
+
+  listPeruUbigeoCatalog() {
+    return wrapResponse<PeruUbigeoCatalog>(this.peruUbigeoService.listCatalog());
   }
 
   async createOpenpayCheckout(body: CheckoutRequestInput) {

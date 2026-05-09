@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import type {
   PeruDepartmentSummary,
   PeruDistrictSummary,
+  PeruUbigeoCatalog,
   PeruProvinceSummary,
   WarehouseServiceAreaScopeValue
 } from "@huelegood/shared";
@@ -117,6 +118,23 @@ export class PeruUbigeoService {
         departmentCode,
         provinceCode: nextProvinceCode
       }));
+  }
+
+  listCatalog(): PeruUbigeoCatalog {
+    return {
+      departments: this.listDepartments(),
+      provinces: this.provinces.map(({ code, name, departmentCode }) => ({
+        code,
+        name,
+        departmentCode
+      })),
+      districts: this.districts.map(({ code, name, departmentCode, provinceCode }) => ({
+        code,
+        name,
+        departmentCode,
+        provinceCode
+      }))
+    };
   }
 
   describeServiceArea(scopeType: WarehouseServiceAreaScopeValue, scopeCode?: string) {

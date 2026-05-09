@@ -56,6 +56,7 @@ type TestVariantRecord = {
   productId: string;
   sku: string;
   name: string;
+  price: number;
   status: "active";
   stockOnHand: number;
   lowStockThreshold: number;
@@ -786,6 +787,7 @@ function buildVariant(input: {
   productSlug: string;
   sku: string;
   variantName: string;
+  price?: number;
   stockOnHand: number;
   salesChannel?: ProductSalesChannel;
   defaultWarehouseId?: string | null;
@@ -798,6 +800,7 @@ function buildVariant(input: {
     productId: input.productId,
     sku: input.sku,
     name: input.variantName,
+    price: input.price ?? 60,
     status: "active" as const,
     stockOnHand: input.stockOnHand,
     lowStockThreshold: 2,
@@ -872,6 +875,7 @@ async function createContext(input?: {
         productSlug: "premium-negro",
         sku: "HG-PN-001",
         variantName: "Premium Negro 10 ml",
+        price: 60,
         stockOnHand: 5
       }),
       buildVariant({
@@ -881,6 +885,7 @@ async function createContext(input?: {
         productSlug: "clasico-verde",
         sku: "HG-CV-001",
         variantName: "Clasico Verde 10 ml",
+        price: 55,
         stockOnHand: 8
       })
     ],
@@ -1383,13 +1388,11 @@ test("la carga masiva crea pedidos manuales y completa producto y ubigeo desde r
         items: [
           {
             sku: "HG-PN-001",
-            quantity: 2,
-            unitPrice: 60
+            quantity: 2
           },
           {
             sku: "HG-CV-001",
-            quantity: 1,
-            unitPrice: 55
+            quantity: 1
           }
         ],
         initialStatus: "paid",
@@ -1413,8 +1416,7 @@ test("la carga masiva crea pedidos manuales y completa producto y ubigeo desde r
         items: [
           {
             variantId: "var-premium-negro",
-            quantity: 1,
-            unitPrice: 60
+            quantity: 1
           }
         ],
         initialStatus: "pending_payment"
@@ -1433,6 +1435,8 @@ test("la carga masiva crea pedidos manuales y completa producto y ubigeo desde r
   const firstOrder = context.orders.getOrder(firstOrderNumber).data;
   assert.equal(firstOrder.items[0]?.slug, "premium-negro");
   assert.equal(firstOrder.items[0]?.name, "Premium Negro");
+  assert.equal(firstOrder.items[0]?.unitPrice, 60);
+  assert.equal(firstOrder.items[1]?.unitPrice, 55);
   assert.equal(firstOrder.address.departmentName, "Lima");
   assert.equal(firstOrder.address.provinceName, "Lima");
   assert.equal(firstOrder.address.districtName, "Lima");
