@@ -408,13 +408,24 @@ function formatTemplatePrice(price: number, currencyCode = "PEN") {
   }).format(price);
 }
 
-function buildProductSelectorLabel(product: ProductAdminSummary) {
+type ProductVariantTemplateOption = {
+  product: ProductAdminSummary;
+  variant: ProductAdminSummary["variants"][number];
+};
+
+function buildProductSelectorLabel(option: ProductVariantTemplateOption) {
+  const { product, variant } = option;
   return [
-    product.sku,
+    variant.sku,
     product.name,
+    variant.name !== product.name ? variant.name : undefined,
+    variant.flavorLabel ? `sabor ${variant.flavorLabel}` : undefined,
+    variant.presentationLabel ? `presentación ${variant.presentationLabel}` : undefined,
     productKindLabel(product.productKind),
-    formatTemplatePrice(product.price, product.currencyCode)
-  ].join(" | ");
+    formatTemplatePrice(variant.price, product.currencyCode)
+  ]
+    .filter(Boolean)
+    .join(" | ");
 }
 
 function buildVendorSelectorLabel(vendor: AdminOrderVendorOption) {
@@ -521,6 +532,14 @@ export async function downloadBulkOrdersTemplate(options: BulkOrdersTemplateOpti
   const productOptions = (options.products ?? [])
     .filter((product) => product.status === "active" || product.status === "draft")
     .sort((left, right) => left.name.localeCompare(right.name, "es"))
+    .flatMap((product) =>
+      (product.variants ?? [])
+        .filter((variant) => variant.status === "active")
+        .map((variant) => ({
+          product,
+          variant
+        }))
+    )
     .slice(0, templateProductGuideLimit);
   const vendorOptions = (options.vendors ?? [])
     .filter((vendor) => vendor.status === "active")
@@ -693,7 +712,7 @@ export async function downloadBulkOrdersTemplate(options: BulkOrdersTemplateOpti
     ["pedido_ref", "Identificador del pedido", "Repite el mismo pedido_ref si el pedido tiene varias lineas/productos."],
     ["estado_pago", "Usa el combo desplegable", "pending_payment crea el pedido pendiente; paid lo registra ya cobrado."],
     ["vendedor_codigo", "Usa el combo desplegable o deja vacio", "La lista trae vendedores activos con codigo y nombre para seleccion rapida."],
-    ["producto_sku", "Usa el combo desplegable del catalogo", "La lista muestra SKU, nombre, tipo y precio sugerido. El importador toma el SKU y resuelve el precio actual del producto."],
+    ["producto_sku", "Usa el combo desplegable del catalogo", "Cada opcion representa una variante fisica vendible: sabor/presentacion + SKU. El importador toma ese SKU y resuelve el precio actual."],
     ["cantidad", "Numero entero mayor a cero", "Una fila = una linea del pedido."],
     ["departamento / provincia / distrito", "Usa los combos desplegables", "La plantilla guarda codigo y nombre en el selector. El importador toma el ubigeo correcto sin que lo escribas a mano."],
     ["precio_unitario (opcional)", "No viene en la plantilla", "Si algun caso excepcional requiere precio manual, puedes agregar esa columna en un CSV legado. Si no la envias, el sistema usa el precio del catalogo activo."]
@@ -705,22 +724,28 @@ export async function downloadBulkOrdersTemplate(options: BulkOrdersTemplateOpti
     { header: "selector", key: "selector", width: 42 },
     { header: "sku", key: "sku", width: 18 },
     { header: "nombre", key: "nombre", width: 26 },
+    { header: "variante", key: "variante", width: 26 },
+    { header: "sabor", key: "sabor", width: 18 },
+    { header: "presentacion", key: "presentacion", width: 18 },
     { header: "tipo", key: "tipo", width: 18 },
     { header: "precio_sugerido", key: "precio_sugerido", width: 16 },
     { header: "variant_id", key: "variant_id", width: 22 },
     { header: "estado", key: "estado", width: 12 },
     { header: "categoria", key: "categoria", width: 18 }
   ];
-  productOptions.forEach((product) => {
+  productOptions.forEach((option) => {
     productsSheet.addRow([
-      buildProductSelectorLabel(product),
-      product.sku,
-      product.name,
-      productKindLabel(product.productKind),
-      product.price,
-      product.defaultVariantId ?? "",
-      product.status,
-      product.categoryName ?? ""
+      buildProductSelectorLabel(option),
+      option.variant.sku,
+      option.product.name,
+      option.variant.name,
+      option.variant.flavorLabel ?? "",
+      option.variant.presentationLabel ?? "",
+      productKindLabel(option.product.productKind),
+      option.variant.price,
+      option.variant.id,
+      option.variant.status,
+      option.product.categoryName ?? ""
     ]);
   });
   productsSheet.views = [{ state: "frozen", ySplit: 1 }];

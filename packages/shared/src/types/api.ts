@@ -860,6 +860,8 @@ export interface ProductAdminSummary {
   compareAtPrice?: number;
   sku: string;
   defaultVariantId?: string;
+  variantCount: number;
+  variants: ProductVariantSummary[];
   defaultWarehouseId?: string;
   defaultWarehouseCode?: string;
   defaultWarehouseName?: string;
@@ -1587,6 +1589,10 @@ export interface InventoryReportRow {
   variantId: string;
   variantName: string;
   sku: string;
+  flavorCode?: string;
+  flavorLabel?: string;
+  presentationCode?: string;
+  presentationLabel?: string;
   warehouseId: string;
   warehouseCode?: string;
   warehouseName?: string;
@@ -1614,21 +1620,75 @@ export interface InventoryReportSummary {
   generatedAt: string;
 }
 
+export type InventoryStockOperationMode = "physical_count" | "stock_receipt";
+
 export interface InventoryStockAdjustmentInput {
   variantId: string;
   warehouseId: string;
   stockOnHand: number;
   reason: string;
+  mode?: InventoryStockOperationMode;
 }
 
 export interface InventoryStockAdjustmentEnvelope {
   status: "ok" | "queued" | "pending_review" | "rejected";
   message: string;
   referenceId?: string;
+  mode: InventoryStockOperationMode;
   balance: WarehouseInventoryBalanceSummary;
   previousStockOnHand: number;
   nextStockOnHand: number;
   delta: number;
+}
+
+export interface InventoryStockBulkLineInput {
+  variantId?: string;
+  sku?: string;
+  warehouseId?: string;
+  warehouseCode?: string;
+  quantity: number;
+  reason?: string;
+}
+
+export interface InventoryStockBulkInput {
+  mode: InventoryStockOperationMode;
+  reason?: string;
+  lines: InventoryStockBulkLineInput[];
+}
+
+export interface InventoryStockBulkLineResult {
+  lineNumber: number;
+  variantId: string;
+  sku: string;
+  warehouseId: string;
+  warehouseCode?: string;
+  warehouseName?: string;
+  mode: InventoryStockOperationMode;
+  quantity: number;
+  previousStockOnHand: number;
+  nextStockOnHand: number;
+  delta: number;
+  message: string;
+}
+
+export interface InventoryStockBulkLineError {
+  lineNumber: number;
+  variantId?: string;
+  sku?: string;
+  warehouseId?: string;
+  warehouseCode?: string;
+  quantity?: number;
+  message: string;
+}
+
+export interface InventoryStockBulkEnvelope {
+  status: "ok" | "partial" | "rejected";
+  message: string;
+  processedCount: number;
+  failedCount: number;
+  mode: InventoryStockOperationMode;
+  results: InventoryStockBulkLineResult[];
+  errors: InventoryStockBulkLineError[];
 }
 
 export interface AdminReportFiltersInput {

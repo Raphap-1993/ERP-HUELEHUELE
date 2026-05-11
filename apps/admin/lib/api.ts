@@ -69,6 +69,8 @@ import type {
   InventoryReportEnvelope,
   InventoryStockAdjustmentEnvelope,
   InventoryStockAdjustmentInput,
+  InventoryStockBulkEnvelope,
+  InventoryStockBulkInput,
   OrderFulfillmentActionEnvelope,
   OrderFulfillmentAssignmentInput,
   AdminOrderVendorOption,
@@ -767,6 +769,13 @@ export async function fetchInventoryReport() {
 
 export async function adjustInventoryStock(body: InventoryStockAdjustmentInput) {
   return requestJson<InventoryStockAdjustmentEnvelope>("/admin/inventory/stock-adjustments", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export async function adjustInventoryStockBulk(body: InventoryStockBulkInput) {
+  return requestJson<InventoryStockBulkEnvelope>("/admin/inventory/stock-adjustments/bulk", {
     method: "POST",
     body: JSON.stringify(body)
   });

@@ -224,15 +224,40 @@ class PrismaStub {
       const records = ids ? this.variants.filter((variant) => ids.includes(variant.id)) : this.variants;
       return records.map((variant) => this.cloneVariant(variant));
     },
-    findUnique: async (args: { where: { id: string } }) => {
-      const variant = this.variants.find((record) => record.id === args.where.id);
+    findUnique: async (args: { where: { id?: string; sku?: string } }) => {
+      const variant = this.variants.find((record) => record.id === args.where.id || record.sku === args.where.sku);
       return variant ? this.cloneVariant(variant) : null;
     },
     findFirst: async (args: { where: { sku: string } }) => {
       const variant = this.variants.find((record) => record.sku === args.where.sku);
       return variant ? this.cloneVariant(variant) : null;
+    },
+    update: async (args: {
+      where: { id: string };
+      data: Partial<{
+        stockOnHand: number;
+        defaultWarehouseId: string | null;
+      }>;
+    }) => {
+      const variant = this.variants.find((record) => record.id === args.where.id);
+      if (!variant) {
+        return null;
+      }
+
+      if (typeof args.data.stockOnHand === "number") {
+        variant.stockOnHand = args.data.stockOnHand;
+      }
+
+      if ("defaultWarehouseId" in args.data) {
+        variant.defaultWarehouseId = args.data.defaultWarehouseId ?? null;
+      }
+
+      variant.updatedAt = new Date();
+      return this.cloneVariant(variant);
     }
   };
+
+  $transaction = async <T>(callback: (tx: this) => Promise<T>) => callback(this);
 
   readonly moduleSnapshot = {
     findUnique: async () => null,
@@ -257,7 +282,66 @@ class PrismaStub {
   };
 
   readonly warehouseInventoryBalance = {
-    upsert: async () => null
+    findUnique: async (args: { where: { warehouseId_variantId: { warehouseId: string; variantId: string } } }) => {
+      const variant = this.variants.find((record) => record.id === args.where.warehouseId_variantId.variantId);
+      const balance = variant?.warehouseBalances.find(
+        (record) => record.warehouseId === args.where.warehouseId_variantId.warehouseId
+      );
+      return balance ? { ...balance, updatedAt: new Date(balance.updatedAt) } : null;
+    },
+    findMany: async (args: { where: { variantId: string }; select?: { stockOnHand?: boolean } }) => {
+      const variant = this.variants.find((record) => record.id === args.where.variantId);
+      const balances = variant?.warehouseBalances ?? [];
+
+      if (args.select?.stockOnHand) {
+        return balances.map((balance) => ({ stockOnHand: balance.stockOnHand }));
+      }
+
+      return balances.map((balance) => ({ ...balance, updatedAt: new Date(balance.updatedAt) }));
+    },
+    upsert: async (args: {
+      where: { warehouseId_variantId: { warehouseId: string; variantId: string } };
+      create: {
+        warehouseId: string;
+        variantId: string;
+        stockOnHand: number;
+        reservedQuantity: number;
+        committedQuantity: number;
+      };
+      update: {
+        stockOnHand: number;
+      };
+    }) => {
+      const variant = this.variants.find((record) => record.id === args.where.warehouseId_variantId.variantId);
+      if (!variant) {
+        return null;
+      }
+
+      const existing = variant.warehouseBalances.find(
+        (record) => record.warehouseId === args.where.warehouseId_variantId.warehouseId
+      );
+
+      if (existing) {
+        existing.stockOnHand = args.update.stockOnHand;
+        existing.updatedAt = new Date();
+        return { ...existing, updatedAt: new Date(existing.updatedAt) };
+      }
+
+      const created = {
+        warehouseId: args.create.warehouseId,
+        variantId: args.create.variantId,
+        stockOnHand: args.create.stockOnHand,
+        reservedQuantity: args.create.reservedQuantity,
+        committedQuantity: args.create.committedQuantity,
+        updatedAt: new Date()
+      };
+      variant.warehouseBalances.push(created);
+      return { ...created, updatedAt: new Date(created.updatedAt) };
+    }
+  };
+
+  readonly inventoryMovement = {
+    create: async () => null
   };
 
   readonly warehouseTransfer = {
@@ -1926,6 +2010,120 @@ test("el reporte separa saldo por almacen y descuenta solo el origen asignado", 
   assert.equal(arequipaRow.availableStock, 5);
   assert.equal(limaRow.variantAvailableStock, 11);
   assert.equal(arequipaRow.variantAvailableStock, 11);
+});
+
+test("un ingreso de mercaderia suma stock al almacen y recalcula el agregado de la variante", async () => {
+  const context = await createContext({
+    warehouses: [
+      buildWarehouse({
+        id: "wh-lima-central",
+        code: "WH-LIMA-CENTRAL",
+        name: "Lima Central"
+      }),
+      buildWarehouse({
+        id: "wh-arequipa-sur",
+        code: "WH-AREQUIPA-SUR",
+        name: "Arequipa Sur",
+        priority: 1,
+        departmentCode: "04",
+        departmentName: "Arequipa",
+        provinceCode: "0401",
+        provinceName: "Arequipa",
+        districtCode: "040129",
+        districtName: "José Luis Bustamante y Rivero"
+      })
+    ],
+    variants: [
+      buildVariant({
+        id: "var-premium-negro",
+        productId: "prod-premium-negro",
+        productName: "Premium Negro",
+        productSlug: "premium-negro",
+        sku: "HG-PN-001",
+        variantName: "Premium Negro 10 ml",
+        stockOnHand: 50,
+        warehouseBalances: [
+          {
+            warehouseId: "wh-lima-central",
+            variantId: "var-premium-negro",
+            stockOnHand: 20,
+            reservedQuantity: 0,
+            committedQuantity: 0,
+            updatedAt: new Date("2026-04-01T12:00:00.000Z")
+          },
+          {
+            warehouseId: "wh-arequipa-sur",
+            variantId: "var-premium-negro",
+            stockOnHand: 30,
+            reservedQuantity: 0,
+            committedQuantity: 0,
+            updatedAt: new Date("2026-04-01T12:00:00.000Z")
+          }
+        ]
+      })
+    ]
+  });
+
+  const adjustment = await context.inventory.adjustWarehouseStock({
+    variantId: "var-premium-negro",
+    warehouseId: "wh-lima-central",
+    stockOnHand: 5,
+    reason: "Ingreso proveedor mayo",
+    mode: "stock_receipt"
+  });
+
+  assert.equal(adjustment.mode, "stock_receipt");
+  assert.equal(adjustment.previousStockOnHand, 20);
+  assert.equal(adjustment.nextStockOnHand, 25);
+  assert.equal(adjustment.delta, 5);
+
+  const rows = await findInventoryRows(context, "HG-PN-001");
+  const limaRow = rows.find((row) => row.warehouseId === "wh-lima-central");
+  const arequipaRow = rows.find((row) => row.warehouseId === "wh-arequipa-sur");
+
+  assert.ok(limaRow);
+  assert.ok(arequipaRow);
+  assert.equal(limaRow.stockOnHand, 25);
+  assert.equal(arequipaRow.stockOnHand, 30);
+  assert.equal(limaRow.variantStockOnHand, 55);
+  assert.equal(arequipaRow.variantStockOnHand, 55);
+});
+
+test("el lote masivo de inventario procesa lineas por sku o variantId y devuelve errores parciales", async () => {
+  const context = await createContext();
+
+  const result = await context.inventory.adjustWarehouseStockBulk({
+    mode: "physical_count",
+    reason: "Conteo físico de cierre",
+    lines: [
+      {
+        sku: "HG-PN-001",
+        warehouseCode: "WH-LIMA-CENTRAL",
+        quantity: 18
+      },
+      {
+        variantId: "var-clasico-verde",
+        warehouseId: "wh-lima-central",
+        quantity: 7
+      },
+      {
+        sku: "SKU-NO-EXISTE",
+        warehouseCode: "WH-LIMA-CENTRAL",
+        quantity: 3
+      }
+    ]
+  });
+
+  assert.equal(result.status, "partial");
+  assert.equal(result.processedCount, 2);
+  assert.equal(result.failedCount, 1);
+  assert.equal(result.results[0]?.mode, "physical_count");
+  assert.match(result.errors[0]?.message ?? "", /SKU-NO-EXISTE/);
+
+  const premiumRow = await findInventoryRow(context, "HG-PN-001");
+  const classicRow = await findInventoryRow(context, "HG-CV-001");
+  assert.equal(premiumRow.stockOnHand, 18);
+  assert.equal(classicRow.stockOnHand, 7);
 });
 
 test("una transferencia reserva, despacha y recibe stock sin mezclar almacenes", async () => {

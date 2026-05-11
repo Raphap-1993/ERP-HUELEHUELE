@@ -66,23 +66,6 @@ function normalizeSearchValue(value: string) {
   return value.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
-function getProductSearchRank(product: ProductAdminSummary, query: string) {
-  const name = normalizeSearchValue(product.name);
-  const sku = normalizeSearchValue(product.sku);
-  const slug = normalizeSearchValue(product.slug);
-  const category = normalizeSearchValue(product.categoryName ?? "");
-
-  if (name.startsWith(query)) return 0;
-  if (sku.startsWith(query)) return 1;
-  if (slug.startsWith(query)) return 2;
-  if (category.startsWith(query)) return 3;
-  if (name.includes(query)) return 4;
-  if (sku.includes(query)) return 5;
-  if (slug.includes(query)) return 6;
-  if (category.includes(query)) return 7;
-  return 99;
-}
-
 function getVendorSearchRank(vendor: AdminOrderVendorOption, query: string) {
   const code = normalizeSearchValue(vendor.code);
   const name = normalizeSearchValue(vendor.name);
@@ -98,6 +81,41 @@ function getVendorSearchRank(vendor: AdminOrderVendorOption, query: string) {
   if (city.includes(query)) return 6;
   if (email.includes(query)) return 7;
   return 99;
+}
+
+function createItemKey(variantId?: string, sku?: string, slug?: string) {
+  return variantId ?? sku ?? slug ?? "item";
+}
+
+function variantPickerLabel(product: ProductAdminSummary, variant: ProductAdminSummary["variants"][number]) {
+  const fragments = [product.name];
+  if (variant.name && variant.name !== product.name) {
+    fragments.push(variant.name);
+  }
+  if (variant.flavorLabel) {
+    fragments.push(`Sabor ${variant.flavorLabel}`);
+  }
+  if (variant.presentationLabel) {
+    fragments.push(`Presentación ${variant.presentationLabel}`);
+  }
+
+  return fragments.join(" · ");
+}
+
+function variantPickerSearchText(product: ProductAdminSummary, variant: ProductAdminSummary["variants"][number]) {
+  return normalizeSearchValue(
+    [
+      product.name,
+      product.slug,
+      product.categoryName,
+      variant.sku,
+      variant.name,
+      variant.flavorLabel,
+      variant.presentationLabel
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
 }
 
 function documentTypeLabel(value?: string) {
@@ -429,8 +447,22 @@ const ORDER_DETAIL_TABS = [
 
 type OrderDetailTab = (typeof ORDER_DETAIL_TABS)[number]["value"];
 
+type CreateItemState = {
+  key: string;
+  slug: string;
+  name: string;
+  sku: string;
+  variantId?: string;
+  variantName?: string;
+  flavorLabel?: string;
+  presentationLabel?: string;
+  quantity: number;
+  unitPrice: number;
+};
+
 type ProductPickerOption = ComboboxOption & {
   product: ProductAdminSummary;
+  variant: ProductAdminSummary["variants"][number];
   selectedQuantity: number;
   categoryLabel: string;
   priceLabel: string;
@@ -485,7 +517,7 @@ export function OrdersWorkspace() {
     notes: "", vendorCode: "",
     initialStatus: "pending_payment" as "paid" | "pending_payment"
   });
-  const [createItems, setCreateItems] = useState<Array<{ slug: string; name: string; sku: string; variantId?: string; quantity: number; unitPrice: number }>>([]);
+  const [createItems, setCreateItems] = useState<CreateItemState[]>([]);
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [createOptionsLoading, setCreateOptionsLoading] = useState(false);
@@ -723,38 +755,59 @@ export function OrdersWorkspace() {
       suggestedWarehouseId !== assignedWarehouseId
   );
   const selectableProducts = availableProducts.filter((product) => product.status === "active" || product.status === "draft");
+  const selectableProductVariants = useMemo(
+    () =>
+      selectableProducts.flatMap((product) =>
+        (product.variants ?? [])
+          .filter((variant) => variant.status === "active")
+          .map((variant) => ({
+            product,
+            variant,
+            key: createItemKey(variant.id, variant.sku, product.slug),
+            searchText: variantPickerSearchText(product, variant)
+          }))
+      ),
+    [selectableProducts]
+  );
   const selectableVendors = useMemo(
     () => availableVendors.filter((vendor) => vendor.status === "active"),
     [availableVendors]
   );
-  const selectedQuantityBySlug = useMemo(
-    () => new Map(createItems.map((item) => [item.slug, item.quantity])),
+  const selectedQuantityByItemKey = useMemo(
+    () => new Map(createItems.map((item) => [item.key, item.quantity])),
     [createItems]
   );
-  const filteredSelectableProducts = useMemo(() => {
+  const filteredSelectableProductVariants = useMemo(() => {
     const query = normalizeSearchValue(productSearch);
-    const sortedProducts = [...selectableProducts].sort((left, right) => left.name.localeCompare(right.name, "es"));
+    const sortedVariants = [...selectableProductVariants].sort(
+      (left, right) =>
+        left.product.name.localeCompare(right.product.name, "es") ||
+        left.variant.name.localeCompare(right.variant.name, "es") ||
+        left.variant.sku.localeCompare(right.variant.sku, "es")
+    );
 
     if (!query) {
-      return sortedProducts;
+      return sortedVariants;
     }
 
-    return sortedProducts
-      .filter((product) => getProductSearchRank(product, query) < 99)
+    return sortedVariants
+      .filter((option) => option.searchText.includes(query))
       .sort((left, right) => {
-        const rankDifference = getProductSearchRank(left, query) - getProductSearchRank(right, query);
-        if (rankDifference !== 0) {
-          return rankDifference;
-        }
-
-        return left.name.localeCompare(right.name, "es");
+        return (
+          left.product.name.localeCompare(right.product.name, "es") ||
+          left.variant.name.localeCompare(right.variant.name, "es") ||
+          left.variant.sku.localeCompare(right.variant.sku, "es")
+        );
       });
-  }, [productSearch, selectableProducts]);
-  const visibleSelectableProducts = useMemo(
-    () => filteredSelectableProducts.slice(0, productSearch.trim() ? 12 : 8),
-    [filteredSelectableProducts, productSearch]
+  }, [productSearch, selectableProductVariants]);
+  const visibleSelectableProductVariants = useMemo(
+    () => filteredSelectableProductVariants.slice(0, productSearch.trim() ? 12 : 8),
+    [filteredSelectableProductVariants, productSearch]
   );
-  const hiddenSelectableProductsCount = Math.max(filteredSelectableProducts.length - visibleSelectableProducts.length, 0);
+  const hiddenSelectableProductsCount = Math.max(
+    filteredSelectableProductVariants.length - visibleSelectableProductVariants.length,
+    0
+  );
   const filteredSelectableVendors = useMemo(() => {
     const query = normalizeSearchValue(vendorSearch);
     const sortedVendors = [...selectableVendors].sort((left, right) => left.name.localeCompare(right.name, "es"));
@@ -793,16 +846,17 @@ export function OrdersWorkspace() {
   );
   const productPickerOptions = useMemo<ProductPickerOption[]>(
     () =>
-      visibleSelectableProducts.map((product) => ({
-        value: product.id,
-        label: product.name,
-        description: product.sku,
-        product,
-        selectedQuantity: selectedQuantityBySlug.get(product.slug) ?? 0,
-        categoryLabel: product.categoryName ?? "Sin categoría",
-        priceLabel: formatCurrency(product.price)
+      visibleSelectableProductVariants.map((option) => ({
+        value: option.key,
+        label: variantPickerLabel(option.product, option.variant),
+        description: option.variant.sku,
+        product: option.product,
+        variant: option.variant,
+        selectedQuantity: selectedQuantityByItemKey.get(option.key) ?? 0,
+        categoryLabel: option.product.categoryName ?? "Sin categoría",
+        priceLabel: formatCurrency(option.variant.price)
       })),
-    [selectedQuantityBySlug, visibleSelectableProducts]
+    [selectedQuantityByItemKey, visibleSelectableProductVariants]
   );
   const vendorPickerOptions = useMemo<VendorPickerOption[]>(
     () =>
@@ -1294,20 +1348,38 @@ export function OrdersWorkspace() {
     }
   }
 
-  function addItem(product: ProductAdminSummary) {
+  function addItem(option: ProductPickerOption) {
+    const itemKey = createItemKey(option.variant.id, option.variant.sku, option.product.slug);
     setCreateItems((prev) => {
-      const existing = prev.find((i) => i.slug === product.slug);
-      if (existing) return prev.map((i) => i.slug === product.slug ? { ...i, quantity: i.quantity + 1 } : i);
-      return [...prev, { slug: product.slug, name: product.name, sku: product.sku, variantId: product.defaultVariantId, quantity: 1, unitPrice: product.price }];
+      const existing = prev.find((item) => item.key === itemKey);
+      if (existing) {
+        return prev.map((item) => (item.key === itemKey ? { ...item, quantity: item.quantity + 1 } : item));
+      }
+
+      return [
+        ...prev,
+        {
+          key: itemKey,
+          slug: option.product.slug,
+          name: option.product.name,
+          sku: option.variant.sku,
+          variantId: option.variant.id,
+          variantName: option.variant.name,
+          flavorLabel: option.variant.flavorLabel,
+          presentationLabel: option.variant.presentationLabel,
+          quantity: 1,
+          unitPrice: option.variant.price
+        }
+      ];
     });
   }
 
-  function removeItem(slug: string) {
-    setCreateItems((prev) => prev.filter((i) => i.slug !== slug));
+  function removeItem(itemKey: string) {
+    setCreateItems((prev) => prev.filter((item) => item.key !== itemKey));
   }
 
-  function updateItem(slug: string, field: "quantity" | "unitPrice", value: number) {
-    setCreateItems((prev) => prev.map((i) => i.slug === slug ? { ...i, [field]: value } : i));
+  function updateItem(itemKey: string, field: "quantity" | "unitPrice", value: number) {
+    setCreateItems((prev) => prev.map((item) => (item.key === itemKey ? { ...item, [field]: value } : item)));
   }
 
   function handleCreateDepartmentChange(nextCode: string) {
@@ -1370,7 +1442,14 @@ export function OrdersWorkspace() {
           districtCode: createForm.districtCode,
           districtName: createForm.districtName
         },
-        items: createItems,
+        items: createItems.map((item) => ({
+          slug: item.slug,
+          name: item.name,
+          sku: item.sku,
+          variantId: item.variantId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice
+        })),
         initialStatus: createForm.initialStatus,
         notes: createForm.notes.trim() || undefined,
         vendorCode: createForm.vendorCode.trim() || undefined
@@ -1474,7 +1553,7 @@ export function OrdersWorkspace() {
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-[#132016]">Plantilla operativa</p>
                   <p className="text-xs text-black/55">
-                    Soporta <span className="font-medium">producto_sku</span> o <span className="font-medium">variant_id</span>. El precio se infiere desde el producto elegido y el XLSX te guía con combos de ubigeo para acelerar la carga en Excel, Numbers o Google Sheets compatibles.
+                    Soporta <span className="font-medium">producto_sku</span> o <span className="font-medium">variant_id</span>. Ahora el selector del XLSX representa la variante física exacta, así que sabor y presentación quedan explícitos desde la carga.
                   </p>
                 </div>
                 <Button type="button" variant="secondary" onClick={() => void handleDownloadBulkTemplate()} disabled={bulkTemplateLoading || bulkOptionsLoading}>
@@ -1666,12 +1745,12 @@ export function OrdersWorkspace() {
                     value={productSearch}
                     onValueChange={setProductSearch}
                     onSelect={(option) => {
-                      addItem(option.product);
+                      addItem(option);
                       setProductSearch("");
                     }}
                     options={productPickerOptions}
                     ariaLabel="Buscar productos para el pedido manual"
-                    placeholder="Busca por nombre, SKU o slug"
+                    placeholder="Busca por nombre, SKU, sabor o presentación"
                     alwaysOpen
                     summary={createItems.length > 0 ? (
                       <div className="rounded-[12px] border border-[#d9e9df] bg-white p-3">
@@ -1679,7 +1758,7 @@ export function OrdersWorkspace() {
                           <div>
                             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#2d6a4f]">Seleccionados</p>
                             <p className="mt-1 text-xs text-black/50">
-                              {createItems.length} producto(s) distintos · {createItemsCount} item(s) en el pedido
+                              {createItems.length} variante(s) distintas · {createItemsCount} item(s) en el pedido
                             </p>
                           </div>
                           <div className="rounded-full bg-[#eef7f1] px-3 py-1 text-xs font-semibold text-[#2d6a4f]">
@@ -1688,24 +1767,28 @@ export function OrdersWorkspace() {
                         </div>
                         <div className="space-y-2">
                           {createItems.map((item) => (
-                            <div key={item.slug} className="flex items-center gap-3 rounded-[10px] border border-black/10 bg-[#fbfbf8] px-3 py-2 text-sm">
+                            <div key={item.key} className="flex items-center gap-3 rounded-[10px] border border-black/10 bg-[#fbfbf8] px-3 py-2 text-sm">
                               <div className="min-w-0 flex-1">
                                 <div className="truncate font-medium text-[#132016]">{item.name}</div>
-                                <div className="text-xs text-black/45">{item.sku}</div>
+                                <div className="text-xs text-black/45">
+                                  {item.variantName ?? item.sku} · {item.sku}
+                                  {item.flavorLabel ? ` · Sabor ${item.flavorLabel}` : ""}
+                                  {item.presentationLabel ? ` · ${item.presentationLabel}` : ""}
+                                </div>
                               </div>
                               <input type="number" min={1} value={item.quantity}
-                                onChange={(e) => updateItem(item.slug, "quantity", Math.max(1, Number(e.target.value)))}
+                                onChange={(e) => updateItem(item.key, "quantity", Math.max(1, Number(e.target.value)))}
                                 className="w-14 rounded-[8px] border border-black/15 bg-white px-2 py-1 text-center text-sm"
                               />
                               <span className="text-black/45">×</span>
                               <input type="number" min={0} step={0.5} value={item.unitPrice}
-                                onChange={(e) => updateItem(item.slug, "unitPrice", Number(e.target.value))}
+                                onChange={(e) => updateItem(item.key, "unitPrice", Number(e.target.value))}
                                 className="w-20 rounded-[8px] border border-black/15 bg-white px-2 py-1 text-right text-sm"
                               />
                               <span className="w-16 text-right text-sm font-semibold text-[#132016]">
                                 S/ {(item.unitPrice * item.quantity).toFixed(0)}
                               </span>
-                              <button type="button" onClick={() => removeItem(item.slug)} className="text-red-400 transition hover:text-red-600">✕</button>
+                              <button type="button" onClick={() => removeItem(item.key)} className="text-red-400 transition hover:text-red-600">✕</button>
                             </div>
                           ))}
                         </div>
@@ -1717,11 +1800,11 @@ export function OrdersWorkspace() {
                           {createOptionsLoading
                             ? "Cargando catálogo..."
                             : productSearch.trim()
-                              ? `${filteredSelectableProducts.length} resultado(s)`
-                              : `${selectableProducts.length} producto(s) disponibles`}
+                              ? `${filteredSelectableProductVariants.length} variante(s) encontrada(s)`
+                              : `${selectableProductVariants.length} variante(s) disponibles`}
                         </span>
                         {hiddenSelectableProductsCount > 0 ? (
-                          <span>Mostrando {visibleSelectableProducts.length}; sigue escribiendo para refinar</span>
+                          <span>Mostrando {visibleSelectableProductVariants.length}; sigue escribiendo para refinar</span>
                         ) : null}
                       </div>
                     )}
@@ -1733,10 +1816,10 @@ export function OrdersWorkspace() {
                     )}
                     emptyState={(
                       <p className="rounded-[10px] border border-dashed border-black/10 bg-white px-3 py-3 text-xs text-black/45">
-                        {!selectableProducts.length
+                        {!selectableProductVariants.length
                           ? createOptionsNotice?.includes("productos")
                             ? "No pudimos cargar productos."
-                            : "No hay productos disponibles todavía."
+                            : "No hay variantes activas disponibles todavía."
                           : "No encontramos coincidencias para esa búsqueda."}
                       </p>
                     )}
@@ -1745,7 +1828,7 @@ export function OrdersWorkspace() {
                         <div className="min-w-0 flex-1">
                           <div className="truncate font-medium text-[#132016]">{option.label}</div>
                           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-black/45">
-                            <span>{option.product.sku}</span>
+                            <span>{option.variant.sku}</span>
                             <span>{option.categoryLabel}</span>
                             <span>{option.priceLabel}</span>
                           </div>

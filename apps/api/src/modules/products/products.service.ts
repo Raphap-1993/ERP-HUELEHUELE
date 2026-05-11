@@ -1298,6 +1298,12 @@ export class ProductsService {
       }
 
       const requestedVariantId = normalizeVariantId(item.variantId);
+      const activeVariants = product.variants.filter((candidate) => candidate.status === "active");
+      if (requestedVariantId == null && activeVariants.length > 1) {
+        throw new BadRequestException(
+          `El producto ${item.slug} requiere variantId explícito porque tiene múltiples sabores o presentaciones activas.`
+        );
+      }
       const variant =
         requestedVariantId == null
           ? selectDefaultVariant(product.variants)
@@ -1871,10 +1877,10 @@ export class ProductsService {
     const hasPhysicalStock = product.productKind !== "bundle";
     const benefits = resolveProductBenefits(product);
 
-    return {
-      id: product.id,
-      name: product.name,
-      slug: product.slug,
+  return {
+    id: product.id,
+    name: product.name,
+    slug: product.slug,
       productKind: product.productKind,
       shortDescription: product.shortDescription ?? undefined,
       categoryId: product.categoryId ?? undefined,
@@ -1887,15 +1893,17 @@ export class ProductsService {
       badge: resolveProductBadge(product),
       tone: resolveProductTone(product),
       benefits,
-      price: defaultVariant ? Number(defaultVariant.price) : 0,
-      compareAtPrice: defaultVariant ? toNumber(defaultVariant.compareAtPrice) : undefined,
-      sku: defaultVariant?.sku ?? "SIN-SKU",
-      defaultVariantId: defaultVariant?.id,
-      defaultWarehouseId: hasPhysicalStock ? defaultVariant?.defaultWarehouseId ?? undefined : undefined,
-      defaultWarehouseCode: hasPhysicalStock ? defaultVariant?.defaultWarehouse?.code ?? undefined : undefined,
-      defaultWarehouseName: hasPhysicalStock ? defaultVariant?.defaultWarehouse?.name ?? undefined : undefined,
-      currencyCode: CATALOG_CURRENCY_CODE,
-      primaryImageUrl: primaryImage?.url,
+    price: defaultVariant ? Number(defaultVariant.price) : 0,
+    compareAtPrice: defaultVariant ? toNumber(defaultVariant.compareAtPrice) : undefined,
+    sku: defaultVariant?.sku ?? "SIN-SKU",
+    defaultVariantId: defaultVariant?.id,
+    variantCount: product.variants.length,
+    variants: product.variants.map((variant) => mapVariant(variant, product.productKind)),
+    defaultWarehouseId: hasPhysicalStock ? defaultVariant?.defaultWarehouseId ?? undefined : undefined,
+    defaultWarehouseCode: hasPhysicalStock ? defaultVariant?.defaultWarehouse?.code ?? undefined : undefined,
+    defaultWarehouseName: hasPhysicalStock ? defaultVariant?.defaultWarehouse?.name ?? undefined : undefined,
+    currencyCode: CATALOG_CURRENCY_CODE,
+    primaryImageUrl: primaryImage?.url,
       updatedAt: product.updatedAt.toISOString()
     };
   }
