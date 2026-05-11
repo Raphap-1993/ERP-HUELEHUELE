@@ -41,6 +41,7 @@ El codigo local es la fuente de verdad de aplicacion; produccion debe homologars
 ### Flujos operativos
 
 - [Checkout y Openpay](./flows/checkout-openpay.md)
+- [Inventario por variante, sabor y almacén](./flows/inventory-variant-warehouse-operations.md)
 - [Pagos manuales](./flows/manual-payments.md)
 - [Etiquetas de despacho](./flows/order-dispatch-labels.md)
 - [Fulfillment por almacenes](./flows/warehouse-fulfillment-triangulation.md)

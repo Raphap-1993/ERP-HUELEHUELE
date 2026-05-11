@@ -4,6 +4,8 @@
 
 Definir cómo debe configurarse el inventario de Huelegood para que los pedidos se controlen contra stock real y el descuento ocurra por almacén, no solo por variante.
 
+Para el uso diario del backoffice y el detalle del flujo actual por `sabor/presentación + almacén`, ver también [Inventario por variante, sabor y almacén](../flows/inventory-variant-warehouse-operations.md).
+
 ## Modelo operativo vigente
 
 La operación actual usa estas piezas:
