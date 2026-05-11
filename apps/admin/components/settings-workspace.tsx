@@ -101,6 +101,7 @@ function normalizeSiteSetting(value: SiteSetting): CmsSiteSettingsInput {
   return {
     brandName: value.brandName,
     tagline: value.tagline,
+    featuredProductSlugs: value.featuredProductSlugs,
     supportEmail: value.supportEmail,
     whatsapp: value.whatsapp,
     shippingFlatRate: value.shippingFlatRate,
@@ -591,6 +592,28 @@ export function SettingsWorkspace() {
               </label>
               <Textarea id="site-tagline" value={siteForm.tagline} onChange={(event) => setSiteForm({ ...siteForm, tagline: event.target.value })} />
               <p className="text-xs leading-5 text-black/55">Texto corto de marca que acompaña bloques del storefront y piezas de apoyo.</p>
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="site-featured-products">
+                Slugs destacados del home
+              </label>
+              <Textarea
+                id="site-featured-products"
+                value={(siteForm.featuredProductSlugs ?? []).join("\n")}
+                onChange={(event) =>
+                  setSiteForm({
+                    ...siteForm,
+                    featuredProductSlugs: event.target.value
+                      .split(/[\n,]/)
+                      .map((value) => value.trim())
+                      .filter(Boolean)
+                  })
+                }
+                placeholder={"clasico-verde\npremium-negro\ncombo-duo-perfecto"}
+              />
+              <p className="text-xs leading-5 text-black/55">
+                Define el orden curado de la home pública. Si lo dejas vacío, la home usará productos `isFeatured`.
+              </p>
             </div>
             <div className="space-y-2 md:col-span-2">
               <label className="text-[11px] font-medium uppercase tracking-[0.24em] text-black/42" htmlFor="site-admin-sidebar-logo">

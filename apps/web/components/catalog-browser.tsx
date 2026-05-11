@@ -241,6 +241,7 @@ export function CatalogBrowser() {
             const description = compactDescription(style.desc || product.tagline || product.description);
             const purchasable = isProductPurchasable(product);
             const stockBadge = resolveStockBadge(product);
+            const requiresVariantSelection = (product.variantCount ?? 1) > 1;
             const savings =
               compareAtPrice && product.compareAtPrice && product.compareAtPrice > product.price
                 ? `Ahorras ${formatPrice(product.compareAtPrice - product.price, currencyCode)}`
@@ -312,12 +313,21 @@ export function CatalogBrowser() {
                         ) : null}
                       </div>
                       {purchasable ? (
+                        requiresVariantSelection ? (
+                          <Link
+                            href={`/producto/${product.slug}`}
+                            className={`inline-flex h-12 min-w-[132px] items-center justify-center rounded-full px-5 text-sm font-semibold text-white transition ${style.btnClass}`}
+                          >
+                            Elegir sabor
+                          </Link>
+                        ) : (
                         <AddToCartLink
                           productSlug={product.slug}
                           className={`inline-flex h-12 min-w-[132px] items-center justify-center rounded-full px-5 text-sm font-semibold text-white transition ${style.btnClass}`}
                         >
                           {style.btnLabel}
                         </AddToCartLink>
+                        )
                       ) : (
                         <span
                           aria-disabled="true"
@@ -402,12 +412,21 @@ export function CatalogBrowser() {
                       <div className="mt-0.5 text-xs text-[#6b7280]">{style.priceNote}</div>
                     </div>
                     {purchasable ? (
+                      requiresVariantSelection ? (
+                        <Link
+                          href={`/producto/${product.slug}`}
+                          className={`inline-flex h-12 min-w-[132px] items-center justify-center rounded-full px-5 text-sm font-semibold text-white transition ${style.btnClass}`}
+                        >
+                          Elegir sabor
+                        </Link>
+                      ) : (
                       <AddToCartLink
                         productSlug={product.slug}
                         className={`inline-flex h-12 min-w-[132px] items-center justify-center rounded-full px-5 text-sm font-semibold text-white transition ${style.btnClass}`}
                       >
                         {style.btnLabel}
                       </AddToCartLink>
+                      )
                     ) : (
                       <span
                         aria-disabled="true"

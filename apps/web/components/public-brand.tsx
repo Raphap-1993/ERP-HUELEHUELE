@@ -78,6 +78,7 @@ export function EditorialProductGrid({ products }: { products: CatalogProduct[] 
         const art = productArtBySlug[product.slug] ?? brandArt.hero;
         const currencyCode = product.currencyCode ?? "PEN";
         const price = formatPrice(product.price, currencyCode);
+        const requiresVariantSelection = (product.variantCount ?? 1) > 1;
         const compareAtPrice =
           product.compareAtPrice && product.compareAtPrice > product.price
             ? formatPrice(product.compareAtPrice, currencyCode)
@@ -133,12 +134,22 @@ export function EditorialProductGrid({ products }: { products: CatalogProduct[] 
                 <Button href={`/producto/${product.slug}`} variant="secondary" size="sm">
                   Ver detalles
                 </Button>
-                <AddToCartLink
-                  productSlug={product.slug}
-                  className="inline-flex h-9 items-center justify-center rounded-full bg-[#61a740] px-4 text-sm font-medium text-[#163126] transition-colors hover:bg-[#577e2f] hover:text-white"
-                >
-                  Comprar ahora
-                </AddToCartLink>
+                {requiresVariantSelection ? (
+                  <Button
+                    href={`/producto/${product.slug}`}
+                    size="sm"
+                    className="inline-flex h-9 items-center justify-center rounded-full bg-[#61a740] px-4 text-sm font-medium text-[#163126] transition-colors hover:bg-[#577e2f] hover:text-white"
+                  >
+                    Elegir sabor
+                  </Button>
+                ) : (
+                  <AddToCartLink
+                    productSlug={product.slug}
+                    className="inline-flex h-9 items-center justify-center rounded-full bg-[#61a740] px-4 text-sm font-medium text-[#163126] transition-colors hover:bg-[#577e2f] hover:text-white"
+                  >
+                    Comprar ahora
+                  </AddToCartLink>
+                )}
               </div>
             </CardContent>
           </Card>

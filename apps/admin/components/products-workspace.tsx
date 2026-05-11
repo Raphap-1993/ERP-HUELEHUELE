@@ -31,6 +31,7 @@ import type {
   ProductImageSummary,
   ProductImageUploadInput,
   ProductStatusValue,
+  ProductToneValue,
   ProductUpsertInput,
   ProductVariantInput,
   ProductVariantSummary,
@@ -39,6 +40,7 @@ import type {
 } from "@huelegood/shared";
 import { ProductSalesChannel } from "@huelegood/shared";
 import {
+  archiveAdminProduct,
   createAdminProduct,
   deleteAdminProductImage,
   fetchAdminWarehouses,
@@ -72,12 +74,21 @@ type BundleComponentDraft = {
   quantity: string;
 };
 
+type ProductDetailAttributeDraft = {
+  label: string;
+  value: string;
+};
+
 type ProductFormState = {
   categoryId: string;
   name: string;
   slug: string;
   shortDescription: string;
   longDescription: string;
+  badge: string;
+  tone: ProductToneValue;
+  benefitsText: string;
+  detailAttributes: ProductDetailAttributeDraft[];
   status: ProductStatusValue;
   salesChannel: ProductSalesChannel;
   reportingGroup: string;
@@ -87,6 +98,11 @@ type ProductFormState = {
 };
 
 const PRODUCT_STATUSES: ProductStatusValue[] = ["draft", "active", "inactive", "archived"];
+const PRODUCT_TONES: Array<{ value: ProductToneValue; label: string }> = [
+  { value: "emerald", label: "Emerald · fresco / principal" },
+  { value: "graphite", label: "Graphite · sobrio / premium" },
+  { value: "amber", label: "Amber · promo / combo" }
+];
 const VARIANT_STATUSES: ProductVariantStatusValue[] = ["active", "inactive", "out_of_stock"];
 const COMBO_CATEGORY_SLUG = "bundles";
 
@@ -205,6 +221,15 @@ function createBundleComponentDraft(seed?: Partial<BundleComponentDraft>): Bundl
   };
 }
 
+function createProductDetailAttributeDraft(
+  seed?: Partial<ProductDetailAttributeDraft>
+): ProductDetailAttributeDraft {
+  return {
+    label: seed?.label ?? "",
+    value: seed?.value ?? ""
+  };
+}
+
 function bundleVariantLabel(variant: ProductVariantSummary) {
   return `${variant.name} · ${variant.sku}`;
 }
@@ -225,6 +250,10 @@ function createEmptyForm(): ProductFormState {
     slug: "",
     shortDescription: "",
     longDescription: "",
+    badge: "",
+    tone: "emerald",
+    benefitsText: "",
+    detailAttributes: [],
     status: "draft",
     salesChannel: ProductSalesChannel.Public,
     reportingGroup: "",
@@ -241,6 +270,15 @@ function fromProductDetail(product: ProductAdminDetail): ProductFormState {
     slug: product.slug,
     shortDescription: product.shortDescription ?? "",
     longDescription: product.longDescription ?? "",
+    badge: product.badge ?? "",
+    tone: product.tone,
+    benefitsText: product.benefits.join("\n"),
+    detailAttributes: product.detailAttributes.map((attribute) =>
+      createProductDetailAttributeDraft({
+        label: attribute.label,
+        value: attribute.value
+      })
+    ),
     status: product.status,
     salesChannel: product.salesChannel ?? ProductSalesChannel.Public,
     reportingGroup: product.reportingGroup ?? "",
@@ -300,6 +338,35 @@ function buildProductPayload(
   if (isCombo && form.bundleComponents.length === 0) {
     throw new Error("Un combo necesita al menos un componente para calcular su stock.");
   }
+
+  const detailAttributes = form.detailAttributes
+    .map((attribute, index) => {
+      const label = attribute.label.trim();
+      const value = attribute.value.trim();
+
+      if (!label && !value) {
+        return null;
+      }
+
+      if (!label || !value) {
+        throw new Error(`El detalle ${index + 1} necesita etiqueta y valor.`);
+      }
+
+      return {
+        label,
+        value
+      };
+    })
+    .filter((attribute): attribute is { label: string; value: string } => Boolean(attribute));
+
+  const benefits = Array.from(
+    new Set(
+      form.benefitsText
+        .split(/\n|,/)
+        .map((benefit) => benefit.trim())
+        .filter(Boolean)
+    )
+  );
 
   const variantSkus = new Set<string>();
   const variants: ProductVariantInput[] = form.variants.map((variant, index) => {
@@ -391,6 +458,10 @@ function buildProductPayload(
     slug,
     shortDescription: form.shortDescription.trim() || undefined,
     longDescription: form.longDescription.trim() || undefined,
+    badge: form.badge.trim() || undefined,
+    tone: form.tone,
+    benefits,
+    detailAttributes,
     status: form.status,
     salesChannel: form.salesChannel,
     reportingGroup: form.reportingGroup.trim() || undefined,
@@ -432,6 +503,7 @@ export function ProductsWorkspace() {
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [archiving, setArchiving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -810,6 +882,34 @@ export function ProductsWorkspace() {
     }));
   }
 
+  function handleAddDetailAttribute() {
+    setForm((current) => ({
+      ...current,
+      detailAttributes: [...current.detailAttributes, createProductDetailAttributeDraft()]
+    }));
+  }
+
+  function handleRemoveDetailAttribute(index: number) {
+    setForm((current) => ({
+      ...current,
+      detailAttributes: current.detailAttributes.filter((_, currentIndex) => currentIndex !== index)
+    }));
+  }
+
+  function updateDetailAttribute(index: number, field: keyof ProductDetailAttributeDraft, value: string) {
+    setForm((current) => ({
+      ...current,
+      detailAttributes: current.detailAttributes.map((attribute, currentIndex) =>
+        currentIndex === index
+          ? {
+              ...attribute,
+              [field]: value
+            }
+          : attribute
+      )
+    }));
+  }
+
   function handleAddBundleComponent() {
     const defaultProductId = componentProductOptions[0]?.id ?? "";
     const defaultProduct = defaultProductId ? bundleComponentProducts[defaultProductId] ?? null : null;
@@ -910,6 +1010,38 @@ export function ProductsWorkspace() {
       setError(saveError instanceof Error ? saveError.message : "No pudimos guardar el producto.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleArchiveSelectedProduct() {
+    if (!selectedProductId || !selectedProduct) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `¿Archivar "${selectedProduct.name}"? El historial comercial e inventario se conserva; el producto deja de estar operativo en storefront.`
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setArchiving(true);
+    setError(null);
+    setFeedback(null);
+
+    try {
+      const response = await archiveAdminProduct(selectedProductId);
+      if (response.product) {
+        setSelectedProduct(response.product);
+        setForm(fromProductDetail(response.product));
+      }
+      setFeedback(response.message);
+      await reloadSelectedProduct(selectedProductId);
+      void refreshCatalog().catch(() => undefined);
+    } catch (archiveError) {
+      setError(archiveError instanceof Error ? archiveError.message : "No pudimos archivar el producto.");
+    } finally {
+      setArchiving(false);
     }
   }
 
@@ -1120,7 +1252,7 @@ export function ProductsWorkspace() {
                   {isCreating
                     ? "Define la ficha base y guarda para habilitar la carga de imágenes."
                     : selectedProduct
-                      ? "Edita la ficha comercial, los combos y la media del producto."
+                      ? "Edita la ficha comercial, sabores/presentaciones, combos y media del producto."
                       : "Cargando producto..."}
                 </DialogDescription>
               </div>
@@ -1245,12 +1377,38 @@ export function ProductsWorkspace() {
                   />
                   <div>
                     <div className="font-medium text-[#132016]">Producto destacado</div>
-                    <div className="text-xs text-black/50">Se mostrará con prioridad en home y bloques curados.</div>
+                    <div className="text-xs text-black/50">Sirve como fallback si la home no define `featuredProductSlugs` en CMS.</div>
                   </div>
                 </label>
 
+                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_260px]">
+                  <label className="space-y-1.5">
+                    <span className="text-sm font-medium text-[#132016]">Badge comercial</span>
+                    <Input
+                      value={form.badge}
+                      onChange={(event) => setForm((current) => ({ ...current, badge: event.target.value }))}
+                      placeholder="Más vendido, Premium, Combo..."
+                    />
+                    <p className="text-xs text-black/45">Si lo dejas vacío, storefront resolverá un fallback operativo.</p>
+                  </label>
+                  <label className="space-y-1.5">
+                    <span className="text-sm font-medium text-[#132016]">Tono visual</span>
+                    <select
+                      value={form.tone}
+                      onChange={(event) => setForm((current) => ({ ...current, tone: event.target.value as ProductToneValue }))}
+                      className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none transition focus:border-black/25"
+                    >
+                      {PRODUCT_TONES.map((tone) => (
+                        <option key={tone.value} value={tone.value}>
+                          {tone.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
                 <label className="space-y-1.5">
-                  <span className="text-sm font-medium text-[#132016]">Descripción corta</span>
+                  <span className="text-sm font-medium text-[#132016]">Tagline / descripción corta</span>
                   <Textarea
                     value={form.shortDescription}
                     onChange={(event) => setForm((current) => ({ ...current, shortDescription: event.target.value }))}
@@ -1267,6 +1425,79 @@ export function ProductsWorkspace() {
                     className="min-h-36"
                   />
                 </label>
+
+                <label className="space-y-1.5">
+                  <span className="text-sm font-medium text-[#132016]">Beneficios visibles</span>
+                  <Textarea
+                    value={form.benefitsText}
+                    onChange={(event) => setForm((current) => ({ ...current, benefitsText: event.target.value }))}
+                    placeholder={"Portátil\nFrescura herbal\nUso diario"}
+                  />
+                  <p className="text-xs text-black/45">
+                    Un beneficio por línea. Se muestran en cards, home y ficha pública.
+                  </p>
+                </label>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <div className="font-semibold text-[#132016]">Detalles visibles en la ficha</div>
+                      <div className="text-sm text-black/55">
+                        Agrega pares simples como `Aromas`, `Ideal para` o `Incluye`. Se muestran en el detalle
+                        público del producto.
+                      </div>
+                    </div>
+                    <Button type="button" variant="secondary" size="sm" onClick={handleAddDetailAttribute}>
+                      Añadir detalle
+                    </Button>
+                  </div>
+
+                  {form.detailAttributes.length ? (
+                    <div className="space-y-3">
+                      {form.detailAttributes.map((attribute, index) => (
+                        <div
+                          key={`detail-attribute-${index}`}
+                          className="rounded-[1.25rem] border border-black/8 bg-[#fafaf7] p-4"
+                        >
+                          <div className="mb-4 flex items-center justify-between gap-4">
+                            <Badge tone="info">Detalle {index + 1}</Badge>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => handleRemoveDetailAttribute(index)}
+                            >
+                              Quitar
+                            </Button>
+                          </div>
+
+                          <div className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+                            <label className="space-y-1.5">
+                              <span className="text-sm font-medium text-[#132016]">Etiqueta</span>
+                              <Input
+                                value={attribute.label}
+                                onChange={(event) => updateDetailAttribute(index, "label", event.target.value)}
+                                placeholder="Aromas"
+                              />
+                            </label>
+                            <label className="space-y-1.5">
+                              <span className="text-sm font-medium text-[#132016]">Valor</span>
+                              <Input
+                                value={attribute.value}
+                                onChange={(event) => updateDetailAttribute(index, "value", event.target.value)}
+                                placeholder="Mentolado intenso con nota herbal fresca"
+                              />
+                            </label>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-[1.25rem] border border-dashed border-black/10 bg-[#fafaf7] p-4 text-sm text-black/55">
+                      Esta ficha todavía no tiene detalles adicionales visibles.
+                    </div>
+                  )}
+                </div>
 
                 <Separator />
 
@@ -1904,12 +2135,19 @@ export function ProductsWorkspace() {
           {activeTab === "ficha" && (
             <DialogFooter>
               <div className="flex-1 text-sm text-black/55">
-                {isCreating ? "Guardar creará el producto y habilitará la carga de imágenes." : "Los cambios se aplican al producto seleccionado."}
+                {isCreating
+                  ? "Guardar creará el producto y habilitará la carga de imágenes."
+                  : "Archive-only: el producto conserva historial; el stock físico se gobierna por sabor/variante desde Inventario."}
               </div>
+              {!isCreating && selectedProduct && selectedProduct.status !== "archived" ? (
+                <Button type="button" variant="ghost" onClick={() => void handleArchiveSelectedProduct()} disabled={archiving || saving}>
+                  {archiving ? "Archivando..." : "Archivar producto"}
+                </Button>
+              ) : null}
               <Button type="button" variant="secondary" onClick={closeModal}>
                 Cancelar
               </Button>
-              <Button type="submit" form="product-form" disabled={saving}>
+              <Button type="submit" form="product-form" disabled={saving || archiving}>
                 {saving ? "Guardando..." : "Guardar cambios"}
               </Button>
             </DialogFooter>

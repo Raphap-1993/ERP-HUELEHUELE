@@ -37,6 +37,7 @@ export function ProductCatalogSection({
   highlights: PremiumProductHighlight[];
 }) {
   const [classicGreen, premiumBlack, duoPerfecto] = products;
+  const classicGreenRequiresVariantSelection = (classicGreen?.variantCount ?? 1) > 1;
 
   return (
     <section className="space-y-6">
@@ -113,12 +114,21 @@ export function ProductCatalogSection({
                     >
                       Ver detalle
                     </Link>
-                    <AddToCartLink
-                      productSlug={classicGreen.slug}
-                      className="inline-flex h-11 items-center justify-center rounded-full bg-[#61a740] px-5 text-sm font-medium text-[#163126] transition-colors hover:bg-[#577e2f] hover:text-white"
-                    >
-                      Comprar
-                    </AddToCartLink>
+                    {classicGreenRequiresVariantSelection ? (
+                      <Link
+                        href={`/producto/${classicGreen.slug}`}
+                        className="inline-flex h-11 items-center justify-center rounded-full bg-[#61a740] px-5 text-sm font-medium text-[#163126] transition-colors hover:bg-[#577e2f] hover:text-white"
+                      >
+                        Elegir sabor
+                      </Link>
+                    ) : (
+                      <AddToCartLink
+                        productSlug={classicGreen.slug}
+                        className="inline-flex h-11 items-center justify-center rounded-full bg-[#61a740] px-5 text-sm font-medium text-[#163126] transition-colors hover:bg-[#577e2f] hover:text-white"
+                      >
+                        Comprar
+                      </AddToCartLink>
+                    )}
                   </div>
                 </div>
               </div>
@@ -131,6 +141,7 @@ export function ProductCatalogSection({
             .filter((product): product is CatalogProduct => Boolean(product))
             .map((product) => {
               const tone = premiumProductToneClasses(product.tone);
+              const requiresVariantSelection = (product.variantCount ?? 1) > 1;
               const highlight = highlightBySlug(highlights, product.slug);
               const resolvedArt = resolveStorefrontMediaSrc(storefrontV2PremiumProductArtBySlug[product.slug] ?? storefrontV2PremiumMedia.hero);
 
@@ -196,12 +207,21 @@ export function ProductCatalogSection({
                           >
                             Ver detalle
                           </Link>
-                          <AddToCartLink
-                            productSlug={product.slug}
-                            className="inline-flex h-11 items-center justify-center rounded-full bg-[#61a740] px-5 text-sm font-medium text-[#163126] transition-colors hover:bg-[#577e2f] hover:text-white"
-                          >
-                            Comprar
-                          </AddToCartLink>
+                          {requiresVariantSelection ? (
+                            <Link
+                              href={`/producto/${product.slug}`}
+                              className="inline-flex h-11 items-center justify-center rounded-full bg-[#61a740] px-5 text-sm font-medium text-[#163126] transition-colors hover:bg-[#577e2f] hover:text-white"
+                            >
+                              Elegir sabor
+                            </Link>
+                          ) : (
+                            <AddToCartLink
+                              productSlug={product.slug}
+                              className="inline-flex h-11 items-center justify-center rounded-full bg-[#61a740] px-5 text-sm font-medium text-[#163126] transition-colors hover:bg-[#577e2f] hover:text-white"
+                            >
+                              Comprar
+                            </AddToCartLink>
+                          )}
                         </div>
                       </div>
                     </div>

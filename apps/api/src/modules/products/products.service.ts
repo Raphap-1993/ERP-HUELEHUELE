@@ -18,6 +18,7 @@ import {
   type CheckoutItemInput,
   type InventoryAllocationSummary,
   type CheckoutQuoteItemSummary,
+  type ProductDetailAttribute,
   type ProductAdminDetail,
   type ProductAdminSummary,
   type ProductKindValue,
@@ -28,6 +29,7 @@ import {
   type ProductImageUploadSummary,
   ProductSalesChannel,
   type ProductStatusValue,
+  type ProductToneValue,
   type ProductUpsertInput,
   type ProductVariantSummary,
   type ProductVariantStatusValue,
@@ -166,38 +168,16 @@ type CatalogQueryInput = {
 
 const CATALOG_CURRENCY_CODE = "PEN";
 const COMBO_CATEGORY_SLUG = "bundles";
+const MAX_PRODUCT_DETAIL_ATTRIBUTES = 12;
+const MAX_PRODUCT_DETAIL_ATTRIBUTE_LABEL_LENGTH = 60;
+const MAX_PRODUCT_DETAIL_ATTRIBUTE_VALUE_LENGTH = 240;
+const MAX_PRODUCT_BENEFITS = 6;
+const MAX_PRODUCT_BENEFIT_LENGTH = 60;
 const productStatuses = new Set<ProductStatusValue>(["draft", "active", "inactive", "archived"]);
 const productKinds = new Set<ProductKindValue>(["single", "bundle"]);
 const variantStatuses = new Set<ProductVariantStatusValue>(["active", "inactive", "out_of_stock"]);
-
-const merchandisingBySlug: Record<
-  string,
-  {
-    badge: string;
-    tone: CatalogProduct["tone"];
-    benefits: string[];
-    tagline: string;
-  }
-> = {
-  "clasico-verde": {
-    badge: "Más vendido",
-    tone: "emerald",
-    benefits: ["Portátil", "Frescura herbal", "Uso diario"],
-    tagline: "El favorito para el día a día."
-  },
-  "premium-negro": {
-    badge: "Premium",
-    tone: "graphite",
-    benefits: ["Acabado premium", "Diseño discreto", "Viaje y altura"],
-    tagline: "Más intenso y con una presencia más sobria."
-  },
-  "combo-duo-perfecto": {
-    badge: "Combo",
-    tone: "amber",
-    benefits: ["Ahorro visible", "Doble formato", "Regalo o reposición"],
-    tagline: "Dos formatos editados para tener una compra más completa."
-  }
-};
+const DEFAULT_SINGLE_PRODUCT_BENEFITS = ["Frescura herbal", "Portátil", "Compra directa"];
+const DEFAULT_BUNDLE_PRODUCT_BENEFITS = ["Ahorro visible", "Pack curado", "Compra directa"];
 
 function toNumber(value?: Prisma.Decimal | null) {
   return value == null ? undefined : Number(value);
@@ -306,6 +286,164 @@ function normalizeSalesChannel(value?: string): ProductSalesChannel {
 function normalizeReportingGroup(value?: string) {
   const normalized = normalizeText(value);
   return normalized ? normalized.slice(0, 120) : undefined;
+}
+
+function normalizeProductTone(value?: string, fallback: ProductToneValue = "emerald"): ProductToneValue {
+  if (value === "graphite" || value === "amber" || value === "emerald") {
+    return value;
+  }
+
+  return fallback;
+}
+
+function defaultProductBenefits(productKind: ProductKindValue | string) {
+  return productKind === "bundle" ? DEFAULT_BUNDLE_PRODUCT_BENEFITS : DEFAULT_SINGLE_PRODUCT_BENEFITS;
+}
+
+function mapStoredProductBenefits(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const benefits = value
+    .flatMap((item) => {
+      if (typeof item !== "string") {
+        return [];
+      }
+
+      const normalized = normalizeText(item);
+      return normalized ? [normalized.slice(0, MAX_PRODUCT_BENEFIT_LENGTH)] : [];
+    })
+    .slice(0, MAX_PRODUCT_BENEFITS);
+
+  return Array.from(new Set(benefits));
+}
+
+function normalizeProductBenefits(value: unknown) {
+  if (value == null) {
+    return [];
+  }
+
+  if (!Array.isArray(value)) {
+    throw new BadRequestException("Los beneficios del producto deben enviarse como una lista.");
+  }
+
+  if (value.length > MAX_PRODUCT_BENEFITS) {
+    throw new BadRequestException(`El producto admite hasta ${MAX_PRODUCT_BENEFITS} beneficios visibles.`);
+  }
+
+  return Array.from(
+    new Set(
+      value.flatMap((item, index) => {
+        if (typeof item !== "string") {
+          throw new BadRequestException(`El beneficio ${index + 1} del producto es inválido.`);
+        }
+
+        const normalized = normalizeText(item);
+        if (!normalized) {
+          return [];
+        }
+
+        if (normalized.length > MAX_PRODUCT_BENEFIT_LENGTH) {
+          throw new BadRequestException(
+            `El beneficio ${index + 1} no puede exceder ${MAX_PRODUCT_BENEFIT_LENGTH} caracteres.`
+          );
+        }
+
+        return [normalized];
+      })
+    )
+  );
+}
+
+function mapStoredProductDetailAttributes(value: unknown): ProductDetailAttribute[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      return [];
+    }
+
+    const label = normalizeText("label" in item ? String(item.label) : undefined);
+    const attributeValue = normalizeText("value" in item ? String(item.value) : undefined);
+
+    if (!label || !attributeValue) {
+      return [];
+    }
+
+    return [
+      {
+        label: label.slice(0, MAX_PRODUCT_DETAIL_ATTRIBUTE_LABEL_LENGTH),
+        value: attributeValue.slice(0, MAX_PRODUCT_DETAIL_ATTRIBUTE_VALUE_LENGTH)
+      }
+    ];
+  });
+}
+
+function normalizeProductDetailAttributes(value: unknown): ProductDetailAttribute[] {
+  if (value == null) {
+    return [];
+  }
+
+  if (!Array.isArray(value)) {
+    throw new BadRequestException("Los detalles del producto deben enviarse como una lista.");
+  }
+
+  if (value.length > MAX_PRODUCT_DETAIL_ATTRIBUTES) {
+    throw new BadRequestException(
+      `El producto admite hasta ${MAX_PRODUCT_DETAIL_ATTRIBUTES} detalles visibles.`
+    );
+  }
+
+  return value
+    .map((item, index) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) {
+        throw new BadRequestException(`El detalle ${index + 1} del producto es inválido.`);
+      }
+
+      const label = normalizeText("label" in item ? String(item.label) : undefined);
+      const attributeValue = normalizeText("value" in item ? String(item.value) : undefined);
+
+      if (!label && !attributeValue) {
+        return null;
+      }
+
+      if (!label || !attributeValue) {
+        throw new BadRequestException(`El detalle ${index + 1} debe incluir etiqueta y valor.`);
+      }
+
+      if (label.length > MAX_PRODUCT_DETAIL_ATTRIBUTE_LABEL_LENGTH) {
+        throw new BadRequestException(
+          `La etiqueta del detalle ${index + 1} no puede exceder ${MAX_PRODUCT_DETAIL_ATTRIBUTE_LABEL_LENGTH} caracteres.`
+        );
+      }
+
+      if (attributeValue.length > MAX_PRODUCT_DETAIL_ATTRIBUTE_VALUE_LENGTH) {
+        throw new BadRequestException(
+          `El valor del detalle ${index + 1} no puede exceder ${MAX_PRODUCT_DETAIL_ATTRIBUTE_VALUE_LENGTH} caracteres.`
+        );
+      }
+
+      return {
+        label,
+        value: attributeValue
+      };
+    })
+    .filter((item): item is ProductDetailAttribute => Boolean(item));
+}
+
+function toProductDetailAttributesJson(detailAttributes: ProductDetailAttribute[]) {
+  return detailAttributes.length
+    ? ((detailAttributes as unknown) as Prisma.InputJsonValue)
+    : Prisma.DbNull;
+}
+
+function toProductBenefitsJson(benefits: string[]) {
+  return benefits.length
+    ? ((benefits as unknown) as Prisma.InputJsonValue)
+    : Prisma.DbNull;
 }
 
 function normalizeLowStockThreshold(value: unknown, fallback = 100) {
@@ -553,6 +691,38 @@ function resolveBundleAllocations(product: CheckoutProductRecord, quantity: numb
   return allocations;
 }
 
+function resolveProductBadge(product: {
+  badge?: string | null;
+  isFeatured?: boolean;
+  productKind?: ProductKindValue | string;
+}) {
+  const stored = normalizeText(product.badge ?? undefined);
+  if (stored) {
+    return stored;
+  }
+
+  if (product.productKind === "bundle") {
+    return "Combo";
+  }
+
+  return product.isFeatured ? "Destacado" : "Disponible";
+}
+
+function resolveProductTone(product: {
+  tone?: string | null;
+  productKind?: ProductKindValue | string;
+}) {
+  return normalizeProductTone(product.tone ?? undefined, product.productKind === "bundle" ? "amber" : "emerald");
+}
+
+function resolveProductBenefits(product: {
+  benefitsJson?: Prisma.JsonValue | null;
+  productKind?: ProductKindValue | string;
+}) {
+  const stored = mapStoredProductBenefits(product.benefitsJson);
+  return stored.length > 0 ? stored : defaultProductBenefits(product.productKind ?? "single");
+}
+
 function mapVariant(variant: ProductVariantWithOptionalWarehouse, productKind: ProductKindValue | string = "single"): ProductVariantSummary {
   const hasPhysicalStock = productKind !== "bundle";
 
@@ -712,6 +882,10 @@ export class ProductsService {
             slug: input.slug,
             shortDescription: input.shortDescription ?? null,
             longDescription: input.longDescription ?? null,
+            badge: input.badge ?? null,
+            tone: input.tone,
+            benefitsJson: toProductBenefitsJson(input.benefits),
+            detailAttributesJson: toProductDetailAttributesJson(input.detailAttributes),
             status: input.status,
             salesChannel: input.salesChannel,
             reportingGroup: input.reportingGroup ?? null,
@@ -780,6 +954,10 @@ export class ProductsService {
             slug: input.slug,
             shortDescription: input.shortDescription ?? null,
             longDescription: input.longDescription ?? null,
+            badge: input.badge ?? null,
+            tone: input.tone,
+            benefitsJson: toProductBenefitsJson(input.benefits),
+            detailAttributesJson: toProductDetailAttributesJson(input.detailAttributes),
             status: input.status,
             salesChannel: input.salesChannel,
             reportingGroup: input.reportingGroup ?? null,
@@ -821,6 +999,74 @@ export class ProductsService {
     } catch (error) {
       return this.rethrowPrismaConflict(error, "No pudimos actualizar el producto.");
     }
+  }
+
+  async archiveProduct(id: string) {
+    const existing = await this.prisma.product.findUnique({
+      where: { id },
+      include: {
+        category: true,
+        variants: {
+          include: {
+            defaultWarehouse: true
+          }
+        },
+        images: true,
+        bundleComponents: {
+          include: {
+            componentProduct: {
+              include: {
+                variants: true
+              }
+            },
+            componentVariant: true
+          }
+        }
+      }
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Producto no encontrado: ${id}`);
+    }
+
+    if (existing.status === "archived") {
+      return {
+        ...actionResponse("ok", "El producto ya estaba archivado.", existing.id),
+        product: this.mapAdminDetail(existing)
+      };
+    }
+
+    const archived = await this.prisma.product.update({
+      where: { id },
+      data: {
+        status: "archived",
+        isFeatured: false
+      },
+      include: {
+        category: true,
+        variants: {
+          include: {
+            defaultWarehouse: true
+          }
+        },
+        images: true,
+        bundleComponents: {
+          include: {
+            componentProduct: {
+              include: {
+                variants: true
+              }
+            },
+            componentVariant: true
+          }
+        }
+      }
+    });
+
+    return {
+      ...actionResponse("ok", "Producto archivado correctamente.", archived.id),
+      product: this.mapAdminDetail(archived)
+    };
   }
 
   async uploadProductImage(
@@ -1178,7 +1424,8 @@ export class ProductsService {
     const products = await this.prisma.product.findMany({
       where: {
         status: "active",
-        salesChannel: ProductSalesChannel.Public
+        salesChannel: ProductSalesChannel.Public,
+        ...(query.featuredOnly ? { isFeatured: true } : {})
       },
       include: {
         category: true,
@@ -1212,10 +1459,6 @@ export class ProductsService {
       .map((product) => this.mapCatalogProductSummary(product))
       .filter((product): product is CatalogProduct => Boolean(product))
       .filter((product) => {
-        if (query.featuredOnly && !product.badge) {
-          return false;
-        }
-
         if (query.category && product.categorySlug !== query.category) {
           return false;
         }
@@ -1259,11 +1502,12 @@ export class ProductsService {
 
       grouped.set(product.categorySlug, {
         slug: product.categorySlug,
-        name: product.categorySlug === COMBO_CATEGORY_SLUG ? "Combos" : "Productos",
+        name: product.categoryName ?? (product.categorySlug === COMBO_CATEGORY_SLUG ? "Combos" : "Productos"),
         description:
-          product.categorySlug === COMBO_CATEGORY_SLUG
+          product.categoryDescription ??
+          (product.categorySlug === COMBO_CATEGORY_SLUG
             ? "Combos, ofertas y promociones activas."
-            : "Referencias principales para venta directa.",
+            : "Referencias principales para venta directa."),
         productCount: 1
       });
     }
@@ -1510,6 +1754,10 @@ export class ProductsService {
       slug,
       shortDescription: normalizeText(body.shortDescription),
       longDescription: normalizeText(body.longDescription),
+      badge: normalizeText(body.badge),
+      tone: normalizeProductTone(body.tone, productKind === "bundle" ? "amber" : "emerald"),
+      benefits: normalizeProductBenefits(body.benefits),
+      detailAttributes: normalizeProductDetailAttributes(body.detailAttributes),
       status: body.status,
       salesChannel: normalizeSalesChannel(body.salesChannel),
       reportingGroup: normalizeReportingGroup(body.reportingGroup) ?? name,
@@ -1621,6 +1869,7 @@ export class ProductsService {
     const defaultVariant = selectDefaultVariant(product.variants);
     const primaryImage = sortImages(product.images)[0];
     const hasPhysicalStock = product.productKind !== "bundle";
+    const benefits = resolveProductBenefits(product);
 
     return {
       id: product.id,
@@ -1635,6 +1884,9 @@ export class ProductsService {
       salesChannel: normalizeSalesChannel(product.salesChannel),
       reportingGroup: normalizeReportingGroup(product.reportingGroup ?? undefined) ?? product.name,
       isFeatured: product.isFeatured,
+      badge: resolveProductBadge(product),
+      tone: resolveProductTone(product),
+      benefits,
       price: defaultVariant ? Number(defaultVariant.price) : 0,
       compareAtPrice: defaultVariant ? toNumber(defaultVariant.compareAtPrice) : undefined,
       sku: defaultVariant?.sku ?? "SIN-SKU",
@@ -1652,6 +1904,7 @@ export class ProductsService {
     return {
       ...this.mapAdminSummary(product),
       longDescription: product.longDescription ?? undefined,
+      detailAttributes: mapStoredProductDetailAttributes(product.detailAttributesJson),
       variants: product.variants.map((variant) => mapVariant(variant, product.productKind)),
       bundleComponents: sortBundleComponents(product.bundleComponents).map(mapBundleComponent),
       images: sortImages(product.images).map(mapImage)
@@ -1668,37 +1921,44 @@ export class ProductsService {
       return null;
     }
 
-    const merchandising = merchandisingBySlug[product.slug] ?? {
-      badge: product.isFeatured ? "Destacado" : "Disponible",
-      tone: "emerald" as const,
-      benefits: ["Frescura herbal", "Portátil", "Compra directa"],
-      tagline: product.shortDescription ?? "Formato listo para compra directa."
-    };
     const primaryImage = sortImages(product.images)[0];
     const stockState = resolveProductStockState(product);
+    const badge = resolveProductBadge(product);
+    const tone = resolveProductTone(product);
+    const benefits = resolveProductBenefits(product);
+    const activeVariantCount = product.variants.filter((candidate) => candidate.status === "active").length;
+    const fallbackTagline = product.shortDescription ?? "Formato listo para compra directa.";
 
     return {
       id: product.id,
       name: product.name,
       slug: product.slug,
       categorySlug: product.category?.slug ?? "productos",
-      tagline: product.shortDescription ?? merchandising.tagline,
-      description: product.longDescription ?? product.shortDescription ?? merchandising.tagline,
+      categoryName: product.category?.slug === COMBO_CATEGORY_SLUG ? "Combos" : product.category?.name ?? undefined,
+      categoryDescription:
+        product.category?.slug === COMBO_CATEGORY_SLUG
+          ? "Combos, packs y promociones activas."
+          : product.category?.description ?? undefined,
+      tagline: fallbackTagline,
+      description: product.longDescription ?? product.shortDescription ?? fallbackTagline,
       price: Number(variant.price),
       compareAtPrice: toNumber(variant.compareAtPrice),
-      badge: merchandising.badge,
-      tone: merchandising.tone,
-      benefits: merchandising.benefits,
+      badge,
+      tone,
+      benefits,
       sku: variant.sku,
       defaultVariantId: variant.id,
+      variantCount: activeVariantCount > 0 ? activeVariantCount : product.variants.length,
       currencyCode: CATALOG_CURRENCY_CODE,
+      isFeatured: product.isFeatured,
       imageUrl: primaryImage?.url,
       imageAlt: primaryImage?.altText ?? `${product.name} - imagen del producto`,
       availableStock: stockState.availableStock,
       lowStockThreshold: stockState.lowStockThreshold,
       stockStatus: stockState.stockStatus,
       stockLabel: stockState.stockLabel,
-      isPurchasable: stockState.isPurchasable
+      isPurchasable: stockState.isPurchasable,
+      detailAttributes: mapStoredProductDetailAttributes(product.detailAttributesJson)
     };
   }
 
@@ -1721,6 +1981,10 @@ export class ProductsService {
           id: variant.id,
           sku: variant.sku,
           name: variant.name,
+          flavorCode: normalizeText(variant.flavorCode ?? undefined) ?? undefined,
+          flavorLabel: normalizeText(variant.flavorLabel ?? undefined) ?? undefined,
+          presentationCode: normalizeText(variant.presentationCode ?? undefined) ?? undefined,
+          presentationLabel: normalizeText(variant.presentationLabel ?? undefined) ?? undefined,
           price: Number(variant.price),
           compareAtPrice: toNumber(variant.compareAtPrice),
           status: variant.status,

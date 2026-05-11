@@ -48,6 +48,7 @@ export function ProductHighlightGrid({
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {products.map((product) => {
           const tone = productToneClasses(product.tone);
+          const requiresVariantSelection = (product.variantCount ?? 1) > 1;
           const art = storefrontProductArtBySlug[product.slug] ?? storefrontV2Media.hero;
           const resolvedArt = resolveStorefrontMediaSrc(art);
           const currencyCode = "PEN";
@@ -112,12 +113,22 @@ export function ProductHighlightGrid({
                     <Button href={`/producto/${product.slug}`} variant="secondary" size="sm">
                       Detalles
                     </Button>
-                    <AddToCartLink
-                      productSlug={product.slug}
-                      className="inline-flex h-9 items-center justify-center rounded-full bg-[#61a740] px-4 text-sm font-medium text-[#163126] transition-colors hover:bg-[#577e2f] hover:text-white"
-                    >
-                      Comprar
-                    </AddToCartLink>
+                    {requiresVariantSelection ? (
+                      <Button
+                        href={`/producto/${product.slug}`}
+                        size="sm"
+                        className="inline-flex h-9 items-center justify-center rounded-full bg-[#61a740] px-4 text-sm font-medium text-[#163126] transition-colors hover:bg-[#577e2f] hover:text-white"
+                      >
+                        Elegir sabor
+                      </Button>
+                    ) : (
+                      <AddToCartLink
+                        productSlug={product.slug}
+                        className="inline-flex h-9 items-center justify-center rounded-full bg-[#61a740] px-4 text-sm font-medium text-[#163126] transition-colors hover:bg-[#577e2f] hover:text-white"
+                      >
+                        Comprar
+                      </AddToCartLink>
+                    )}
                   </div>
                 </div>
               </div>

@@ -44,6 +44,7 @@ import type {
 export const siteSetting: SiteSetting = {
   brandName: "Huelegood",
   tagline: "Frescura herbal portátil para acompañarte en tráfico, viajes, oficina y altura.",
+  featuredProductSlugs: ["clasico-verde", "premium-negro", "combo-duo-perfecto"],
   supportEmail: "hola@huelegood.com",
   whatsapp: "+52 000 000 0000",
   shippingFlatRate: 49,
@@ -153,7 +154,9 @@ export const featuredProducts: CatalogProduct[] = [
     badge: "Más vendido",
     tone: "emerald",
     benefits: ["Portátil", "Frescura herbal", "Uso diario"],
-    sku: "HG-CV-001"
+    sku: "HG-CV-001",
+    variantCount: 1,
+    isFeatured: true
   },
   {
     id: "prod-premium-black",
@@ -168,7 +171,9 @@ export const featuredProducts: CatalogProduct[] = [
     badge: "Nuevo",
     tone: "graphite",
     benefits: ["Acabado premium", "Diseño discreto", "Listo para llevar"],
-    sku: "HG-PN-001"
+    sku: "HG-PN-001",
+    variantCount: 1,
+    isFeatured: true
   },
   {
     id: "prod-duo-perfect",
@@ -183,7 +188,9 @@ export const featuredProducts: CatalogProduct[] = [
     badge: "Combo",
     tone: "amber",
     benefits: ["Ahorro visible", "Doble formato", "Ideal para viaje"],
-    sku: "HG-CDP-001"
+    sku: "HG-CDP-001",
+    variantCount: 1,
+    isFeatured: true
   }
 ];
 

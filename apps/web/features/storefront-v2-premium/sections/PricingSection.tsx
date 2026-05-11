@@ -105,6 +105,7 @@ function PricingCard({
   const features = product.benefits.length > 0 ? product.benefits : fallback.features;
   const price = formatPrice(product.price, currencyCode);
   const compareAtPrice = product.compareAtPrice ? formatPrice(product.compareAtPrice, currencyCode) : null;
+  const requiresVariantSelection = (product.variantCount ?? 1) > 1;
   const savings =
     compareAtPrice && product.compareAtPrice && product.compareAtPrice > product.price
       ? `Ahorras ${formatPrice(product.compareAtPrice - product.price, currencyCode)}`
@@ -167,16 +168,29 @@ function PricingCard({
         ))}
       </ul>
 
-      <AddToCartLink
-        productSlug={product.slug}
-        className={`block w-full rounded-full py-4 text-center text-sm font-semibold text-white transition hover:-translate-y-0.5 ${
-          style.featured
-            ? "bg-gradient-to-r from-[#577e2f] to-[#61a740] hover:shadow-[0_8px_30px_rgba(97,167,64,0.35)]"
-            : "bg-[#61a740] hover:bg-[#577e2f]"
-        }`}
-      >
-        {style.cta}
-      </AddToCartLink>
+      {requiresVariantSelection ? (
+        <Link
+          href={`/producto/${product.slug}`}
+          className={`block w-full rounded-full py-4 text-center text-sm font-semibold text-white transition hover:-translate-y-0.5 ${
+            style.featured
+              ? "bg-gradient-to-r from-[#577e2f] to-[#61a740] hover:shadow-[0_8px_30px_rgba(97,167,64,0.35)]"
+              : "bg-[#61a740] hover:bg-[#577e2f]"
+          }`}
+        >
+          Elegir sabor
+        </Link>
+      ) : (
+        <AddToCartLink
+          productSlug={product.slug}
+          className={`block w-full rounded-full py-4 text-center text-sm font-semibold text-white transition hover:-translate-y-0.5 ${
+            style.featured
+              ? "bg-gradient-to-r from-[#577e2f] to-[#61a740] hover:shadow-[0_8px_30px_rgba(97,167,64,0.35)]"
+              : "bg-[#61a740] hover:bg-[#577e2f]"
+          }`}
+        >
+          {style.cta}
+        </AddToCartLink>
+      )}
 
       <Link
         href={`/producto/${product.slug}`}

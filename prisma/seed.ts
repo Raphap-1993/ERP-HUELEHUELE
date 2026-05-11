@@ -432,6 +432,14 @@ async function seedCatalog() {
         name: product.name,
         shortDescription: product.shortDescription,
         longDescription: product.longDescription,
+        badge: product.badge ?? null,
+        tone: product.tone ?? (isBundle ? "amber" : "emerald"),
+        benefitsJson: product.benefits?.length
+          ? (product.benefits as unknown as Prisma.InputJsonValue)
+          : Prisma.DbNull,
+        detailAttributesJson: product.detailAttributes?.length
+          ? (product.detailAttributes as unknown as Prisma.InputJsonValue)
+          : Prisma.DbNull,
         categoryId: category.id,
         productKind: isBundle ? "bundle" : "single",
         status: "active",
@@ -442,6 +450,14 @@ async function seedCatalog() {
         name: product.name,
         shortDescription: product.shortDescription,
         longDescription: product.longDescription,
+        badge: product.badge ?? null,
+        tone: product.tone ?? (isBundle ? "amber" : "emerald"),
+        benefitsJson: product.benefits?.length
+          ? (product.benefits as unknown as Prisma.InputJsonValue)
+          : Prisma.DbNull,
+        detailAttributesJson: product.detailAttributes?.length
+          ? (product.detailAttributes as unknown as Prisma.InputJsonValue)
+          : Prisma.DbNull,
         categoryId: category.id,
         productKind: isBundle ? "bundle" : "single",
         status: "active",

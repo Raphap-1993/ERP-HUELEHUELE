@@ -14,6 +14,8 @@ import {
 } from "@huelegood/shared";
 import { fetchCatalogSummary, fetchCmsSnapshot } from "../../../lib/api";
 
+const allowStaticStorefrontFallbacks = process.env.NODE_ENV !== "production";
+
 export interface StorefrontV2Metric {
   label: string;
   value: string;
@@ -93,6 +95,31 @@ async function loadStorefrontCatalog() {
   }
 }
 
+function curateStorefrontProducts(
+  products: CatalogProduct[],
+  featuredProductSlugs: string[] | undefined
+) {
+  if (products.length === 0) {
+    return [];
+  }
+
+  const bySlug = new Map(products.map((product) => [product.slug, product] as const));
+  const curated = (featuredProductSlugs ?? [])
+    .map((slug) => bySlug.get(slug))
+    .filter((product): product is CatalogProduct => Boolean(product));
+
+  if (curated.length > 0) {
+    return curated;
+  }
+
+  const featured = products.filter((product) => product.isFeatured);
+  if (featured.length > 0) {
+    return featured;
+  }
+
+  return products;
+}
+
 function mapBanner(banner: CmsBanner): PromoBanner {
   return {
     title: banner.title,
@@ -124,12 +151,19 @@ function mapTestimonial(testimonial: CmsTestimonial): StorefrontV2Testimonial {
 export async function loadStorefrontV2Content(): Promise<StorefrontV2Content> {
   const cms = await loadStorefrontCms();
   const catalogProducts = await loadStorefrontCatalog();
+  const curatedCatalogProducts = curateStorefrontProducts(catalogProducts, cms?.siteSetting.featuredProductSlugs);
   const hero = cms?.heroCopy ?? heroCopy;
-  const banners = cms?.banners.filter((banner) => banner.status === "active").map(mapBanner) ?? promoBanners;
-  const faqs = cms?.faqs.filter((faq) => faq.status === "active").map(mapFaq) ?? faqItems;
+  const banners =
+    cms?.banners.filter((banner) => banner.status === "active").map(mapBanner) ??
+    (allowStaticStorefrontFallbacks ? promoBanners : []);
+  const faqs =
+    cms?.faqs.filter((faq) => faq.status === "active").map(mapFaq) ??
+    (allowStaticStorefrontFallbacks ? faqItems : []);
   const testimonials =
-    cms?.testimonials.filter((testimonial) => testimonial.status === "active").map(mapTestimonial) ?? cmsTestimonials.map(mapTestimonial);
-  const products = catalogProducts.length > 0 ? catalogProducts : featuredProducts;
+    cms?.testimonials.filter((testimonial) => testimonial.status === "active").map(mapTestimonial) ??
+    (allowStaticStorefrontFallbacks ? cmsTestimonials.map(mapTestimonial) : []);
+  const products =
+    curatedCatalogProducts.length > 0 ? curatedCatalogProducts : allowStaticStorefrontFallbacks ? featuredProducts : [];
 
   return {
     hero,
@@ -137,7 +171,7 @@ export async function loadStorefrontV2Content(): Promise<StorefrontV2Content> {
       {
         label: "Selección",
         value: `${products.length} formatos`,
-        detail: catalogProducts.length > 0 ? "Selección actual disponible." : "Selección corta y fácil de recorrer."
+        detail: curatedCatalogProducts.length > 0 ? "Selección curada desde runtime." : "Selección corta y fácil de recorrer."
       },
       {
         label: "Sensación",
@@ -227,7 +261,7 @@ export async function loadStorefrontV2Content(): Promise<StorefrontV2Content> {
       {
         label: "Formatos activos",
         value: `${products.length}`,
-        detail: catalogProducts.length > 0 ? "Selección disponible hoy." : "Selección disponible hoy."
+        detail: curatedCatalogProducts.length > 0 ? "Selección curada disponible hoy." : "Selección disponible hoy."
       },
       {
         label: "Momentos clave",

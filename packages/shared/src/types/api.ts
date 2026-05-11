@@ -36,10 +36,12 @@ import type {
   HeroCopy,
   LoyaltyAccountSummary,
   PromoBanner,
+  ProductToneValue,
   SiteSetting,
   AdminActionSummary,
   AuditLogSummary,
   AuditOverviewSummary,
+  ProductDetailAttribute,
   BundleComponentInput,
   BundleComponentSummary,
   FulfillmentAssignmentStatusValue,
@@ -851,6 +853,9 @@ export interface ProductAdminSummary {
   categoryName?: string;
   status: ProductStatusValue;
   isFeatured: boolean;
+  badge?: string;
+  tone: ProductToneValue;
+  benefits: string[];
   price: number;
   compareAtPrice?: number;
   sku: string;
@@ -867,6 +872,7 @@ export interface ProductAdminSummary {
 
 export interface ProductAdminDetail extends ProductAdminSummary {
   longDescription?: string;
+  detailAttributes: ProductDetailAttribute[];
   variants: ProductVariantSummary[];
   bundleComponents: ProductBundleComponentSummary[];
   images: ProductImageSummary[];
@@ -899,8 +905,12 @@ export interface ProductUpsertInput {
   slug: string;
   shortDescription?: string;
   longDescription?: string;
+  detailAttributes?: ProductDetailAttribute[];
   status: ProductStatusValue;
   isFeatured: boolean;
+  badge?: string;
+  tone?: ProductToneValue;
+  benefits?: string[];
   salesChannel?: ProductSalesChannel;
   reportingGroup?: string;
   variants: ProductVariantInput[];

@@ -49,6 +49,12 @@ enum ProductKind {
   bundle
 }
 
+enum ProductMerchTone {
+  emerald
+  graphite
+  amber
+}
+
 enum VariantStatus {
   active
   inactive
@@ -636,6 +642,10 @@ model Product {
   slug            String         @unique
   shortDescription String?
   longDescription String?
+  badge           String?
+  tone            ProductMerchTone @default(emerald)
+  benefitsJson    Json?
+  detailAttributesJson Json?
   status          ProductStatus  @default(draft)
   salesChannel    ProductSalesChannel @default(public)
   reportingGroup  String?
