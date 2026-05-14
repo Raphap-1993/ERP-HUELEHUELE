@@ -14,6 +14,7 @@ import { PeruUbigeoService } from "../src/modules/commerce/peru-ubigeo.service";
 import { CoreService } from "../src/modules/core/core.service";
 import { InventoryService } from "../src/modules/inventory/inventory.service";
 import { OrdersService } from "../src/modules/orders/orders.service";
+import { ProductsService } from "../src/modules/products/products.service";
 import { TransfersService } from "../src/modules/transfers/transfers.service";
 import { VendorsService } from "../src/modules/vendors/vendors.service";
 
@@ -936,6 +937,171 @@ function buildWarehouse(input: {
   } satisfies TestWarehouseRecord;
 }
 
+function cloneStructured<T>(value: T): T {
+  return structuredClone(value);
+}
+
+function buildCatalogProduct(input: {
+  id: string;
+  name: string;
+  slug: string;
+  shortDescription?: string;
+  warehouses?: TestWarehouseRecord[];
+  variants: Array<{
+    id: string;
+    sku: string;
+    name: string;
+    price?: number;
+    stockOnHand: number;
+    lowStockThreshold?: number;
+    status?: "active" | "inactive" | "out_of_stock";
+    defaultWarehouseId?: string | null;
+    warehouseBalances?: Array<{
+      warehouseId: string;
+      variantId: string;
+      stockOnHand: number;
+      reservedQuantity: number;
+      committedQuantity: number;
+      updatedAt: Date;
+    }>;
+  }>;
+}) {
+  const now = new Date("2026-04-01T10:00:00.000Z");
+  const warehouses =
+    input.warehouses ??
+    [
+      buildWarehouse({
+        id: "wh-lima-central",
+        code: "WH-LIMA-CENTRAL",
+        name: "Lima Central"
+      })
+    ];
+  const warehousesById = new Map(warehouses.map((warehouse) => [warehouse.id, warehouse]));
+
+  return {
+    id: input.id,
+    name: input.name,
+    slug: input.slug,
+    productKind: "single",
+    shortDescription: input.shortDescription ?? `${input.name} en dataset QA.`,
+    longDescription: input.shortDescription ?? `${input.name} en dataset QA.`,
+    categoryId: null,
+    category: null,
+    status: "active",
+    salesChannel: ProductSalesChannel.Public,
+    reportingGroup: input.name,
+    isFeatured: false,
+    badge: null,
+    tone: null,
+    benefitsJson: null,
+    detailAttributesJson: null,
+    variants: input.variants.map((variant, index) => {
+      const createdAt = new Date(now.getTime() + index * 1_000);
+      const defaultWarehouseId = variant.defaultWarehouseId ?? warehouses[0]?.id ?? "wh-lima-central";
+      const defaultWarehouse = defaultWarehouseId ? warehousesById.get(defaultWarehouseId) : undefined;
+      const warehouseBalances =
+        variant.warehouseBalances && variant.warehouseBalances.length > 0
+          ? variant.warehouseBalances
+          : defaultWarehouseId
+            ? [
+                {
+                  warehouseId: defaultWarehouseId,
+                  variantId: variant.id,
+                  stockOnHand: variant.stockOnHand,
+                  reservedQuantity: 0,
+                  committedQuantity: 0,
+                  updatedAt: createdAt
+                }
+              ]
+            : [];
+
+      return {
+        id: variant.id,
+        productId: input.id,
+        sku: variant.sku,
+        name: variant.name,
+        flavorCode: null,
+        flavorLabel: null,
+        presentationCode: null,
+        presentationLabel: null,
+        price: variant.price ?? 60,
+        compareAtPrice: null,
+        stockOnHand: variant.stockOnHand,
+        lowStockThreshold: variant.lowStockThreshold ?? 2,
+        status: variant.status ?? "active",
+        defaultWarehouseId,
+        defaultWarehouse: defaultWarehouse
+          ? {
+              code: defaultWarehouse.code,
+              name: defaultWarehouse.name
+            }
+          : null,
+        warehouseBalances: warehouseBalances.map((balance) => ({
+          ...balance,
+          updatedAt: new Date(balance.updatedAt)
+        })),
+        createdAt,
+        updatedAt: createdAt
+      };
+    }),
+    images: [],
+    bundleComponents: [],
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
+class ProductsPrismaStub {
+  constructor(private readonly products: ReturnType<typeof buildCatalogProduct>[]) {}
+
+  readonly product = {
+    findMany: async (args?: {
+      where?: {
+        slug?: { in?: string[] };
+        status?: string;
+        salesChannel?: ProductSalesChannel;
+        isFeatured?: boolean;
+      };
+    }) => {
+      const slugs = args?.where?.slug?.in;
+
+      return cloneStructured(
+        this.products
+          .filter((product) => (slugs ? slugs.includes(product.slug) : true))
+          .filter((product) => (args?.where?.status ? product.status === args.where.status : true))
+          .filter((product) => (args?.where?.salesChannel ? product.salesChannel === args.where.salesChannel : true))
+          .filter((product) => (args?.where?.isFeatured == null ? true : product.isFeatured === args.where.isFeatured))
+      );
+    },
+    findUnique: async (args: { where: { id?: string; slug?: string } }) => {
+      const product = this.products.find((record) => record.id === args.where.id || record.slug === args.where.slug);
+      return product ? cloneStructured(product) : null;
+    }
+  };
+
+  readonly warehouseInventoryBalance = {
+    findMany: async (args: { where: { OR: Array<{ variantId: string; warehouseId: string }> } }) => {
+      const requestedKeys = new Set(args.where.OR.map((line) => `${line.warehouseId}:${line.variantId}`));
+      const balances = this.products.flatMap((product) =>
+        product.variants.flatMap((variant) =>
+          variant.warehouseBalances
+            .filter((balance) => requestedKeys.has(`${balance.warehouseId}:${balance.variantId}`))
+            .map((balance) => ({
+              ...balance,
+              warehouse: balance.warehouseId === variant.defaultWarehouseId ? variant.defaultWarehouse : undefined
+            }))
+        )
+      );
+
+      return cloneStructured(balances);
+    }
+  };
+}
+
+function createProductsService(products: ReturnType<typeof buildCatalogProduct>[]) {
+  return new ProductsService(new ProductsPrismaStub(products) as never, {} as never);
+}
+
 async function createContext(input?: {
   variants?: TestVariantRecord[];
   warehouses?: TestWarehouseRecord[];
@@ -952,6 +1118,7 @@ async function createContext(input?: {
   ];
   const prisma = new PrismaStub(
     input?.variants ?? [
+      // Keep the default demo fixture multi-variant so ERP regressions run against the same premium product shape.
       buildVariant({
         id: "var-premium-negro",
         productId: "prod-premium-negro",
@@ -961,6 +1128,16 @@ async function createContext(input?: {
         variantName: "Premium Negro 10 ml",
         price: 60,
         stockOnHand: 5
+      }),
+      buildVariant({
+        id: "var-premium-negro-intenso",
+        productId: "prod-premium-negro",
+        productName: "Premium Negro",
+        productSlug: "premium-negro",
+        sku: "HG-PN-002",
+        variantName: "Premium Negro Intenso 30 ml",
+        price: 85,
+        stockOnHand: 3
       }),
       buildVariant({
         id: "var-clasico-verde",
@@ -1212,6 +1389,255 @@ async function findInventoryRows(context: Awaited<ReturnType<typeof createContex
   const report = await context.inventory.getAdminReport();
   return report.data.rows.filter((entry) => entry.sku === sku);
 }
+
+test("el quote cierra a la única variante comprable y exige variantId si quedan varias comprables", async () => {
+  const productsWithSinglePurchasableVariant = createProductsService([
+    buildCatalogProduct({
+      id: "prod-premium-negro",
+      name: "Premium Negro",
+      slug: "premium-negro",
+      variants: [
+        {
+          id: "var-premium-negro",
+          sku: "HG-PN-001",
+          name: "Premium Negro 10 ml",
+          stockOnHand: 0
+        },
+        {
+          id: "var-premium-negro-intenso",
+          sku: "HG-PN-002",
+          name: "Premium Negro Intenso 30 ml",
+          stockOnHand: 4
+        }
+      ]
+    })
+  ]);
+
+  const autoResolved = await productsWithSinglePurchasableVariant.resolveCheckoutItems([
+    {
+      slug: "premium-negro",
+      quantity: 1
+    }
+  ]);
+
+  assert.equal(autoResolved.items[0]?.variantId, "var-premium-negro-intenso");
+  assert.equal(autoResolved.items[0]?.sku, "HG-PN-002");
+
+  const resolved = await productsWithSinglePurchasableVariant.resolveCheckoutItems([
+    {
+      slug: "premium-negro",
+      variantId: "var-premium-negro-intenso",
+      quantity: 1
+    }
+  ]);
+
+  assert.equal(resolved.items[0]?.variantId, "var-premium-negro-intenso");
+  assert.equal(resolved.items[0]?.sku, "HG-PN-002");
+
+  const productsWithMultiplePurchasableVariants = createProductsService([
+    buildCatalogProduct({
+      id: "prod-premium-negro-disponible",
+      name: "Premium Negro",
+      slug: "premium-negro",
+      variants: [
+        {
+          id: "var-premium-negro",
+          sku: "HG-PN-001",
+          name: "Premium Negro 10 ml",
+          stockOnHand: 3
+        },
+        {
+          id: "var-premium-negro-intenso",
+          sku: "HG-PN-002",
+          name: "Premium Negro Intenso 30 ml",
+          stockOnHand: 4
+        }
+      ]
+    })
+  ]);
+
+  await assert.rejects(
+    () =>
+      productsWithMultiplePurchasableVariants.resolveCheckoutItems([
+        {
+          slug: "premium-negro",
+          quantity: 1
+        }
+      ]),
+    (error: unknown) => {
+      assert.ok(error instanceof BadRequestException);
+      assert.match(error.message, /requiere variantId explícito/);
+      return true;
+    }
+  );
+});
+
+test("el resumen catalogo sigue comprable si la variante default no tiene stock pero otra activa si", async () => {
+  const products = createProductsService([
+    buildCatalogProduct({
+      id: "prod-premium-negro",
+      name: "Premium Negro",
+      slug: "premium-negro",
+      variants: [
+        {
+          id: "var-premium-negro",
+          sku: "HG-PN-001",
+          name: "Premium Negro 10 ml",
+          stockOnHand: 0
+        },
+        {
+          id: "var-premium-negro-intenso",
+          sku: "HG-PN-002",
+          name: "Premium Negro Intenso 30 ml",
+          stockOnHand: 4
+        }
+      ]
+    })
+  ]);
+
+  const listing = await products.listCatalogProducts();
+  const premiumNegro = listing.data.find((product) => product.slug === "premium-negro");
+
+  assert.ok(premiumNegro);
+  assert.equal(premiumNegro.availableStock, 4);
+  assert.equal(premiumNegro.stockStatus, "available");
+  assert.equal(premiumNegro.isPurchasable, true);
+});
+
+test("las reservas y commits cierran por variantId + warehouseId sin tocar variantes hermanas", async () => {
+  const context = await createContext({
+    warehouses: [
+      buildWarehouse({
+        id: "wh-lima-central",
+        code: "WH-LIMA-CENTRAL",
+        name: "Lima Central"
+      }),
+      buildWarehouse({
+        id: "wh-arequipa-sur",
+        code: "WH-AREQUIPA-SUR",
+        name: "Arequipa Sur",
+        priority: 1,
+        departmentCode: "04",
+        departmentName: "Arequipa",
+        provinceCode: "0401",
+        provinceName: "Arequipa",
+        districtCode: "040129",
+        districtName: "José Luis Bustamante y Rivero"
+      })
+    ],
+    variants: [
+      buildVariant({
+        id: "var-premium-negro",
+        productId: "prod-premium-negro",
+        productName: "Premium Negro",
+        productSlug: "premium-negro",
+        sku: "HG-PN-001",
+        variantName: "Premium Negro 10 ml",
+        stockOnHand: 7,
+        warehouseBalances: [
+          {
+            warehouseId: "wh-lima-central",
+            variantId: "var-premium-negro",
+            stockOnHand: 5,
+            reservedQuantity: 0,
+            committedQuantity: 0,
+            updatedAt: new Date("2026-04-01T12:00:00.000Z")
+          },
+          {
+            warehouseId: "wh-arequipa-sur",
+            variantId: "var-premium-negro",
+            stockOnHand: 2,
+            reservedQuantity: 0,
+            committedQuantity: 0,
+            updatedAt: new Date("2026-04-01T12:00:00.000Z")
+          }
+        ]
+      }),
+      buildVariant({
+        id: "var-premium-negro-intenso",
+        productId: "prod-premium-negro",
+        productName: "Premium Negro",
+        productSlug: "premium-negro",
+        sku: "HG-PN-002",
+        variantName: "Premium Negro Intenso 30 ml",
+        stockOnHand: 6,
+        warehouseBalances: [
+          {
+            warehouseId: "wh-lima-central",
+            variantId: "var-premium-negro-intenso",
+            stockOnHand: 4,
+            reservedQuantity: 0,
+            committedQuantity: 0,
+            updatedAt: new Date("2026-04-01T12:00:00.000Z")
+          },
+          {
+            warehouseId: "wh-arequipa-sur",
+            variantId: "var-premium-negro-intenso",
+            stockOnHand: 2,
+            reservedQuantity: 0,
+            committedQuantity: 0,
+            updatedAt: new Date("2026-04-01T12:00:00.000Z")
+          }
+        ]
+      })
+    ]
+  });
+
+  const order = await context.orders.createBackofficeOrder(
+    buildBackofficeOrderInput({
+      variantId: "var-premium-negro-intenso",
+      sku: "HG-PN-002",
+      productSlug: "premium-negro",
+      productName: "Premium Negro",
+      initialStatus: "pending_payment"
+    })
+  );
+
+  let premiumIntensoRows = await findInventoryRows(context, "HG-PN-002");
+  let premiumBaseRows = await findInventoryRows(context, "HG-PN-001");
+  let intensoLimaRow = premiumIntensoRows.find((row) => row.warehouseId === "wh-lima-central");
+  let intensoArequipaRow = premiumIntensoRows.find((row) => row.warehouseId === "wh-arequipa-sur");
+  let baseLimaRow = premiumBaseRows.find((row) => row.warehouseId === "wh-lima-central");
+  let baseArequipaRow = premiumBaseRows.find((row) => row.warehouseId === "wh-arequipa-sur");
+
+  assert.ok(intensoLimaRow);
+  assert.ok(intensoArequipaRow);
+  assert.ok(baseLimaRow);
+  assert.ok(baseArequipaRow);
+  assert.equal(intensoLimaRow.reservedQuantity, 1);
+  assert.equal(intensoLimaRow.committedQuantity, 0);
+  assert.equal(intensoArequipaRow.reservedQuantity, 0);
+  assert.equal(intensoArequipaRow.committedQuantity, 0);
+  assert.equal(baseLimaRow.reservedQuantity, 0);
+  assert.equal(baseLimaRow.committedQuantity, 0);
+  assert.equal(baseArequipaRow.reservedQuantity, 0);
+  assert.equal(baseArequipaRow.committedQuantity, 0);
+
+  await context.orders.registerAdminManualPayment(order.orderNumber, {
+    reviewer: "qa",
+    reference: "variant-warehouse-close-001"
+  });
+
+  premiumIntensoRows = await findInventoryRows(context, "HG-PN-002");
+  premiumBaseRows = await findInventoryRows(context, "HG-PN-001");
+  intensoLimaRow = premiumIntensoRows.find((row) => row.warehouseId === "wh-lima-central");
+  intensoArequipaRow = premiumIntensoRows.find((row) => row.warehouseId === "wh-arequipa-sur");
+  baseLimaRow = premiumBaseRows.find((row) => row.warehouseId === "wh-lima-central");
+  baseArequipaRow = premiumBaseRows.find((row) => row.warehouseId === "wh-arequipa-sur");
+
+  assert.ok(intensoLimaRow);
+  assert.ok(intensoArequipaRow);
+  assert.ok(baseLimaRow);
+  assert.ok(baseArequipaRow);
+  assert.equal(intensoLimaRow.reservedQuantity, 0);
+  assert.equal(intensoLimaRow.committedQuantity, 1);
+  assert.equal(intensoArequipaRow.reservedQuantity, 0);
+  assert.equal(intensoArequipaRow.committedQuantity, 0);
+  assert.equal(baseLimaRow.reservedQuantity, 0);
+  assert.equal(baseLimaRow.committedQuantity, 0);
+  assert.equal(baseArequipaRow.reservedQuantity, 0);
+  assert.equal(baseArequipaRow.committedQuantity, 0);
+});
 
 test("permite registrar un vendedor despues de rechazar una postulacion previa", async () => {
   const context = await createContext();
@@ -1847,6 +2273,51 @@ test("la misma orden web idempotente no descuenta stock dos veces", async () => 
   const row = await findInventoryRow(context, "HG-PN-001");
   assert.equal(row.unitsSold, 1);
   assert.equal(row.availableStock, 4);
+});
+
+test("la idempotencia de checkout trata como equivalentes request items sin variantId y con variantId canónico", async () => {
+  const context = await createContext();
+  const vendor = context.vendors.createManualVendor(buildManualVendor()).vendor!;
+  const baseInput = buildOpenpayCheckoutInput({
+    orderNumber: context.orders.reserveOrderNumber(),
+    clientRequestId: "checkout-idem-canonical-001",
+    vendorCode: vendor.code,
+    variantId: "var-premium-negro",
+    sku: "HG-PN-001",
+    productSlug: "premium-negro",
+    productName: "Premium Negro"
+  });
+
+  const first = await context.orders.createCheckoutOrder({
+    ...baseInput,
+    request: {
+      ...baseInput.request,
+      items: [
+        {
+          slug: "premium-negro",
+          quantity: 1
+        }
+      ]
+    }
+  });
+
+  const second = await context.orders.createCheckoutOrder({
+    ...baseInput,
+    orderNumber: context.orders.reserveOrderNumber(),
+    request: {
+      ...baseInput.request,
+      items: [
+        {
+          slug: "premium-negro",
+          quantity: 1,
+          variantId: "var-premium-negro"
+        }
+      ]
+    }
+  });
+
+  assert.equal(first.orderNumber, second.orderNumber);
+  assert.equal(context.orders.listOrders().data.length, 1);
 });
 
 test("una venta falla correctamente cuando no hay stock suficiente", async () => {

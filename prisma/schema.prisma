@@ -690,6 +690,7 @@ model ProductVariant {
   wholesaleQuoteItems WholesaleQuoteItem[]
 
   @@index([defaultWarehouseId])
+  @@unique([productId, flavorCode, presentationCode])
   @@map("product_variants")
 }
 

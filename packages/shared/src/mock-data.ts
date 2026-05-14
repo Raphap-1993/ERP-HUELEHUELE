@@ -172,7 +172,7 @@ export const featuredProducts: CatalogProduct[] = [
     tone: "graphite",
     benefits: ["Acabado premium", "Diseño discreto", "Listo para llevar"],
     sku: "HG-PN-001",
-    variantCount: 1,
+    variantCount: 3,
     isFeatured: true
   },
   {

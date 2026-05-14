@@ -2,7 +2,12 @@ import "dotenv/config";
 import { LifecycleStatus, Prisma, PrismaClient, VendorCodeStatus, VendorStatus } from "@prisma/client";
 import { scryptSync } from "node:crypto";
 import { RoleCode } from "@huelegood/shared";
-import { localDemoCategories, localDemoCmsSnapshot, localDemoProducts } from "./demo-content";
+import {
+  localDemoCategories,
+  localDemoCmsSnapshot,
+  localDemoProducts,
+  type LocalDemoProductSeed
+} from "./demo-content";
 
 const prisma = new PrismaClient();
 
@@ -190,6 +195,42 @@ function inferVariantAttributes(productSlug: string) {
     presentationCode: null,
     presentationLabel: null
   };
+}
+
+function resolveDemoVariantSeeds(product: LocalDemoProductSeed) {
+  const fallbackAttributes = inferVariantAttributes(product.slug);
+
+  if (!product.variants?.length) {
+    return [
+      {
+        sku: product.sku,
+        name: product.name,
+        price: product.price,
+        compareAtPrice: product.compareAtPrice,
+        stockOnHand: 120,
+        imageUrl: product.imageUrl,
+        imageAlt: product.imageAlt,
+        flavorCode: fallbackAttributes.flavorCode,
+        flavorLabel: fallbackAttributes.flavorLabel,
+        presentationCode: fallbackAttributes.presentationCode,
+        presentationLabel: fallbackAttributes.presentationLabel
+      }
+    ];
+  }
+
+  return product.variants.map((variant) => ({
+    sku: variant.sku,
+    name: variant.name ?? product.name,
+    price: variant.price ?? product.price,
+    compareAtPrice: variant.compareAtPrice ?? product.compareAtPrice,
+    stockOnHand: variant.stockOnHand ?? 120,
+    imageUrl: variant.imageUrl ?? product.imageUrl,
+    imageAlt: variant.imageAlt ?? product.imageAlt,
+    flavorCode: variant.flavorCode ?? fallbackAttributes.flavorCode,
+    flavorLabel: variant.flavorLabel ?? fallbackAttributes.flavorLabel,
+    presentationCode: variant.presentationCode ?? fallbackAttributes.presentationCode,
+    presentationLabel: variant.presentationLabel ?? fallbackAttributes.presentationLabel
+  }));
 }
 
 async function seedSiteSettings() {
@@ -417,7 +458,7 @@ async function seedCatalog() {
 
   for (const product of localDemoProducts) {
     const isBundle = (product.bundleComponents?.length ?? 0) > 0;
-    const variantAttributes = inferVariantAttributes(product.slug);
+    const variantSeeds = resolveDemoVariantSeeds(product);
     const category = await prisma.category.findUnique({
       where: { slug: product.categorySlug }
     });
@@ -465,99 +506,106 @@ async function seedCatalog() {
       }
     });
 
-    const variant = await prisma.productVariant.upsert({
-      where: { sku: product.sku },
-      update: {
-        name: product.name,
-        price: new Prisma.Decimal(product.price),
-        compareAtPrice: product.compareAtPrice != null ? new Prisma.Decimal(product.compareAtPrice) : null,
-        stockOnHand: isBundle ? 0 : 120,
-        status: "active",
-        productId: record.id,
-        defaultWarehouseId: isBundle ? null : defaultWarehouse.id,
-        flavorCode: variantAttributes.flavorCode,
-        flavorLabel: variantAttributes.flavorLabel,
-        presentationCode: variantAttributes.presentationCode,
-        presentationLabel: variantAttributes.presentationLabel
-      },
-      create: {
-        productId: record.id,
-        sku: product.sku,
-        name: product.name,
-        price: new Prisma.Decimal(product.price),
-        compareAtPrice: product.compareAtPrice != null ? new Prisma.Decimal(product.compareAtPrice) : null,
-        stockOnHand: isBundle ? 0 : 120,
-        status: "active",
-        defaultWarehouseId: isBundle ? null : defaultWarehouse.id,
-        flavorCode: variantAttributes.flavorCode,
-        flavorLabel: variantAttributes.flavorLabel,
-        presentationCode: variantAttributes.presentationCode,
-        presentationLabel: variantAttributes.presentationLabel
-      }
-    });
-
-    if (isBundle) {
-      await prisma.warehouseInventoryBalance.deleteMany({
-        where: { variantId: variant.id }
-      });
-    } else {
-      const stockSplit = splitStockAcrossWarehouses(120);
-
-      await prisma.warehouseInventoryBalance.upsert({
-        where: {
-          warehouseId_variantId: {
-            warehouseId: defaultWarehouse.id,
-            variantId: variant.id
-          }
-        },
-        update: {
-          stockOnHand: stockSplit.primaryStock
-        },
-        create: {
-          warehouseId: defaultWarehouse.id,
-          variantId: variant.id,
-          stockOnHand: stockSplit.primaryStock,
-          reservedQuantity: 0,
-          committedQuantity: 0
-        }
-      });
-
-      await prisma.warehouseInventoryBalance.upsert({
-        where: {
-          warehouseId_variantId: {
-            warehouseId: secondaryWarehouse.id,
-            variantId: variant.id
-          }
-        },
-        update: {
-          stockOnHand: stockSplit.secondaryStock
-        },
-        create: {
-          warehouseId: secondaryWarehouse.id,
-          variantId: variant.id,
-          stockOnHand: stockSplit.secondaryStock,
-          reservedQuantity: 0,
-          committedQuantity: 0
-        }
-      });
-    }
-
     await prisma.productImage.deleteMany({
       where: { productId: record.id }
     });
 
-    await prisma.productImage.create({
-      data: {
-        productId: record.id,
-        variantId: variant.id,
-        url: product.imageUrl,
-        altText: product.imageAlt,
-        sortOrder: 1,
-        isPrimary: true
-      }
-    });
+    const seededVariantIds: string[] = [];
 
-    seededProducts.set(product.slug, { id: record.id, variantId: variant.id });
+    for (const [index, variantSeed] of variantSeeds.entries()) {
+      const stockOnHand = isBundle ? 0 : Math.max(0, Math.trunc(variantSeed.stockOnHand));
+      const variant = await prisma.productVariant.upsert({
+        where: { sku: variantSeed.sku },
+        update: {
+          name: variantSeed.name,
+          price: new Prisma.Decimal(variantSeed.price),
+          compareAtPrice: variantSeed.compareAtPrice != null ? new Prisma.Decimal(variantSeed.compareAtPrice) : null,
+          stockOnHand,
+          status: "active",
+          productId: record.id,
+          defaultWarehouseId: isBundle ? null : defaultWarehouse.id,
+          flavorCode: variantSeed.flavorCode,
+          flavorLabel: variantSeed.flavorLabel,
+          presentationCode: variantSeed.presentationCode,
+          presentationLabel: variantSeed.presentationLabel
+        },
+        create: {
+          productId: record.id,
+          sku: variantSeed.sku,
+          name: variantSeed.name,
+          price: new Prisma.Decimal(variantSeed.price),
+          compareAtPrice: variantSeed.compareAtPrice != null ? new Prisma.Decimal(variantSeed.compareAtPrice) : null,
+          stockOnHand,
+          status: "active",
+          defaultWarehouseId: isBundle ? null : defaultWarehouse.id,
+          flavorCode: variantSeed.flavorCode,
+          flavorLabel: variantSeed.flavorLabel,
+          presentationCode: variantSeed.presentationCode,
+          presentationLabel: variantSeed.presentationLabel
+        }
+      });
+
+      seededVariantIds.push(variant.id);
+
+      if (isBundle) {
+        await prisma.warehouseInventoryBalance.deleteMany({
+          where: { variantId: variant.id }
+        });
+      } else {
+        const stockSplit = splitStockAcrossWarehouses(stockOnHand);
+
+        await prisma.warehouseInventoryBalance.upsert({
+          where: {
+            warehouseId_variantId: {
+              warehouseId: defaultWarehouse.id,
+              variantId: variant.id
+            }
+          },
+          update: {
+            stockOnHand: stockSplit.primaryStock
+          },
+          create: {
+            warehouseId: defaultWarehouse.id,
+            variantId: variant.id,
+            stockOnHand: stockSplit.primaryStock,
+            reservedQuantity: 0,
+            committedQuantity: 0
+          }
+        });
+
+        await prisma.warehouseInventoryBalance.upsert({
+          where: {
+            warehouseId_variantId: {
+              warehouseId: secondaryWarehouse.id,
+              variantId: variant.id
+            }
+          },
+          update: {
+            stockOnHand: stockSplit.secondaryStock
+          },
+          create: {
+            warehouseId: secondaryWarehouse.id,
+            variantId: variant.id,
+            stockOnHand: stockSplit.secondaryStock,
+            reservedQuantity: 0,
+            committedQuantity: 0
+          }
+        });
+      }
+
+      await prisma.productImage.create({
+        data: {
+          productId: record.id,
+          variantId: variant.id,
+          url: variantSeed.imageUrl,
+          altText: variantSeed.imageAlt,
+          sortOrder: index + 1,
+          isPrimary: index === 0
+        }
+      });
+    }
+
+    seededProducts.set(product.slug, { id: record.id, variantId: seededVariantIds[0] ?? "" });
   }
 
   for (const product of localDemoProducts) {

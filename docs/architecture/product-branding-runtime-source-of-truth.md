@@ -41,6 +41,10 @@ La fuente unica de runtime se separa en tres capas:
 - el merch visible del producto (`badge`, `tone`, `benefits`) pertenece a `products`; no se hardcodea por slug en el runtime publico.
 - `media` solo entrega y versiona binarios; la referencia logica vive en `product_images`, `siteSetting` o el artefacto CMS correspondiente.
 - `detailAttributesJson` pertenece a `products` porque alimenta la ficha publica del producto, pero es editorial de PDP y no reemplaza una futura taxonomia estructurada de variantes.
+- `detailAttributesJson` no define opciones vendibles. Si un atributo afecta seleccion de compra, precio, stock, fulfillment o descuento de inventario, debe vivir en `product_variants`.
+- `Aromas` o `Presentacion` en la ficha publica son copy informativo. El contrato comprable real es `variantId`.
+- un aroma vendible siempre debe existir como variante `active` con `sku`, `flavorCode`, `flavorLabel`, `presentationCode`, `presentationLabel`, precio y balances propios por almacen.
+- el saldo operativo canonico de venta es `WarehouseInventoryBalance(variantId, warehouseId)`, no un stock agregado por producto generico.
 
 ## Excepciones Permitidas
 

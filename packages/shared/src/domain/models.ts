@@ -48,6 +48,27 @@ export interface HeroCopy {
   secondaryCta: NavigationItem;
 }
 
+export interface ProductVariantDescriptor {
+  flavorCode?: string;
+  flavorLabel?: string;
+  presentationCode?: string;
+  presentationLabel?: string;
+}
+
+export interface CatalogProductVariant extends ProductVariantDescriptor {
+  id: string;
+  sku: string;
+  name: string;
+  price: number;
+  compareAtPrice?: number;
+  status: "active" | "inactive" | "out_of_stock";
+  availableStock?: number;
+  lowStockThreshold?: number;
+  stockStatus?: "available" | "low_stock" | "out_of_stock";
+  stockLabel?: string;
+  isPurchasable?: boolean;
+}
+
 export interface CatalogProduct {
   id: string;
   name: string;
@@ -75,23 +96,7 @@ export interface CatalogProduct {
   stockLabel?: string;
   isPurchasable?: boolean;
   detailAttributes?: ProductDetailAttribute[];
-  variants?: {
-    id: string;
-    sku: string;
-    name: string;
-    flavorCode?: string;
-    flavorLabel?: string;
-    presentationCode?: string;
-    presentationLabel?: string;
-    price: number;
-    compareAtPrice?: number;
-    status: "active" | "inactive" | "out_of_stock";
-    availableStock?: number;
-    lowStockThreshold?: number;
-    stockStatus?: "available" | "low_stock" | "out_of_stock";
-    stockLabel?: string;
-    isPurchasable?: boolean;
-  }[];
+  variants?: CatalogProductVariant[];
   images?: {
     id: string;
     url: string;

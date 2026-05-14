@@ -365,12 +365,29 @@ function cloneInventoryAllocations(allocations?: InventoryAllocationSummary[]) {
   return allocations?.map((allocation) => ({ ...allocation }));
 }
 
+function normalizeVariantDescriptors(item: {
+  variantName?: string;
+  flavorCode?: string;
+  flavorLabel?: string;
+  presentationCode?: string;
+  presentationLabel?: string;
+}) {
+  return {
+    variantName: normalizeText(item.variantName),
+    flavorCode: normalizeText(item.flavorCode),
+    flavorLabel: normalizeText(item.flavorLabel),
+    presentationCode: normalizeText(item.presentationCode),
+    presentationLabel: normalizeText(item.presentationLabel)
+  };
+}
+
 function buildOrderItems(items: CheckoutQuoteSummary["items"]): OrderItemSummary[] {
   return items.map((item) => ({
     slug: item.slug,
     name: item.name,
     sku: item.sku,
     variantId: item.variantId,
+    ...normalizeVariantDescriptors(item),
     quantity: item.quantity,
     unitPrice: item.unitPrice,
     lineTotal: item.lineTotal,
@@ -415,6 +432,7 @@ function summarizeMissingLines(missingLines: FulfillmentMissingLineSummary[]) {
 function cloneOrderItems(items: OrderItemSummary[]) {
   return items.map((item) => ({
     ...item,
+    ...normalizeVariantDescriptors(item),
     inventoryAllocations: cloneInventoryAllocations(item.inventoryAllocations)
   }));
 }
@@ -426,10 +444,26 @@ function normalizeQuoteItems(items: CheckoutQuoteSummary["items"]) {
       name: item.name.trim(),
       sku: item.sku.trim(),
       variantId: item.variantId?.trim() || undefined,
+      ...normalizeVariantDescriptors(item),
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       lineTotal: item.lineTotal,
       inventoryAllocations: cloneInventoryAllocations(item.inventoryAllocations)
+    }))
+    .sort(
+      (left, right) =>
+        left.slug.localeCompare(right.slug) ||
+        (left.variantId ?? "").localeCompare(right.variantId ?? "") ||
+        left.quantity - right.quantity
+    );
+}
+
+function normalizeRequestItemsFromQuote(items: CheckoutQuoteSummary["items"]) {
+  return [...items]
+    .map((item) => ({
+      slug: item.slug.trim(),
+      quantity: item.quantity,
+      variantId: item.variantId?.trim() || null
     }))
     .sort(
       (left, right) =>
@@ -477,18 +511,7 @@ function normalizeCheckoutRequest(input: CreateCheckoutOrderInput) {
           normalizeDocumentNumber(request.customer.documentNumber, normalizeDocumentType(request.customer.documentType)) ?? null
       },
       address: normalizeAddress(request.address),
-      items: request.items
-        .map((item) => ({
-          slug: item.slug.trim(),
-          quantity: item.quantity,
-          variantId: item.variantId?.trim() || null
-        }))
-        .sort(
-          (left, right) =>
-            left.slug.localeCompare(right.slug) ||
-            (left.variantId ?? "").localeCompare(right.variantId ?? "") ||
-            left.quantity - right.quantity
-        )
+      items: normalizeRequestItemsFromQuote(input.quote.items)
     }
   };
 }

@@ -194,6 +194,19 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
+function normalizeDetailAttributeLabel(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function isAromaDetailAttribute(label: string) {
+  const normalized = normalizeDetailAttributeLabel(label);
+  return normalized === "aroma" || normalized === "aromas";
+}
+
 function createVariantDraft(seed?: Partial<VariantDraft>): VariantDraft {
   return {
     id: seed?.id,
@@ -648,6 +661,7 @@ export function ProductsWorkspace() {
   );
   const isComboProduct = selectedCategory?.slug === COMBO_CATEGORY_SLUG || form.bundleComponents.length > 0;
   const hasMultipleVariants = form.variants.length > 1;
+  const activeVariantCount = form.variants.filter((variant) => variant.status === "active").length;
   const primaryVariant = form.variants[0] ?? createVariantDraft();
 
   const componentProductOptions = useMemo(
@@ -1252,7 +1266,7 @@ export function ProductsWorkspace() {
                   {isCreating
                     ? "Define la ficha base y guarda para habilitar la carga de imágenes."
                     : selectedProduct
-                      ? "Edita la ficha comercial, sabores/presentaciones, combos y media del producto."
+                      ? "Edita la ficha comercial, variantes vendibles, combos y media del producto."
                       : "Cargando producto..."}
                 </DialogDescription>
               </div>
@@ -1443,8 +1457,9 @@ export function ProductsWorkspace() {
                     <div>
                       <div className="font-semibold text-[#132016]">Detalles visibles en la ficha</div>
                       <div className="text-sm text-black/55">
-                        Agrega pares simples como `Aromas`, `Ideal para` o `Incluye`. Se muestran en el detalle
-                        público del producto.
+                        Agrega pares simples como `Aromas`, `Ideal para` o `Incluye`. Se muestran como copy en la
+                        ficha pública. Si quieres vender aromas distintos en web, crea una variante vendible abajo:
+                        este bloque no crea SKU, precio ni stock comprable.
                       </div>
                     </div>
                     <Button type="button" variant="secondary" size="sm" onClick={handleAddDetailAttribute}>
@@ -1477,7 +1492,7 @@ export function ProductsWorkspace() {
                               <Input
                                 value={attribute.label}
                                 onChange={(event) => updateDetailAttribute(index, "label", event.target.value)}
-                                placeholder="Aromas"
+                                placeholder="Aromas (copy)"
                               />
                             </label>
                             <label className="space-y-1.5">
@@ -1489,6 +1504,12 @@ export function ProductsWorkspace() {
                               />
                             </label>
                           </div>
+                          {isAromaDetailAttribute(attribute.label) ? (
+                            <div className="mt-3 rounded-[1rem] border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+                              `Aromas` aquí es solo copy visible. Para vender un aroma distinto en storefront o
+                              checkout, crea una variante vendible con su propio SKU abajo.
+                            </div>
+                          ) : null}
                         </div>
                       ))}
                     </div>
@@ -1504,23 +1525,41 @@ export function ProductsWorkspace() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <div className="font-semibold text-[#132016]">
-                        {hasMultipleVariants ? "Opciones de venta" : "Presentación comercial"}
-                      </div>
+                      <div className="font-semibold text-[#132016]">Variantes vendibles</div>
                       <div className="text-sm text-black/55">
                         {isComboProduct
                           ? "Define SKU, precio y estado del combo. El stock disponible se calcula desde sus componentes."
                           : hasMultipleVariants
-                            ? "Cada opción define su SKU, precio, stock y estado."
-                            : "Aquí defines el SKU, precio, stock y estado del producto sin exponer variantes técnicas."}
+                            ? "Cada variante define SKU, aroma/presentación, precio y estado. La web compra la variante exacta y el stock operativo se gestiona en Inventario."
+                            : "Aunque hoy tengas una sola variante, aquí vive el SKU y el aroma/presentación vendible. Si mañana venderás otro aroma separado, agrégalo como nueva variante, no como copy."}
                       </div>
                     </div>
-                    {hasMultipleVariants ? (
-                      <Button type="button" variant="secondary" size="sm" onClick={handleAddVariant}>
-                        Añadir opción
-                      </Button>
-                    ) : null}
+                    <Button type="button" variant="secondary" size="sm" onClick={handleAddVariant}>
+                      Añadir variante vendible
+                    </Button>
                   </div>
+
+                  {!isComboProduct ? (
+                    <div className="rounded-[1.25rem] border border-[#d9e7dd] bg-[#f7fbf8] px-4 py-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <div className="font-medium text-[#132016]">Modelo canónico aroma/variante</div>
+                          <div className="mt-1 text-sm leading-6 text-black/60">
+                            Los aromas vendibles viven en variantes con SKU, precio, stock y estado. `Detalles visibles`
+                            solo publica copy para lectura.
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Badge tone="success">{activeVariantCount} activas</Badge>
+                          <Badge tone="info">{form.variants.length} configuradas</Badge>
+                        </div>
+                      </div>
+                      <div className="mt-3 text-xs leading-5 text-black/50">
+                        Incluso si hoy vendes una sola, deja el botón de arriba como ruta natural para añadir otro aroma
+                        o presentación comprable sin tocar la ficha informativa.
+                      </div>
+                    </div>
+                  ) : null}
 
                   {hasMultipleVariants ? (
                     <div className="space-y-4">
@@ -1528,7 +1567,7 @@ export function ProductsWorkspace() {
                         <div key={variant.id ?? `${variant.sku || "draft"}-${index}`} className="rounded-[1.25rem] border border-black/8 bg-[#fafaf7] p-4">
                           <div className="mb-4 flex items-center justify-between gap-4">
                             <div className="flex items-center gap-2">
-                              <Badge tone="info">Opción {index + 1}</Badge>
+                              <Badge tone="info">Variante {index + 1}</Badge>
                               <StatusBadge label={variantStatusLabel(variant.status)} tone={variantStatusTone(variant.status)} />
                             </div>
                             <Button
@@ -1563,7 +1602,7 @@ export function ProductsWorkspace() {
 
                           <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                             <label className="space-y-1.5">
-                              <span className="text-sm font-medium text-[#132016]">Sabor</span>
+                              <span className="text-sm font-medium text-[#132016]">Aroma vendible</span>
                               <Input
                                 value={variant.flavorLabel}
                                 onChange={(event) => updateVariant(index, "flavorLabel", event.target.value)}
@@ -1571,7 +1610,7 @@ export function ProductsWorkspace() {
                               />
                             </label>
                             <label className="space-y-1.5">
-                              <span className="text-sm font-medium text-[#132016]">Código sabor</span>
+                              <span className="text-sm font-medium text-[#132016]">Código aroma</span>
                               <Input
                                 value={variant.flavorCode}
                                 onChange={(event) => updateVariant(index, "flavorCode", event.target.value)}
@@ -1689,7 +1728,7 @@ export function ProductsWorkspace() {
                   ) : (
                     <div className="rounded-[1.25rem] border border-black/8 bg-[#fafaf7] p-4">
                       <div className="mb-4 flex items-center gap-2">
-                        <Badge tone="info">Única presentación</Badge>
+                        <Badge tone="info">Única variante vendible</Badge>
                         <StatusBadge
                           label={variantStatusLabel(primaryVariant.status)}
                           tone={variantStatusTone(primaryVariant.status)}
@@ -1717,7 +1756,7 @@ export function ProductsWorkspace() {
 
                       <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                         <label className="space-y-1.5">
-                          <span className="text-sm font-medium text-[#132016]">Sabor</span>
+                          <span className="text-sm font-medium text-[#132016]">Aroma vendible</span>
                           <Input
                             value={primaryVariant.flavorLabel}
                             onChange={(event) => updateVariant(0, "flavorLabel", event.target.value)}
@@ -1725,7 +1764,7 @@ export function ProductsWorkspace() {
                           />
                         </label>
                         <label className="space-y-1.5">
-                          <span className="text-sm font-medium text-[#132016]">Código sabor</span>
+                          <span className="text-sm font-medium text-[#132016]">Código aroma</span>
                           <Input
                             value={primaryVariant.flavorCode}
                             onChange={(event) => updateVariant(0, "flavorCode", event.target.value)}
@@ -2050,14 +2089,14 @@ export function ProductsWorkspace() {
                     />
                   </label>
                   <label className="space-y-1.5">
-                    <span className="text-sm font-medium text-[#132016]">Presentación</span>
+                    <span className="text-sm font-medium text-[#132016]">Variante vinculada</span>
                     {imageVariants.length > 1 ? (
                       <select
                         value={imageForm.variantId}
                         onChange={(event) => setImageForm((current) => ({ ...current, variantId: event.target.value }))}
                         className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm outline-none transition focus:border-black/25"
                       >
-                        <option value="">Sin presentación específica</option>
+                        <option value="">Sin variante específica</option>
                         {imageVariants.map((variant) => (
                           <option key={variant.id} value={variant.id}>
                             {variant.name} ({variant.sku})
@@ -2066,7 +2105,7 @@ export function ProductsWorkspace() {
                       </select>
                     ) : (
                       <div className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-black/55">
-                        La imagen se aplicará a la presentación principal.
+                        La imagen se aplicará a la variante principal.
                       </div>
                     )}
                   </label>

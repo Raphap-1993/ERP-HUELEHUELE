@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { gsap } from "gsap";
 import {
   CHECKOUT_DOCUMENT_TYPE_OPTIONS,
@@ -188,6 +189,14 @@ function resolveCheckoutVariant(product?: CatalogProduct, variantId?: string) {
   }
 
   return product.variants.find((variant) => variant.id === variantId);
+}
+
+function getCheckoutActiveVariants(product?: CatalogProduct) {
+  return (product?.variants ?? []).filter((variant) => variant.status === "active");
+}
+
+function requiresCheckoutVariantSelection(product?: CatalogProduct) {
+  return getCheckoutActiveVariants(product).length > 1;
 }
 
 function getCheckoutAvailableStock(product?: CatalogProduct, variant?: CheckoutCatalogVariant) {
@@ -923,7 +932,9 @@ export function CheckoutWorkspace() {
 
   const availableToAdd = useMemo(() => {
     return resolvedProducts.filter(
-      (product) => isCheckoutProductPurchasable(product) && !activeItems.some((item) => item.slug === product.slug)
+      (product) =>
+        isCheckoutProductPurchasable(product) &&
+        (requiresCheckoutVariantSelection(product) || !activeItems.some((item) => item.slug === product.slug))
     );
   }, [activeItems, resolvedProducts]);
   const productPickerItems = useMemo(() => {
@@ -932,7 +943,8 @@ export function CheckoutWorkspace() {
       .map((product) => ({
         product,
         image: resolveCheckoutProductImage(product),
-        selected: activeItems.some((item) => item.slug === product.slug)
+        requiresVariantSelection: requiresCheckoutVariantSelection(product),
+        selected: !requiresCheckoutVariantSelection(product) && activeItems.some((item) => item.slug === product.slug)
       }));
   }, [activeItems, resolvedProducts]);
   const productSlideCount = productPickerItems.length;
@@ -1223,15 +1235,22 @@ export function CheckoutWorkspace() {
     });
   }
 
-  function addItem(slug: string) {
-    const product = resolvedProducts.find((candidate) => candidate.slug === slug);
+  function addItem(product?: CatalogProduct) {
+    if (!product) {
+      return;
+    }
+
+    if (requiresCheckoutVariantSelection(product)) {
+      window.location.assign(`/producto/${product.slug}#product-variants`);
+      return;
+    }
 
     if (!isCheckoutProductPurchasable(product)) {
       setQuoteError("Ese producto no tiene stock disponible para comprar.");
       return;
     }
 
-    const next = addStoredCartItem({ slug, quantity: 1 });
+    const next = addStoredCartItem({ slug: product.slug, quantity: 1 });
     setItems(next);
     setQuoteError(null);
   }
@@ -2127,18 +2146,32 @@ export function CheckoutWorkspace() {
                                                   </span>
                                                 ) : null}
 			                                          </div>
+                                            {activeProductSlide.requiresVariantSelection ? (
+                                              <p className="mt-1 text-xs leading-5 text-[#8c6331]">
+                                                Este producto tiene varias variantes activas. Elige aroma o presentación en la ficha antes de sumarlo.
+                                              </p>
+                                            ) : null}
 			                                        </div>
 			                                      </div>
 
 			                                      {!activeProductSlide.selected ? (
-				                                        <button
-				                                          type="button"
-				                                          onClick={() => addItem(activeProductSlide.product.slug)}
-				                                          aria-label={`Sumar ${activeProductSlide.product.name}`}
-				                                          className="mt-2 inline-flex h-11 w-11 items-center justify-center self-center rounded-full bg-[#61a740] text-xl font-semibold text-white transition hover:bg-[#577e2f] sm:absolute sm:right-12 sm:top-1/2 sm:mt-0 sm:-translate-y-1/2"
-				                                        >
-				                                          +
-				                                        </button>
+				                                        activeProductSlide.requiresVariantSelection ? (
+                                              <Link
+                                                href={`/producto/${activeProductSlide.product.slug}#product-variants`}
+                                                className="mt-3 inline-flex h-10 items-center justify-center self-start rounded-full bg-[#163126] px-4 text-sm font-semibold text-white transition hover:bg-[#0f2216] sm:absolute sm:right-12 sm:top-1/2 sm:mt-0 sm:-translate-y-1/2"
+                                              >
+                                                Elegir aroma
+                                              </Link>
+                                            ) : (
+                                              <button
+                                                type="button"
+                                                onClick={() => addItem(activeProductSlide.product)}
+                                                aria-label={`Sumar ${activeProductSlide.product.name}`}
+                                                className="mt-2 inline-flex h-11 w-11 items-center justify-center self-center rounded-full bg-[#61a740] text-xl font-semibold text-white transition hover:bg-[#577e2f] sm:absolute sm:right-12 sm:top-1/2 sm:mt-0 sm:-translate-y-1/2"
+                                              >
+                                                +
+                                              </button>
+                                            )
 				                                      ) : (
 				                                        <div className="hidden sm:absolute sm:right-12 sm:top-1/2 sm:h-11 sm:w-11 sm:-translate-y-1/2 sm:rounded-full" aria-hidden="true" />
 				                                      )}

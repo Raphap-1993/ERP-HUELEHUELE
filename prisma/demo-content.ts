@@ -5,6 +5,20 @@ interface LocalDemoBundleComponentSeed {
   quantity: number;
 }
 
+export interface LocalDemoProductVariantSeed {
+  sku: string;
+  name?: string;
+  price?: number;
+  compareAtPrice?: number;
+  stockOnHand?: number;
+  imageUrl?: string;
+  imageAlt?: string;
+  flavorCode?: string;
+  flavorLabel?: string;
+  presentationCode?: string;
+  presentationLabel?: string;
+}
+
 export interface LocalDemoCategorySeed {
   slug: string;
   name: string;
@@ -26,6 +40,7 @@ export interface LocalDemoProductSeed {
   compareAtPrice?: number;
   imageUrl: string;
   imageAlt: string;
+  variants?: LocalDemoProductVariantSeed[];
   bundleComponents?: LocalDemoBundleComponentSeed[];
 }
 
@@ -76,16 +91,48 @@ export const localDemoProducts: LocalDemoProductSeed[] = [
     tone: "graphite",
     benefits: ["Acabado premium", "Diseño discreto", "Listo para llevar"],
     detailAttributes: [
-      { label: "Aromas", value: "Mentolado intenso con nota herbal fresca" },
+      { label: "Aromas", value: "Negro Intenso, Eucalipto Frío y Citrus Herbal" },
       { label: "Ideal para", value: "Viajes, altura y trayectos largos" },
-      { label: "Presentación", value: "Unitario premium" }
+      { label: "Presentación", value: "Unitario premium en aromas surtidos" }
     ],
     categorySlug: "productos",
     sku: "HG-PN-001",
     price: 39.9,
     compareAtPrice: 50,
     imageUrl: "https://media.huelegood.com/product/premium-negro/1774415833172-a761d08e-93d9-4faf-bf22-7b018660126e.webp",
-    imageAlt: "Premium Negro - imagen principal"
+    imageAlt: "Premium Negro - imagen principal",
+    variants: [
+      {
+        sku: "HG-PN-001",
+        name: "Premium Negro - Negro Intenso 10 ml",
+        stockOnHand: 90,
+        flavorCode: "negro-intenso",
+        flavorLabel: "Negro Intenso",
+        presentationCode: "unitario",
+        presentationLabel: "Unitario",
+        imageAlt: "Premium Negro - Negro Intenso"
+      },
+      {
+        sku: "HG-PN-002",
+        name: "Premium Negro - Eucalipto Frío 10 ml",
+        stockOnHand: 70,
+        flavorCode: "eucalipto-frio",
+        flavorLabel: "Eucalipto Frío",
+        presentationCode: "unitario",
+        presentationLabel: "Unitario",
+        imageAlt: "Premium Negro - Eucalipto Frío"
+      },
+      {
+        sku: "HG-PN-003",
+        name: "Premium Negro - Citrus Herbal 10 ml",
+        stockOnHand: 50,
+        flavorCode: "citrus-herbal",
+        flavorLabel: "Citrus Herbal",
+        presentationCode: "unitario",
+        presentationLabel: "Unitario",
+        imageAlt: "Premium Negro - Citrus Herbal"
+      }
+    ]
   },
   {
     slug: "combo-duo-perfecto",

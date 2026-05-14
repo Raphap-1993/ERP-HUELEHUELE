@@ -36,6 +36,7 @@ import type {
   HeroCopy,
   LoyaltyAccountSummary,
   PromoBanner,
+  ProductVariantDescriptor,
   ProductToneValue,
   SiteSetting,
   AdminActionSummary,
@@ -806,14 +807,10 @@ export type ProductStatusValue = "draft" | "active" | "inactive" | "archived";
 export type ProductKindValue = "single" | "bundle";
 export type ProductVariantStatusValue = "active" | "inactive" | "out_of_stock";
 
-export interface ProductVariantSummary {
+export interface ProductVariantSummary extends ProductVariantDescriptor {
   id: string;
   sku: string;
   name: string;
-  flavorCode?: string;
-  flavorLabel?: string;
-  presentationCode?: string;
-  presentationLabel?: string;
   price: number;
   compareAtPrice?: number;
   stockOnHand: number;
@@ -880,14 +877,10 @@ export interface ProductAdminDetail extends ProductAdminSummary {
   images: ProductImageSummary[];
 }
 
-export interface ProductVariantInput {
+export interface ProductVariantInput extends ProductVariantDescriptor {
   id?: string;
   sku: string;
   name: string;
-  flavorCode?: string;
-  flavorLabel?: string;
-  presentationCode?: string;
-  presentationLabel?: string;
   price: number;
   compareAtPrice?: number;
   stockOnHand: number;
@@ -1141,11 +1134,12 @@ export interface PeruUbigeoCatalog {
   districts: PeruDistrictSummary[];
 }
 
-export interface CheckoutQuoteItemSummary {
+export interface CheckoutQuoteItemSummary extends ProductVariantDescriptor {
   slug: string;
   name: string;
   sku: string;
   variantId?: string;
+  variantName?: string;
   quantity: number;
   unitPrice: number;
   lineTotal: number;
@@ -1204,11 +1198,12 @@ export interface CheckoutActionSummary {
   evidenceRequired?: boolean;
 }
 
-export interface OrderItemSummary {
+export interface OrderItemSummary extends ProductVariantDescriptor {
   slug: string;
   name: string;
   sku: string;
   variantId?: string;
+  variantName?: string;
   quantity: number;
   unitPrice: number;
   lineTotal: number;

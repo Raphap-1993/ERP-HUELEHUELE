@@ -200,6 +200,22 @@ function normalizeWarehouseId(value?: string | null) {
   return normalized ? normalized.toLowerCase() : undefined;
 }
 
+function normalizeVariantDescriptors(item: {
+  variantName?: string;
+  flavorCode?: string | null;
+  flavorLabel?: string | null;
+  presentationCode?: string | null;
+  presentationLabel?: string | null;
+}) {
+  return {
+    variantName: normalizeText(item.variantName),
+    flavorCode: normalizeText(item.flavorCode ?? undefined),
+    flavorLabel: normalizeText(item.flavorLabel ?? undefined),
+    presentationCode: normalizeText(item.presentationCode ?? undefined),
+    presentationLabel: normalizeText(item.presentationLabel ?? undefined)
+  };
+}
+
 function resolveInventoryStockMode(value?: InventoryStockOperationMode) {
   return value === "stock_receipt" ? "stock_receipt" : "physical_count";
 }
@@ -257,17 +273,20 @@ export class InventoryService implements OnModuleInit {
     const hydrated: OrderItemSummary[] = [];
 
     for (const item of items) {
-      if (item.variantId && item.inventoryAllocations?.length) {
+      const normalizedAllocations = item.inventoryAllocations?.map((allocation) => ({
+        ...allocation,
+        variantId: allocation.variantId.trim(),
+        sku: allocation.sku.trim(),
+        name: allocation.name.trim(),
+        quantity: allocation.quantity
+      }));
+
+      if (item.variantId && normalizedAllocations?.length && normalizeText(item.variantName)) {
         hydrated.push({
           ...item,
           variantId: item.variantId.trim(),
-          inventoryAllocations: item.inventoryAllocations.map((allocation) => ({
-            ...allocation,
-            variantId: allocation.variantId.trim(),
-            sku: allocation.sku.trim(),
-            name: allocation.name.trim(),
-            quantity: allocation.quantity
-          }))
+          ...normalizeVariantDescriptors(item),
+          inventoryAllocations: normalizedAllocations
         });
         continue;
       }
@@ -279,7 +298,14 @@ export class InventoryService implements OnModuleInit {
         name: normalizeText(item.name) ?? resolved.variant.product.name,
         variantId: resolved.variant.id,
         sku: normalizeText(item.sku) ?? resolved.variant.sku,
-        inventoryAllocations: resolved.allocations
+        ...normalizeVariantDescriptors({
+          variantName: resolved.variant.name,
+          flavorCode: resolved.variant.flavorCode,
+          flavorLabel: resolved.variant.flavorLabel,
+          presentationCode: resolved.variant.presentationCode,
+          presentationLabel: resolved.variant.presentationLabel
+        }),
+        inventoryAllocations: normalizedAllocations?.length ? normalizedAllocations : resolved.allocations
       });
     }
 
@@ -314,6 +340,13 @@ export class InventoryService implements OnModuleInit {
         name: normalizeText(item.name) ?? resolved.variant.product.name,
         variantId: resolved.variant.id,
         sku: normalizeText(item.sku) ?? resolved.variant.sku,
+        ...normalizeVariantDescriptors({
+          variantName: resolved.variant.name,
+          flavorCode: resolved.variant.flavorCode,
+          flavorLabel: resolved.variant.flavorLabel,
+          presentationCode: resolved.variant.presentationCode,
+          presentationLabel: resolved.variant.presentationLabel
+        }),
         quantity,
         unitPrice: resolvedUnitPrice,
         lineTotal: resolvedUnitPrice * quantity,

@@ -210,6 +210,20 @@ Si un producto tiene varias variantes activas, el checkout debe recibir `variant
 
 Eso evita que una venta de `Menta` termine descontando `Limón` o el SKU por defecto.
 
+Regla operativa:
+
+- `Aromas` en la ficha pública es copy
+- la compra real viaja por `variantId`
+- si el checkout intenta sumar un producto multi-variante sin `variantId`, debe redirigir a la PDP para elegir aroma o presentación
+
+### Reserva, compromiso y salida física
+
+Para evitar ambigüedad operativa, el flujo actual debe leerse así:
+
+- `pending_payment` o `payment_under_review`: reservan stock disponible
+- `paid` o `confirmed`: consolidan la venta sobre la misma `variante + almacén`
+- `despacho`: es el hito recomendado para reflejar la salida física final si negocio necesita kardex de expedición
+
 ### Combos virtuales
 
 Los combos no llevan stock físico propio.
