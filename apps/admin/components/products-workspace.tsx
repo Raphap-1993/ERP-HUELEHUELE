@@ -50,6 +50,15 @@ import {
   uploadAdminProductImage,
   updateAdminProduct
 } from "../lib/api";
+import {
+  buildAromaInputValue,
+  buildGuidedVariantsFromBase,
+  collectAromaSuggestions,
+  extractProductVariantAudit,
+  getVariantAuditLabel,
+  getVariantAuditTone,
+  parseAromaList
+} from "../lib/product-variant-conversion";
 
 type VariantDraft = {
   id?: string;
@@ -523,6 +532,7 @@ export function ProductsWorkspace() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"ficha" | "imagenes">("ficha");
+  const [guidedAromaInput, setGuidedAromaInput] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -565,6 +575,7 @@ export function ProductsWorkspace() {
           setSelectedProduct(null);
           setForm(createEmptyForm());
           setImageForm(createInitialImageForm());
+          setGuidedAromaInput("");
         }
       } catch (fetchError) {
         if (active) {
@@ -590,6 +601,7 @@ export function ProductsWorkspace() {
       if (isCreating) {
         setForm((current) => (current.name || current.slug ? current : createEmptyForm()));
         setImageForm(createInitialImageForm());
+        setGuidedAromaInput("");
       }
       return;
     }
@@ -610,6 +622,11 @@ export function ProductsWorkspace() {
 
         setSelectedProduct(response.data);
         setForm(fromProductDetail(response.data));
+        setGuidedAromaInput(
+          buildAromaInputValue(
+            collectAromaSuggestions(response.data.detailAttributes, extractProductVariantAudit(response.data))
+          )
+        );
         setImageForm((current) => ({
           ...createInitialImageForm(),
           altText: current.altText || response.data.images[0]?.altText || `${response.data.name} - imagen principal`
@@ -674,11 +691,49 @@ export function ProductsWorkspace() {
     [products]
   );
 
+  const selectedProductSummary = useMemo(
+    () => (selectedProductId ? productById.get(selectedProductId) ?? null : null),
+    [productById, selectedProductId]
+  );
+
+  const selectedVariantAudit = useMemo(
+    () => extractProductVariantAudit(selectedProduct ?? selectedProductSummary),
+    [selectedProduct, selectedProductSummary]
+  );
+
+  const detectedAromaSuggestions = useMemo(
+    () => collectAromaSuggestions(form.detailAttributes, selectedVariantAudit),
+    [form.detailAttributes, selectedVariantAudit]
+  );
+
+  const detectedAromaInputValue = useMemo(
+    () => buildAromaInputValue(detectedAromaSuggestions),
+    [detectedAromaSuggestions]
+  );
+
+  const parsedGuidedAromas = useMemo(() => parseAromaList(guidedAromaInput), [guidedAromaInput]);
+  const canUseVariantAssistant = !isComboProduct && form.variants.length === 1;
+
+  const guidedVariantPreview = useMemo(() => {
+    if (!canUseVariantAssistant || !parsedGuidedAromas.length) {
+      return [];
+    }
+
+    return buildGuidedVariantsFromBase({
+      aromas: parsedGuidedAromas,
+      baseVariant: primaryVariant,
+      productName: form.name.trim() || selectedProduct?.name || "producto"
+    });
+  }, [canUseVariantAssistant, form.name, parsedGuidedAromas, primaryVariant, selectedProduct?.name]);
+
   const metrics = useMemo(() => {
     const activeProducts = products.filter((product) => product.status === "active").length;
     const featuredProducts = products.filter((product) => product.isFeatured).length;
     const internalProducts = products.filter((product) => product.salesChannel === "internal").length;
-    const comboProducts = products.filter((product) => product.categorySlug === COMBO_CATEGORY_SLUG).length;
+    const pendingVariantRollout = products.filter((product) => {
+      const status = extractProductVariantAudit(product)?.status;
+      return status === "copy_needs_variants" || status === "multi_variant_incomplete";
+    }).length;
 
     return [
       {
@@ -697,9 +752,9 @@ export function ProductsWorkspace() {
         detail: "Visibles en home y secciones clave."
       },
       {
-        label: "Internos / combos",
-        value: `${internalProducts} / ${comboProducts}`,
-        detail: "Canal interno y bundles del catálogo."
+        label: "Internos / rollout",
+        value: `${internalProducts} / ${pendingVariantRollout}`,
+        detail: "Canal interno y productos que aún piden revisión de aroma/variante."
       }
     ];
   }, [products]);
@@ -826,6 +881,7 @@ export function ProductsWorkspace() {
     setSelectedProduct(null);
     setForm(createEmptyForm());
     setImageForm(createInitialImageForm());
+    setGuidedAromaInput("");
     setError(null);
     setFeedback(null);
     setActiveTab("ficha");
@@ -852,6 +908,11 @@ export function ProductsWorkspace() {
     const response = await fetchAdminProduct(productId);
     setSelectedProduct(response.data);
     setForm(fromProductDetail(response.data));
+    setGuidedAromaInput(
+      buildAromaInputValue(
+        collectAromaSuggestions(response.data.detailAttributes, extractProductVariantAudit(response.data))
+      )
+    );
     setImageForm((current) => ({
       ...createInitialImageForm(),
       altText: current.altText || response.data.images[0]?.altText || `${response.data.name} - imagen principal`
@@ -862,7 +923,54 @@ export function ProductsWorkspace() {
     setIsCreating(false);
     setSelectedProductId(productId);
     setActiveTab("ficha");
+    setGuidedAromaInput("");
     setModalOpen(true);
+  }
+
+  function handleLoadDetectedAromas() {
+    setGuidedAromaInput(detectedAromaInputValue);
+  }
+
+  function handleApplyGuidedVariantAssistant() {
+    if (!canUseVariantAssistant || !guidedVariantPreview.length) {
+      return;
+    }
+
+    const message =
+      guidedVariantPreview.length === 1
+        ? "Se actualizará la variante base con el aroma normalizado. El stock inicial/base quedará en 0 para que luego cargues el saldo real en Inventario. ¿Continuar?"
+        : `Se reemplazará la variante base por ${guidedVariantPreview.length} variantes sugeridas. Todas quedarán con stock inicial/base en 0 para evitar duplicar inventario; luego debes cargar stock real en Inventario. ¿Continuar?`;
+
+    if (!window.confirm(message)) {
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      variants: guidedVariantPreview.map((variant) =>
+        createVariantDraft({
+          id: variant.id,
+          sku: variant.sku,
+          name: variant.name,
+          flavorCode: variant.flavorCode,
+          flavorLabel: variant.flavorLabel,
+          presentationCode: variant.presentationCode,
+          presentationLabel: variant.presentationLabel,
+          defaultWarehouseId: variant.defaultWarehouseId,
+          price: variant.price,
+          compareAtPrice: variant.compareAtPrice,
+          stockOnHand: variant.stockOnHand,
+          lowStockThreshold: variant.lowStockThreshold,
+          status: variant.status
+        })
+      )
+    }));
+    setError(null);
+    setFeedback(
+      guidedVariantPreview.length === 1
+        ? "La variante base quedó normalizada desde el asistente. Revisa SKU/nombre y luego carga stock real en Inventario."
+        : `Se prepararon ${guidedVariantPreview.length} variantes desde la base actual. Revisa SKU/nombre y luego carga stock real en Inventario.`
+    );
   }
 
   function handleAddVariant() {
@@ -1135,7 +1243,12 @@ export function ProductsWorkspace() {
           </div>
           <div>
             <div className="font-semibold text-[#132016]">{product.name}</div>
-            <p className="text-xs text-black/50">{product.slug}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs text-black/50">{product.slug}</p>
+              <Badge tone={getVariantAuditTone(product.variantAudit?.status)}>
+                {getVariantAuditLabel(product.variantAudit?.status)}
+              </Badge>
+            </div>
           </div>
         </div>,
         <div key={`${product.id}-category`} className="text-sm text-black/70">
@@ -1558,6 +1671,160 @@ export function ProductsWorkspace() {
                         Incluso si hoy vendes una sola, deja el botón de arriba como ruta natural para añadir otro aroma
                         o presentación comprable sin tocar la ficha informativa.
                       </div>
+                    </div>
+                  ) : null}
+
+                  {!isComboProduct ? (
+                    <div className="rounded-[1.25rem] border border-[#ead9bf] bg-[#fffdf8] px-4 py-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <div className="font-medium text-[#132016]">Asistente single → multi-aroma</div>
+                          <div className="mt-1 text-sm leading-6 text-black/60">
+                            Toma la variante base actual, normaliza aromas como `premium-negro` y propone variantes
+                            vendibles listas para revisar antes de guardar.
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Badge tone={getVariantAuditTone(selectedVariantAudit?.status)}>
+                            {getVariantAuditLabel(selectedVariantAudit?.status)}
+                          </Badge>
+                          <Badge tone="info">{detectedAromaSuggestions.length} aromas detectados</Badge>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 rounded-[1rem] border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+                        El asistente no toca `Detalles visibles` ni guarda cambios por sí solo. Para evitar duplicar
+                        inventario, todas las variantes generadas quedan con stock inicial/base en `0`; luego carga el
+                        stock real por variante en `Inventario`.
+                      </div>
+
+                      {selectedVariantAudit?.warnings.length ? (
+                        <div className="mt-3 rounded-[1rem] border border-rose-200 bg-rose-50 px-3 py-3">
+                          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-rose-700">
+                            Warnings del audit
+                          </div>
+                          <div className="mt-2 space-y-1 text-sm text-rose-800">
+                            {selectedVariantAudit.warnings.map((warning) => (
+                              <p key={warning}>• {warning}</p>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {selectedVariantAudit?.recommendedActions.length ? (
+                        <div className="mt-3 rounded-[1rem] border border-black/8 bg-white px-3 py-3">
+                          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#132016]">
+                            Acciones sugeridas
+                          </div>
+                          <div className="mt-2 space-y-1 text-sm text-black/65">
+                            {selectedVariantAudit.recommendedActions.map((action) => (
+                              <p key={action}>• {action}</p>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {detectedAromaSuggestions.length ? (
+                        <div className="mt-3">
+                          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-black/45">
+                            Aromas detectados desde copy / audit
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {detectedAromaSuggestions.map((aroma) => (
+                              <Badge key={aroma.code} tone="neutral">
+                                {aroma.label}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-3 text-xs leading-5 text-black/50">
+                          Todavía no hay aromas detectados. Puedes escribirlos aquí manualmente o usar el campo
+                          `Aromas` en `Detalles visibles` como fuente de apoyo.
+                        </div>
+                      )}
+
+                      {!canUseVariantAssistant ? (
+                        <div className="mt-3 rounded-[1rem] border border-black/8 bg-white px-3 py-2 text-sm text-black/60">
+                          {hasMultipleVariants
+                            ? `El asistente automático se bloquea porque este producto ya tiene ${form.variants.length} variantes configuradas. Lo dejo así para no sobrescribir SKU o estados existentes a ciegas.`
+                            : "El asistente solo aplica a productos simples; los combos siguen otro flujo."}
+                        </div>
+                      ) : (
+                        <>
+                          <label className="mt-4 block space-y-1.5">
+                            <span className="text-sm font-medium text-[#132016]">Lista de aromas a convertir</span>
+                            <Textarea
+                              value={guidedAromaInput}
+                              onChange={(event) => setGuidedAromaInput(event.target.value)}
+                              placeholder={"premium-negro\nverde-herbal\nbrisa-citrica"}
+                              className="min-h-28"
+                            />
+                            <p className="text-xs text-black/45">
+                              Acepta líneas, comas o punto y coma. `premium-negro` se normaliza a `Premium Negro` con
+                              código `premium-negro`.
+                            </p>
+                          </label>
+
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              onClick={handleLoadDetectedAromas}
+                              disabled={!detectedAromaSuggestions.length}
+                            >
+                              Usar aromas detectados
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={handleApplyGuidedVariantAssistant}
+                              disabled={!guidedVariantPreview.length}
+                            >
+                              {guidedVariantPreview.length === 0
+                                ? "Aplicar variantes"
+                                : guidedVariantPreview.length === 1
+                                ? "Normalizar variante base"
+                                : `Aplicar ${guidedVariantPreview.length} variantes`}
+                            </Button>
+                          </div>
+
+                          {guidedVariantPreview.length ? (
+                            <div className="mt-4 space-y-3">
+                              <div className="text-xs font-semibold uppercase tracking-[0.14em] text-black/45">
+                                Vista previa de variantes sugeridas
+                              </div>
+                              <div className="grid gap-3 xl:grid-cols-2">
+                                {guidedVariantPreview.map((variant, index) => (
+                                  <div
+                                    key={`${variant.sku}-${variant.sourceAroma.code}`}
+                                    className="rounded-[1rem] border border-black/8 bg-white px-3 py-3"
+                                  >
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                      <div className="font-medium text-[#132016]">{variant.sourceAroma.label}</div>
+                                      <Badge tone={index === 0 ? "info" : "success"}>
+                                        {index === 0 ? "Reutiliza base actual" : "Nueva variante"}
+                                      </Badge>
+                                    </div>
+                                    <div className="mt-2 space-y-1 text-sm text-black/65">
+                                      <p>SKU sugerida: {variant.sku}</p>
+                                      <p>Nombre sugerido: {variant.name}</p>
+                                      <p>Código aroma: {variant.flavorCode}</p>
+                                      <p>Stock inicial/base: 0 · cargar luego en Inventario</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : guidedAromaInput.trim() ? (
+                            <div className="mt-3 text-xs leading-5 text-black/50">
+                              No encontré aromas válidos todavía. Revisa separadores, borra ruido y deja una entrada
+                              por aroma.
+                            </div>
+                          ) : null}
+                        </>
+                      )}
                     </div>
                   ) : null}
 

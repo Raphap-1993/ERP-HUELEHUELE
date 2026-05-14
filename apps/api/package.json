@@ -8,7 +8,7 @@
     "start:dev": "nest start --watch --entryFile apps/api/src/main",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "tsc --noEmit -p tsconfig.json",
-    "test:erp-sales": "npm run build -w @huelegood/shared && node --import tsx --test test/erp-sales-flow.test.ts",
+    "test:erp-sales": "npm run build -w @huelegood/shared && node --import tsx --test test/erp-sales-flow.test.ts test/products-variants-hardening.test.ts test/product-variant-rollout-audit.test.ts",
     "test:commercial-accesses": "npm run build -w @huelegood/shared && node --import tsx --test test/commercial-accesses.test.ts",
     "prisma:generate": "prisma generate --schema ../../prisma/schema.prisma",
     "db:push": "prisma db push --schema ../../prisma/schema.prisma",

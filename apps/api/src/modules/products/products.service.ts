@@ -37,6 +37,7 @@ import {
 import { actionResponse, wrapResponse } from "../../common/response";
 import { PrismaService } from "../../prisma/prisma.service";
 import { MediaService } from "../media/media.service";
+import { buildProductVariantRolloutAudit } from "./product-variant-rollout-audit";
 
 type AdminProductRecord = Prisma.ProductGetPayload<{
   include: {
@@ -44,6 +45,7 @@ type AdminProductRecord = Prisma.ProductGetPayload<{
     variants: {
       include: {
         defaultWarehouse: true;
+        warehouseBalances: true;
       };
     };
     images: true;
@@ -890,7 +892,8 @@ export class ProductsService {
         category: true,
         variants: {
           include: {
-            defaultWarehouse: true
+            defaultWarehouse: true,
+            warehouseBalances: true
           }
         },
         images: true,
@@ -922,7 +925,8 @@ export class ProductsService {
         category: true,
         variants: {
           include: {
-            defaultWarehouse: true
+            defaultWarehouse: true,
+            warehouseBalances: true
           }
         },
         images: true,
@@ -975,7 +979,8 @@ export class ProductsService {
             category: true,
             variants: {
               include: {
-                defaultWarehouse: true
+                defaultWarehouse: true,
+                warehouseBalances: true
               }
             },
             images: true,
@@ -1047,7 +1052,8 @@ export class ProductsService {
             category: true,
             variants: {
               include: {
-                defaultWarehouse: true
+                defaultWarehouse: true,
+                warehouseBalances: true
               }
             },
             images: true,
@@ -1081,7 +1087,8 @@ export class ProductsService {
         category: true,
         variants: {
           include: {
-            defaultWarehouse: true
+            defaultWarehouse: true,
+            warehouseBalances: true
           }
         },
         images: true,
@@ -1119,7 +1126,8 @@ export class ProductsService {
         category: true,
         variants: {
           include: {
-            defaultWarehouse: true
+            defaultWarehouse: true,
+            warehouseBalances: true
           }
         },
         images: true,
@@ -2004,11 +2012,18 @@ export class ProductsService {
     const primaryImage = sortImages(product.images)[0];
     const hasPhysicalStock = product.productKind !== "bundle";
     const benefits = resolveProductBenefits(product);
+    const detailAttributes = mapStoredProductDetailAttributes(product.detailAttributesJson);
+    const variants = product.variants.map((variant) => mapVariant(variant, product.productKind));
+    const variantAudit = buildProductVariantRolloutAudit({
+      productKind: product.productKind,
+      detailAttributes,
+      variants: product.variants
+    });
 
-  return {
-    id: product.id,
-    name: product.name,
-    slug: product.slug,
+    return {
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
       productKind: product.productKind,
       shortDescription: product.shortDescription ?? undefined,
       categoryId: product.categoryId ?? undefined,
@@ -2021,17 +2036,18 @@ export class ProductsService {
       badge: resolveProductBadge(product),
       tone: resolveProductTone(product),
       benefits,
-    price: defaultVariant ? Number(defaultVariant.price) : 0,
-    compareAtPrice: defaultVariant ? toNumber(defaultVariant.compareAtPrice) : undefined,
-    sku: defaultVariant?.sku ?? "SIN-SKU",
-    defaultVariantId: defaultVariant?.id,
-    variantCount: product.variants.length,
-    variants: product.variants.map((variant) => mapVariant(variant, product.productKind)),
-    defaultWarehouseId: hasPhysicalStock ? defaultVariant?.defaultWarehouseId ?? undefined : undefined,
-    defaultWarehouseCode: hasPhysicalStock ? defaultVariant?.defaultWarehouse?.code ?? undefined : undefined,
-    defaultWarehouseName: hasPhysicalStock ? defaultVariant?.defaultWarehouse?.name ?? undefined : undefined,
-    currencyCode: CATALOG_CURRENCY_CODE,
-    primaryImageUrl: primaryImage?.url,
+      price: defaultVariant ? Number(defaultVariant.price) : 0,
+      compareAtPrice: defaultVariant ? toNumber(defaultVariant.compareAtPrice) : undefined,
+      sku: defaultVariant?.sku ?? "SIN-SKU",
+      defaultVariantId: defaultVariant?.id,
+      variantCount: product.variants.length,
+      variants,
+      defaultWarehouseId: hasPhysicalStock ? defaultVariant?.defaultWarehouseId ?? undefined : undefined,
+      defaultWarehouseCode: hasPhysicalStock ? defaultVariant?.defaultWarehouse?.code ?? undefined : undefined,
+      defaultWarehouseName: hasPhysicalStock ? defaultVariant?.defaultWarehouse?.name ?? undefined : undefined,
+      variantAudit,
+      currencyCode: CATALOG_CURRENCY_CODE,
+      primaryImageUrl: primaryImage?.url,
       updatedAt: product.updatedAt.toISOString()
     };
   }

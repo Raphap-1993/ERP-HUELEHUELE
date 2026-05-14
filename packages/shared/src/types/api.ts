@@ -806,6 +806,21 @@ export interface CatalogSummaryResponse {
 export type ProductStatusValue = "draft" | "active" | "inactive" | "archived";
 export type ProductKindValue = "single" | "bundle";
 export type ProductVariantStatusValue = "active" | "inactive" | "out_of_stock";
+export type ProductVariantRolloutStatusValue =
+  | "not_applicable"
+  | "single_variant"
+  | "copy_needs_variants"
+  | "multi_variant_incomplete"
+  | "multi_variant_ready";
+
+export interface ProductVariantRolloutAudit {
+  status: ProductVariantRolloutStatusValue;
+  activeVariantCount: number;
+  totalVariantCount: number;
+  aromaCopyValues: string[];
+  warnings: string[];
+  recommendedActions: string[];
+}
 
 export interface ProductVariantSummary extends ProductVariantDescriptor {
   id: string;
@@ -862,6 +877,7 @@ export interface ProductAdminSummary {
   defaultWarehouseId?: string;
   defaultWarehouseCode?: string;
   defaultWarehouseName?: string;
+  variantAudit: ProductVariantRolloutAudit;
   salesChannel?: ProductSalesChannel;
   reportingGroup?: string;
   currencyCode: string;

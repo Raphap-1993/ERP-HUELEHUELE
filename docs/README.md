@@ -41,6 +41,7 @@ El codigo local es la fuente de verdad de aplicacion; produccion debe homologars
 ### Flujos operativos
 
 - [Contrato canónico aroma variante](./flows/aroma-variant-purchase-contract.md)
+- [Playbook corto rollout multi-aroma productivo](./flows/multi-aroma-rollout-playbook.md)
 - [Checkout y Openpay](./flows/checkout-openpay.md)
 - [Inventario por variante, sabor y almacén](./flows/inventory-variant-warehouse-operations.md)
 - [Pagos manuales](./flows/manual-payments.md)
