@@ -42,7 +42,7 @@ Listar las entidades principales del modelo de datos, su propósito y relaciones
 | Entidad | Propósito | Campos clave sugeridos | Relaciones y notas |
 | --- | --- | --- | --- |
 | `categories` | agrupación comercial | `name`, `slug`, `description`, `is_active`, `sort_order` | 1:N con `products` |
-| `products` | producto base | `category_id`, `name`, `slug`, `short_description`, `long_description`, `status`, `is_featured` | puede representar líneas como `Clásico Verde` |
+| `products` | producto base | `category_id`, `name`, `slug`, `short_description`, `long_description`, `detail_attributes_json`, `status`, `is_featured` | puede representar líneas como `Clásico Verde`; `detail_attributes_json` guarda pares editoriales `label/value` visibles en PDP |
 | `product_variants` | unidad vendible | `product_id`, `sku`, `name`, `price`, `compare_at_price`, `stock_on_hand`, `default_warehouse_id`, `status` | nivel de venta y stock lógico; el almacén por defecto vive en la variante |
 | `product_images` | imágenes públicas | `product_id`, `variant_id`, `url`, `alt_text`, `sort_order`, `is_primary` | soporta imagen general o por variante |
 | `inventory_movements` | trazabilidad de stock | `variant_id`, `warehouse_id`, `type`, `quantity`, `reference_type`, `reference_id`, `reason` | el ledger debe distinguir almacén origen para reservas, confirmaciones y reversas |

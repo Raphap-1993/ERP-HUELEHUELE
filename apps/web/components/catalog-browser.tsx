@@ -241,6 +241,7 @@ export function CatalogBrowser() {
             const description = compactDescription(style.desc || product.tagline || product.description);
             const purchasable = isProductPurchasable(product);
             const stockBadge = resolveStockBadge(product);
+            const requiresVariantSelection = (product.variantCount ?? 1) > 1;
             const savings =
               compareAtPrice && product.compareAtPrice && product.compareAtPrice > product.price
                 ? `Ahorras ${formatPrice(product.compareAtPrice - product.price, currencyCode)}`
@@ -312,12 +313,21 @@ export function CatalogBrowser() {
                         ) : null}
                       </div>
                       {purchasable ? (
+                        requiresVariantSelection ? (
+                          <Link
+                            href={`/producto/${product.slug}`}
+                            className={`inline-flex h-12 min-w-[132px] items-center justify-center rounded-full px-5 text-sm font-semibold text-white transition ${style.btnClass}`}
+                          >
+                            Elegir variante
+                          </Link>
+                        ) : (
                         <AddToCartLink
                           productSlug={product.slug}
                           className={`inline-flex h-12 min-w-[132px] items-center justify-center rounded-full px-5 text-sm font-semibold text-white transition ${style.btnClass}`}
                         >
                           {style.btnLabel}
                         </AddToCartLink>
+                        )
                       ) : (
                         <span
                           aria-disabled="true"
@@ -326,6 +336,9 @@ export function CatalogBrowser() {
                           Sin stock
                         </span>
                       )}
+                      {requiresVariantSelection ? (
+                        <p className="text-xs leading-5 text-[#5f6f66]">Elige aroma o presentación en el detalle.</p>
+                      ) : null}
                     </div>
 
                     <div className="mt-3">
@@ -402,12 +415,21 @@ export function CatalogBrowser() {
                       <div className="mt-0.5 text-xs text-[#6b7280]">{style.priceNote}</div>
                     </div>
                     {purchasable ? (
+                      requiresVariantSelection ? (
+                        <Link
+                          href={`/producto/${product.slug}`}
+                          className={`inline-flex h-12 min-w-[132px] items-center justify-center rounded-full px-5 text-sm font-semibold text-white transition ${style.btnClass}`}
+                        >
+                          Elegir variante
+                        </Link>
+                      ) : (
                       <AddToCartLink
                         productSlug={product.slug}
                         className={`inline-flex h-12 min-w-[132px] items-center justify-center rounded-full px-5 text-sm font-semibold text-white transition ${style.btnClass}`}
                       >
                         {style.btnLabel}
                       </AddToCartLink>
+                      )
                     ) : (
                       <span
                         aria-disabled="true"
@@ -416,6 +438,9 @@ export function CatalogBrowser() {
                         Sin stock
                       </span>
                     )}
+                    {requiresVariantSelection ? (
+                      <div className="w-full text-xs leading-5 text-[#5f6f66]">Elige aroma o presentación en el detalle.</div>
+                    ) : null}
                   </div>
 
                   <div className="mt-3">

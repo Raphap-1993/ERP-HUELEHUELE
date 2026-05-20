@@ -47,7 +47,7 @@ Hoy el catálogo ya tiene una base funcional, pero todavía está homologado sol
 
 ### Lo que sí existe
 
-- `products` con `categoryId`, `name`, `slug`, `shortDescription`, `longDescription`, `status`, `salesChannel`, `reportingGroup`, `isFeatured`
+- `products` con `categoryId`, `name`, `slug`, `shortDescription`, `longDescription`, `detailAttributesJson`, `status`, `salesChannel`, `reportingGroup`, `isFeatured`
 - `product_variants` con `sku`, `name`, `price`, `compareAtPrice`, `stockOnHand`, `lowStockThreshold`, `status`
 - bundles por `product_bundle_components`
 - bloqueo de productos `internal` en storefront
@@ -235,6 +235,7 @@ Campos que deben existir o formalizarse:
 - `commercialName`: nombre visible para storefront
 - `internalName` opcional para operación
 - `categoryId`
+- `detailAttributesJson` opcional para detalles editoriales visibles en PDP como `Aromas` o `Ideal para`
 - `reportingGroupCode`
 - `reportingGroupName`
 - `salesChannel`
@@ -248,6 +249,7 @@ Notas:
 
 - `reportingGroup` no debería quedar como texto libre permanente; conviene llevarlo a valor controlado o catálogo simple
 - `sellerChannelPolicy` no le da control al vendedor; solo define si el producto participa o no en la lógica seller-first
+- `detailAttributesJson` resuelve contenido editorial de la ficha; no reemplaza la futura taxonomía configurable de atributos de variante
 
 ### Variante vendible
 

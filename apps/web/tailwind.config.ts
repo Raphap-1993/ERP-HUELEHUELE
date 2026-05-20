@@ -24,6 +24,10 @@ const config: Config = {
         accentForeground: "hsl(var(--accent-foreground))",
         border: "hsl(var(--border))"
       },
+      fontFamily: {
+        sans: ["var(--font-sans)", "Avenir Next", "Satoshi", "Helvetica Neue", "sans-serif"],
+        serif: ["var(--font-serif)", "Iowan Old Style", "Palatino Linotype", "Book Antiqua", "serif"]
+      },
       boxShadow: {
         soft: "0 16px 40px rgba(15, 23, 42, 0.08)"
       }

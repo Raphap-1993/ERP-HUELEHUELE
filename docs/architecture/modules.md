@@ -1,6 +1,6 @@
 # Mapa De Modulos Vigente
 
-Fecha de corte: 2026-04-22.
+Fecha de corte: 2026-04-24.
 
 Este mapa describe los modulos reales del backend y las superficies que los consumen. Reemplaza mapas conceptuales previos.
 
@@ -24,7 +24,7 @@ Este mapa describe los modulos reales del backend y las superficies que los cons
 | `observability` | vigente | telemetria HTTP y colas | Redis/BullMQ | admin |
 | `customers` | vigente parcial | cliente canonico, dedupe, conflictos | Prisma + snapshots | checkout, CRM, orders |
 | `media` | vigente | assets publicos/privados | R2/local storage | CMS, products, checkout |
-| `products` | vigente | productos, variantes, imagenes, almacenes default | Prisma | catalog, admin, commerce |
+| `products` | vigente | productos, variantes, imagenes, detalles de ficha y almacenes default | Prisma | catalog, admin, commerce |
 | `catalog` | vigente | read model publico | deriva de products | web |
 | `cms` | vigente | settings, branding, contenido | ModuleState/PostgreSQL | web, admin |
 | `coupons` | vigente | cupones y descuento actual | ModuleState/PostgreSQL | commerce |

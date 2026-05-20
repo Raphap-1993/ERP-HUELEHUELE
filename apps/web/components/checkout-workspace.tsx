@@ -11,6 +11,7 @@ import {
   type CheckoutItemInput,
   type CheckoutDocumentType,
   type CheckoutDocumentLookupSummary,
+  type CheckoutQuoteItemSummary,
   type CheckoutQuoteSummary,
   type CheckoutRequestInput,
   type CatalogProduct,
@@ -25,6 +26,7 @@ import {
   fetchCatalogSummary,
   fetchCheckoutDocumentLookup,
   fetchCmsSiteSettings,
+  fetchProductBySlug,
   fetchCheckoutQuote,
   fetchPeruDepartments,
   fetchPeruDistricts,
@@ -51,6 +53,27 @@ type PaymentMethod = "openpay" | "manual";
 type CheckoutStep = 1 | 2 | 3;
 type StepTwoSection = 1 | 2 | 3 | 4;
 type IdentityLookupStatus = "idle" | "loading" | "verified" | "matched" | "manual" | "error";
+type CheckoutCatalogVariant = NonNullable<CatalogProduct["variants"]>[number];
+const PRODUCT_VARIANTS_SECTION_ID = "product-variants";
+
+type ResolvedCheckoutLineItem = {
+  key: string;
+  item: CheckoutItemInput;
+  product?: CatalogProduct;
+  variant?: CheckoutCatalogVariant;
+  flavorLabel?: string;
+  presentationLabel?: string;
+  quoteItem?: CheckoutQuoteItemSummary;
+  availableStock: number;
+  canIncrease: boolean;
+  displayName: string;
+  lineTotal: number;
+  purchasable: boolean;
+  sku?: string;
+  stockLabel: string | null;
+  variantMissing: boolean;
+  variantName?: string;
+};
 
 interface CustomerForm {
   fullName: string;
@@ -156,7 +179,32 @@ function resolveCheckoutProductImage(product?: CatalogProduct) {
   };
 }
 
-function getCheckoutAvailableStock(product?: CatalogProduct) {
+function requiresCheckoutVariantSelection(product?: CatalogProduct) {
+  const variantCount = Math.max(product?.variantCount ?? 0, product?.variants?.length ?? 0);
+  return variantCount > 1;
+}
+
+function resolveCheckoutVariantSelectionHref(slug: string) {
+  return `/producto/${slug}#${PRODUCT_VARIANTS_SECTION_ID}`;
+}
+
+function getCheckoutItemKey(item: Pick<CheckoutItemInput, "slug" | "variantId">) {
+  return `${item.slug}::${item.variantId ?? ""}`;
+}
+
+function resolveCheckoutVariant(product?: CatalogProduct, variantId?: string) {
+  if (!variantId || !product?.variants?.length) {
+    return undefined;
+  }
+
+  return product.variants.find((variant) => variant.id === variantId);
+}
+
+function getCheckoutAvailableStock(product?: CatalogProduct, variant?: CheckoutCatalogVariant) {
+  if (typeof variant?.availableStock === "number") {
+    return Math.max(0, variant.availableStock);
+  }
+
   if (typeof product?.availableStock === "number") {
     return Math.max(0, product.availableStock);
   }
@@ -164,7 +212,15 @@ function getCheckoutAvailableStock(product?: CatalogProduct) {
   return Number.POSITIVE_INFINITY;
 }
 
-function isCheckoutProductPurchasable(product?: CatalogProduct) {
+function isCheckoutProductPurchasable(product?: CatalogProduct, variant?: CheckoutCatalogVariant) {
+  if (variant) {
+    if (typeof variant.isPurchasable === "boolean") {
+      return variant.isPurchasable;
+    }
+
+    return getCheckoutAvailableStock(product, variant) > 0;
+  }
+
   if (!product) {
     return false;
   }
@@ -173,10 +229,18 @@ function isCheckoutProductPurchasable(product?: CatalogProduct) {
     return product.isPurchasable;
   }
 
-  return getCheckoutAvailableStock(product) > 0;
+  return getCheckoutAvailableStock(product, variant) > 0;
 }
 
-function resolveCheckoutStockLabel(product?: CatalogProduct) {
+function resolveCheckoutStockLabel(product?: CatalogProduct, variant?: CheckoutCatalogVariant) {
+  if (variant?.stockStatus === "out_of_stock") {
+    return variant.stockLabel ?? "Sin stock";
+  }
+
+  if (variant?.stockStatus === "low_stock") {
+    return variant.stockLabel ?? "Pocas unidades";
+  }
+
   if (!product) {
     return "Producto no disponible";
   }
@@ -190,6 +254,45 @@ function resolveCheckoutStockLabel(product?: CatalogProduct) {
   }
 
   return null;
+}
+
+function resolveCheckoutLineVariantName(
+  product: CatalogProduct | undefined,
+  variant: CheckoutCatalogVariant | undefined,
+  quoteItem: CheckoutQuoteItemSummary | undefined
+) {
+  if (variant?.flavorLabel || variant?.presentationLabel) {
+    return undefined;
+  }
+
+  if (variant?.name && variant.name !== product?.name) {
+    return variant.name;
+  }
+
+  const allocationName =
+    quoteItem?.inventoryAllocations?.length === 1 &&
+    quoteItem.inventoryAllocations[0]?.variantId === quoteItem.variantId
+      ? quoteItem.inventoryAllocations[0]?.name
+      : undefined;
+
+  if (allocationName && allocationName !== product?.name) {
+    return allocationName;
+  }
+
+  return undefined;
+}
+
+function resolveCheckoutLineLineTotal(
+  item: CheckoutItemInput,
+  product: CatalogProduct | undefined,
+  variant: CheckoutCatalogVariant | undefined,
+  quoteItem: CheckoutQuoteItemSummary | undefined
+) {
+  if (typeof quoteItem?.lineTotal === "number") {
+    return quoteItem.lineTotal;
+  }
+
+  return (variant?.price ?? product?.price ?? 0) * item.quantity;
 }
 
 function formatCurrency(value: number, currencyCode = "PEN") {
@@ -331,6 +434,7 @@ export function CheckoutWorkspace() {
   const identityPanelRef = useRef<HTMLDivElement | null>(null);
   const productSlideCardRef = useRef<HTMLDivElement | null>(null);
   const [products, setProducts] = useState<CatalogProduct[]>([]);
+  const [productDetailsBySlug, setProductDetailsBySlug] = useState<Record<string, CatalogProduct>>({});
   const [items, setItems] = useState<CheckoutItemInput[]>([]);
   const [session, setSession] = useState<AuthSessionSummary | null>(null);
   const [siteSettings, setSiteSettings] = useState<SiteSetting | null>(null);
@@ -484,19 +588,89 @@ export function CheckoutWorkspace() {
   }, []);
 
   useEffect(() => {
-    if (products.length === 0 || items.length === 0) {
+    const variantSlugs = Array.from(new Set(activeItems.filter((item) => item.variantId).map((item) => item.slug)));
+    const pendingSlugs = variantSlugs.filter((slug) => !productDetailsBySlug[slug]);
+
+    if (pendingSlugs.length === 0) {
       return;
     }
 
+    let active = true;
+
+    void Promise.all(
+      pendingSlugs.map(async (slug) => {
+        try {
+          const response = await fetchProductBySlug(slug);
+          return [slug, response.data] as const;
+        } catch {
+          return null;
+        }
+      })
+    ).then((entries) => {
+      if (!active) {
+        return;
+      }
+
+      setProductDetailsBySlug((current) => {
+        const next = { ...current };
+
+        for (const entry of entries) {
+          if (!entry) {
+            continue;
+          }
+
+          const [slug, product] = entry;
+          next[slug] = product;
+        }
+
+        return next;
+      });
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [activeItems, productDetailsBySlug]);
+
+  const resolvedProducts = useMemo(() => {
     const productBySlug = new Map(products.map((product) => [product.slug, product]));
+
+    for (const [slug, detail] of Object.entries(productDetailsBySlug)) {
+      productBySlug.set(slug, detail);
+    }
+
+    return Array.from(productBySlug.values());
+  }, [productDetailsBySlug, products]);
+
+  const productBySlug = useMemo(() => {
+    return new Map(resolvedProducts.map((product) => [product.slug, product]));
+  }, [resolvedProducts]);
+
+  useEffect(() => {
+    if (productBySlug.size === 0 || items.length === 0) {
+      return;
+    }
+
+    const removedSelectionRequiredNames = new Set<string>();
     const nextItems = items.flatMap((item) => {
       const product = productBySlug.get(item.slug);
+      const variant = resolveCheckoutVariant(product, item.variantId);
+      const requiresVariantSelection = requiresCheckoutVariantSelection(product);
 
-      if (!isCheckoutProductPurchasable(product)) {
+      if (requiresVariantSelection && !item.variantId) {
+        removedSelectionRequiredNames.add(product?.name ?? item.slug);
         return [];
       }
 
-      const availableStock = getCheckoutAvailableStock(product);
+      if (item.variantId && product?.variants?.length && !variant) {
+        return [];
+      }
+
+      if (!isCheckoutProductPurchasable(product, variant)) {
+        return [];
+      }
+
+      const availableStock = getCheckoutAvailableStock(product, variant);
       const quantity = Number.isFinite(availableStock)
         ? Math.min(item.quantity, availableStock)
         : item.quantity;
@@ -506,13 +680,29 @@ export function CheckoutWorkspace() {
 
     const changed =
       nextItems.length !== items.length ||
-      nextItems.some((item, index) => item.slug !== items[index]?.slug || item.quantity !== items[index]?.quantity);
+      nextItems.some(
+        (item, index) =>
+          item.slug !== items[index]?.slug ||
+          item.quantity !== items[index]?.quantity ||
+          (item.variantId ?? "") !== (items[index]?.variantId ?? "")
+      );
 
     if (changed) {
       writeStoredCart(nextItems);
       setItems(nextItems);
+
+      if (removedSelectionRequiredNames.size > 0) {
+        const invalidProducts = Array.from(removedSelectionRequiredNames);
+        const subject =
+          invalidProducts.length === 1
+            ? invalidProducts[0]
+            : "Algunos productos de tu checkout";
+        const verb = invalidProducts.length === 1 ? "requiere" : "requieren";
+
+        setQuoteError(`${subject} ${verb} elegir aroma o presentación antes de agregarse al checkout.`);
+      }
     }
-  }, [items, products]);
+  }, [items, productBySlug]);
 
   useEffect(() => {
     checkoutRequestIdRef.current = null;
@@ -759,47 +949,72 @@ export function CheckoutWorkspace() {
     };
   }, [activeStep, identityLookupStatus, customer.documentType, provinceShalomPickup, stepTwoSection]);
 
-  const resolvedProducts = useMemo(() => {
-    return products;
-  }, [products]);
-
   const availableToAdd = useMemo(() => {
     return resolvedProducts.filter(
-      (product) => isCheckoutProductPurchasable(product) && !activeItems.some((item) => item.slug === product.slug)
+      (product) =>
+        isCheckoutProductPurchasable(product) &&
+        (requiresCheckoutVariantSelection(product) || !activeItems.some((item) => item.slug === product.slug))
     );
   }, [activeItems, resolvedProducts]);
   const productPickerItems = useMemo(() => {
     return resolvedProducts
-      .filter(isCheckoutProductPurchasable)
-      .map((product) => ({
-        product,
-        image: resolveCheckoutProductImage(product),
-        selected: activeItems.some((item) => item.slug === product.slug)
-      }));
+      .filter((product) => isCheckoutProductPurchasable(product))
+      .map((product) => {
+        const requiresVariantSelection = requiresCheckoutVariantSelection(product);
+        const selectedVariantCount = activeItems.filter((item) => item.slug === product.slug && Boolean(item.variantId)).length;
+
+        return {
+          product,
+          image: resolveCheckoutProductImage(product),
+          requiresVariantSelection,
+          selected: !requiresVariantSelection && activeItems.some((item) => item.slug === product.slug),
+          selectedVariantCount,
+          selectionHref: resolveCheckoutVariantSelectionHref(product.slug)
+        };
+      });
   }, [activeItems, resolvedProducts]);
   const productSlideCount = productPickerItems.length;
   const activeProductSlide = productPickerItems[productSlideIndex] ?? productPickerItems[0] ?? null;
-  const summaryPreviewItems = useMemo(() => {
-    return activeItems.slice(0, 2).map((item) => {
-      const product = resolvedProducts.find((candidate) => candidate.slug === item.slug);
+  const quoteItemsByKey = useMemo(() => {
+    return new Map((quote?.items ?? []).map((item) => [getCheckoutItemKey(item), item]));
+  }, [quote?.items]);
+  const activeLineItems = useMemo<ResolvedCheckoutLineItem[]>(() => {
+    return activeItems.map((item) => {
+      const product = productBySlug.get(item.slug);
+      const variant = resolveCheckoutVariant(product, item.variantId);
+      const quoteItem = quoteItemsByKey.get(getCheckoutItemKey(item));
+      const availableStock = getCheckoutAvailableStock(product, variant);
+      const purchasable = isCheckoutProductPurchasable(product, variant);
+      const lineTotal = resolveCheckoutLineLineTotal(item, product, variant, quoteItem);
 
       return {
+        key: getCheckoutItemKey(item),
         item,
         product,
-        lineTotal: (product?.price ?? 0) * item.quantity
+        variant,
+        flavorLabel: variant?.flavorLabel,
+        presentationLabel: variant?.presentationLabel,
+        quoteItem,
+        availableStock,
+        canIncrease: purchasable && (!Number.isFinite(availableStock) || item.quantity < availableStock),
+        displayName: product?.name ?? quoteItem?.name ?? item.slug,
+        lineTotal,
+        purchasable,
+        sku: variant?.sku ?? quoteItem?.sku ?? product?.sku,
+        stockLabel: resolveCheckoutStockLabel(product, variant),
+        variantMissing: Boolean(item.variantId && product?.variants?.length && !variant),
+        variantName: resolveCheckoutLineVariantName(product, variant, quoteItem)
       };
     });
-  }, [activeItems, resolvedProducts]);
+  }, [activeItems, productBySlug, quoteItemsByKey]);
+  const summaryPreviewItems = useMemo(() => activeLineItems.slice(0, 2), [activeLineItems]);
   const summaryOverflowCount = Math.max(activeItems.length - summaryPreviewItems.length, 0);
   const summaryOverflowUnits = useMemo(() => {
-    return activeItems.slice(summaryPreviewItems.length).reduce((total, item) => total + item.quantity, 0);
-  }, [activeItems, summaryPreviewItems.length]);
+    return activeLineItems.slice(summaryPreviewItems.length).reduce((total, line) => total + line.item.quantity, 0);
+  }, [activeLineItems, summaryPreviewItems.length]);
   const summaryOverflowTotal = useMemo(() => {
-    return activeItems.slice(summaryPreviewItems.length).reduce((total, item) => {
-      const product = resolvedProducts.find((candidate) => candidate.slug === item.slug);
-      return total + (product?.price ?? 0) * item.quantity;
-    }, 0);
-  }, [activeItems, resolvedProducts, summaryPreviewItems.length]);
+    return activeLineItems.slice(summaryPreviewItems.length).reduce((total, line) => total + line.lineTotal, 0);
+  }, [activeLineItems, summaryPreviewItems.length]);
 
   useEffect(() => {
     setProductSlideIndex((current) => {
@@ -848,13 +1063,10 @@ export function CheckoutWorkspace() {
   const shippingFlatRate = Number.isFinite(siteSettings?.shippingFlatRate) ? siteSettings?.shippingFlatRate ?? 0 : 0;
   const shippingProgress = shippingThreshold > 0 ? Math.min((summary.subtotal / shippingThreshold) * 100, 100) : 0;
   const shippingRemaining = Math.max(shippingThreshold - summary.subtotal, 0);
-  const activeItemUnits = activeItems.reduce((total, item) => total + item.quantity, 0);
-  const hasBlockedStock = activeItems.some((item) => {
-    const product = resolvedProducts.find((candidate) => candidate.slug === item.slug);
-    const availableStock = getCheckoutAvailableStock(product);
-
-    return !isCheckoutProductPurchasable(product) || (Number.isFinite(availableStock) && item.quantity > availableStock);
-  });
+  const activeItemUnits = activeLineItems.reduce((total, line) => total + line.item.quantity, 0);
+  const hasBlockedStock = activeLineItems.some(
+    (line) => line.variantMissing || !line.purchasable || (Number.isFinite(line.availableStock) && line.item.quantity > line.availableStock)
+  );
   const whatsappPhone = siteSettings?.whatsapp?.replace(/\D/g, "") ?? "";
   const whatsappHref = whatsappPhone
     ? `https://wa.me/${whatsappPhone}?text=${encodeURIComponent("Hola, necesito ayuda con mi checkout de Huelegood.")}`
@@ -1013,28 +1225,37 @@ export function CheckoutWorkspace() {
     return 1;
   }
 
-  function updateItem(slug: string, quantity: number) {
-    const product = resolvedProducts.find((candidate) => candidate.slug === slug);
-    const availableStock = getCheckoutAvailableStock(product);
+  function updateItem(itemKey: string, quantity: number) {
+    const line = activeLineItems.find((candidate) => candidate.key === itemKey);
 
-    if (!isCheckoutProductPurchasable(product) || availableStock <= 0) {
-      setQuoteError("Ese producto ya no tiene stock disponible.");
-      removeItem(slug);
+    if (!line) {
       return;
     }
 
-    const nextQuantity = Number.isFinite(availableStock)
-      ? Math.min(Math.max(1, quantity), availableStock)
+    if (line.variantMissing) {
+      setQuoteError("La variante seleccionada ya no está disponible.");
+      removeItem(itemKey);
+      return;
+    }
+
+    if (!line.purchasable || line.availableStock <= 0) {
+      setQuoteError("Ese producto ya no tiene stock disponible.");
+      removeItem(itemKey);
+      return;
+    }
+
+    const nextQuantity = Number.isFinite(line.availableStock)
+      ? Math.min(Math.max(1, quantity), line.availableStock)
       : Math.max(1, quantity);
 
-    if (Number.isFinite(availableStock) && quantity > availableStock) {
-      setQuoteError(`Solo quedan ${availableStock} ${availableStock === 1 ? "unidad" : "unidades"} disponibles.`);
+    if (Number.isFinite(line.availableStock) && quantity > line.availableStock) {
+      setQuoteError(`Solo quedan ${line.availableStock} ${line.availableStock === 1 ? "unidad" : "unidades"} disponibles.`);
     } else {
       setQuoteError(null);
     }
 
     setItems((current) => {
-      const next = current.map((item) => (item.slug === slug ? { ...item, quantity: nextQuantity } : item));
+      const next = current.map((item) => (getCheckoutItemKey(item) === itemKey ? { ...item, quantity: nextQuantity } : item));
       writeStoredCart(next);
       return next;
     });
@@ -1042,6 +1263,16 @@ export function CheckoutWorkspace() {
 
   function addItem(slug: string) {
     const product = resolvedProducts.find((candidate) => candidate.slug === slug);
+
+    if (requiresCheckoutVariantSelection(product)) {
+      setQuoteError("Elige la variante en el detalle del producto antes de agregarla al checkout.");
+
+      if (typeof window !== "undefined") {
+        window.location.assign(resolveCheckoutVariantSelectionHref(slug));
+      }
+
+      return;
+    }
 
     if (!isCheckoutProductPurchasable(product)) {
       setQuoteError("Ese producto no tiene stock disponible para comprar.");
@@ -1067,9 +1298,9 @@ export function CheckoutWorkspace() {
     });
   }
 
-  function removeItem(slug: string) {
+  function removeItem(itemKey: string) {
     setItems((current) => {
-      const next = current.filter((item) => item.slug !== slug);
+      const next = current.filter((item) => getCheckoutItemKey(item) !== itemKey);
       writeStoredCart(next);
       return next;
     });
@@ -1254,16 +1485,17 @@ export function CheckoutWorkspace() {
   }
 
   function resolveCheckoutStockError() {
-    for (const item of activeItems) {
-      const product = resolvedProducts.find((candidate) => candidate.slug === item.slug);
-      const availableStock = getCheckoutAvailableStock(product);
-
-      if (!isCheckoutProductPurchasable(product)) {
-        return `${product?.name ?? item.slug} no tiene stock disponible.`;
+    for (const line of activeLineItems) {
+      if (line.variantMissing) {
+        return `La variante seleccionada para ${line.displayName} ya no está disponible.`;
       }
 
-      if (Number.isFinite(availableStock) && item.quantity > availableStock) {
-        return `${product?.name ?? item.slug} solo tiene ${availableStock} ${availableStock === 1 ? "unidad" : "unidades"} disponibles.`;
+      if (!line.purchasable) {
+        return `${line.displayName} no tiene stock disponible.`;
+      }
+
+      if (Number.isFinite(line.availableStock) && line.item.quantity > line.availableStock) {
+        return `${line.displayName} solo tiene ${line.availableStock} ${line.availableStock === 1 ? "unidad" : "unidades"} disponibles.`;
       }
     }
 
@@ -1744,19 +1976,16 @@ export function CheckoutWorkspace() {
                                 </div>
                               ) : (
                                 <div className="space-y-3">
-                                  {activeItems.map((item) => {
-                                    const product = resolvedProducts.find((candidate) => candidate.slug === item.slug);
-                                    const image = resolveCheckoutProductImage(product);
-                                    const lineTotal = (product?.price ?? 0) * item.quantity;
-                                    const availableStock = getCheckoutAvailableStock(product);
-                                    const stockLabel = resolveCheckoutStockLabel(product);
-                                    const canIncrease =
-                                      isCheckoutProductPurchasable(product) &&
-                                      (!Number.isFinite(availableStock) || item.quantity < availableStock);
+                                  {activeLineItems.map((line) => {
+                                    const image = resolveCheckoutProductImage(line.product);
+                                    const stockToneClass =
+                                      line.variant?.stockStatus === "out_of_stock" || line.product?.stockStatus === "out_of_stock"
+                                        ? "bg-rose-50 text-rose-700"
+                                        : "bg-[#fff7e8] text-[#8c6331]";
 
                                     return (
 	                                      <div
-		                                        key={item.slug}
+		                                        key={line.key}
 		                                        className="rounded-[22px] border border-[rgba(26,58,46,0.08)] bg-white px-4 py-3.5 shadow-[0_14px_34px_rgba(16,33,24,0.04)] sm:px-5"
 	                                      >
 	                                        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
@@ -1771,11 +2000,11 @@ export function CheckoutWorkspace() {
                                                   sizes="(min-width: 640px) 96px, 80px"
                                                   className="object-cover"
                                                 />
-                                              ) : (
-                                                <div className="flex h-full w-full items-center justify-center text-2xl">
-                                                  {item.slug.includes("negro")
+	                                              ) : (
+	                                                <div className="flex h-full w-full items-center justify-center text-2xl">
+                                                  {line.item.slug.includes("negro")
                                                     ? "🖤"
-                                                    : item.slug.includes("combo") || item.slug.includes("pack")
+                                                    : line.item.slug.includes("combo") || line.item.slug.includes("pack")
                                                       ? "✨"
                                                       : "🌿"}
                                                 </div>
@@ -1784,20 +2013,37 @@ export function CheckoutWorkspace() {
 
 	                                            <div className="min-w-0">
 	                                              <h3 className="font-sans text-[1.05rem] font-semibold leading-tight text-[#163126] sm:text-[1.18rem]">
-	                                                {product?.name ?? item.slug}
+	                                                {line.displayName}
 	                                              </h3>
+                                                {line.flavorLabel || line.presentationLabel ? (
+                                                  <p className="mt-1 text-sm text-[#163126]">
+                                                    {[line.flavorLabel ? `Sabor: ${line.flavorLabel}` : null, line.presentationLabel ? `Presentación: ${line.presentationLabel}` : null]
+                                                      .filter(Boolean)
+                                                      .join(" · ")}
+                                                  </p>
+                                                ) : null}
+                                                {line.variantName ? (
+                                                  <p className="mt-1 text-sm font-medium text-[#163126]">
+                                                    Variante: {line.variantName}
+                                                  </p>
+                                                ) : null}
 	                                              <p className="mt-1 text-sm text-[#5f6f66]">
-	                                                {item.quantity === 1 ? "1 unidad en tu pedido" : `${item.quantity} unidades en tu pedido`}
+	                                                {line.item.quantity === 1 ? "1 unidad en tu pedido" : `${line.item.quantity} unidades en tu pedido`}
 	                                              </p>
-                                                {stockLabel ? (
+                                                {line.sku ? (
+                                                  <p className="mt-1 text-xs uppercase tracking-[0.14em] text-[#5f6f66]">
+                                                    SKU {line.sku}
+                                                  </p>
+                                                ) : null}
+                                                {line.variantMissing ? (
+                                                  <span className="mt-2 inline-flex rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700">
+                                                    La variante elegida ya no está disponible
+                                                  </span>
+                                                ) : line.stockLabel ? (
                                                   <span
-                                                    className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                                                      product?.stockStatus === "out_of_stock"
-                                                        ? "bg-rose-50 text-rose-700"
-                                                        : "bg-[#fff7e8] text-[#8c6331]"
-                                                    }`}
+                                                    className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${stockToneClass}`}
                                                   >
-                                                    {stockLabel}
+                                                    {line.stockLabel}
                                                   </span>
                                                 ) : null}
 	                                            </div>
@@ -1807,19 +2053,19 @@ export function CheckoutWorkspace() {
 	                                            <div className="inline-flex items-center justify-center rounded-full border border-[rgba(26,58,46,0.1)] bg-[#f6f4ed] p-1">
 	                                              <button
 	                                                type="button"
-	                                                onClick={() => updateItem(item.slug, item.quantity - 1)}
-	                                                disabled={item.quantity <= 1}
+	                                                onClick={() => updateItem(line.key, line.item.quantity - 1)}
+	                                                disabled={line.item.quantity <= 1}
 	                                                className="flex h-8 w-8 items-center justify-center rounded-full text-base text-[#163126] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-35"
 	                                              >
 	                                                −
 	                                              </button>
 	                                              <span className="min-w-[38px] text-center text-sm font-semibold text-[#163126]">
-	                                                {item.quantity}
+	                                                {line.item.quantity}
 	                                              </span>
 	                                              <button
 	                                                type="button"
-	                                                onClick={() => updateItem(item.slug, item.quantity + 1)}
-	                                                disabled={!canIncrease}
+	                                                onClick={() => updateItem(line.key, line.item.quantity + 1)}
+	                                                disabled={!line.canIncrease}
 	                                                className="flex h-8 w-8 items-center justify-center rounded-full bg-[#61a740] text-base text-white transition hover:bg-[#577e2f] disabled:cursor-not-allowed disabled:bg-[#cbd5c0]"
 	                                              >
 	                                                +
@@ -1829,13 +2075,13 @@ export function CheckoutWorkspace() {
 	                                            <div className="text-left lg:min-w-[120px] lg:text-right">
 	                                              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#5f6f66]">Total</p>
 	                                              <p className="mt-1 font-sans text-lg font-semibold tracking-[-0.03em] text-[#163126]">
-	                                                {formatCurrency(lineTotal, product?.currencyCode ?? summary.currencyCode)}
+	                                                {formatCurrency(line.lineTotal, line.product?.currencyCode ?? summary.currencyCode)}
 	                                              </p>
 	                                            </div>
 
 	                                            <button
 	                                              type="button"
-	                                              onClick={() => removeItem(item.slug)}
+	                                              onClick={() => removeItem(line.key)}
 	                                              className="rounded-full border border-[rgba(190,24,93,0.12)] px-4 py-2 text-sm font-medium text-rose-600 transition hover:bg-rose-50"
 	                                            >
 	                                              Quitar
@@ -1923,16 +2169,39 @@ export function CheckoutWorkspace() {
 	                                            <span className="inline-flex items-center rounded-full bg-[#fff7e8] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8c6331]">
 	                                              {productSlideIndex + 1} / {productSlideCount}
 			                                            </span>
-                                                {resolveCheckoutStockLabel(activeProductSlide.product) ? (
+                                                {activeProductSlide.requiresVariantSelection ? (
+                                                  <span className="inline-flex items-center rounded-full bg-[#eef6e8] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#1a3a2e]">
+                                                    Stock por variante
+                                                  </span>
+                                                ) : resolveCheckoutStockLabel(activeProductSlide.product) ? (
                                                   <span className="inline-flex items-center rounded-full bg-[#fff7e8] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8c6331]">
                                                     {resolveCheckoutStockLabel(activeProductSlide.product)}
                                                   </span>
                                                 ) : null}
+                                                {activeProductSlide.selectedVariantCount > 0 ? (
+                                                  <span className="inline-flex items-center rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#1a3a2e]">
+                                                    {activeProductSlide.selectedVariantCount}{" "}
+                                                    {activeProductSlide.selectedVariantCount === 1 ? "variante elegida" : "variantes elegidas"}
+                                                  </span>
+                                                ) : null}
 			                                          </div>
+                                              {activeProductSlide.requiresVariantSelection ? (
+                                                <p className="mt-1 text-xs leading-5 text-[#5f6f66]">
+                                                  Elige aroma o presentación en el detalle antes de sumarlo al pedido.
+                                                </p>
+                                              ) : null}
 			                                        </div>
 			                                      </div>
 
-			                                      {!activeProductSlide.selected ? (
+			                                      {activeProductSlide.requiresVariantSelection ? (
+			                                        <a
+			                                          href={activeProductSlide.selectionHref}
+			                                          aria-label={`Elegir variante de ${activeProductSlide.product.name}`}
+			                                          className="mt-3 inline-flex min-h-[44px] items-center justify-center self-start rounded-full border border-[rgba(97,167,64,0.18)] bg-[#f7fbf5] px-4 text-sm font-semibold text-[#1a3a2e] transition hover:border-[#61a740] hover:bg-white sm:absolute sm:right-12 sm:top-1/2 sm:mt-0 sm:min-h-0 sm:-translate-y-1/2"
+			                                        >
+			                                          Elegir variante
+			                                        </a>
+			                                      ) : !activeProductSlide.selected ? (
 				                                        <button
 				                                          type="button"
 				                                          onClick={() => addItem(activeProductSlide.product.slug)}
@@ -2671,14 +2940,22 @@ export function CheckoutWorkspace() {
 	                        <p className="text-sm leading-6 text-[#5f6f66]">Aún no agregas productos al checkout.</p>
 	                      ) : (
 	                        <>
-	                          {summaryPreviewItems.map(({ item, product, lineTotal }) => (
-	                            <div key={item.slug} className="flex items-start justify-between gap-3 rounded-[18px] bg-white px-3 py-3">
+	                          {summaryPreviewItems.map((line) => (
+	                            <div key={line.key} className="flex items-start justify-between gap-3 rounded-[18px] bg-white px-3 py-3">
 	                              <div className="min-w-0 flex-1">
-	                                <p className="truncate text-sm font-semibold text-[#163126]">{product?.name ?? item.slug}</p>
-	                                <p className="text-xs text-[#5f6f66]">x {item.quantity}</p>
+	                                <p className="truncate text-sm font-semibold text-[#163126]">{line.displayName}</p>
+                                  {line.flavorLabel || line.presentationLabel ? (
+                                    <p className="truncate text-xs text-[#163126]">
+                                      {[line.flavorLabel ? line.flavorLabel : null, line.presentationLabel ? line.presentationLabel : null]
+                                        .filter(Boolean)
+                                        .join(" · ")}
+                                    </p>
+                                  ) : null}
+                                  {line.variantName ? <p className="truncate text-xs text-[#163126]">Variante: {line.variantName}</p> : null}
+	                                <p className="text-xs text-[#5f6f66]">x {line.item.quantity}</p>
 	                              </div>
 	                              <p className="text-sm font-semibold text-[#163126]">
-	                                {formatCurrency(lineTotal, product?.currencyCode ?? summary.currencyCode)}
+	                                {formatCurrency(line.lineTotal, line.product?.currencyCode ?? summary.currencyCode)}
 	                              </p>
 	                            </div>
 	                          ))}

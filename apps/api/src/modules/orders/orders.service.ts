@@ -439,6 +439,14 @@ function normalizeQuoteItems(items: CheckoutQuoteSummary["items"]) {
     );
 }
 
+function normalizeResolvedRequestItems(items: CheckoutQuoteSummary["items"]) {
+  return normalizeQuoteItems(items).map((item) => ({
+    slug: item.slug,
+    quantity: item.quantity,
+    variantId: item.variantId ?? null
+  }));
+}
+
 function normalizeCheckoutRequest(input: CreateCheckoutOrderInput) {
   const request = input.request;
 
@@ -477,18 +485,7 @@ function normalizeCheckoutRequest(input: CreateCheckoutOrderInput) {
           normalizeDocumentNumber(request.customer.documentNumber, normalizeDocumentType(request.customer.documentType)) ?? null
       },
       address: normalizeAddress(request.address),
-      items: request.items
-        .map((item) => ({
-          slug: item.slug.trim(),
-          quantity: item.quantity,
-          variantId: item.variantId?.trim() || null
-        }))
-        .sort(
-          (left, right) =>
-            left.slug.localeCompare(right.slug) ||
-            (left.variantId ?? "").localeCompare(right.variantId ?? "") ||
-            left.quantity - right.quantity
-        )
+      items: normalizeResolvedRequestItems(input.quote.items)
     }
   };
 }
@@ -943,18 +940,22 @@ export class OrdersService implements OnModuleInit {
     const address = this.normalizeBackofficeAddress(customer, input.address);
 
     const orderItems = await this.inventoryService.hydrateOrderItems(
-      input.items.map((item) => ({
-        slug: item.slug ?? "",
-        name: item.name ?? "",
-        sku: item.sku ?? "",
-        variantId: item.variantId,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        lineTotal: item.unitPrice * item.quantity,
-        imageUrl: undefined,
-        originalUnitPrice: item.unitPrice,
-        discountApplied: 0
-      }))
+      input.items.map((item) => {
+        const unitPrice = item.unitPrice ?? 0;
+
+        return {
+          slug: item.slug ?? "",
+          name: item.name ?? "",
+          sku: item.sku ?? "",
+          variantId: item.variantId,
+          quantity: item.quantity,
+          unitPrice,
+          lineTotal: unitPrice * item.quantity,
+          imageUrl: undefined,
+          originalUnitPrice: unitPrice,
+          discountApplied: 0
+        };
+      })
     );
 
     const subtotal = orderItems.reduce((sum, i) => sum + i.lineTotal, 0);

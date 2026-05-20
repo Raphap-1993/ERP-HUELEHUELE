@@ -24,10 +24,11 @@ El codigo local es la fuente de verdad de aplicacion; produccion debe homologars
 1. [Arquitectura general](./architecture/overview.md)
 2. [Diagramas del sistema](./architecture/system-diagrams.md)
 3. [Mapa de modulos](./architecture/modules.md)
-4. [Modelo de dominio](./data/domain-model.md)
-5. [Contratos API v1](./api/api-v1-outline.md)
-6. [Despliegue y homologacion](./infra/deployment-strategy.md)
-7. [Validacion y pruebas](./06-validacion-y-pruebas.md)
+4. [Fuente única producto y branding runtime](./architecture/product-branding-runtime-source-of-truth.md)
+5. [Modelo de dominio](./data/domain-model.md)
+6. [Contratos API v1](./api/api-v1-outline.md)
+7. [Despliegue y homologacion](./infra/deployment-strategy.md)
+8. [Validacion y pruebas](./06-validacion-y-pruebas.md)
 
 ### Producto y operacion
 
@@ -62,6 +63,11 @@ El codigo local es la fuente de verdad de aplicacion; produccion debe homologars
 - [Sistema visual](./ux/design-system.md)
 - [Backoffice UX](./ux/backoffice-ux-redesign-v2.md)
 - [Checkout UX](./ux/checkout-redesign.md)
+
+### Ingenieria
+
+- [Estandar de desarrollo](./engineering/development-standard.md)
+- [Checklist de release](./engineering/release-checklist.md)
 
 ## Documentacion Historica
 

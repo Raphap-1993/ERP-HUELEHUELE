@@ -1458,7 +1458,7 @@ export function OrdersWorkspace() {
                       <div className="mt-3 space-y-1.5 text-xs text-black/65">
                         {order.items.map((item, index) => (
                           <p key={`${order.clientReference}-${item.sku ?? item.variantId ?? index}`}>
-                            {(item.sku ?? item.variantId) || "Item"} · {item.quantity} u. · S/ {item.unitPrice.toFixed(2)}
+                            {(item.sku ?? item.variantId) || "Item"} · {item.quantity} u. · S/ {(item.unitPrice ?? 0).toFixed(2)}
                           </p>
                         ))}
                       </div>

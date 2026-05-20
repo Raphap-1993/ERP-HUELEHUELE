@@ -41,14 +41,22 @@ Reglas:
 
 ### Catalogo Y CMS
 
+- `GET /store/cms`
+- `GET /store/catalog`
 - `GET /store/site-settings`
 - `GET /store/navigation`
 - `GET /store/pages/:slug`
 - `GET /store/faqs`
 - `GET /store/banners`
+- `GET /store/testimonials`
 - `GET /store/categories`
 - `GET /store/products`
 - `GET /store/products/:slug`
+
+Regla puntual de producto:
+
+- `GET /store/products/:slug` puede devolver `detailAttributes[]` como lista opcional de pares `label/value` para la ficha pública.
+- `GET /store/products/:slug` puede devolver variantes con `flavorLabel` y `presentationLabel`; el checkout reserva stock por `variantId`, no solo por `slug`.
 
 ### Checkout
 
@@ -85,18 +93,48 @@ Reglas:
 ### Productos, CMS Y Media
 
 - `GET /admin/media/assets`
-- `GET /admin/categories`
-- `POST /admin/categories`
+- `GET /admin/cms`
+- `GET /admin/cms/site-settings`
+- `PATCH /admin/cms/site-settings`
+- `POST /admin/cms/site-settings/logo`
+- `POST /admin/cms/site-settings/admin-sidebar-logo`
+- `POST /admin/cms/site-settings/hero-image`
+- `POST /admin/cms/site-settings/loading-image`
+- `POST /admin/cms/site-settings/favicon`
+- `GET /admin/cms/hero-copy`
+- `PATCH /admin/cms/hero-copy`
+- `GET /admin/cms/navigation`
+- `PATCH /admin/cms/navigation`
+- `GET /admin/cms/pages`
+- `GET /admin/cms/pages/:slug`
+- `PATCH /admin/cms/pages/:slug`
+- `PATCH /admin/cms/pages/:slug/blocks`
+- `GET /admin/cms/banners`
+- `POST /admin/cms/banners`
+- `PATCH /admin/cms/banners/:id`
+- `GET /admin/cms/faqs`
+- `POST /admin/cms/faqs`
+- `PATCH /admin/cms/faqs/:id`
+- `GET /admin/cms/testimonials`
+- `POST /admin/cms/testimonials`
+- `PATCH /admin/cms/testimonials/:id`
+- `GET /admin/products/categories`
 - `GET /admin/products`
 - `GET /admin/products/:id`
 - `POST /admin/products`
 - `PATCH /admin/products/:id`
+- `POST /admin/products/:id/archive`
 - `POST /admin/products/:id/images`
-- `GET /admin/site-settings`
-- `PUT /admin/site-settings`
-- `GET /admin/pages`
-- `POST /admin/pages`
-- `PATCH /admin/pages/:id`
+- `DELETE /admin/products/:id/images/:imageId`
+
+Reglas:
+
+- el backoffice formaliza `archive-only` para productos con historial comercial; no existe borrado destructivo expuesto por API.
+- `badge`, `tone` y `benefits` viven en `products`; la home solo cura orden y presencia via `siteSetting.featuredProductSlugs[]`.
+
+Regla puntual de producto:
+
+- `GET /admin/products/:id`, `POST /admin/products` y `PATCH /admin/products/:id` aceptan y devuelven `detailAttributes[]` como lista opcional de detalles visibles en la ficha pública del producto.
 
 ### Clientes
 

@@ -33,6 +33,13 @@ export interface NavigationItem {
   requiredRoles?: readonly RoleCode[];
 }
 
+export interface ProductDetailAttribute {
+  label: string;
+  value: string;
+}
+
+export type ProductToneValue = "emerald" | "graphite" | "amber";
+
 export interface HeroCopy {
   eyebrow: string;
   title: string;
@@ -46,27 +53,36 @@ export interface CatalogProduct {
   name: string;
   slug: string;
   categorySlug: string;
+  categoryName?: string;
+  categoryDescription?: string;
   tagline: string;
   description: string;
   price: number;
   compareAtPrice?: number;
   badge: string;
-  tone: "emerald" | "graphite" | "amber";
+  tone: ProductToneValue;
   benefits: string[];
   sku: string;
   imageUrl?: string;
   imageAlt?: string;
   defaultVariantId?: string;
+  variantCount?: number;
   currencyCode?: string;
+  isFeatured?: boolean;
   availableStock?: number;
   lowStockThreshold?: number;
   stockStatus?: "available" | "low_stock" | "out_of_stock";
   stockLabel?: string;
   isPurchasable?: boolean;
+  detailAttributes?: ProductDetailAttribute[];
   variants?: {
     id: string;
     sku: string;
     name: string;
+    flavorCode?: string;
+    flavorLabel?: string;
+    presentationCode?: string;
+    presentationLabel?: string;
     price: number;
     compareAtPrice?: number;
     status: "active" | "inactive" | "out_of_stock";
@@ -527,6 +543,7 @@ export interface WholesaleLeadItem {
 export interface SiteSetting {
   brandName: string;
   tagline: string;
+  featuredProductSlugs?: string[];
   supportEmail: string;
   whatsapp: string;
   shippingFlatRate: number;

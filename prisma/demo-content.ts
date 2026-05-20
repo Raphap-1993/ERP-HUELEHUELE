@@ -1,4 +1,4 @@
-import type { CmsSnapshotResponse } from "@huelegood/shared";
+import type { CmsSnapshotResponse, ProductDetailAttribute, ProductToneValue } from "@huelegood/shared";
 
 interface LocalDemoBundleComponentSeed {
   productSlug: string;
@@ -16,6 +16,10 @@ export interface LocalDemoProductSeed {
   name: string;
   shortDescription: string;
   longDescription: string;
+  badge?: string;
+  tone?: ProductToneValue;
+  benefits?: string[];
+  detailAttributes?: ProductDetailAttribute[];
   categorySlug: string;
   sku: string;
   price: number;
@@ -46,6 +50,14 @@ export const localDemoProducts: LocalDemoProductSeed[] = [
       "Huele Huele Verde combina hierbas secas y aceites esenciales para brindarte una sensación fresca, natural y reconfortante en cualquier momento del día.",
     longDescription:
       "Huele Huele Verde está hecho para darte una sensación más natural, fresca y reconfortante. Su combinación de hierbas secas y aceites esenciales crea una experiencia aromática suave, ideal para acompañarte en momentos de pausa, enfoque o relajación durante el día.",
+    badge: "Más vendido",
+    tone: "emerald",
+    benefits: ["Portátil", "Frescura herbal", "Uso diario"],
+    detailAttributes: [
+      { label: "Aromas", value: "Mentol herbal y frescura suave" },
+      { label: "Ideal para", value: "Uso diario, oficina y trayectos cortos" },
+      { label: "Presentación", value: "Unitario" }
+    ],
     categorySlug: "productos",
     sku: "HG-CV-001",
     price: 34.9,
@@ -60,6 +72,14 @@ export const localDemoProducts: LocalDemoProductSeed[] = [
       "Huele Huele Black está elaborado con aceites esenciales y ofrece una experiencia aromática intensa, fresca y práctica para acompañarte con un respiro inmediato donde estés.",
     longDescription:
       "Huele Huele Black ofrece una experiencia más intensa y práctica, elaborado con aceites esenciales para brindarte un aroma concentrado, fresco y duradero. Es perfecto para quienes buscan una opción fácil de llevar, usar en cualquier momento y disfrutar de un respiro inmediato.",
+    badge: "Premium",
+    tone: "graphite",
+    benefits: ["Acabado premium", "Diseño discreto", "Listo para llevar"],
+    detailAttributes: [
+      { label: "Aromas", value: "Mentolado intenso con nota herbal fresca" },
+      { label: "Ideal para", value: "Viajes, altura y trayectos largos" },
+      { label: "Presentación", value: "Unitario premium" }
+    ],
     categorySlug: "productos",
     sku: "HG-PN-001",
     price: 39.9,
@@ -73,6 +93,14 @@ export const localDemoProducts: LocalDemoProductSeed[] = [
     shortDescription: "Clásico Verde + Premium Negro en un solo pack.",
     longDescription:
       "El Pack Duo te permite disfrutar lo mejor de ambos mundos: la frescura natural del Verde y la intensidad práctica del Black. Es ideal para probar dos experiencias diferentes, alternarlas según tu momento del día y además aprovechar una compra más conveniente.",
+    badge: "Combo",
+    tone: "amber",
+    benefits: ["Ahorro visible", "Doble formato", "Ideal para viaje"],
+    detailAttributes: [
+      { label: "Incluye", value: "1 Clásico Verde + 1 Premium Negro" },
+      { label: "Aromas", value: "Frescura herbal suave + mentolado intenso" },
+      { label: "Presentación", value: "Combo promocional" }
+    ],
     categorySlug: "bundles",
     sku: "HG-CDP-001",
     price: 69.9,
@@ -92,6 +120,7 @@ export const localDemoCmsSnapshot: CmsSnapshotResponse = {
   siteSetting: {
     brandName: "Huelegood",
     tagline: "Frescura herbal portátil para acompañarte en tráfico, viajes, oficina y altura.",
+    featuredProductSlugs: ["clasico-verde", "premium-negro", "combo-duo-perfecto"],
     supportEmail: "contacto@huelegood.com",
     whatsapp: "+51 927 476 668",
     shippingFlatRate: 15,

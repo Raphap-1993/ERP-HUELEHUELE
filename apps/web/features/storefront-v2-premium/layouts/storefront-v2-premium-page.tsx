@@ -1,4 +1,4 @@
-import { cmsTestimonials, faqItems, heroCopy, wholesalePlans, type CmsTestimonial, type FaqItem } from "@huelegood/shared";
+import { heroCopy, wholesalePlans, type CmsTestimonial, type FaqItem } from "@huelegood/shared";
 import { HeroSection } from "../sections/HeroSection";
 import { BenefitsSection } from "../sections/BenefitsSection";
 import { ComparisonSection } from "../sections/ComparisonSection";
@@ -9,6 +9,8 @@ import { FaqAccordionSection } from "../sections/FaqAccordionSection";
 import { InstagramSection } from "../sections/InstagramSection";
 import { StickyBarClient } from "../components/StickyBarClient";
 import { fetchCatalogSummary, fetchCmsSnapshot, fetchWholesaleTiers } from "../../../lib/api";
+
+const allowStaticStorefrontFallbacks = process.env.NODE_ENV !== "production";
 
 export async function StorefrontV2PremiumExperience({
   preview = false
@@ -23,19 +25,17 @@ export async function StorefrontV2PremiumExperience({
   const cms = cmsResponse?.data;
   const hero = cms?.heroCopy ?? heroCopy;
   const heroProductImageUrl = cms?.siteSetting.heroProductImageUrl ?? undefined;
-  const testimonials: CmsTestimonial[] =
-    cms?.testimonials.filter((testimonial) => testimonial.status === "active")?.length
-      ? cms.testimonials.filter((testimonial) => testimonial.status === "active")
-      : cmsTestimonials;
+  const testimonials: CmsTestimonial[] = cms?.testimonials.filter((testimonial) => testimonial.status === "active") ?? [];
   const faqs: FaqItem[] =
     cms?.faqs.filter((faq) => faq.status === "active").map((faq) => ({
       question: faq.question,
       answer: faq.answer,
       category: faq.category
-    })) ?? faqItems;
+    })) ?? [];
   const products = catalogResponse?.data.products ?? [];
   const currencyCode = catalogResponse?.data.currencyCode ?? "PEN";
-  const wholesaleTiers = wholesaleResponse?.data?.length ? wholesaleResponse.data : wholesalePlans;
+  const wholesaleTiers =
+    wholesaleResponse?.data?.length ? wholesaleResponse.data : allowStaticStorefrontFallbacks ? wholesalePlans : [];
 
   return (
     <>
@@ -43,9 +43,9 @@ export async function StorefrontV2PremiumExperience({
       <BenefitsSection />
       <ComparisonSection />
       <PricingSection products={products} currencyCode={currencyCode} />
-      <TestimonialsSection testimonials={testimonials} />
+      <TestimonialsSection testimonials={testimonials.length > 0 ? testimonials : undefined} />
       <WholesaleB2BSection plans={wholesaleTiers} />
-      <FaqAccordionSection faqs={faqs} />
+      <FaqAccordionSection faqs={faqs.length > 0 ? faqs : undefined} />
       <InstagramSection />
       <StickyBarClient />
     </>

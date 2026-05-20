@@ -14,6 +14,7 @@ import { PeruUbigeoService } from "../src/modules/commerce/peru-ubigeo.service";
 import { CoreService } from "../src/modules/core/core.service";
 import { InventoryService } from "../src/modules/inventory/inventory.service";
 import { OrdersService } from "../src/modules/orders/orders.service";
+import { ProductsService } from "../src/modules/products/products.service";
 import { TransfersService } from "../src/modules/transfers/transfers.service";
 import { VendorsService } from "../src/modules/vendors/vendors.service";
 
@@ -56,7 +57,7 @@ type TestVariantRecord = {
   productId: string;
   sku: string;
   name: string;
-  status: "active";
+  status: "active" | "inactive" | "out_of_stock";
   stockOnHand: number;
   lowStockThreshold: number;
   defaultWarehouseId: string | null;
@@ -113,6 +114,57 @@ type TestWarehouseRecord = {
     priority: number;
     isActive: boolean;
   }>;
+};
+
+type TestProductRecord = {
+  id: string;
+  name: string;
+  slug: string;
+  status: "active" | "inactive" | "draft";
+  salesChannel: ProductSalesChannel;
+  productKind: "single" | "bundle";
+  shortDescription: string | null;
+  longDescription: string | null;
+  badge: string | null;
+  tone: "emerald" | "graphite" | "amber" | null;
+  benefitsJson: null;
+  detailAttributesJson: null;
+  reportingGroup: string | null;
+  isFeatured: boolean;
+  category: null;
+  variants: TestVariantRecord[];
+  images: Array<{
+    id: string;
+    url: string;
+    altText: string | null;
+    sortOrder: number;
+    isPrimary: boolean;
+    variantId: string | null;
+  }>;
+  bundleComponents: Array<{
+    id: string;
+    componentProductId: string;
+    quantity: number;
+    sortOrder: number;
+    componentProduct: {
+      id: string;
+      name: string;
+      slug: string;
+      category: null;
+      images: Array<{
+        id: string;
+        url: string;
+        altText: string | null;
+        sortOrder: number;
+        isPrimary: boolean;
+        variantId: string | null;
+      }>;
+      variants: TestVariantRecord[];
+    };
+    componentVariant: TestVariantRecord | null;
+  }>;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 type TestTransferLineRecord = {
@@ -233,6 +285,15 @@ class PrismaStub {
     }
   };
 
+  readonly product = {
+    findMany: async (args?: { where?: { slug?: { in?: string[] } } }) => {
+      const slugs = args?.where?.slug?.in;
+      return this.listProducts()
+        .filter((product) => (slugs ? slugs.includes(product.slug) : true))
+        .map((product) => this.cloneProduct(product));
+    }
+  };
+
   readonly moduleSnapshot = {
     findUnique: async () => null,
     upsert: async () => null
@@ -256,6 +317,29 @@ class PrismaStub {
   };
 
   readonly warehouseInventoryBalance = {
+    findMany: async (args?: { where?: { OR?: Array<{ variantId: string; warehouseId: string }> } }) => {
+      const filters = args?.where?.OR ?? [];
+      const balances = this.variants.flatMap((variant) =>
+        variant.warehouseBalances.map((balance) => ({
+          ...balance,
+          warehouse: this.warehouses.find((warehouse) => warehouse.id === balance.warehouseId) ?? null
+        }))
+      );
+
+      return balances
+        .filter((balance) =>
+          filters.length === 0
+            ? true
+            : filters.some(
+                (filter) => filter.variantId === balance.variantId && filter.warehouseId === balance.warehouseId
+              )
+        )
+        .map((balance) => ({
+          ...balance,
+          updatedAt: new Date(balance.updatedAt),
+          warehouse: balance.warehouse ? this.cloneWarehouse(balance.warehouse) : null
+        }));
+    },
     upsert: async () => null
   };
 
@@ -599,6 +683,43 @@ class PrismaStub {
     }
   };
 
+  private listProducts(): TestProductRecord[] {
+    const grouped = new Map<string, TestProductRecord>();
+
+    for (const variant of this.variants) {
+      const existing = grouped.get(variant.productId);
+      if (existing) {
+        existing.variants.push(variant);
+        continue;
+      }
+
+      grouped.set(variant.productId, {
+        id: variant.product.id,
+        name: variant.product.name,
+        slug: variant.product.slug,
+        status: "active",
+        salesChannel: variant.product.salesChannel,
+        productKind: "single",
+        shortDescription: null,
+        longDescription: null,
+        badge: null,
+        tone: null,
+        benefitsJson: null,
+        detailAttributesJson: null,
+        reportingGroup: variant.product.reportingGroup ?? null,
+        isFeatured: false,
+        category: null,
+        variants: [variant],
+        images: [],
+        bundleComponents: [],
+        createdAt: new Date(variant.createdAt),
+        updatedAt: new Date(variant.updatedAt)
+      });
+    }
+
+    return Array.from(grouped.values());
+  }
+
   private cloneVariant(variant: TestVariantRecord): TestVariantRecord {
     return {
       ...variant,
@@ -625,6 +746,25 @@ class PrismaStub {
           componentVariant: component.componentVariant ? this.cloneVariant(component.componentVariant) : null
         }))
       }
+    };
+  }
+
+  private cloneProduct(product: TestProductRecord): TestProductRecord {
+    return {
+      ...product,
+      variants: product.variants.map((variant) => this.cloneVariant(variant)),
+      images: product.images.map((image) => ({ ...image })),
+      bundleComponents: product.bundleComponents.map((component) => ({
+        ...component,
+        componentProduct: {
+          ...component.componentProduct,
+          images: component.componentProduct.images.map((image) => ({ ...image })),
+          variants: component.componentProduct.variants.map((variant) => this.cloneVariant(variant))
+        },
+        componentVariant: component.componentVariant ? this.cloneVariant(component.componentVariant) : null
+      })),
+      createdAt: new Date(product.createdAt),
+      updatedAt: new Date(product.updatedAt)
     };
   }
 
@@ -787,6 +927,7 @@ function buildVariant(input: {
   sku: string;
   variantName: string;
   stockOnHand: number;
+  status?: TestVariantRecord["status"];
   salesChannel?: ProductSalesChannel;
   defaultWarehouseId?: string | null;
   warehouseBalances?: TestVariantRecord["warehouseBalances"];
@@ -798,7 +939,7 @@ function buildVariant(input: {
     productId: input.productId,
     sku: input.sku,
     name: input.variantName,
-    status: "active" as const,
+    status: input.status ?? "active",
     stockOnHand: input.stockOnHand,
     lowStockThreshold: 2,
     defaultWarehouseId: input.defaultWarehouseId ?? "wh-lima-central",
@@ -815,6 +956,23 @@ function buildVariant(input: {
       bundleComponents: []
     }
   } satisfies TestVariantRecord;
+}
+
+function buildWarehouseBalance(input: {
+  warehouseId?: string;
+  variantId: string;
+  stockOnHand: number;
+  reservedQuantity?: number;
+  committedQuantity?: number;
+}) {
+  return {
+    warehouseId: input.warehouseId ?? "wh-lima-central",
+    variantId: input.variantId,
+    stockOnHand: input.stockOnHand,
+    reservedQuantity: input.reservedQuantity ?? 0,
+    committedQuantity: input.committedQuantity ?? 0,
+    updatedAt: new Date("2026-04-01T12:00:00.000Z")
+  };
 }
 
 function buildWarehouse(input: {
@@ -936,6 +1094,24 @@ async function createContext(input?: {
     orders,
     core
   };
+}
+
+function createProductsService(input?: {
+  variants?: TestVariantRecord[];
+  warehouses?: TestWarehouseRecord[];
+}) {
+  const warehouses = input?.warehouses ?? [
+    buildWarehouse({
+      id: "wh-lima-central",
+      code: "WH-LIMA-CENTRAL",
+      name: "Lima Central"
+    })
+  ];
+
+  return new ProductsService(
+    new PrismaStub(input?.variants ?? [], warehouses) as never,
+    {} as never
+  );
 }
 
 function buildManualVendor(overrides: Partial<Parameters<VendorsService["createManualVendor"]>[0]> = {}) {
@@ -1080,8 +1256,9 @@ function buildManualCheckoutInput(input: {
   productName: string;
   quantity?: number;
   unitPrice?: number;
-  evidenceReference?: string;
-  evidenceNotes?: string;
+  evidenceReference?: string | null;
+  evidenceNotes?: string | null;
+  evidenceImageUrl?: string;
 }): CheckoutOrderInput {
   const base = buildOpenpayCheckoutInput(input);
 
@@ -1094,8 +1271,11 @@ function buildManualCheckoutInput(input: {
     request: {
       ...base.request,
       paymentMethod: "manual",
-      manualEvidenceReference: input.evidenceReference ?? `voucher-${input.orderNumber.toLowerCase()}`,
-      manualEvidenceNotes: input.evidenceNotes ?? "Comprobante enviado desde checkout."
+      manualEvidenceReference:
+        input.evidenceReference === null ? undefined : input.evidenceReference ?? `voucher-${input.orderNumber.toLowerCase()}`,
+      manualEvidenceNotes:
+        input.evidenceNotes === null ? undefined : input.evidenceNotes ?? "Comprobante enviado desde checkout.",
+      evidenceImageUrl: input.evidenceImageUrl
     },
     orderStatus: OrderStatus.PaymentUnderReview,
     paymentStatus: PaymentStatus.Pending,
@@ -1722,6 +1902,153 @@ test("la aprobacion de comprobante manual deja una traza comercial canonica", as
   assert.equal(detail.commercialTrace?.note, "Comprobante validado contra abono recibido.");
   assert.equal(detail.commercialTrace?.evidenceReference, "voucher-manual-001");
   assert.equal(detail.commercialTrace?.evidenceNotes, "Transferencia enviada por Yape.");
+});
+
+test("el checkout manual conserva la imagen del comprobante subida desde la web", async () => {
+  const context = await createContext();
+  const evidenceImageUrl = "https://media.huelegood.com/evidence/yape-test/comprobante-test.webp";
+
+  const order = await context.orders.createCheckoutOrder(
+    buildManualCheckoutInput({
+      orderNumber: context.orders.reserveOrderNumber(),
+      clientRequestId: "checkout-manual-evidence-image-001",
+      variantId: "var-clasico-verde",
+      sku: "HG-CV-001",
+      productSlug: "clasico-verde",
+      productName: "Clasico Verde",
+      evidenceReference: null,
+      evidenceNotes: null,
+      evidenceImageUrl
+    })
+  );
+
+  const detail = context.orders.getOrder(order.orderNumber).data;
+  const reviewQueue = context.orders.listManualPaymentRequests().data;
+  const manualRequest = reviewQueue.find((request) => request.orderNumber === order.orderNumber);
+
+  assert.equal(detail.orderStatus, OrderStatus.PaymentUnderReview);
+  assert.equal(detail.paymentStatus, PaymentStatus.Pending);
+  assert.equal(detail.manualStatus, ManualPaymentRequestStatus.Submitted);
+  assert.equal(detail.evidenceImageUrl, evidenceImageUrl);
+  assert.equal(detail.manualRequest?.evidenceImageUrl, evidenceImageUrl);
+  assert.equal(detail.commercialTrace?.route, "manual_request");
+  assert.equal(detail.commercialTrace?.evidenceImageUrl, evidenceImageUrl);
+  assert.ok(manualRequest);
+  assert.equal(manualRequest?.evidenceImageUrl, evidenceImageUrl);
+});
+
+test("el quote de checkout exige variantId cuando un producto tiene multiples variantes comprables", async () => {
+  const products = createProductsService({
+    variants: [
+      buildVariant({
+        id: "var-premium-negro-10",
+        productId: "prod-premium-negro",
+        productName: "Premium Negro",
+        productSlug: "premium-negro",
+        sku: "HG-PN-010",
+        variantName: "Premium Negro 10 ml",
+        stockOnHand: 5,
+        warehouseBalances: [buildWarehouseBalance({ variantId: "var-premium-negro-10", stockOnHand: 5 })]
+      }),
+      buildVariant({
+        id: "var-premium-negro-30",
+        productId: "prod-premium-negro",
+        productName: "Premium Negro",
+        productSlug: "premium-negro",
+        sku: "HG-PN-030",
+        variantName: "Premium Negro 30 ml",
+        stockOnHand: 3,
+        warehouseBalances: [buildWarehouseBalance({ variantId: "var-premium-negro-30", stockOnHand: 3 })]
+      })
+    ]
+  });
+
+  await assert.rejects(
+    () =>
+      products.resolveCheckoutItems([
+        {
+          slug: "premium-negro",
+          quantity: 1
+        }
+      ]),
+    (error: unknown) =>
+      error instanceof BadRequestException &&
+      error.message === "Debes indicar una variante para premium-negro porque tiene múltiples opciones disponibles."
+  );
+});
+
+test("el quote de checkout auto-resuelve la unica variante comprable disponible", async () => {
+  const products = createProductsService({
+    variants: [
+      buildVariant({
+        id: "var-premium-negro-10",
+        productId: "prod-premium-negro",
+        productName: "Premium Negro",
+        productSlug: "premium-negro",
+        sku: "HG-PN-010",
+        variantName: "Premium Negro 10 ml",
+        stockOnHand: 0,
+        warehouseBalances: [buildWarehouseBalance({ variantId: "var-premium-negro-10", stockOnHand: 0 })]
+      }),
+      buildVariant({
+        id: "var-premium-negro-30",
+        productId: "prod-premium-negro",
+        productName: "Premium Negro",
+        productSlug: "premium-negro",
+        sku: "HG-PN-030",
+        variantName: "Premium Negro 30 ml",
+        stockOnHand: 4,
+        warehouseBalances: [buildWarehouseBalance({ variantId: "var-premium-negro-30", stockOnHand: 4 })]
+      })
+    ]
+  });
+
+  const quote = await products.resolveCheckoutItems([
+    {
+      slug: "premium-negro",
+      quantity: 2
+    }
+  ]);
+
+  assert.equal(quote.items[0]?.variantId, "var-premium-negro-30");
+  assert.equal(quote.items[0]?.sku, "HG-PN-030");
+  assert.equal(quote.items[0]?.inventoryAllocations?.[0]?.name, "Premium Negro 30 ml");
+});
+
+test("la idempotencia de checkout usa los items canonicos resueltos del quote", async () => {
+  const context = await createContext();
+  const vendor = context.vendors.createManualVendor(buildManualVendor()).vendor!;
+
+  const canonicalInput = buildOpenpayCheckoutInput({
+    orderNumber: context.orders.reserveOrderNumber(),
+    clientRequestId: "checkout-idem-canonical-001",
+    vendorCode: vendor.code,
+    variantId: "var-premium-negro",
+    sku: "HG-PN-001",
+    productSlug: "premium-negro",
+    productName: "Premium Negro"
+  });
+
+  const first = await context.orders.createCheckoutOrder({
+    ...canonicalInput,
+    request: {
+      ...canonicalInput.request,
+      items: [
+        {
+          slug: canonicalInput.request.items[0]!.slug,
+          quantity: canonicalInput.request.items[0]!.quantity
+        }
+      ]
+    }
+  });
+
+  const second = await context.orders.createCheckoutOrder({
+    ...canonicalInput,
+    orderNumber: context.orders.reserveOrderNumber()
+  });
+
+  assert.equal(first.orderNumber, second.orderNumber);
+  assert.equal(context.orders.listOrders().data.length, 1);
 });
 
 test("la misma orden web idempotente no descuenta stock dos veces", async () => {

@@ -86,6 +86,22 @@ function normalizeSlug(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
+function normalizeSlugList(value: unknown) {
+  if (value == null) {
+    return undefined;
+  }
+
+  if (!Array.isArray(value)) {
+    throw new BadRequestException("La curación de productos destacados debe enviarse como una lista.");
+  }
+
+  const normalized = value
+    .flatMap((item) => (typeof item === "string" ? [normalizeSlug(item)] : []))
+    .filter(Boolean);
+
+  return normalized.length > 0 ? Array.from(new Set(normalized)) : undefined;
+}
+
 function cloneNavigation(groups: WebNavigationGroup[]) {
   return groups.map((group) => ({
     title: group.title,
@@ -398,6 +414,7 @@ export class CmsService implements OnModuleInit {
     const heroProductImageUrl = normalizeOptionalAssetUrl(body.heroProductImageUrl);
     const loadingImageUrl = normalizeOptionalAssetUrl(body.loadingImageUrl);
     const faviconUrl = normalizeOptionalAssetUrl(body.faviconUrl);
+    const featuredProductSlugs = normalizeSlugList(body.featuredProductSlugs);
     const yapeNumber = body.yapeNumber?.trim() || undefined;
     const walletType = body.walletType?.trim() || undefined;
     const walletOwnerName = body.walletOwnerName?.trim() || undefined;
@@ -409,6 +426,7 @@ export class CmsService implements OnModuleInit {
     this.siteSettingData = {
       brandName,
       tagline,
+      featuredProductSlugs,
       supportEmail,
       whatsapp,
       shippingFlatRate,
@@ -425,6 +443,7 @@ export class CmsService implements OnModuleInit {
 
     this.recordAdminAction("cms.site_settings.updated", "site_setting", "global", "La configuración base de branding y operación quedó actualizada.", {
       brandName: this.siteSettingData.brandName,
+      featuredProductSlugs: this.siteSettingData.featuredProductSlugs ?? [],
       supportEmail: this.siteSettingData.supportEmail,
       shippingFlatRate: this.siteSettingData.shippingFlatRate,
       freeShippingThreshold: this.siteSettingData.freeShippingThreshold,

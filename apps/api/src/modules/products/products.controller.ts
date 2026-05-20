@@ -58,6 +58,11 @@ export class ProductsController {
     return this.productsService.updateProduct(id, body);
   }
 
+  @Post(":id/archive")
+  archiveProduct(@Param("id") id: string) {
+    return this.productsService.archiveProduct(id);
+  }
+
   @Post(":id/images")
   @UseInterceptors(
     FileInterceptor("file", {

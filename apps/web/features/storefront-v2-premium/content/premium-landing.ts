@@ -1,4 +1,4 @@
-import { featuredProducts, wholesalePlans, type CatalogProduct, type FaqItem, type NavigationItem, type WholesalePlan } from "@huelegood/shared";
+import { type FaqItem, type NavigationItem } from "@huelegood/shared";
 
 export interface PremiumMetric {
   label: string;
@@ -73,7 +73,6 @@ export interface PremiumCtaBanner {
 
 export interface StorefrontV2PremiumContent {
   hero: PremiumHeroContent;
-  products: CatalogProduct[];
   productHighlights: PremiumProductHighlight[];
   useCases: PremiumUseCase[];
   benefits: PremiumBenefit[];
@@ -81,7 +80,6 @@ export interface StorefrontV2PremiumContent {
   brandStoryCards: PremiumStoryCard[];
   whyChooseReasons: PremiumReason[];
   whyChooseCallout: PremiumCallout;
-  wholesalePlans: WholesalePlan[];
   wholesaleCallout: PremiumCallout;
   vendorCallout: PremiumCallout & {
     primaryCta: NavigationItem;
@@ -138,7 +136,6 @@ export const storefrontV2PremiumContent: StorefrontV2PremiumContent = {
       }
     ]
   },
-  products: featuredProducts,
   productHighlights: [
     {
       slug: "clasico-verde",
@@ -259,7 +256,6 @@ export const storefrontV2PremiumContent: StorefrontV2PremiumContent = {
       "Compra directa, mayoristas y representación comercial en rutas separadas."
     ]
   },
-  wholesalePlans,
   wholesaleCallout: {
     label: "Mayoristas",
     title: "Compra por volumen con una ruta clara y separada de la tienda.",
