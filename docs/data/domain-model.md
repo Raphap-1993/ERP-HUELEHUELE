@@ -1,6 +1,6 @@
 # Modelo De Dominio Vigente
 
-Fecha de corte: 2026-04-22.
+Fecha de corte: 2026-04-24.
 
 Este documento resume los agregados actuales y sus invariantes. El detalle fisico vive en `prisma/schema.prisma`; si hay diferencia, el schema y este documento deben actualizarse juntos.
 
@@ -43,6 +43,7 @@ Reglas:
 - `defaultWarehouseId` en variante es preferencia de salida, no obligacion permanente.
 - productos internos no aparecen en catalogo publico.
 - los bundles deben resolverse en inventario por sus componentes cuando corresponda.
+- `detailAttributesJson` en producto guarda detalles editoriales simples de PDP como `Aromas` o `Ideal para`; no reemplaza atributos estructurados de variante.
 
 ### Almacen
 
