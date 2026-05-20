@@ -90,6 +90,10 @@ if [[ "$APP_BASE_DIR" != "$ROOT_DIR" ]]; then
   mkdir -p "$APP_ROOT_DIR"
   ln -sfn "$ROOT_DIR" "$APP_BASE_DIR"
   echo "[release] updated current symlink to $ROOT_DIR"
+else
+  # Avoid serving mixed node_modules/.next artifacts during in-place rebuilds.
+  echo "[release] stopping pm2 processes before in-place rebuild"
+  pm2 stop "${PM2_APP_NAMES[@]}" || true
 fi
 
 mkdir -p "$APP_LOG_DIR"
@@ -113,7 +117,7 @@ if [[ "$APP_BASE_DIR" != "$ROOT_DIR" ]]; then
   pm2 delete "${PM2_APP_NAMES[@]}" || true
   pm2 start "$ROOT_DIR/ecosystem.config.cjs" --env production --update-env
 else
-  echo "[release] reloading pm2 processes"
+  echo "[release] starting pm2 processes after in-place rebuild"
   pm2 startOrReload "$ROOT_DIR/ecosystem.config.cjs" --env production --update-env
 fi
 

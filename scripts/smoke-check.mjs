@@ -9,6 +9,11 @@ const checks = [
     expectedStatus: "ok"
   },
   {
+    name: "web-render",
+    url: process.env.WEB_RENDER_URL || "http://127.0.0.1:3000/",
+    expectedContentType: "text/html"
+  },
+  {
     name: "admin",
     url: process.env.ADMIN_HEALTH_URL || "http://127.0.0.1:3005/health",
     expectedStatus: "ok"
@@ -47,22 +52,31 @@ async function runCheck(check) {
   const response = await fetch(check.url, {
     signal: AbortSignal.timeout(timeoutMs)
   });
+  const contentType = response.headers.get("content-type") || "";
 
   let body = null;
-  try {
-    body = await response.json();
-  } catch {
-    body = null;
+  if (check.expectedStatus) {
+    try {
+      body = await response.json();
+    } catch {
+      body = null;
+    }
   }
 
   const durationMs = Date.now() - startedAt;
   const status = body && typeof body === "object" && "status" in body ? body.status : null;
   const allowedStatuses = [check.expectedStatus, ...(check.allowedStatuses || [])];
-  const ok = response.ok && (status === null || allowedStatuses.includes(status));
+  const htmlOk = check.expectedContentType
+    ? contentType.includes(check.expectedContentType)
+    : true;
+  const statusOk = check.expectedStatus
+    ? status !== null && allowedStatuses.includes(status)
+    : true;
+  const ok = response.ok && htmlOk && statusOk;
 
   if (!ok) {
     throw new Error(
-      `check_failed:${check.name}:http_${response.status}:status_${String(status ?? "unknown")}`
+      `check_failed:${check.name}:http_${response.status}:status_${String(status ?? "unknown")}:content_type_${contentType || "unknown"}`
     );
   }
 
@@ -71,6 +85,7 @@ async function runCheck(check) {
     url: check.url,
     httpStatus: response.status,
     status,
+    contentType,
     durationMs
   });
 }

@@ -25,6 +25,11 @@ La documentacion vigente empieza en:
 
 Regla: si un handoff, auditoria fechada o documento antiguo contradice esos archivos, prevalece la documentacion vigente.
 
+Contribucion y estandar:
+
+- [CONTRIBUTING.md](./CONTRIBUTING.md)
+- [Estandar de desarrollo](./docs/engineering/development-standard.md)
+
 ## Stack
 
 - Next.js
