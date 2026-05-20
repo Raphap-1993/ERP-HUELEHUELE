@@ -10,9 +10,12 @@ import {
   parseRedisConnection
 } from "@huelegood/shared";
 import { AppModule } from "../../api/src/app.module";
+import { loadWorkspaceEnv } from "../../api/src/common/workspace-env";
 import { CommissionsService } from "../../api/src/modules/commissions/commissions.service";
 import { NotificationsService } from "../../api/src/modules/notifications/notifications.service";
 import { PaymentsService } from "../../api/src/modules/payments/payments.service";
+
+loadWorkspaceEnv(process.cwd(), __dirname);
 
 function writeWorkerLog(level: "info" | "warn" | "error", event: string, payload: Record<string, unknown>) {
   process.stdout.write(
