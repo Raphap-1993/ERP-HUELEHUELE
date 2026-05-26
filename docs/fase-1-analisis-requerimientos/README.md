@@ -26,6 +26,13 @@ Consolidar el slice inicial `checkout publico + pago manual + frontera futura de
 - [casos-de-uso/UC-09-entitlement-mayorista-y-resumen-en-cuenta.md](casos-de-uso/UC-09-entitlement-mayorista-y-resumen-en-cuenta.md)
 - [reglas/mayoristas-y-cotizaciones.md](reglas/mayoristas-y-cotizaciones.md)
 
+## Slice 004 - Loyalty Points Redemptions
+- [01.03-loyalty-points-redemptions.md](01.03-loyalty-points-redemptions.md)
+- [casos-de-uso/UC-10-acumulacion-y-liberacion-de-puntos.md](casos-de-uso/UC-10-acumulacion-y-liberacion-de-puntos.md)
+- [casos-de-uso/UC-11-canje-pendiente-y-reserva.md](casos-de-uso/UC-11-canje-pendiente-y-reserva.md)
+- [casos-de-uso/UC-12-ajustes-manuales-y-reversa-automatica.md](casos-de-uso/UC-12-ajustes-manuales-y-reversa-automatica.md)
+- [reglas/loyalty-y-canjes.md](reglas/loyalty-y-canjes.md)
+
 ## Criterio de cierre
 - El slice inicial ya tiene RF, actores, estados y reglas canónicas.
 - La separación entre `Pagos` y `Pedidos > Operacion` queda explícita.
