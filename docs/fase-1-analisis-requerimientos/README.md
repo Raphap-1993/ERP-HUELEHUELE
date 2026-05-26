@@ -19,6 +19,13 @@ Consolidar el slice inicial `checkout publico + pago manual + frontera futura de
 - [casos-de-uso/UC-06-comisiones-payouts-y-panel-vendedor.md](casos-de-uso/UC-06-comisiones-payouts-y-panel-vendedor.md)
 - [reglas/vendedores-y-comisiones.md](reglas/vendedores-y-comisiones.md)
 
+## Slice 003 - Wholesale Leads Quotes
+- [01.02-wholesale-leads-quotes.md](01.02-wholesale-leads-quotes.md)
+- [casos-de-uso/UC-07-captura-y-calificacion-mayorista.md](casos-de-uso/UC-07-captura-y-calificacion-mayorista.md)
+- [casos-de-uso/UC-08-cotizacion-y-cierre-comercial.md](casos-de-uso/UC-08-cotizacion-y-cierre-comercial.md)
+- [casos-de-uso/UC-09-entitlement-mayorista-y-resumen-en-cuenta.md](casos-de-uso/UC-09-entitlement-mayorista-y-resumen-en-cuenta.md)
+- [reglas/mayoristas-y-cotizaciones.md](reglas/mayoristas-y-cotizaciones.md)
+
 ## Criterio de cierre
 - El slice inicial ya tiene RF, actores, estados y reglas canónicas.
 - La separación entre `Pagos` y `Pedidos > Operacion` queda explícita.
