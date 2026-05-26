@@ -18,6 +18,11 @@ Formalizar la experiencia visual del checkout homologado sin rediseñar el produ
 - [../../specs/002-vendors-commissions/product-design.md](../../specs/002-vendors-commissions/product-design.md)
 - [../../specs/002-vendors-commissions/spdd-frontend.md](../../specs/002-vendors-commissions/spdd-frontend.md)
 
+## Slice 003 - Wholesale Leads Quotes
+- [02.02-wholesale-leads-quotes-ux-ui.md](02.02-wholesale-leads-quotes-ux-ui.md)
+- [../../specs/003-wholesale-leads-quotes/product-design.md](../../specs/003-wholesale-leads-quotes/product-design.md)
+- [../../specs/003-wholesale-leads-quotes/spdd-frontend.md](../../specs/003-wholesale-leads-quotes/spdd-frontend.md)
+
 ## Criterio de cierre
 - El checkout tiene narrativa UX canónica.
 - La evidencia visual se ancla al runtime y al slice homologado.
