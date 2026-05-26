@@ -15,6 +15,10 @@ Fijar la arquitectura brownfield del slice inicial y la frontera del `payment-ga
 - [03.04-vendors-commissions.md](03.04-vendors-commissions.md)
 - [adr/ADR-002-vendor-attribution-financial-lock.md](adr/ADR-002-vendor-attribution-financial-lock.md)
 
+## Slice 003 - Wholesale Leads Quotes
+- [03.05-wholesale-leads-quotes.md](03.05-wholesale-leads-quotes.md)
+- [adr/ADR-003-wholesale-entitlement-boundary.md](adr/ADR-003-wholesale-entitlement-boundary.md)
+
 ## Criterio de cierre
 - El ownership entre `orders`, `payments` y `payment-gateway` queda explícito.
 - El deploy vigente queda conectado a la capa canónica.
