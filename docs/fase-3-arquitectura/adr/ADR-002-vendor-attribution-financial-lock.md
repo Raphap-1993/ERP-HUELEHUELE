@@ -35,7 +35,8 @@ financiero del slice.
 2. `commissions` recompone la consecuencia financiera, pero no corrige la atribucion primaria.
 3. No se permite `A -> none` si ya hubo comision materializada.
 4. No se permite correccion hacia vendedor inexistente, inactivo o sin regla aplicable.
-5. Despues del lock ya no hay edicion normal de pedido; solo ajuste financiero o reversa compensatoria.
+5. Despues del lock ya no hay edicion normal de pedido dentro de este slice.
+6. Este slice no define un escape hatch canonico post-lock; cualquier ajuste financiero posterior requiere otro slice o ADR.
 
 ## Alternativas Rechazadas
 
@@ -65,7 +66,7 @@ Rechazada porque:
 
 ### Positivas
 
-- separa claramente regularizacion comercial de ajuste financiero;
+- separa claramente regularizacion comercial de cualquier futuro ajuste financiero;
 - protege payouts y reportes de mutaciones tardias inseguras;
 - deja una regla facil de propagar a Fase 1, specs y QA.
 
@@ -73,8 +74,8 @@ Rechazada porque:
 
 - algunas excepciones reales del negocio ya no se resolveran con una sola
   edicion de pedido;
-- obliga a modelar un flujo financiero posterior si el negocio quiere corregir
-  historia despues del payout.
+- si el negocio quiere corregir historia despues del payout, tendra que abrir
+  un slice o ADR especifico para ese flujo.
 
 ## Regla De Reevaluacion
 

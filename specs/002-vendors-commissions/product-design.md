@@ -13,7 +13,7 @@ Fecha: 2026-05-26.
 
 - el panel vendedor es operativo, no decorativo
 - `Pedidos > Operacion` es la unica puerta de correccion post-pedido
-- `/comisiones` refleja consecuencia financiera, no corrige la atribucion primaria
+- `/admin/comisiones` refleja consecuencia financiera, no corrige la atribucion primaria
 - `/trabaja-con-nosotros` captura interes comercial; no promete onboarding automatico
 
 ## Tension principal

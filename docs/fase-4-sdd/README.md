@@ -12,6 +12,12 @@ Convertir el slice inicial homologado en una feature ejecutable con specs funcio
 - [../../specs/001-checkout-payments/spec-tareas.md](../../specs/001-checkout-payments/spec-tareas.md)
 - [../../specs/001-checkout-payments/traceability.md](../../specs/001-checkout-payments/traceability.md)
 
+## Slice 002 - Vendors Commissions
+- [../../specs/002-vendors-commissions/spec-funcional.md](../../specs/002-vendors-commissions/spec-funcional.md)
+- [../../specs/002-vendors-commissions/spec-tecnica.md](../../specs/002-vendors-commissions/spec-tecnica.md)
+- [../../specs/002-vendors-commissions/spec-tareas.md](../../specs/002-vendors-commissions/spec-tareas.md)
+- [../../specs/002-vendors-commissions/traceability.md](../../specs/002-vendors-commissions/traceability.md)
+
 ## Criterio de cierre
 - Existe al menos una feature canónica viva en `specs/`.
 - La feature enlaza requerimientos, UX, arquitectura y ejecución.
