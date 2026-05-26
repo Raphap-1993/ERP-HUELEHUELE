@@ -1,6 +1,6 @@
 # Documentacion Canonica ERP Huele Huele
 
-Fecha de corte: 2026-04-22.
+Fecha de corte: 2026-05-26.
 
 Este indice reemplaza la lectura anterior dispersa. Para evitar confusiones, la fuente de verdad operativa queda acotada a los documentos marcados como **vigentes** en esta pagina. Cualquier otro archivo historico del repo se conserva solo como evidencia de decisiones o trabajo anterior; no debe usarse para planificar, presupuestar, desplegar ni explicar arquitectura actual.
 
@@ -16,6 +16,22 @@ El ERP Huele Huele ya opera como una plataforma propia con cuatro procesos:
 La base productiva es PostgreSQL en el VPS. Redis se usa para colas y coordinacion transitoria. La media publica usa Cloudflare R2 como destino objetivo y los uploads privados pueden seguir en el VPS mientras no exista una decision distinta.
 
 El codigo local es la fuente de verdad de aplicacion; produccion debe homologarse contra ese snapshot sin reemplazar la base de datos productiva.
+
+## Capa Canonica Brownfield 0-8
+
+Este repo ya tiene una capa canonica intermedia alineada a `project-templatev12.104.0`.
+Usala para navegar por fases sin perder la documentacion viva previa:
+
+1. [Mapa de homologacion brownfield](./transversal/90.00-mapa-homologacion-brownfield.md)
+2. [Fase 0 - Iniciacion](./fase-0-iniciacion/README.md)
+3. [Fase 1 - Analisis y requerimientos](./fase-1-analisis-requerimientos/README.md)
+4. [Fase 2 - UX/UI](./fase-2-ux-ui/README.md)
+5. [Fase 3 - Arquitectura](./fase-3-arquitectura/README.md)
+6. [Fase 4 - Spec-Driven Development](./fase-4-sdd/README.md)
+7. [Fase 5 - Construccion](./fase-5-construccion/README.md)
+8. [Fase 6 - QA](./fase-6-qa/README.md)
+9. [Fase 7 - Deploy](./fase-7-deploy/README.md)
+10. [Fase 8 - Operacion](./fase-8-operacion/README.md)
 
 ## Documentos Vigentes
 

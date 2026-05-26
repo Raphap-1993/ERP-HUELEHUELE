@@ -1,0 +1,17 @@
+# Fase 4 - Spec-Driven Development
+
+[README principal](../../README.md) | [Indice docs](../README.md)
+
+## Objetivo
+Convertir el slice inicial homologado en una feature ejecutable con specs funcionales, técnicas y de tareas.
+
+## Documentos
+- [04.00-spec-driven-development.md](04.00-spec-driven-development.md)
+- [../../specs/001-checkout-payments/spec-funcional.md](../../specs/001-checkout-payments/spec-funcional.md)
+- [../../specs/001-checkout-payments/spec-tecnica.md](../../specs/001-checkout-payments/spec-tecnica.md)
+- [../../specs/001-checkout-payments/spec-tareas.md](../../specs/001-checkout-payments/spec-tareas.md)
+- [../../specs/001-checkout-payments/traceability.md](../../specs/001-checkout-payments/traceability.md)
+
+## Criterio de cierre
+- Existe al menos una feature canónica viva en `specs/`.
+- La feature enlaza requerimientos, UX, arquitectura y ejecución.

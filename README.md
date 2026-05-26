@@ -13,9 +13,16 @@ El codigo local es la fuente de verdad de aplicacion. Produccion debe homologars
 
 ## Documentacion
 
-La documentacion vigente empieza en:
+La entrada recomendada ahora tiene dos capas:
+
+- capa canonica brownfield: [AGENTS.md](./AGENTS.md), [AI_CONTEXT.md](./AI_CONTEXT.md), [PROJECT_MAP.md](./PROJECT_MAP.md), [TRACEABILITY_MATRIX.md](./TRACEABILITY_MATRIX.md), [GLOSSARY.md](./GLOSSARY.md)
+- documentacion viva del producto: [docs/README.md](./docs/README.md)
+
+La documentacion vigente y la capa canonica empiezan en:
 
 - [docs/README.md](./docs/README.md)
+- [Mapa brownfield](./docs/transversal/90.00-mapa-homologacion-brownfield.md)
+- [Fase 0 - Iniciacion](./docs/fase-0-iniciacion/README.md)
 - [Arquitectura general](./docs/architecture/overview.md)
 - [Diagramas del sistema](./docs/architecture/system-diagrams.md)
 - [Mapa de modulos](./docs/architecture/modules.md)
