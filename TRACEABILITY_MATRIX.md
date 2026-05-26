@@ -21,7 +21,7 @@
 | Item | Objetivo | Fuente vigente | Destino canonico | Estado |
 |---|---|---|---|---|
 | `REQ-HH-001` | Operar una plataforma comercial propia para Huelegood | `docs/product/product-vision.md`, `docs/product/scope.md` | `docs/fase-0-iniciacion/00.01-vision-proyecto.md` | Backfilled |
-| `REQ-HH-002` | Sostener ventas directas con checkout, pagos online y pagos manuales | `docs/product/scope.md`, `docs/flows/checkout-openpay.md`, `docs/flows/manual-payments.md` | Fase 1 y Fase 2 canonicas | En formalizacion |
+| `REQ-HH-002` | Sostener ventas directas con checkout, pagos online y pagos manuales | `docs/product/scope.md`, `docs/flows/checkout-openpay.md`, `docs/flows/manual-payments.md` | Fases 1-4 canonicas del slice `001-checkout-payments` | Backfilled para estado actual + frontera futura |
 | `REQ-HH-003` | Formalizar el canal seller con atribucion y comisiones | `docs/product/product-vision.md`, `docs/flows/vendors-and-commissions.md` | Fase 1 canonica | En formalizacion |
 | `REQ-HH-004` | Atender leads mayoristas y distribuidores desde operacion | `docs/product/scope.md`, `docs/flows/wholesale-flow.md` | Fase 1 canonica | En formalizacion |
 | `REQ-HH-005` | Operar CMS, marketing, loyalty y CRM basico desde backoffice | `docs/product/scope.md`, `docs/product/roadmap.md` | Fase 1 y Fase 5 canonicas | En formalizacion |

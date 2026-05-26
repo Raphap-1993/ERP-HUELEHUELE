@@ -173,7 +173,7 @@ Indices:
 
 ## Reglas Tecnicas Del Slice
 
-1. `manual` sigue siendo ruta publica disponible.
+1. `manual` sigue siendo ruta publica disponible; en el estado homologado actual es la unica ruta visible porque `PAYMENT_ONLINE_PROVIDER_ACTIVE=none`.
 2. Solo un provider online activo puede resolverse por runtime.
 3. `authorized` nunca ejecuta `applyCommercialConfirmation`.
 4. `captured` o `paid` pueden ejecutar confirmacion automatica solo si `PAYMENT_ONLINE_AUTO_CONFIRM_ENABLED=true`.

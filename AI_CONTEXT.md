@@ -11,7 +11,7 @@
 - Version actual: snapshot brownfield sobre producto vivo.
 
 ## Estado actual
-- Fase activa: homologacion brownfield de la capa canonica; Fase 0 queda backfilled en este corte.
+- Fase activa: revision y aprobacion de la capa canonica intermedia; las fases 0-8 ya quedaron backfilled para el slice inicial `001-checkout-payments`.
 - Resumen en una linea: el software ya opera con `web`, `admin`, `api` y `worker`; el trabajo actual ordena la documentacion vigente en una capa canonica por fases sin reescribir la historia del proyecto.
 - Ultima actualizacion: `2026-05-26`
 

@@ -40,11 +40,11 @@ No incluye:
 
 ### RF-01. Manual visible hoy
 
-El checkout publico debe mostrar `manual payment` como ruta disponible en el corte actual, aun si existe un provider online activo.
+El checkout publico debe mostrar solo `manual payment` como ruta visible en el corte actual homologado.
 
 ### RF-02. Un solo provider online activo
 
-El sistema puede tener como maximo un provider online activo al mismo tiempo. Si no hay provider online habilitado, el checkout opera solo con `manual`.
+El sistema puede tener como maximo un provider online activo al mismo tiempo. Mientras `PAYMENT_ONLINE_PROVIDER_ACTIVE=none`, el checkout opera solo con `manual`. Si en el futuro se habilita un provider real, la UI publica puede exponer `manual + una opcion online`, nunca mas de una.
 
 ### RF-03. Public checkout sin coupling al proveedor
 
@@ -101,13 +101,14 @@ Toda decision manual u online debe dejar auditoria, evento operativo y una ruta 
 5. si aprueba, el pedido queda confirmado y listo para operacion;
 6. si rechaza, el pedido queda cancelado o fuera de flujo segun politica vigente.
 
-### Escenario B. Checkout online con provider activo
+### Escenario B. Estado futuro con checkout online habilitado
 
-1. el cliente completa el wizard y elige la opcion online;
-2. el backend resuelve el provider online activo;
-3. el sistema crea pedido `pending_payment` y devuelve `checkoutUrl`;
-4. operacion valida el cobro y confirma desde `Pedidos > Operacion`;
-5. la trazabilidad del pedido conserva la ruta online.
+1. el negocio aprueba activar un provider real y el runtime deja de estar en `none`;
+2. el cliente completa el wizard y elige la opcion online;
+3. el backend resuelve el provider online activo;
+4. el sistema crea pedido `pending_payment` y devuelve `checkoutUrl`;
+5. operacion valida el cobro y confirma desde `Pedidos > Operacion`;
+6. la trazabilidad del pedido conserva la ruta online.
 
 ### Escenario C. Webhook futuro
 
@@ -120,8 +121,8 @@ Toda decision manual u online debe dejar auditoria, evento operativo y una ruta 
 
 | ID | Criterio |
 | --- | --- |
-| CA-01 | el checkout siempre ofrece `manual` |
-| CA-02 | nunca hay dos providers online visibles a la vez |
+| CA-01 | el checkout ofrece solo `manual` mientras el provider online activo sea `none` |
+| CA-02 | si se habilita pago online en el futuro, nunca hay dos providers online visibles a la vez |
 | CA-03 | `Pagos` lista comprobantes manuales y deja claro que no confirma online |
 | CA-04 | `Pedidos > Operacion` expone la ruta activa del pedido y permite conciliacion online controlada |
 | CA-05 | un webhook `authorized` no confirma el pedido |
