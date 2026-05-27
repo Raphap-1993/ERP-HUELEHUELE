@@ -30,6 +30,12 @@ Convertir los slices brownfield homologados en features ejecutables con specs fu
 - [../../specs/004-loyalty-points-redemptions/spec-tareas.md](../../specs/004-loyalty-points-redemptions/spec-tareas.md)
 - [../../specs/004-loyalty-points-redemptions/traceability.md](../../specs/004-loyalty-points-redemptions/traceability.md)
 
+## Slice 005 - CMS Content Blocks Marketing Surfaces
+- [../../specs/005-cms-content-blocks-marketing-surfaces/spec-funcional.md](../../specs/005-cms-content-blocks-marketing-surfaces/spec-funcional.md)
+- [../../specs/005-cms-content-blocks-marketing-surfaces/spec-tecnica.md](../../specs/005-cms-content-blocks-marketing-surfaces/spec-tecnica.md)
+- [../../specs/005-cms-content-blocks-marketing-surfaces/spec-tareas.md](../../specs/005-cms-content-blocks-marketing-surfaces/spec-tareas.md)
+- [../../specs/005-cms-content-blocks-marketing-surfaces/traceability.md](../../specs/005-cms-content-blocks-marketing-surfaces/traceability.md)
+
 ## Criterio de cierre
 - Existen features canónicas vivas en `specs/` para los slices abiertos en este corte.
 - Cada feature enlaza requerimientos, UX, arquitectura y ejecución.
