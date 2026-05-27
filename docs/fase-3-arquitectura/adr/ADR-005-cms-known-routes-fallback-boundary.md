@@ -31,8 +31,10 @@ rutas conocidas, con bloques tipados por ruta y fallback seguro en
 
 La decision incluye estas reglas:
 
-1. Solo existen las rutas conocidas `home`, `catalogo`, `mayoristas`,
-   `trabaja-con-nosotros`, `cuenta` y `checkout`.
+1. Solo existen los page slugs o route IDs conocidos `home`, `catalogo`,
+   `mayoristas`, `trabaja-con-nosotros`, `cuenta` y `checkout`, que hoy
+   resuelven a las superficies publicas `/`, `/catalogo`, `/mayoristas`,
+   `/trabaja-con-nosotros`, `/cuenta` y `/checkout`.
 2. Cada ruta solo admite el set de bloques tipados ya anclado en el runtime.
 3. `marketing` es el owner operativo primario del contenido; `admin` y
    `super_admin` quedan como soporte y override.
@@ -46,7 +48,7 @@ La decision incluye estas reglas:
 
 ## Guardrails Derivados
 
-1. El CMS no crea rutas publicas fuera del set conocido.
+1. El CMS no crea nuevos route IDs ni paths publicos fuera del set conocido.
 2. El CMS no habilita bloques arbitrarios sin contrato de ruta.
 3. El snapshot CMS no puede tumbar el render publico de una ruta conocida.
 4. `checkout` y `cuenta` deben mantenerse con `noindex,nofollow` cuando el CMS
