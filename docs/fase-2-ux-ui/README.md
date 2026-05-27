@@ -3,7 +3,7 @@
 [README principal](../../README.md) | [Indice docs](../README.md)
 
 ## Objetivo
-Formalizar la experiencia visual del checkout homologado sin rediseñar el producto completo ni contradecir el runtime vivo.
+Formalizar la experiencia visual y los contratos UX de las superficies brownfield homologadas sin rediseñar el producto completo ni contradecir el runtime vivo.
 
 ## Documentos
 - [02.00-ux-ui.md](02.00-ux-ui.md)
@@ -29,5 +29,5 @@ Formalizar la experiencia visual del checkout homologado sin rediseñar el produ
 - [../../specs/004-loyalty-points-redemptions/spdd-frontend.md](../../specs/004-loyalty-points-redemptions/spdd-frontend.md)
 
 ## Criterio de cierre
-- El checkout tiene narrativa UX canónica.
-- La evidencia visual se ancla al runtime y al slice homologado.
+- Cada slice con capa UX abierta tiene narrativa y fronteras visuales canónicas.
+- La evidencia visual se ancla al runtime y al dominio homologado correspondiente.

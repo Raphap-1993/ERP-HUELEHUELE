@@ -3,7 +3,7 @@
 [README principal](../../README.md) | [Indice docs](../README.md)
 
 ## Objetivo
-Fijar la arquitectura brownfield del slice inicial y la frontera del `payment-gateway` sin romper el monorepo actual.
+Fijar la arquitectura brownfield de los slices homologados y sus fronteras criticas sin romper el monorepo actual.
 
 ## Documentos
 - [03.00-arquitectura.md](03.00-arquitectura.md)
@@ -24,5 +24,5 @@ Fijar la arquitectura brownfield del slice inicial y la frontera del `payment-ga
 - [adr/ADR-004-loyalty-redemption-reservation-boundary.md](adr/ADR-004-loyalty-redemption-reservation-boundary.md)
 
 ## Criterio de cierre
-- El ownership entre `orders`, `payments` y `payment-gateway` queda explícito.
-- El deploy vigente queda conectado a la capa canónica.
+- El ownership y las fronteras criticas de cada slice abierto quedan explícitos.
+- El deploy vigente y la arquitectura base del monorepo quedan conectados a la capa canónica.

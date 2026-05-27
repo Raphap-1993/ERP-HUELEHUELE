@@ -3,7 +3,7 @@
 [README principal](../../README.md) | [Indice docs](../README.md)
 
 ## Objetivo
-Convertir el slice inicial homologado en una feature ejecutable con specs funcionales, técnicas y de tareas.
+Convertir los slices brownfield homologados en features ejecutables con specs funcionales, técnicas y de tareas.
 
 ## Documentos
 - [04.00-spec-driven-development.md](04.00-spec-driven-development.md)
@@ -31,5 +31,5 @@ Convertir el slice inicial homologado en una feature ejecutable con specs funcio
 - [../../specs/004-loyalty-points-redemptions/traceability.md](../../specs/004-loyalty-points-redemptions/traceability.md)
 
 ## Criterio de cierre
-- Existe al menos una feature canónica viva en `specs/`.
-- La feature enlaza requerimientos, UX, arquitectura y ejecución.
+- Existen features canónicas vivas en `specs/` para los slices abiertos en este corte.
+- Cada feature enlaza requerimientos, UX, arquitectura y ejecución.

@@ -3,7 +3,7 @@
 [README principal](../../README.md) | [Indice docs](../README.md)
 
 ## Objetivo
-Consolidar el slice inicial `checkout publico + pago manual + frontera futura de gateway` en requerimientos, actores, casos de uso y reglas de negocio trazables.
+Consolidar requerimientos, actores, casos de uso y reglas de negocio trazables para los slices brownfield ya homologados, preservando el estado real del producto vivo.
 
 ## Documentos
 - [01.00-analisis-requerimientos.md](01.00-analisis-requerimientos.md)
@@ -34,5 +34,5 @@ Consolidar el slice inicial `checkout publico + pago manual + frontera futura de
 - [reglas/loyalty-y-canjes.md](reglas/loyalty-y-canjes.md)
 
 ## Criterio de cierre
-- El slice inicial ya tiene RF, actores, estados y reglas canónicas.
-- La separación entre `Pagos` y `Pedidos > Operacion` queda explícita.
+- Cada slice abierto en esta fase tiene RF, actores, estados y reglas canónicas.
+- Los ownerships y fronteras operativas criticas quedan explícitos por dominio.
