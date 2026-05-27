@@ -33,6 +33,11 @@ Formalizar la experiencia visual y los contratos UX de las superficies brownfiel
 - [../../specs/005-cms-content-blocks-marketing-surfaces/product-design.md](../../specs/005-cms-content-blocks-marketing-surfaces/product-design.md)
 - [../../specs/005-cms-content-blocks-marketing-surfaces/spdd-frontend.md](../../specs/005-cms-content-blocks-marketing-surfaces/spdd-frontend.md)
 
+## Slice 006 - Campaigns Marketing Automation
+- [02.05-campaigns-marketing-automation-ux-ui.md](02.05-campaigns-marketing-automation-ux-ui.md)
+- [../../specs/006-campaigns-marketing-automation/product-design.md](../../specs/006-campaigns-marketing-automation/product-design.md)
+- [../../specs/006-campaigns-marketing-automation/spdd-frontend.md](../../specs/006-campaigns-marketing-automation/spdd-frontend.md)
+
 ## Criterio de cierre
 - Cada slice con capa UX abierta tiene narrativa y fronteras visuales canónicas.
 - La evidencia visual se ancla al runtime y al dominio homologado correspondiente.
