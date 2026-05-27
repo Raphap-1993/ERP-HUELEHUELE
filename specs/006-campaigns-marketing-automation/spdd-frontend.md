@@ -11,13 +11,15 @@ Fecha: 2026-05-27.
 - metricas de campanas: total, activas, programadas y completadas
 - modal `Nueva campana` con `name`, `goal`, `segmentId`, `templateId`,
   `channel` y `scheduledAt`
-- tabla de campanas con `segmentName`, `channel`, `status`, `runStatus`,
-  `recipients` y `scheduledAt`
-- selector read-only de segmentos con previsualizacion minima de
-  `audienceSize`
-- selector read-only de plantillas con previsualizacion de `subject`
+- tabla de campanas con columna principal `Campana` (`campaign.name`), mas
+  `segmentName`, `channel`, `status`, `runStatus`, `recipients` y
+  `scheduledAt`
+- selector read-only de segmentos que lista nombres
+- tarjeta de resumen posterior para segmento con `name` y `audienceSize`
+- selector read-only de plantillas que lista nombres
+- tarjeta de resumen posterior para plantilla con `name` y `subject`
 - tabla read-only de plantillas con `channel`, `subject`, `status` y
-  `updatedAt`
+  `updatedAt`, y con columna principal `Plantilla` (`template.name`)
 - mensajes inline de `loading` y `error`
 - `fetchCampaignEvents()` existe en cliente, pero no se consume ni se renderiza
   en la superficie actual
@@ -32,8 +34,10 @@ Fecha: 2026-05-27.
 - dejar `scheduledAt` vacio equivale a corrida inmediata; informarlo abre
   programacion basica
 - el `status` de segmento existe a nivel de API pero no se ve hoy en pantalla
-- la entrega tecnica y la cola de notificaciones viven fuera de esta
-  superficie
+- crear campana en este runtime persiste campaign, auditoria y eventos propios
+  de `marketing`, pero no dispara un handoff real a `NotificationsService`
+- la cola y la entrega tecnica permanecen fuera de la superficie y fuera del
+  flujo visible actual de `/admin/marketing`
 
 ## Dependencias de Fase 1
 
