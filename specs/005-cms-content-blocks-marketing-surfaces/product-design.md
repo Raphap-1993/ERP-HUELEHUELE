@@ -8,10 +8,24 @@ Fecha: 2026-05-26.
 - las rutas conocidas reciben cambios editoriales y SEO sin depender de deploy
 - la web publica mantiene continuidad aunque el snapshot CMS falle
 
+## Mapa de vocabulario y snapshot
+
+- `site settings` = `siteSetting`
+- `hero copy` = `heroCopy`
+- `navigation` = `webNavigation`
+- en este slice esos terminos de negocio y runtime nombran los mismos
+  singleton globales del snapshot CMS
+
 ## Decisiones
 
-- `site settings`, `hero copy`, `navigation` y media publica se tratan como
-  singleton globales del dominio CMS
+- `site settings`/`siteSetting`, `hero copy`/`heroCopy` y
+  `navigation`/`webNavigation` se tratan como singleton globales del dominio
+  CMS
+- no existe hoy un objeto top-level `media` dentro del snapshot; la media
+  publica vigente viaja en `siteSetting`
+- los asset URLs publicos del slice son `headerLogoUrl`,
+  `adminSidebarLogoUrl`, `heroProductImageUrl`, `loadingImageUrl` y
+  `faviconUrl`
 - las paginas del slice viven solo en `home`, `catalogo`, `mayoristas`,
   `trabaja-con-nosotros`, `cuenta` y `checkout`
 - los bloques siguen un contrato tipado por ruta conocida y no abren un page
@@ -37,7 +51,9 @@ editorial serio, no de constructor visual libre.
 Al mismo tiempo, la web publica ya mezcla contenido CMS con composicion curada
 en codigo. La documentacion de producto tiene que reconocer esa frontera para
 no arrastrar este slice hacia campaigns, CRM ampliado o rediseño premium del
-storefront.
+storefront. Esa frontera tambien incluye la media publica: hoy se administra
+como parte de `siteSetting`, no como subsistema editorial separado dentro del
+snapshot.
 
 ## Resultado esperado
 

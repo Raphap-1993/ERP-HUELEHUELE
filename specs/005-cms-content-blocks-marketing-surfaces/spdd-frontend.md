@@ -12,10 +12,22 @@ Fecha: 2026-05-26.
 - `/cuenta`
 - `/checkout`
 
+## Mapa de vocabulario y snapshot
+
+- `site settings` = `siteSetting`
+- `hero copy` = `heroCopy`
+- `navigation` = `webNavigation`
+- estos tres nombres describen los singleton globales que viajan dentro de
+  `CmsSnapshotResponse`
+
 ## Contratos visibles
 
 - snapshot editorial unico con `siteSetting`, `heroCopy`, `webNavigation`,
   `banners`, `faqs`, `pages`, `testimonials` y `seoMeta`
+- el snapshot no expone un objeto top-level `media`
+- la media publica vigente viaja hoy en `siteSetting` mediante
+  `headerLogoUrl`, `adminSidebarLogoUrl`, `heroProductImageUrl`,
+  `loadingImageUrl` y `faviconUrl`
 - editor de pagina por `slug` conocido, estado editorial, SEO por ruta y
   bloques JSON
 - `banners`, `faqs` y `testimonials` `active` como colecciones compartidas del
