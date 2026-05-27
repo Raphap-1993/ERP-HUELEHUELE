@@ -20,7 +20,8 @@ tipados dentro del CMS real de Huele Huele.
 
 1. `marketing` edita una ruta conocida del CMS.
 2. Define titulo, descripcion y estado editorial de la pagina.
-3. Asigna, ordena o desactiva bloques tipados compatibles con esa ruta.
+3. Asigna, ordena o marca `active/inactive` bloques tipados compatibles con esa
+   ruta.
 4. Registra `seoMeta` con `title`, `description`, `keywords`,
    `canonicalPath` y `robots`.
 5. La pagina queda `draft`, `published` o `archived`.
@@ -31,6 +32,10 @@ tipados dentro del CMS real de Huele Huele.
 - solo existen las rutas conocidas `home`, `catalogo`, `mayoristas`,
   `trabaja-con-nosotros`, `cuenta` y `checkout`
 - los bloques permitidos dependen de la ruta conocida y no son arbitrarios
+- los bloques de pagina usan `active/inactive` solo como bandera de render
+  dentro de la pagina; no reemplazan `draft/published/archived`
+- `promo-banner` y `faq` consumen colecciones compartidas activas; no crean una
+  segunda fuente de verdad
 - `published` habilita consumo publico; `archived` sale de la vista publica
 - `checkout` y `cuenta` pueden operar con `noindex,nofollow`
 
