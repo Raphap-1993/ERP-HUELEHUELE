@@ -14,15 +14,15 @@ entrega tecnica real que pertenece a `notifications` y `worker`.
 ## Precondiciones
 
 - existe una campana ya registrada como agregado principal del slice
-- esa campana ya genero una intencion downstream de notificacion asociada
+- esa campana ya quedo creada con su contexto comercial definido
 - `notifications` puede registrar cola y estado tecnico de dispatch
 - `worker` puede consumir la cola soportada por el runtime vigente
 
 ## Flujo principal
 
-1. `marketing` registra la campana y sus eventos operativos.
-2. Desde esa campana registrada, la intencion downstream de notificacion cruza
-   la frontera funcional hacia `notifications`.
+1. Desde una campana ya registrada, `marketing` deriva una intencion
+   downstream de notificacion asociada.
+2. Esa intencion cruza la frontera funcional hacia `notifications`.
 3. `notifications` encola la notificacion y persiste su estado tecnico.
 4. `worker` procesa el dispatch real por el canal soportado.
 5. `notifications` actualiza el resultado tecnico de la notificacion despues
