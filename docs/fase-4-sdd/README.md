@@ -24,6 +24,12 @@ Convertir el slice inicial homologado en una feature ejecutable con specs funcio
 - [../../specs/003-wholesale-leads-quotes/spec-tareas.md](../../specs/003-wholesale-leads-quotes/spec-tareas.md)
 - [../../specs/003-wholesale-leads-quotes/traceability.md](../../specs/003-wholesale-leads-quotes/traceability.md)
 
+## Slice 004 - Loyalty Points Redemptions
+- [../../specs/004-loyalty-points-redemptions/spec-funcional.md](../../specs/004-loyalty-points-redemptions/spec-funcional.md)
+- [../../specs/004-loyalty-points-redemptions/spec-tecnica.md](../../specs/004-loyalty-points-redemptions/spec-tecnica.md)
+- [../../specs/004-loyalty-points-redemptions/spec-tareas.md](../../specs/004-loyalty-points-redemptions/spec-tareas.md)
+- [../../specs/004-loyalty-points-redemptions/traceability.md](../../specs/004-loyalty-points-redemptions/traceability.md)
+
 ## Criterio de cierre
 - Existe al menos una feature canónica viva en `specs/`.
 - La feature enlaza requerimientos, UX, arquitectura y ejecución.
