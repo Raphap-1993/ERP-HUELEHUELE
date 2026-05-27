@@ -28,7 +28,7 @@ Fijar la arquitectura brownfield de los slices homologados y sus fronteras criti
 - [adr/ADR-005-cms-known-routes-fallback-boundary.md](adr/ADR-005-cms-known-routes-fallback-boundary.md)
 
 ## Slice 006 - Campaigns Marketing Automation
-- [03.07-campaigns-marketing-automation.md](03.07-campaigns-marketing-automation.md)
+- [03.08-campaigns-marketing-automation.md](03.08-campaigns-marketing-automation.md)
 - [adr/ADR-006-campaigns-dispatch-boundary.md](adr/ADR-006-campaigns-dispatch-boundary.md)
 
 ## Criterio de cierre

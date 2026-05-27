@@ -18,17 +18,24 @@ la frontera canonica que evite mezclar:
 - el authoring completo de `segments` y `templates`;
 - y la cola tecnica con el dispatch real de la notificacion.
 
-Ademas, el repo ya separa responsabilidades tecnicas:
+Ademas, el repo ya separa responsabilidades tecnicas en modulos distintos:
 
 - `marketing` crea la campana y conserva su estado operativo;
 - `notifications` registra la notificacion, encola y conserva el estado
   tecnico;
 - `worker` procesa la cola y marca el resultado real de envio.
 
+Lo que no debe sobreleerse del runtime visible hoy es un handoff automatico
+desde `createCampaign()`: ese flujo persiste campaign record, catalog snapshot,
+auditoria y eventos dentro de `marketing`, pero no llama a
+`NotificationsService` ni encola dispatch real desde esa ruta.
+
 ## Decision
 
 El slice brownfield de campaigns se canoniza con una frontera funcional
-partida entre `marketing`, `notifications` y `worker`.
+partida entre `marketing`, `notifications` y `worker`, tratada como boundary
+arquitectonico y desacople canonico, no como handoff runtime ya cableado
+desde `createCampaign()`.
 
 La decision incluye estas reglas:
 
@@ -41,12 +48,16 @@ La decision incluye estas reglas:
    `template.channel` y `campaign.channel`.
 4. Sin `scheduledAt`, la campana nace `running/running`; con `scheduledAt`,
    nace `scheduled/queued`.
-5. El snapshot de la campana congela `segmentName`, `templateName`,
-   `bodyPreview` y `recipients` al momento de crearla.
-6. El estado tecnico de entrega y la cola no viven en `campaigns`; viven en
-   `notifications`.
-7. El dispatch real por canal soportado no vive en `marketing`; vive en
-   `worker`.
+5. El campaign record conserva atributos propios de la campana:
+   `id`, `name`, `segmentId`, `templateId`, `channel`, `status`, `runStatus`,
+   `goal`, `scheduledAt`, `createdAt` y `updatedAt`.
+6. El catalog snapshot congela `segmentName`, `templateName`, `bodyPreview` y
+   `recipients` al momento de crearla.
+7. El estado tecnico de entrega y la cola no viven en `campaigns`; viven en
+   `notifications` cuando esa frontera se cruza por un flujo o integracion
+   explicita.
+8. El dispatch real por canal soportado no vive en `marketing`; vive en
+   `worker` para jobs ya encolados.
 
 ## Guardrails Derivados
 
@@ -54,11 +65,13 @@ La decision incluye estas reglas:
 2. `campaigns` no debe absorber `pending/sent/delivered/failed` como si fueran
    estados propios del agregado.
 3. Cambios posteriores en `segments` o `templates` no deben reescribir el
-   snapshot de una campana ya creada.
+   catalog snapshot de una campana ya creada.
 4. El slice no debe venderse como journeys, automation multi-step ni CRM
    ampliado.
 5. `segments` y `templates` siguen siendo dependencias read-only del slice, no
    subdominios completos de authoring.
+6. `createCampaign()` no debe describirse como llamado hoy a
+   `NotificationsService` ni como enqueue directo de dispatch real.
 
 ## Alternativas Rechazadas
 
