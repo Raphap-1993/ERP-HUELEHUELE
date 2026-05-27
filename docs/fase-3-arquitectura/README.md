@@ -27,6 +27,10 @@ Fijar la arquitectura brownfield de los slices homologados y sus fronteras criti
 - [03.07-cms-content-blocks-marketing-surfaces.md](03.07-cms-content-blocks-marketing-surfaces.md)
 - [adr/ADR-005-cms-known-routes-fallback-boundary.md](adr/ADR-005-cms-known-routes-fallback-boundary.md)
 
+## Slice 006 - Campaigns Marketing Automation
+- [03.07-campaigns-marketing-automation.md](03.07-campaigns-marketing-automation.md)
+- [adr/ADR-006-campaigns-dispatch-boundary.md](adr/ADR-006-campaigns-dispatch-boundary.md)
+
 ## Criterio de cierre
 - El ownership y las fronteras criticas de cada slice abierto quedan explícitos.
 - El deploy vigente y la arquitectura base del monorepo quedan conectados a la capa canónica.
