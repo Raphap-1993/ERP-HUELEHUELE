@@ -40,6 +40,13 @@ Consolidar requerimientos, actores, casos de uso y reglas de negocio trazables p
 - [casos-de-uso/UC-15-consumo-publico-con-seo-y-fallback-seguro.md](casos-de-uso/UC-15-consumo-publico-con-seo-y-fallback-seguro.md)
 - [reglas/cms-y-superficies-editoriales.md](reglas/cms-y-superficies-editoriales.md)
 
+## Slice 006 - Campaigns Marketing Automation
+- [01.05-campaigns-marketing-automation.md](01.05-campaigns-marketing-automation.md)
+- [casos-de-uso/UC-16-creacion-y-programacion-de-campanas.md](casos-de-uso/UC-16-creacion-y-programacion-de-campanas.md)
+- [casos-de-uso/UC-17-seleccion-de-segmentos-y-plantillas-read-only.md](casos-de-uso/UC-17-seleccion-de-segmentos-y-plantillas-read-only.md)
+- [casos-de-uso/UC-18-frontera-de-dispatch-marketing-notifications-worker.md](casos-de-uso/UC-18-frontera-de-dispatch-marketing-notifications-worker.md)
+- [reglas/campaigns-y-marketing-automation.md](reglas/campaigns-y-marketing-automation.md)
+
 ## Criterio de cierre
 - Cada slice abierto en esta fase tiene RF, actores, estados y reglas canónicas.
 - Los ownerships y fronteras operativas criticas quedan explícitos por dominio.
