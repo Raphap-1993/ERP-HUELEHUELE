@@ -31,13 +31,14 @@ sin abrir authoring completo de catalogos dentro de este slice.
 ## Reglas canonicas
 
 - `segments` y `templates` no abren authoring completo en este corte
-- el runtime actual valida IDs y compatibilidad de canal como hard gates
-  minimos
+- el runtime actual solo valida existencia de `segmentId`, existencia de
+  `templateId` y compatibilidad entre `template.channel` y `campaign.channel`
 - el runtime actual no promueve estados de catalogo a bloqueo funcional fuerte
 - la campana congela nombre de segmento y nombre de plantilla al momento de
   crearla
 
 ## Resultado esperado
 
-`marketing` puede elegir un segmento y una plantilla validos para la campana
-sin convertir este slice en un dominio de edicion completa de catalogos.
+`marketing` puede elegir referencias existentes de segmento y plantilla con
+compatibilidad de canal para la campana, sin convertir este slice en un dominio
+de edicion completa de catalogos.

@@ -9,8 +9,9 @@
 - con `scheduledAt` la campana nace `scheduled/queued`
 - la campana congela `segmentName`, `templateName`, `bodyPreview` y
   `recipients`
-- el runtime actual exige existencia de IDs y compatibilidad de canal
-- el runtime actual no eleva estados de catalogo a hard gate fuerte
+- el runtime actual solo exige existencia de `segmentId`, existencia de
+  `templateId` y compatibilidad entre `template.channel` y `campaign.channel`
+- el runtime actual no bloquea por estado de catalogo como hard gate del slice
 - `marketing` registra auditoria, historial y eventos del dominio
 - `marketing` no despacha; `notifications/worker` despachan
 - journeys, CRM ampliado y automation multi-step quedan fuera
