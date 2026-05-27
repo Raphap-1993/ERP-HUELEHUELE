@@ -35,6 +35,21 @@ Convertir los slices brownfield homologados en features ejecutables con specs fu
 - [../../specs/005-cms-content-blocks-marketing-surfaces/spec-tecnica.md](../../specs/005-cms-content-blocks-marketing-surfaces/spec-tecnica.md)
 - [../../specs/005-cms-content-blocks-marketing-surfaces/spec-tareas.md](../../specs/005-cms-content-blocks-marketing-surfaces/spec-tareas.md)
 - [../../specs/005-cms-content-blocks-marketing-surfaces/traceability.md](../../specs/005-cms-content-blocks-marketing-surfaces/traceability.md)
+- Requerimientos:
+  [01.04-cms-content-blocks-marketing-surfaces.md](../fase-1-analisis-requerimientos/01.04-cms-content-blocks-marketing-surfaces.md),
+  [reglas/cms-y-superficies-editoriales.md](../fase-1-analisis-requerimientos/reglas/cms-y-superficies-editoriales.md),
+  [UC-14-publicacion-de-paginas-y-bloques-cms.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-14-publicacion-de-paginas-y-bloques-cms.md),
+  [UC-15-consumo-publico-con-seo-y-fallback-seguro.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-15-consumo-publico-con-seo-y-fallback-seguro.md)
+- UX/UI:
+  [02.04-cms-content-blocks-marketing-surfaces-ux-ui.md](../fase-2-ux-ui/02.04-cms-content-blocks-marketing-surfaces-ux-ui.md),
+  [product-design.md](../../specs/005-cms-content-blocks-marketing-surfaces/product-design.md),
+  [spdd-frontend.md](../../specs/005-cms-content-blocks-marketing-surfaces/spdd-frontend.md)
+- Arquitectura:
+  [03.07-cms-content-blocks-marketing-surfaces.md](../fase-3-arquitectura/03.07-cms-content-blocks-marketing-surfaces.md),
+  [ADR-005-cms-known-routes-fallback-boundary.md](../fase-3-arquitectura/adr/ADR-005-cms-known-routes-fallback-boundary.md)
+- Ejecucion y trazabilidad:
+  [spec-tareas.md](../../specs/005-cms-content-blocks-marketing-surfaces/spec-tareas.md),
+  [traceability.md](../../specs/005-cms-content-blocks-marketing-surfaces/traceability.md)
 
 ## Criterio de cierre
 - Existen features canónicas vivas en `specs/` para los slices abiertos en este corte.

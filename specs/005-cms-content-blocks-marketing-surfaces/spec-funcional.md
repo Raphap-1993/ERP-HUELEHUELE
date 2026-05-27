@@ -2,6 +2,23 @@
 
 Fecha: 2026-05-26.
 
+[Fase 4 SDD](../../docs/fase-4-sdd/README.md) | [Spec tecnica](spec-tecnica.md) | [Spec tareas](spec-tareas.md) | [Traceability](traceability.md)
+
+## Artefactos Relacionados
+
+- Requerimientos:
+  [Fase 1 - CMS Content Blocks Marketing Surfaces](../../docs/fase-1-analisis-requerimientos/01.04-cms-content-blocks-marketing-surfaces.md),
+  [Reglas de CMS y superficies editoriales](../../docs/fase-1-analisis-requerimientos/reglas/cms-y-superficies-editoriales.md),
+  [UC-14 Publicacion de paginas y bloques CMS](../../docs/fase-1-analisis-requerimientos/casos-de-uso/UC-14-publicacion-de-paginas-y-bloques-cms.md),
+  [UC-15 Consumo publico con SEO y fallback seguro](../../docs/fase-1-analisis-requerimientos/casos-de-uso/UC-15-consumo-publico-con-seo-y-fallback-seguro.md)
+- UX/UI:
+  [Fase 2 - UX/UI](../../docs/fase-2-ux-ui/02.04-cms-content-blocks-marketing-surfaces-ux-ui.md),
+  [Product Design](product-design.md),
+  [SPDD Frontend](spdd-frontend.md)
+- Arquitectura:
+  [Fase 3 - Arquitectura](../../docs/fase-3-arquitectura/03.07-cms-content-blocks-marketing-surfaces.md),
+  [ADR-005 Known Routes Fallback Boundary](../../docs/fase-3-arquitectura/adr/ADR-005-cms-known-routes-fallback-boundary.md)
+
 ## Objetivo
 
 Definir el slice canonico del CMS editorial vigente de Huele Huele como paquete
@@ -75,10 +92,18 @@ No incluye:
 
 ### RF-05. Paginas conocidas y ciclo editorial
 
-- las unicas rutas conocidas del slice son `home`, `catalogo`, `mayoristas`,
+- las `pages` del slice usan route IDs CMS o valores `page.slug`; no paths
+  literales
+- los route IDs conocidos son `home`, `catalogo`, `mayoristas`,
   `trabaja-con-nosotros`, `cuenta` y `checkout`
+- esos route IDs resuelven hoy a las superficies publicas `/`, `/catalogo`,
+  `/mayoristas`, `/trabaja-con-nosotros`, `/cuenta` y `/checkout`
 - las `pages` usan `draft`, `published` y `archived`
-- `archived` no debe exponerse en lectura publica
+- en el brownfield actual la lectura publica bloquea solo `archived`
+- una `draft` puede seguir apareciendo hoy en `GET /store/cms` o
+  `GET /store/pages/:slug` mientras no este `archived`
+- `published-only` queda como hardening futuro y no como guardrail actual de
+  este slice
 - el slice no habilita creacion de slugs arbitrarios desde `/admin/cms`
 
 ### RF-06. Bloques tipados por route ID conocido
@@ -116,6 +141,8 @@ No incluye:
 - `web/storefront` intenta leer el snapshot CMS antes de renderizar
 - si el snapshot es valido, consume singleton globales, colecciones activas,
   SEO por ruta y paginas conocidas
+- ese snapshot publico brownfield puede incluir `draft` ademas de
+  `published`, siempre que la pagina no este `archived`
 - si el snapshot falla o llega incompleto, la superficie publica usa defaults
   seguros ya curados
 - el fallback no debe inventar rutas nuevas ni exponer contenido archivado
@@ -140,7 +167,8 @@ No incluye:
 1. `marketing` opera una ruta conocida desde `/admin/cms`.
 2. Define titulo, descripcion, estado editorial y `seoMeta`.
 3. Asigna o reordena bloques tipados compatibles con esa ruta.
-4. `cms` persiste la pagina, los bloques y el SEO por route ID.
+4. `cms` persiste la pagina, los bloques y el SEO por `page.slug` o route ID
+   conocido.
 
 ### Escenario C. Consumo publico de home snapshot-backed
 
@@ -158,6 +186,15 @@ No incluye:
 3. El storefront publica copy y SEO, pero no cede la logica transaccional del
    dominio al CMS.
 
+### Escenario E. Lectura publica brownfield con pagina `draft`
+
+1. Una pagina conocida permanece en estado `draft`.
+2. `web/storefront` consume el snapshot publico vigente.
+3. Mientras la pagina no este `archived`, el runtime actual puede seguir
+   entregandola en lectura publica.
+4. El slice documenta esa realidad `as-is` y deja `published-only` como
+   hardening futuro.
+
 ## Criterios De Aceptacion
 
 | ID | Criterio |
@@ -166,11 +203,11 @@ No incluye:
 | CA-02 | `siteSetting`, `heroCopy` y `webNavigation` quedan fijados como singleton globales |
 | CA-03 | la media publica del slice sigue embebida en `siteSetting` |
 | CA-04 | `banners`, `faqs` y `testimonials` usan `active/inactive` |
-| CA-05 | las paginas del slice solo usan las rutas conocidas `home`, `catalogo`, `mayoristas`, `trabaja-con-nosotros`, `cuenta` y `checkout` |
+| CA-05 | las paginas del slice solo usan los route IDs conocidos `home`, `catalogo`, `mayoristas`, `trabaja-con-nosotros`, `cuenta` y `checkout`, que resuelven a `/`, `/catalogo`, `/mayoristas`, `/trabaja-con-nosotros`, `/cuenta` y `/checkout` |
 | CA-06 | cada ruta conocida solo admite el set de bloques tipados documentado |
 | CA-07 | `seoMeta` por ruta soporta `canonicalPath` y `robots` |
 | CA-08 | `cuenta` y `checkout` pueden operar con `noindex,nofollow` |
-| CA-09 | el storefront sigue renderizando con fallback seguro si el snapshot CMS falla |
+| CA-09 | la lectura publica brownfield excluye `archived`, puede seguir entregando `draft`, y `published-only` queda como hardening futuro |
 | CA-10 | el slice no abre campaigns, CRM ampliado ni page builder libre |
 
 ## Casos Negativos Relevantes
@@ -180,6 +217,8 @@ No incluye:
 - snapshot incompleto o con error: la ruta publica degrada a defaults seguros
 - asset `inactive` en snapshot: no debe exponerse en superficies publicas
 - pagina `archived`: no debe publicarse en lectura externa
+- asumir `published-only` como comportamiento vigente: incorrecto para el
+  runtime actual
 - intento de usar el CMS como motor de campaigns o CRM: fuera de alcance
 
 ## Dependencias De Negocio

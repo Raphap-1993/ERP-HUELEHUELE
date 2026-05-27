@@ -2,6 +2,22 @@
 
 Fecha: 2026-05-26.
 
+[Fase 4 SDD](../../docs/fase-4-sdd/README.md) | [Spec funcional](spec-funcional.md) | [Spec tareas](spec-tareas.md) | [Traceability](traceability.md)
+
+## Artefactos Relacionados
+
+- Requerimientos:
+  [Fase 1 - CMS Content Blocks Marketing Surfaces](../../docs/fase-1-analisis-requerimientos/01.04-cms-content-blocks-marketing-surfaces.md),
+  [UC-14 Publicacion de paginas y bloques CMS](../../docs/fase-1-analisis-requerimientos/casos-de-uso/UC-14-publicacion-de-paginas-y-bloques-cms.md),
+  [UC-15 Consumo publico con SEO y fallback seguro](../../docs/fase-1-analisis-requerimientos/casos-de-uso/UC-15-consumo-publico-con-seo-y-fallback-seguro.md)
+- UX/UI:
+  [Fase 2 - UX/UI](../../docs/fase-2-ux-ui/02.04-cms-content-blocks-marketing-surfaces-ux-ui.md),
+  [Product Design](product-design.md),
+  [SPDD Frontend](spdd-frontend.md)
+- Arquitectura:
+  [Fase 3 - Arquitectura](../../docs/fase-3-arquitectura/03.07-cms-content-blocks-marketing-surfaces.md),
+  [ADR-005 Known Routes Fallback Boundary](../../docs/fase-3-arquitectura/adr/ADR-005-cms-known-routes-fallback-boundary.md)
+
 ## Objetivo Tecnico
 
 Formalizar y endurecer las fronteras tecnicas del CMS editorial vigente sin
@@ -57,8 +73,13 @@ rutas conocidas, pero no la logica de negocio de `catalogo`, mayoristas,
   - `upsertPage()` y `updatePageBlocks()` gobiernan `pages` y `blocks`
   - `buildSnapshot()` deriva el arreglo top-level `seoMeta` desde
     `page.seoMeta`
-  - `persistState()` guarda `CmsSnapshotResponse` en `module_state`
+  - `persistState()` guarda `CmsSnapshotResponse` como module snapshot del
+    modulo `cms`
   - `recordAdminAction()` audita mutaciones editoriales
+- `apps/api/src/persistence/module-state.service.ts`
+  - `ModuleStateService` lee y escribe snapshots via Prisma `moduleSnapshot`
+  - la persistencia heredada del repositorio se documenta en
+    `GLOSSARY.md` como `module_snapshots`
 - `apps/api/src/modules/media/media.service.ts`
   - resuelve upload, reemplazo y URLs publicas usadas por el CMS
 
@@ -68,6 +89,11 @@ rutas conocidas, pero no la logica de negocio de `catalogo`, mayoristas,
   - expone `/store/cms`, `/store/site-settings`, `/store/navigation`,
     `/store/pages/:slug`, `/store/banners`, `/store/faqs` y
     `/store/testimonials`
+- `apps/api/src/modules/cms/cms.service.ts`
+  - `listPages(publicView)` filtra hoy con `page.status !== "archived"`
+  - `getPage(slug, publicView)` bloquea hoy solo `archived`
+  - el brownfield actual puede seguir entregando `draft` en lectura publica;
+    `published-only` es hardening futuro y no runtime vigente
 - `apps/web/features/storefront-v2/lib/content.ts`
   - `loadStorefrontV2Content()` intenta `fetchCmsSnapshot()`
   - cae a defaults curados (`heroCopy`, `promoBanners`, `faqItems`,
@@ -107,10 +133,22 @@ rutas conocidas, pero no la logica de negocio de `catalogo`, mayoristas,
 
 ### 5. Las rutas conocidas siguen protegiendo las fronteras funcionales
 
-- `home` resuelve `/`
-- `catalogo`, `mayoristas`, `trabaja-con-nosotros`, `cuenta` y `checkout`
-  siguen siendo superficies conocidas del producto
+- `home`, `catalogo`, `mayoristas`, `trabaja-con-nosotros`, `cuenta` y
+  `checkout` son `page.slug` o route IDs CMS; no paths literales
+- esos route IDs resuelven hoy a `/`, `/catalogo`, `/mayoristas`,
+  `/trabaja-con-nosotros`, `/cuenta` y `/checkout`
 - el CMS solo gobierna copy, SEO y ubicaciones tipadas; no transfiere dominio
+
+## Route IDs CMS Y Paths Resueltos
+
+| Route ID CMS (`page.slug`) | Path publico resuelto | Observacion brownfield |
+| --- | --- | --- |
+| `home` | `/` | `home` es route ID; no existe `/home` como path canonico |
+| `catalogo` | `/catalogo` | route ID editorial para la superficie catalogo |
+| `mayoristas` | `/mayoristas` | route ID editorial para el funnel mayorista |
+| `trabaja-con-nosotros` | `/trabaja-con-nosotros` | route ID editorial para postulaciones |
+| `cuenta` | `/cuenta` | CMS solo aporta copy/SEO; identidad y loyalty quedan fuera |
+| `checkout` | `/checkout` | CMS solo aporta copy/SEO; pedido y pago quedan fuera |
 
 ## Ajustes Minimos Recomendados
 
@@ -130,6 +168,8 @@ Ajustes recomendados:
 - mantener `siteSetting`, `heroCopy` y `webNavigation` como singleton
   explicitamente nombrados
 - reflejar que la media publica vigente pertenece a `SiteSetting`
+- alinear el vocabulario de persistencia con `moduleSnapshot` /
+  `module_snapshots`
 - endurecer, cuando haga falta, unions de route IDs y bloques tipados sin
   abrir un builder libre
 
@@ -148,6 +188,8 @@ Ajustes recomendados:
 - endurecer la validacion de slugs conocidos y bloques permitidos por ruta
 - mantener `seoMeta` derivado desde `page.seoMeta`
 - preservar uploads de media como actualizacion de `siteSetting`
+- dejar explicito que la lectura publica vigente bloquea solo `archived`
+  mientras `draft` sigue siendo visible `as-is`
 
 ### Admin y storefront
 
@@ -173,15 +215,18 @@ Ajustes recomendados:
 4. `pages` solo deben corresponder a route IDs conocidos del CMS.
 5. `banners`, `faqs` y `testimonials` se filtran a `active` en lectura
    publica.
-6. `getPage()` y `listPages(publicView)` no deben publicar `archived`.
-7. `seoMeta` se deriva de cada `page.seoMeta` y conserva `canonicalPath` y
+6. `getPage()` y `listPages(publicView)` bloquean hoy solo `archived`.
+7. Una `draft` puede seguir apareciendo hoy en lectura publica; `published-only`
+   queda como hardening futuro y no como comportamiento actual.
+8. `seoMeta` se deriva de cada `page.seoMeta` y conserva `canonicalPath` y
    `robots`.
-8. `checkout` y `cuenta` pueden recibir copy y SEO desde CMS, pero no ceden
+9. `checkout` y `cuenta` pueden recibir copy y SEO desde CMS, pero no ceden
    su logica de negocio.
-9. El fallback seguro termina en `web/storefront`; el API no debe inventar
+10. El fallback seguro termina en `web/storefront`; el API no debe inventar
    rutas ni contenido falso.
-10. Cada mutacion editorial relevante debe persistirse en `module_state` y
-    auditarse via `recordAdminAction()`.
+11. Cada mutacion editorial relevante debe persistirse como module snapshot del
+    modulo `cms` sobre `module_snapshots` y auditarse via
+    `recordAdminAction()`.
 
 ## Seguridad Y Observabilidad
 
@@ -204,7 +249,8 @@ Guardrails ya visibles o exigibles para este slice:
   - `cms.banner.created` y `cms.banner.updated`
   - `cms.faq.created` y `cms.faq.updated`
   - `cms.testimonial.created` y `cms.testimonial.updated`
-- `persistState()` guarda el snapshot `cms` completo en `module_state`
+- `persistState()` guarda el snapshot `cms` completo via Prisma
+  `moduleSnapshot` sobre la persistencia heredada `module_snapshots`
 - los uploads del admin ya exponen limites de archivo acotados por endpoint
 
 ## Estrategia De Implementacion
@@ -239,7 +285,8 @@ Rutas candidatas:
 Cobertura esperada:
 
 - snapshot admin con `draft`, `published`, `archived` y assets activos/inactivos
-- snapshot publico sin `archived` y con colecciones filtradas a `active`
+- snapshot publico sin `archived`, con colecciones filtradas a `active` y con
+  posibilidad vigente de incluir `draft`
 - roundtrip de `seoMeta` con `canonicalPath` y `robots`
 - uploads que actualizan URLs publicas dentro de `siteSetting`
 - bloqueo de rutas o bloques fuera del contrato canonico cuando esa validacion
@@ -258,8 +305,8 @@ Cobertura esperada:
 
 - `normalizeBlocks()` valida forma minima, pero hoy no endurece por si solo el
   whitelist de tipos por ruta
-- la lectura publica de `pages` bloquea `archived`; si producto exige
-  published-only como guardrail tecnico estricto, eso requiere hardening
+- la lectura publica de `pages` bloquea hoy solo `archived`; si producto exige
+  `published-only` como guardrail tecnico estricto, eso requiere hardening
   adicional
 - la experiencia premium sigue mezclando contenido CMS con layout y secciones
   curadas en codigo

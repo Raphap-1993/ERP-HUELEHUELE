@@ -2,6 +2,21 @@
 
 Fecha: 2026-05-26.
 
+[Fase 4 SDD](../../docs/fase-4-sdd/README.md) | [Spec funcional](spec-funcional.md) | [Spec tecnica](spec-tecnica.md) | [Traceability](traceability.md)
+
+## Artefactos Relacionados
+
+- Requerimientos:
+  [Fase 1 - CMS Content Blocks Marketing Surfaces](../../docs/fase-1-analisis-requerimientos/01.04-cms-content-blocks-marketing-surfaces.md),
+  [UC-14 Publicacion de paginas y bloques CMS](../../docs/fase-1-analisis-requerimientos/casos-de-uso/UC-14-publicacion-de-paginas-y-bloques-cms.md),
+  [UC-15 Consumo publico con SEO y fallback seguro](../../docs/fase-1-analisis-requerimientos/casos-de-uso/UC-15-consumo-publico-con-seo-y-fallback-seguro.md)
+- UX/UI:
+  [Fase 2 - UX/UI](../../docs/fase-2-ux-ui/02.04-cms-content-blocks-marketing-surfaces-ux-ui.md),
+  [SPDD Frontend](spdd-frontend.md)
+- Arquitectura:
+  [Fase 3 - Arquitectura](../../docs/fase-3-arquitectura/03.07-cms-content-blocks-marketing-surfaces.md),
+  [ADR-005 Known Routes Fallback Boundary](../../docs/fase-3-arquitectura/adr/ADR-005-cms-known-routes-fallback-boundary.md)
+
 ## Objetivo
 
 Convertir la arquitectura canonica del CMS editorial vigente en un backlog
@@ -39,6 +54,8 @@ singleton globales y los tipos compartidos de pagina, bloque, asset y SEO.
 - [ ] fijar `siteSetting`, `heroCopy` y `webNavigation` como singleton
   globales
 - [ ] reflejar en `SiteSetting` la media publica embebida del slice
+- [ ] alinear la persistencia heredada al vocabulario `moduleSnapshot` /
+  `module_snapshots`
 - [ ] preparar unions o validaciones futuras para route IDs y bloques sin
   abrir page builder libre
 
@@ -47,8 +64,9 @@ singleton globales y los tipos compartidos de pagina, bloque, asset y SEO.
 **Resultado esperado**
 
 Las paginas del CMS quedan amarradas al inventario canonico `home`,
-`catalogo`, `mayoristas`, `trabaja-con-nosotros`, `cuenta` y `checkout`, con
-estados editoriales consistentes.
+`catalogo`, `mayoristas`, `trabaja-con-nosotros`, `cuenta` y `checkout` como
+`page.slug` o route IDs conocidos, con estados editoriales y paths resueltos
+consistentes.
 
 **Rutas candidatas**
 
@@ -58,8 +76,13 @@ estados editoriales consistentes.
 **Checklist**
 
 - [ ] conservar `draft`, `published` y `archived` en `pages`
+- [ ] documentar el mapeo `home -> /`, `catalogo -> /catalogo`,
+  `mayoristas -> /mayoristas`, `trabaja-con-nosotros -> /trabaja-con-nosotros`,
+  `cuenta -> /cuenta`, `checkout -> /checkout`
 - [ ] impedir que el CMS se lea como creador de slugs arbitrarios
-- [ ] mantener `archived` fuera de la lectura publica
+- [ ] mantener `archived` fuera de la lectura publica actual
+- [ ] dejar explicito que `draft` puede seguir apareciendo hoy en public read y
+  que `published-only` queda como hardening futuro
 - [ ] sostener la trazabilidad de pagina por `slug`
 
 ### T3. Cerrar bloques tipados por ruta conocida
@@ -103,6 +126,8 @@ corresponde.
 - [ ] sostener `seoMeta` por pagina conocida
 - [ ] derivar el arreglo top-level `seoMeta` desde `page.seoMeta`
 - [ ] mantener `canonicalPath` por ruta conocida
+- [ ] referenciar `canonicalPath` segun el path publico resuelto de cada route
+  ID CMS
 - [ ] permitir `noindex,nofollow` en `cuenta` y `checkout`
 
 ### T5. Consolidar singleton globales y media publica embebida
@@ -124,6 +149,8 @@ CMS, y la media publica se administra como parte de `siteSetting`.
   `updateNavigation()` como puertas canonicas
 - [ ] sostener uploads de logo, hero, loading y favicon sobre `siteSetting`
 - [ ] no crear un objeto top-level `cms.media`
+- [ ] conservar la persistencia del snapshot `cms` sobre `moduleSnapshot` /
+  `module_snapshots`
 - [ ] reflejar la media publicada en el snapshot CMS resultante
 
 ### T6. Blindar el read model publico y el fallback seguro
@@ -143,6 +170,10 @@ seguros cuando la lectura falla o llega incompleta.
 
 - [ ] sostener `getSnapshot()` como lectura publica snapshot-backed
 - [ ] filtrar `banners`, `faqs` y `testimonials` a `active`
+- [ ] dejar explicito que `listPages(publicView)` y `getPage(slug, publicView)`
+  bloquean hoy solo `archived`
+- [ ] dejar explicito que `draft` sigue visible `as-is` y que
+  `published-only` es hardening futuro
 - [ ] mantener fallback a defaults curados si falla `fetchCmsSnapshot()`
 - [ ] no inventar rutas ni trasladar fallas editoriales a caidas de pagina
 
@@ -164,7 +195,8 @@ paginas, bloques y colecciones editoriales.
 - [ ] mantener `adminAccessRoles.cms` para `super_admin`, `admin` y
   `marketing`
 - [ ] sostener auditoria via `recordAdminAction()`
-- [ ] persistir snapshot del modulo via `module_state`
+- [ ] persistir snapshot del modulo `cms` via Prisma `moduleSnapshot` sobre
+  `module_snapshots`
 - [ ] preservar a `marketing` como owner cotidiano y a `admin` como soporte
 
 ### T8. Regression suite del slice
@@ -183,6 +215,7 @@ contrato y smokes de ownership.
 **Checklist**
 
 - [ ] probar snapshot admin y snapshot publico
+- [ ] probar semantica actual de `draft/published/archived` en lectura publica
 - [ ] probar SEO por ruta conocida
 - [ ] probar filtro `active` y exclusiones de `archived`
 - [ ] probar fallback seguro del storefront
