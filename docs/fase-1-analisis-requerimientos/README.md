@@ -33,6 +33,13 @@ Consolidar requerimientos, actores, casos de uso y reglas de negocio trazables p
 - [casos-de-uso/UC-12-ajustes-manuales-y-reversa-automatica.md](casos-de-uso/UC-12-ajustes-manuales-y-reversa-automatica.md)
 - [reglas/loyalty-y-canjes.md](reglas/loyalty-y-canjes.md)
 
+## Slice 005 - CMS Content Blocks Marketing Surfaces
+- [01.04-cms-content-blocks-marketing-surfaces.md](01.04-cms-content-blocks-marketing-surfaces.md)
+- [casos-de-uso/UC-13-configuracion-global-y-media-publica.md](casos-de-uso/UC-13-configuracion-global-y-media-publica.md)
+- [casos-de-uso/UC-14-publicacion-de-paginas-y-bloques-cms.md](casos-de-uso/UC-14-publicacion-de-paginas-y-bloques-cms.md)
+- [casos-de-uso/UC-15-consumo-publico-con-seo-y-fallback-seguro.md](casos-de-uso/UC-15-consumo-publico-con-seo-y-fallback-seguro.md)
+- [reglas/cms-y-superficies-editoriales.md](reglas/cms-y-superficies-editoriales.md)
+
 ## Criterio de cierre
 - Cada slice abierto en esta fase tiene RF, actores, estados y reglas canónicas.
 - Los ownerships y fronteras operativas criticas quedan explícitos por dominio.
