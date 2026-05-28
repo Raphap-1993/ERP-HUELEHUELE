@@ -54,12 +54,12 @@ Consolidar requerimientos, actores, casos de uso y reglas de negocio trazables p
 - [casos-de-uso/UC-21-fusion-operativa-de-clientes.md](casos-de-uso/UC-21-fusion-operativa-de-clientes.md)
 - [reglas/customers-e-identity-conflicts.md](reglas/customers-e-identity-conflicts.md)
 
-## Slice 007 - Customers Identity Conflicts
-- [01.06-customers-identity-conflicts.md](01.06-customers-identity-conflicts.md)
-- [casos-de-uso/UC-19-maestro-de-clientes-y-perfil-canonico.md](casos-de-uso/UC-19-maestro-de-clientes-y-perfil-canonico.md)
-- [casos-de-uso/UC-20-resolucion-de-conflictos-de-identidad.md](casos-de-uso/UC-20-resolucion-de-conflictos-de-identidad.md)
-- [casos-de-uso/UC-21-fusion-operativa-de-clientes.md](casos-de-uso/UC-21-fusion-operativa-de-clientes.md)
-- [reglas/customers-e-identity-conflicts.md](reglas/customers-e-identity-conflicts.md)
+## Slice 008 - CRM Stage Order Follow-Up
+- [01.07-crm-stage-order-follow-up.md](01.07-crm-stage-order-follow-up.md)
+- [casos-de-uso/UC-22-derivacion-de-etapa-crm-del-pedido.md](casos-de-uso/UC-22-derivacion-de-etapa-crm-del-pedido.md)
+- [casos-de-uso/UC-23-confirmacion-comercial-y-traza-operativa-del-pedido.md](casos-de-uso/UC-23-confirmacion-comercial-y-traza-operativa-del-pedido.md)
+- [casos-de-uso/UC-24-cierre-derivado-del-seguimiento-del-pedido.md](casos-de-uso/UC-24-cierre-derivado-del-seguimiento-del-pedido.md)
+- [reglas/crm-stage-y-order-follow-up.md](reglas/crm-stage-y-order-follow-up.md)
 
 ## Criterio de cierre
 - Cada slice abierto en esta fase tiene RF, actores, estados y reglas canonicas.
