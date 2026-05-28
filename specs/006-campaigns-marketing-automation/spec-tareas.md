@@ -22,11 +22,12 @@ Convertir la arquitectura canonica brownfield del slice campaigns en un
 backlog tecnico ejecutable, cerrando agregado principal, catalogos read-only,
 scheduling basico, snapshot congelado y frontera de dispatch desacoplada sin
 abrir journeys, authoring completo de catalogos ni handoff runtime inexistente
-desde `createCampaign()`.
+desde `createCampaign()`, y absorbiendo con precision el scope de
+`campaigns`, `segments` y `templates` que venia diferido desde slices previos.
 
 ## Reglas De Ejecucion
 
-- no convertir `/admin/marketing` en journey builder ni automation suite
+- no convertir `/marketing` en journey builder ni automation suite
 - no abrir authoring completo de `segments` ni `templates`
 - no introducir hard gates por estado de catalogo que el runtime actual no
   hace
@@ -107,25 +108,31 @@ para la campana.
 **Resultado esperado**
 
 La seleccion operativa de catalogos sigue existiendo sin abrir editor ni
-lifecycle propio desde este slice.
+lifecycle propio desde este slice, y el corte 006 absorbe explicitamente la
+continuidad diferida de `campaigns`, `segments` y `templates` que 004 y 005
+dejaban para slices posteriores.
 
 **Rutas candidatas**
 
 - `apps/api/src/modules/marketing/marketing.service.ts`
 - `apps/admin/components/marketing-workspace.tsx`
 - `apps/admin/lib/api.ts`
+- `specs/004-loyalty-points-redemptions/traceability.md`
+- `specs/005-cms-content-blocks-marketing-surfaces/traceability.md`
 
 **Checklist**
 
 - [ ] sostener `listSegments()` como lectura read-only de audiencia
 - [ ] sostener `listTemplates()` como lectura read-only de plantillas
-- [ ] mantener seleccion operativa desde `/admin/marketing`
+- [ ] mantener seleccion operativa desde `/marketing`
 - [ ] no abrir authoring completo de `segments`
 - [ ] no abrir authoring completo de `templates`
 - [ ] no convertir `status` de catalogo en hard gate nuevo si el runtime actual
   no lo hace
+- [ ] dejar explicita la absorcion del scope diferido de `campaigns`,
+  `segments` y `templates` respecto de 004 y 005
 
-### T5. Consolidar `/admin/marketing` como workbench principal `as-is`
+### T5. Consolidar `/marketing` como workbench principal `as-is`
 
 **Resultado esperado**
 
@@ -146,6 +153,7 @@ consulta read-only de plantillas.
 - [ ] mantener resumen posterior de segmento con `audienceSize`
 - [ ] mantener resumen posterior de plantilla con `subject`
 - [ ] mantener tabla principal de campanas y tabla read-only de plantillas
+- [ ] distinguir con claridad UI `/marketing` vs API `/admin/campaigns`
 - [ ] no presentar la pantalla como journey builder, analytics suite ni CRM
   ampliado
 
@@ -215,6 +223,8 @@ frontera.
 - [ ] probar congelamiento del snapshot operativo
 - [ ] probar persistencia de auditoria y eventos en `marketing`
 - [ ] probar que la UI no depende de un timeline visible de eventos
+- [ ] probar que la documentacion distingue UI `/marketing` vs API
+  `/admin/campaigns`
 - [ ] probar que el slice no asume handoff runtime directo desde
   `createCampaign()`
 
@@ -235,7 +245,7 @@ frontera.
 - `segments` y `templates` quedan cerrados como catalogos read-only `as-is`
 - `scheduledAt` queda formalizado como scheduling basico vigente
 - el snapshot de campana queda congelado al momento de crearla
-- `/admin/marketing` queda defendido como workbench simple de campanas
+- `/marketing` queda defendido como workbench simple de campanas
 - la frontera `marketing -> notifications -> worker` queda canonizada sin
   sobreescribirla como handoff runtime ya cableado
 - el slice no abre journeys, authoring completo de catalogos, CRM ampliado ni

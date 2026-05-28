@@ -81,7 +81,8 @@ se inicia hoy desde `createCampaign()`.
 ### Workbench admin y cliente HTTP
 
 - `apps/admin/app/marketing/page.tsx`
-  - publica `/admin/marketing` con `AdminAuthGate` y
+  - publica la superficie visible `/marketing` en el dominio admin con
+    `AdminAuthGate` y
     `allowedRoles={adminAccessRoles.marketing}`
 - `apps/admin/components/marketing-workspace.tsx`
   - carga en paralelo `fetchCampaigns()`, `fetchCampaignSegments()` y
@@ -140,7 +141,7 @@ se inicia hoy desde `createCampaign()`.
 - integra proveedor y marca resultado real de envio o fallo
 - no crea campanas ni gobierna catalogos de marketing
 
-### 5. `/admin/marketing` sigue siendo workbench simple, no automation suite
+### 5. `/marketing` sigue siendo workbench simple, no automation suite
 
 - muestra lectura operativa de campanas y plantillas disponibles
 - usa catalogos read-only y scheduling basico
@@ -228,7 +229,8 @@ Rutas candidatas:
 
 Ajustes recomendados:
 
-- mantener `/admin/marketing` como superficie principal del slice
+- mantener `/marketing` como superficie visible principal del slice
+- distinguir con claridad UI `/marketing` vs API `/admin/campaigns`
 - sostener carga paralela de campanas, segmentos y plantillas
 - conservar los resumenes posteriores de segmento y plantilla
 - no vender `fetchCampaignEvents()` como capacidad visible de la pantalla
@@ -262,7 +264,7 @@ Ajustes recomendados:
 8. El snapshot del modulo `marketing` persiste `segments`, `templates`,
    `campaigns` y `events` sobre `moduleSnapshot` / `module_snapshots`.
 9. `fetchCampaignEvents()` existe en cliente y API, pero no forma parte de la
-   superficie visible actual de `/admin/marketing`.
+   superficie visible actual de `/marketing`.
 10. El estado tecnico final de entrega no vive en `campaigns`; vive en
     `notifications` cuando esa frontera se cruza.
 11. El dispatch real no vive en `marketing`; vive en `worker` para jobs ya
@@ -295,7 +297,7 @@ Guardrails ya visibles o exigibles para este slice:
 
 ### Release 2. Workbench operativo y catalogos read-only
 
-- sostener `/admin/marketing` como superficie principal
+- sostener `/marketing` como superficie principal visible
 - preservar consumo read-only de `segments` y `templates`
 - evitar que la UI prometa authoring o automation suite
 
@@ -327,7 +329,8 @@ Cobertura esperada:
 
 ### Admin y frontera
 
-- validar que `/admin/marketing` siga siendo la superficie principal
+- validar que `/marketing` siga siendo la superficie visible principal
+- validar que la API del slice siga expuesta por `/admin/campaigns`
 - validar que la UI no dependa de `fetchCampaignEvents()` para renderizar
 - validar que el slice no describa como vigente un enqueue directo desde
   `createCampaign()`

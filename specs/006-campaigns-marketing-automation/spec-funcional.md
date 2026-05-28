@@ -41,7 +41,7 @@ Incluye:
 - snapshot operativo congelado con `segmentName`, `templateName`,
   `bodyPreview` y `recipients`
 - auditoria, historial y eventos de dominio dentro de `marketing`
-- workbench operativo en `/admin/marketing`
+- workbench operativo en `/marketing` sobre el dominio admin
 - frontera canonica hacia `notifications` y `worker`
 
 No incluye:
@@ -93,6 +93,8 @@ No incluye:
 
 ### RF-04. Hard gates minimos reales del runtime
 
+- la creacion exige `name`
+- la creacion exige `goal`
 - la creacion exige existencia de `segmentId`
 - la creacion exige existencia de `templateId`
 - la creacion exige compatibilidad entre `template.channel` y
@@ -144,9 +146,11 @@ No incluye:
 - `createCampaign()` no debe describirse como handoff runtime ya cableado a
   `notifications`
 
-### RF-10. `/admin/marketing` como workbench simple
+### RF-10. `/marketing` como workbench simple
 
-- `/admin/marketing` es la superficie principal del slice
+- `/marketing` es la superficie visible principal del slice sobre el dominio
+  admin
+- la API del slice sigue expuesta bajo `/admin/campaigns`
 - la pantalla opera campanas reales con catalogos read-only y scheduling basico
 - la superficie no promete journeys, timeline visible de eventos ni delivery
   tecnico E2E desde el workbench
@@ -161,7 +165,7 @@ No incluye:
 
 ### Escenario A. Creacion inmediata de campana
 
-1. `marketing` abre `/admin/marketing`.
+1. `marketing` abre `/marketing`.
 2. Define nombre, objetivo, segmento, plantilla y canal.
 3. Deja `scheduledAt` vacio.
 4. `campaigns` valida IDs y compatibilidad de canal.
@@ -207,7 +211,7 @@ No incluye:
 | CA-01 | `marketing` es el owner operativo principal del slice |
 | CA-02 | `campaigns` queda fijado como agregado principal |
 | CA-03 | `segments` y `templates` quedan como catalogos read-only `as-is` |
-| CA-04 | la creacion valida existencia de `segmentId`, `templateId` y compatibilidad de canal |
+| CA-04 | la creacion valida `name`, `goal`, existencia de `segmentId`, existencia de `templateId` y compatibilidad de canal |
 | CA-05 | `scheduledAt` es el unico mecanismo canonico de scheduling del slice |
 | CA-06 | sin `scheduledAt` la campana nace `running/running`, y con `scheduledAt` nace `scheduled/queued` |
 | CA-07 | la campana congela `segmentName`, `templateName`, `bodyPreview` y `recipients` al crearse |
@@ -217,6 +221,8 @@ No incluye:
 
 ## Casos Negativos Relevantes
 
+- `name` vacio: la creacion debe fallar
+- `goal` vacio: la creacion debe fallar
 - `segmentId` inexistente: la creacion debe fallar
 - `templateId` inexistente: la creacion debe fallar
 - `template.channel` distinto de `campaign.channel`: la creacion debe fallar
@@ -225,12 +231,12 @@ No incluye:
 - asumir que `createCampaign()` ya encola una notificacion: incorrecto para el
   runtime actual
 - intentar authoring completo de segmentos o plantillas desde
-  `/admin/marketing`: fuera de alcance
+  `/marketing`: fuera de alcance
 - intentar usar el slice como journey builder o CRM ampliado: fuera de alcance
 
 ## Dependencias De Negocio
 
-- el negocio ya opera campanas reales desde `/admin/marketing`
+- el negocio ya opera campanas reales desde `/marketing` en el dominio admin
 - `marketing` necesita programacion basica y lectura operativa sin sobrecargar
   la interfaz
 - `segments` y `templates` ya existen como catalogos dependientes del modulo
