@@ -114,6 +114,28 @@ Convertir los slices brownfield homologados en features ejecutables con specs fu
   [spec-tareas.md](../../specs/008-crm-stage-order-follow-up/spec-tareas.md),
   [traceability.md](../../specs/008-crm-stage-order-follow-up/traceability.md)
 
+## Slice 009 - CRM Manual Ampliado
+- [../../specs/009-crm-manual-ampliado/spec-funcional.md](../../specs/009-crm-manual-ampliado/spec-funcional.md)
+- [../../specs/009-crm-manual-ampliado/spec-tecnica.md](../../specs/009-crm-manual-ampliado/spec-tecnica.md)
+- [../../specs/009-crm-manual-ampliado/spec-tareas.md](../../specs/009-crm-manual-ampliado/spec-tareas.md)
+- [../../specs/009-crm-manual-ampliado/traceability.md](../../specs/009-crm-manual-ampliado/traceability.md)
+- Requerimientos:
+  [01.08-crm-manual-ampliado.md](../fase-1-analisis-requerimientos/01.08-crm-manual-ampliado.md),
+  [reglas/crm-manual-ampliado.md](../fase-1-analisis-requerimientos/reglas/crm-manual-ampliado.md),
+  [UC-25-apertura-y-asignacion-del-caso-manual-de-pedido.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-25-apertura-y-asignacion-del-caso-manual-de-pedido.md),
+  [UC-26-timeline-manual-y-proximo-paso-del-pedido.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-26-timeline-manual-y-proximo-paso-del-pedido.md),
+  [UC-27-cierre-y-reapertura-del-caso-manual.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-27-cierre-y-reapertura-del-caso-manual.md)
+- UX/UI:
+  [02.08-crm-manual-ampliado-ux-ui.md](../fase-2-ux-ui/02.08-crm-manual-ampliado-ux-ui.md),
+  [product-design.md](../../specs/009-crm-manual-ampliado/product-design.md),
+  [spdd-frontend.md](../../specs/009-crm-manual-ampliado/spdd-frontend.md)
+- Arquitectura:
+  [03.11-crm-manual-ampliado.md](../fase-3-arquitectura/03.11-crm-manual-ampliado.md),
+  [ADR-009-orders-manual-follow-up-boundary.md](../fase-3-arquitectura/adr/ADR-009-orders-manual-follow-up-boundary.md)
+- Ejecucion y trazabilidad:
+  [spec-tareas.md](../../specs/009-crm-manual-ampliado/spec-tareas.md),
+  [traceability.md](../../specs/009-crm-manual-ampliado/traceability.md)
+
 ## Criterio de cierre
 - Existen features canónicas vivas en `specs/` para los slices abiertos en este corte.
 - Cada feature enlaza requerimientos, UX, arquitectura y ejecución.
