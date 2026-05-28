@@ -43,9 +43,9 @@ La decision incluye estas reglas:
    `marketing`.
 2. `segments` y `templates` se consumen como catalogos read-only `as-is`; este
    corte no abre authoring completo para ninguno.
-3. La creacion de campana solo exige como hard gate real existencia de
-   `segmentId`, existencia de `templateId` y compatibilidad entre
-   `template.channel` y `campaign.channel`.
+3. La creacion de campana exige como hard gate real `name`, `goal`,
+   existencia de `segmentId`, existencia de `templateId` y compatibilidad
+   entre `template.channel` y `campaign.channel`.
 4. Sin `scheduledAt`, la campana nace `running/running`; con `scheduledAt`,
    nace `scheduled/queued`.
 5. El campaign record conserva atributos propios de la campana:

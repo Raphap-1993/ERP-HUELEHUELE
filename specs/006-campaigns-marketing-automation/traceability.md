@@ -45,8 +45,6 @@ baseline tecnico real del monorepo.
 - journeys y automation multi-step requieren un slice y ADR propios
 - authoring completo de `segments` requiere un corte adicional
 - authoring completo de `templates` requiere un corte adicional
-- la continuidad diferida de `campaigns`, `segments` y `templates` respecto de
-  004 y 005 queda absorbida por este slice 006
 - analytics avanzados de delivery requieren ampliar el ownership entre
   `marketing`, `notifications` y observabilidad
 - un handoff runtime directo desde `createCampaign()` hacia cola exigiria

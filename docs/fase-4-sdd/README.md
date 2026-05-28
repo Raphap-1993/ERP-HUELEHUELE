@@ -51,6 +51,25 @@ Convertir los slices brownfield homologados en features ejecutables con specs fu
   [spec-tareas.md](../../specs/005-cms-content-blocks-marketing-surfaces/spec-tareas.md),
   [traceability.md](../../specs/005-cms-content-blocks-marketing-surfaces/traceability.md)
 
+## Slice 006 - Campaigns Marketing Automation
+- [../../specs/006-campaigns-marketing-automation/spec-funcional.md](../../specs/006-campaigns-marketing-automation/spec-funcional.md)
+- [../../specs/006-campaigns-marketing-automation/spec-tecnica.md](../../specs/006-campaigns-marketing-automation/spec-tecnica.md)
+- [../../specs/006-campaigns-marketing-automation/spec-tareas.md](../../specs/006-campaigns-marketing-automation/spec-tareas.md)
+- [../../specs/006-campaigns-marketing-automation/traceability.md](../../specs/006-campaigns-marketing-automation/traceability.md)
+- Requerimientos:
+  [01.05-campaigns-marketing-automation.md](../fase-1-analisis-requerimientos/01.05-campaigns-marketing-automation.md),
+  [reglas/campaigns-y-marketing-automation.md](../fase-1-analisis-requerimientos/reglas/campaigns-y-marketing-automation.md)
+- UX/UI:
+  [02.05-campaigns-marketing-automation-ux-ui.md](../fase-2-ux-ui/02.05-campaigns-marketing-automation-ux-ui.md),
+  [product-design.md](../../specs/006-campaigns-marketing-automation/product-design.md),
+  [spdd-frontend.md](../../specs/006-campaigns-marketing-automation/spdd-frontend.md)
+- Arquitectura:
+  [03.08-campaigns-marketing-automation.md](../fase-3-arquitectura/03.08-campaigns-marketing-automation.md),
+  [ADR-006-campaigns-dispatch-boundary.md](../fase-3-arquitectura/adr/ADR-006-campaigns-dispatch-boundary.md)
+- Ejecucion y trazabilidad:
+  [spec-tareas.md](../../specs/006-campaigns-marketing-automation/spec-tareas.md),
+  [traceability.md](../../specs/006-campaigns-marketing-automation/traceability.md)
+
 ## Criterio de cierre
 - Existen features canónicas vivas en `specs/` para los slices abiertos en este corte.
 - Cada feature enlaza requerimientos, UX, arquitectura y ejecución.

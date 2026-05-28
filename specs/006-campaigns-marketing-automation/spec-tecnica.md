@@ -212,7 +212,8 @@ Rutas candidatas:
 Ajustes recomendados:
 
 - conservar `createCampaign()` como puerta canonica del agregado
-- mantener como hard gates solo existencia de IDs y compatibilidad de canal
+- mantener como hard gates `name`, `goal`, existencia de IDs y compatibilidad
+  de canal
 - sostener el snapshot congelado de catalogo en la campana creada
 - persistir `segments`, `templates`, `campaigns` y `events` sobre el snapshot
   `marketing`
@@ -318,7 +319,9 @@ Rutas candidatas:
 
 Cobertura esperada:
 
-- creacion con `segmentId` y `templateId` existentes
+- creacion con `name`, `goal`, `segmentId` y `templateId` existentes
+- rechazo de `name` vacio
+- rechazo de `goal` vacio
 - rechazo de `segmentId` inexistente
 - rechazo de `templateId` inexistente
 - rechazo por incompatibilidad de canal
