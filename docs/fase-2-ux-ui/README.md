@@ -48,6 +48,11 @@ Formalizar la experiencia visual y los contratos UX de las superficies brownfiel
 - [../../specs/008-crm-stage-order-follow-up/product-design.md](../../specs/008-crm-stage-order-follow-up/product-design.md)
 - [../../specs/008-crm-stage-order-follow-up/spdd-frontend.md](../../specs/008-crm-stage-order-follow-up/spdd-frontend.md)
 
+## Slice 009 - CRM Manual Ampliado
+- [02.08-crm-manual-ampliado-ux-ui.md](02.08-crm-manual-ampliado-ux-ui.md)
+- [../../specs/009-crm-manual-ampliado/product-design.md](../../specs/009-crm-manual-ampliado/product-design.md)
+- [../../specs/009-crm-manual-ampliado/spdd-frontend.md](../../specs/009-crm-manual-ampliado/spdd-frontend.md)
+
 ## Criterio de cierre
 - Cada slice con capa UX abierta tiene narrativa y fronteras visuales canónicas.
 - La evidencia visual se ancla al runtime y al dominio homologado correspondiente.
