@@ -18,12 +18,12 @@
 | `docs/flows/` | Flujos comerciales y operativos detallados del producto vivo. |
 | `docs/infra/` | Deploy, entornos, PM2 y servicios locales. |
 | `docs/fase-0-iniciacion/` | Capa canonica Fase 0 creada para el brownfield. |
-| `docs/fase-1-analisis-requerimientos/` | RF, casos de uso y reglas canonicas de los slices brownfield homologados `001` a `008`. |
-| `docs/fase-2-ux-ui/` | UX canonica de las superficies brownfield homologadas `001` a `008`. |
-| `docs/fase-3-arquitectura/` | Arquitectura, decisiones y ADRs canonicos de los slices abiertos `001` a `008`. |
-| `docs/fase-4-sdd/` | Puente metodologico hacia `specs/` por feature brownfield homologada `001` a `008`. |
+| `docs/fase-1-analisis-requerimientos/` | RF, casos de uso y reglas canonicas de los slices brownfield homologados `001` a `009`. |
+| `docs/fase-2-ux-ui/` | UX canonica de las superficies brownfield homologadas `001` a `009`. |
+| `docs/fase-3-arquitectura/` | Arquitectura, decisiones y ADRs canonicos de los slices abiertos `001` a `009`. |
+| `docs/fase-4-sdd/` | Puente metodologico hacia `specs/` por feature brownfield homologada `001` a `009`. |
 | `docs/fase-5-construccion/` a `docs/fase-8-operacion/` | Backfill canonico de construccion, QA, deploy y operacion para el slice `001` y base metodologica reutilizable. |
-| `specs/` | Features canonicas por slice brownfield homologado (`001` a `008` en este corte). |
+| `specs/` | Features canonicas por slice brownfield homologado (`001` a `009` en este corte). |
 | `docs/transversal/90.00-mapa-homologacion-brownfield.md` | Puente entre documentacion vigente y capa canonica. |
 | `docs/00-auditoria-inicial.md` a `docs/06-validacion-y-pruebas.md` | Artefactos previos que siguen como evidencia mientras se formalizan sus equivalentes canonicos. |
 | `scripts/` | Soporte local, release, homologacion y automatizaciones del repo. |
@@ -36,7 +36,7 @@
 | Estado real del brownfield | `AI_CONTEXT.md` |
 | Entender la transicion canonica | `docs/transversal/90.00-mapa-homologacion-brownfield.md` |
 | Vision, roadmap y responsables canonicos | `docs/fase-0-iniciacion/` |
-| Slices canonicos brownfield ya homologados | `docs/fase-1-analisis-requerimientos/`, `docs/fase-2-ux-ui/`, `docs/fase-3-arquitectura/`, `docs/fase-4-sdd/`, `specs/` (`001` a `008`) |
+| Slices canonicos brownfield ya homologados | `docs/fase-1-analisis-requerimientos/`, `docs/fase-2-ux-ui/`, `docs/fase-3-arquitectura/`, `docs/fase-4-sdd/`, `specs/` (`001` a `009`) |
 | Vision y alcance vigentes del negocio | `docs/product/product-vision.md`, `docs/product/scope.md` |
 | Arquitectura vigente del sistema | `docs/architecture/overview.md`, `docs/architecture/modules.md` |
 | Flujos operativos reales | `docs/flows/` |
