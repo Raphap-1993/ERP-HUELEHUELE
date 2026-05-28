@@ -92,6 +92,28 @@ Convertir los slices brownfield homologados en features ejecutables con specs fu
   [spec-tareas.md](../../specs/007-customers-identity-conflicts/spec-tareas.md),
   [traceability.md](../../specs/007-customers-identity-conflicts/traceability.md)
 
+## Slice 008 - CRM Stage Order Follow-Up
+- [../../specs/008-crm-stage-order-follow-up/spec-funcional.md](../../specs/008-crm-stage-order-follow-up/spec-funcional.md)
+- [../../specs/008-crm-stage-order-follow-up/spec-tecnica.md](../../specs/008-crm-stage-order-follow-up/spec-tecnica.md)
+- [../../specs/008-crm-stage-order-follow-up/spec-tareas.md](../../specs/008-crm-stage-order-follow-up/spec-tareas.md)
+- [../../specs/008-crm-stage-order-follow-up/traceability.md](../../specs/008-crm-stage-order-follow-up/traceability.md)
+- Requerimientos:
+  [01.07-crm-stage-order-follow-up.md](../fase-1-analisis-requerimientos/01.07-crm-stage-order-follow-up.md),
+  [reglas/crm-stage-y-order-follow-up.md](../fase-1-analisis-requerimientos/reglas/crm-stage-y-order-follow-up.md),
+  [UC-22-derivacion-de-etapa-crm-del-pedido.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-22-derivacion-de-etapa-crm-del-pedido.md),
+  [UC-23-confirmacion-comercial-y-traza-operativa-del-pedido.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-23-confirmacion-comercial-y-traza-operativa-del-pedido.md),
+  [UC-24-cierre-derivado-del-seguimiento-del-pedido.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-24-cierre-derivado-del-seguimiento-del-pedido.md)
+- UX/UI:
+  [02.07-crm-stage-order-follow-up-ux-ui.md](../fase-2-ux-ui/02.07-crm-stage-order-follow-up-ux-ui.md),
+  [product-design.md](../../specs/008-crm-stage-order-follow-up/product-design.md),
+  [spdd-frontend.md](../../specs/008-crm-stage-order-follow-up/spdd-frontend.md)
+- Arquitectura:
+  [03.10-crm-stage-order-follow-up.md](../fase-3-arquitectura/03.10-crm-stage-order-follow-up.md),
+  [ADR-008-orders-crm-follow-up-boundary.md](../fase-3-arquitectura/adr/ADR-008-orders-crm-follow-up-boundary.md)
+- Ejecucion y trazabilidad:
+  [spec-tareas.md](../../specs/008-crm-stage-order-follow-up/spec-tareas.md),
+  [traceability.md](../../specs/008-crm-stage-order-follow-up/traceability.md)
+
 ## Criterio de cierre
 - Existen features canónicas vivas en `specs/` para los slices abiertos en este corte.
 - Cada feature enlaza requerimientos, UX, arquitectura y ejecución.
