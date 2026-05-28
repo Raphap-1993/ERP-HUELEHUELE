@@ -47,6 +47,20 @@ Consolidar requerimientos, actores, casos de uso y reglas de negocio trazables p
 - [casos-de-uso/UC-18-frontera-de-dispatch-marketing-notifications-worker.md](casos-de-uso/UC-18-frontera-de-dispatch-marketing-notifications-worker.md)
 - [reglas/campaigns-y-marketing-automation.md](reglas/campaigns-y-marketing-automation.md)
 
+## Slice 007 - Customers Identity Conflicts
+- [01.06-customers-identity-conflicts.md](01.06-customers-identity-conflicts.md)
+- [casos-de-uso/UC-19-maestro-de-clientes-y-perfil-canonico.md](casos-de-uso/UC-19-maestro-de-clientes-y-perfil-canonico.md)
+- [casos-de-uso/UC-20-resolucion-de-conflictos-de-identidad.md](casos-de-uso/UC-20-resolucion-de-conflictos-de-identidad.md)
+- [casos-de-uso/UC-21-fusion-operativa-de-clientes.md](casos-de-uso/UC-21-fusion-operativa-de-clientes.md)
+- [reglas/customers-e-identity-conflicts.md](reglas/customers-e-identity-conflicts.md)
+
+## Slice 007 - Customers Identity Conflicts
+- [01.06-customers-identity-conflicts.md](01.06-customers-identity-conflicts.md)
+- [casos-de-uso/UC-19-maestro-de-clientes-y-perfil-canonico.md](casos-de-uso/UC-19-maestro-de-clientes-y-perfil-canonico.md)
+- [casos-de-uso/UC-20-resolucion-de-conflictos-de-identidad.md](casos-de-uso/UC-20-resolucion-de-conflictos-de-identidad.md)
+- [casos-de-uso/UC-21-fusion-operativa-de-clientes.md](casos-de-uso/UC-21-fusion-operativa-de-clientes.md)
+- [reglas/customers-e-identity-conflicts.md](reglas/customers-e-identity-conflicts.md)
+
 ## Criterio de cierre
-- Cada slice abierto en esta fase tiene RF, actores, estados y reglas canónicas.
-- Los ownerships y fronteras operativas criticas quedan explícitos por dominio.
+- Cada slice abierto en esta fase tiene RF, actores, estados y reglas canonicas.
+- Los ownerships y fronteras operativas criticas quedan explicitos por dominio.
