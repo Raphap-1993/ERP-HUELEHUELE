@@ -70,6 +70,28 @@ Convertir los slices brownfield homologados en features ejecutables con specs fu
   [spec-tareas.md](../../specs/006-campaigns-marketing-automation/spec-tareas.md),
   [traceability.md](../../specs/006-campaigns-marketing-automation/traceability.md)
 
+## Slice 007 - Customers Identity Conflicts
+- [../../specs/007-customers-identity-conflicts/spec-funcional.md](../../specs/007-customers-identity-conflicts/spec-funcional.md)
+- [../../specs/007-customers-identity-conflicts/spec-tecnica.md](../../specs/007-customers-identity-conflicts/spec-tecnica.md)
+- [../../specs/007-customers-identity-conflicts/spec-tareas.md](../../specs/007-customers-identity-conflicts/spec-tareas.md)
+- [../../specs/007-customers-identity-conflicts/traceability.md](../../specs/007-customers-identity-conflicts/traceability.md)
+- Requerimientos:
+  [01.06-customers-identity-conflicts.md](../fase-1-analisis-requerimientos/01.06-customers-identity-conflicts.md),
+  [reglas/customers-e-identity-conflicts.md](../fase-1-analisis-requerimientos/reglas/customers-e-identity-conflicts.md),
+  [UC-19-maestro-de-clientes-y-perfil-canonico.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-19-maestro-de-clientes-y-perfil-canonico.md),
+  [UC-20-resolucion-de-conflictos-de-identidad.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-20-resolucion-de-conflictos-de-identidad.md),
+  [UC-21-fusion-operativa-de-clientes.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-21-fusion-operativa-de-clientes.md)
+- UX/UI:
+  [02.06-customers-identity-conflicts-ux-ui.md](../fase-2-ux-ui/02.06-customers-identity-conflicts-ux-ui.md),
+  [product-design.md](../../specs/007-customers-identity-conflicts/product-design.md),
+  [spdd-frontend.md](../../specs/007-customers-identity-conflicts/spdd-frontend.md)
+- Arquitectura:
+  [03.09-customers-identity-conflicts.md](../fase-3-arquitectura/03.09-customers-identity-conflicts.md),
+  [ADR-007-customers-orders-identity-boundary.md](../fase-3-arquitectura/adr/ADR-007-customers-orders-identity-boundary.md)
+- Ejecucion y trazabilidad:
+  [spec-tareas.md](../../specs/007-customers-identity-conflicts/spec-tareas.md),
+  [traceability.md](../../specs/007-customers-identity-conflicts/traceability.md)
+
 ## Criterio de cierre
 - Existen features canónicas vivas en `specs/` para los slices abiertos en este corte.
 - Cada feature enlaza requerimientos, UX, arquitectura y ejecución.
