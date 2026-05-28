@@ -271,8 +271,11 @@ Reglas:
 - `GET /admin/wholesale-quotes`
 - `POST /admin/wholesale-quotes`
 - `GET /admin/wholesale-tiers`
-- `GET /admin/marketing`
-- `POST /admin/marketing/campaigns`
+- `GET /admin/campaigns`
+- `POST /admin/campaigns`
+- `GET /admin/campaigns/segments`
+- `GET /admin/campaigns/templates`
+- `GET /admin/campaigns/events`
 - `GET /admin/loyalty`
 - `GET /admin/notifications`
 

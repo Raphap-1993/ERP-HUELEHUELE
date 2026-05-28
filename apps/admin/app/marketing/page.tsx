@@ -6,7 +6,7 @@ export default function MarketingPage() {
   return (
     <AdminAuthGate
       title="Marketing"
-      description="Campañas, segmentos, plantillas y eventos."
+      description="Campañas, segmentos y plantillas."
       allowedRoles={adminAccessRoles.marketing}
     >
       <MarketingWorkspace />

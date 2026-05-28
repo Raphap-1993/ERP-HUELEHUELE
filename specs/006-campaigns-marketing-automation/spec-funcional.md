@@ -168,7 +168,8 @@ No incluye:
 1. `marketing` abre `/marketing`.
 2. Define nombre, objetivo, segmento, plantilla y canal.
 3. Deja `scheduledAt` vacio.
-4. `campaigns` valida IDs y compatibilidad de canal.
+4. `campaigns` valida `name`, `goal`, existencia de IDs y compatibilidad de
+   canal.
 5. La campana se registra con `status = running` y `runStatus = running`.
 6. `marketing` persiste la campana, su snapshot, auditoria y eventos.
 

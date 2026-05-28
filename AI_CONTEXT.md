@@ -41,9 +41,9 @@
 - La narrativa metodologica ya existe para seis slices; falta replicarla al resto del producto vivo.
 
 ## Proximos pasos
-1. Revisar y aprobar la extension canonica del slice `006-campaigns-marketing-automation`.
-2. Priorizar el siguiente slice brownfield para CRM ampliado o automatizaciones posteriores al scheduling basico ya homologado.
-3. Mantener sincronizados `AI_CONTEXT.md`, `TRACEABILITY_MATRIX.md` y `docs/transversal/90.00-mapa-homologacion-brownfield.md` cada vez que una fase crezca.
+1. Priorizar el siguiente slice brownfield para CRM ampliado o automatizaciones posteriores al scheduling basico ya homologado.
+2. Mantener sincronizados `AI_CONTEXT.md`, `TRACEABILITY_MATRIX.md` y `docs/transversal/90.00-mapa-homologacion-brownfield.md` cada vez que una fase crezca.
+3. Seguir reduciendo drift entre la capa canonica y documentos brownfield globales como outlines API y mapas de modulo.
 
 ## Como cargar contexto rapido
 1. Leer `AGENTS.md`.
