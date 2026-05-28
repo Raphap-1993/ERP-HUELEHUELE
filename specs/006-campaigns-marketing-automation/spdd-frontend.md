@@ -4,7 +4,7 @@ Fecha: 2026-05-27.
 
 ## Superficies cubiertas
 
-- `/admin/marketing`
+- `/marketing`
 
 ## Contratos visibles
 
@@ -27,9 +27,10 @@ Fecha: 2026-05-27.
 ## Reglas visibles
 
 - no hay editor de segmentos ni editor de plantillas dentro de
-  `/admin/marketing`
-- la UI exige seleccionar `segmentId` y `templateId` para crear la campana
-- el backend valida existencia de IDs y compatibilidad entre
+  `/marketing`
+- la UI exige `name`, `goal`, `segmentId` y `templateId` para crear la
+  campana
+- el backend valida `name`, `goal`, existencia de IDs y compatibilidad entre
   `template.channel` y `campaign.channel`
 - dejar `scheduledAt` vacio equivale a corrida inmediata; informarlo abre
   programacion basica
@@ -37,7 +38,7 @@ Fecha: 2026-05-27.
 - crear campana en este runtime persiste campaign, auditoria y eventos propios
   de `marketing`, pero no dispara un handoff real a `NotificationsService`
 - la cola y la entrega tecnica permanecen fuera de la superficie y fuera del
-  flujo visible actual de `/admin/marketing`
+  flujo visible actual de `/marketing`
 
 ## Dependencias de Fase 1
 

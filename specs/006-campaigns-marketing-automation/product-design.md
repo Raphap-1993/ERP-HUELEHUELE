@@ -4,7 +4,8 @@ Fecha: 2026-05-27.
 
 ## Experiencia objetivo
 
-- workbench de campanas claro y operativo en `/admin/marketing`
+- workbench de campanas claro y operativo en `/marketing` sobre el dominio
+  admin
 - creacion simple con scheduling basico y snapshot de negocio
 - catalogos read-only de segmentos y plantillas sin authoring adicional
 
