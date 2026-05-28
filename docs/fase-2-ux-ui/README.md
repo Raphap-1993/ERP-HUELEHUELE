@@ -38,6 +38,11 @@ Formalizar la experiencia visual y los contratos UX de las superficies brownfiel
 - [../../specs/006-campaigns-marketing-automation/product-design.md](../../specs/006-campaigns-marketing-automation/product-design.md)
 - [../../specs/006-campaigns-marketing-automation/spdd-frontend.md](../../specs/006-campaigns-marketing-automation/spdd-frontend.md)
 
+## Slice 007 - Customers Identity Conflicts
+- [02.06-customers-identity-conflicts-ux-ui.md](02.06-customers-identity-conflicts-ux-ui.md)
+- [../../specs/007-customers-identity-conflicts/product-design.md](../../specs/007-customers-identity-conflicts/product-design.md)
+- [../../specs/007-customers-identity-conflicts/spdd-frontend.md](../../specs/007-customers-identity-conflicts/spdd-frontend.md)
+
 ## Criterio de cierre
 - Cada slice con capa UX abierta tiene narrativa y fronteras visuales canónicas.
 - La evidencia visual se ancla al runtime y al dominio homologado correspondiente.
