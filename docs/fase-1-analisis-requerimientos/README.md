@@ -61,6 +61,13 @@ Consolidar requerimientos, actores, casos de uso y reglas de negocio trazables p
 - [casos-de-uso/UC-24-cierre-derivado-del-seguimiento-del-pedido.md](casos-de-uso/UC-24-cierre-derivado-del-seguimiento-del-pedido.md)
 - [reglas/crm-stage-y-order-follow-up.md](reglas/crm-stage-y-order-follow-up.md)
 
+## Slice 009 - CRM Manual Ampliado
+- [01.08-crm-manual-ampliado.md](01.08-crm-manual-ampliado.md)
+- [casos-de-uso/UC-25-apertura-y-asignacion-del-caso-manual-de-pedido.md](casos-de-uso/UC-25-apertura-y-asignacion-del-caso-manual-de-pedido.md)
+- [casos-de-uso/UC-26-timeline-manual-y-proximo-paso-del-pedido.md](casos-de-uso/UC-26-timeline-manual-y-proximo-paso-del-pedido.md)
+- [casos-de-uso/UC-27-cierre-y-reapertura-del-caso-manual.md](casos-de-uso/UC-27-cierre-y-reapertura-del-caso-manual.md)
+- [reglas/crm-manual-ampliado.md](reglas/crm-manual-ampliado.md)
+
 ## Criterio de cierre
 - Cada slice abierto en esta fase tiene RF, actores, estados y reglas canonicas.
 - Los ownerships y fronteras operativas criticas quedan explicitos por dominio.
