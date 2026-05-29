@@ -82,6 +82,13 @@ Consolidar requerimientos, actores, casos de uso y reglas de negocio trazables p
 - [casos-de-uso/UC-33-cierre-comercial-won-lost-y-reapertura.md](casos-de-uso/UC-33-cierre-comercial-won-lost-y-reapertura.md)
 - [reglas/pipeline-comercial-amplio.md](reglas/pipeline-comercial-amplio.md)
 
+## Slice 012 - Scoring Y Automatizaciones Comerciales
+- [01.11-scoring-y-automatizaciones-comerciales.md](01.11-scoring-y-automatizaciones-comerciales.md)
+- [casos-de-uso/UC-34-calculo-y-explicacion-del-score-comercial.md](casos-de-uso/UC-34-calculo-y-explicacion-del-score-comercial.md)
+- [casos-de-uso/UC-35-ejecucion-de-reglas-y-acciones-simples.md](casos-de-uso/UC-35-ejecucion-de-reglas-y-acciones-simples.md)
+- [casos-de-uso/UC-36-idempotencia-y-cooldown-de-automatizaciones.md](casos-de-uso/UC-36-idempotencia-y-cooldown-de-automatizaciones.md)
+- [reglas/scoring-y-automatizaciones-comerciales.md](reglas/scoring-y-automatizaciones-comerciales.md)
+
 ## Criterio de cierre
 - Cada slice abierto en esta fase tiene RF, actores, estados y reglas canonicas.
 - Los ownerships y fronteras operativas criticas quedan explicitos por dominio.
