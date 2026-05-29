@@ -68,6 +68,13 @@ Consolidar requerimientos, actores, casos de uso y reglas de negocio trazables p
 - [casos-de-uso/UC-27-cierre-y-reapertura-del-caso-manual.md](casos-de-uso/UC-27-cierre-y-reapertura-del-caso-manual.md)
 - [reglas/crm-manual-ampliado.md](reglas/crm-manual-ampliado.md)
 
+## Slice 010 - CRM Transversal Por Cliente
+- [01.09-crm-transversal-por-cliente.md](01.09-crm-transversal-por-cliente.md)
+- [casos-de-uso/UC-28-apertura-y-clasificacion-del-caso-transversal-del-cliente.md](casos-de-uso/UC-28-apertura-y-clasificacion-del-caso-transversal-del-cliente.md)
+- [casos-de-uso/UC-29-timeline-y-workbench-transversal-del-cliente.md](casos-de-uso/UC-29-timeline-y-workbench-transversal-del-cliente.md)
+- [casos-de-uso/UC-30-merge-cierre-y-reapertura-del-caso-transversal-del-cliente.md](casos-de-uso/UC-30-merge-cierre-y-reapertura-del-caso-transversal-del-cliente.md)
+- [reglas/crm-transversal-por-cliente.md](reglas/crm-transversal-por-cliente.md)
+
 ## Criterio de cierre
 - Cada slice abierto en esta fase tiene RF, actores, estados y reglas canonicas.
 - Los ownerships y fronteras operativas criticas quedan explicitos por dominio.
