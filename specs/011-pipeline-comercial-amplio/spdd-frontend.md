@@ -14,6 +14,7 @@ Fecha: 2026-05-29.
 - un `customer_relationship_case` por cliente canonico como base del slice
 - `commercialOwner`
 - `assignee`
+- `origin`
 - `nextStep`
 - `pipelineStage`
 - `priority`
@@ -32,18 +33,38 @@ Fecha: 2026-05-29.
 - la bandeja comercial usa patron de busqueda, filtros y tabla o lista; no
   se presenta como kanban en este corte
 - la bandeja comercial no usa drag and drop
-- `pipelineStage` es manual y convive separado de `status`
-- `commercialOwner`, `assignee` y `nextStep` se preservan del detalle
-  heredado de `010` y se ven en la operacion del caso
-- `priority` y `commercialChannel` son facetas manuales para triage y no
-  scoring encubierto
-- `followUpAt` sigue siendo la unica fecha objetivo operativa del caso
+- `pipelineStage` es manual, convive separado de `status`, usa `new`,
+  `contacted`, `engaged`, `nurturing`, `won` y `lost`, nace en `new` por
+  defecto y no puede quedar nulo al abrir el caso
+- la reapertura comercial desde `lost` devuelve `pipelineStage` a
+  `contacted`
+- `commercialOwner`, `assignee`, `origin`, `nextStep` y `followUpAt` se
+  preservan del detalle heredado de `010` y siguen visibles en la operacion
+  del caso
+- `nextStep` y `followUpAt` siguen siendo obligatorios mientras el caso
+  esta activo
+- `priority` usa `low`, `medium` y `high`
+- `commercialChannel` usa `storefront`, `vendor`, `wholesale`,
+  `manual_outreach`, `reactivation` y `referral`
+- `commercialChannel` convive con `origin`: `origin` conserva el origen del
+  caso heredado de `010`, mientras `commercialChannel` fija el canal
+  principal del pipeline amplio
+- `lostReason` usa `no_response`, `price`, `timing`, `competition`,
+  `not_fit` y `other`
 - `lastPipelineActivityAt` ordena actividad reciente sin obligar a leer
   todo el timeline
 - `won` y `lost` exigen accion manual y trazabilidad visible
-- `lost` exige `lostReason` y `won` exige nota con evidencia
+- `lost` exige `lostReason` y `won` exige nota con evidencia o referencia
 - el slice no se presenta como forecast, automatizacion, scoring ni
   `commercial_opportunity`
+
+## Lecturas derivadas
+
+- pendientes de hoy y vencidos son lecturas derivadas desde `followUpAt`
+- sugerencias de `status` despues de `won` o `lost` son comportamiento
+  secundario y no cambian el contrato minimo del corte
+- agregados visuales por etapa, prioridad o canal son capa operativa
+  secundaria y no requisito para que `011` sea una ampliacion seria de `010`
 
 ## Dependencias de Fase 1
 
