@@ -75,11 +75,15 @@ La API expresa el pipeline amplio como parte del mismo
 **Checklist**
 
 - [ ] exponer lectura del pipeline amplio dentro del mismo caso
+- [ ] sostener apertura por defecto en `new` con override manual permitido
+  a `contacted`, `engaged` o `nurturing` si ya existe contexto comercial
+  suficiente
 - [ ] exponer escritura de `pipelineStage`, `priority`,
   `commercialChannel` y `lostReason`
 - [ ] exponer `lastPipelineActivityAt` como lectura visible derivada
-- [ ] derivar `lastPipelineActivityAt` por cambios de `pipelineStage` y
-  actividad manual relevante
+- [ ] derivar `lastPipelineActivityAt` por cambios de `pipelineStage`,
+  entradas `note`, `call`, `whatsapp` y `email`, cierres `won` o `lost` y
+  reapertura desde `lost`
 - [ ] mantener un solo `customer_relationship_case` por cliente canonico
 - [ ] preservar `commercialOwner`, `assignee`, `nextStep` y `followUpAt`
 - [ ] no mover ownership a `orders` ni a otro modulo
@@ -98,9 +102,13 @@ reciente quedan modelados sobre el mismo timeline del caso.
 
 **Checklist**
 
-- [ ] sostener `pipelineStage = new` por defecto al abrir el caso
+- [ ] sostener `pipelineStage = new` por defecto al abrir el caso y
+  permitir override manual a `contacted`, `engaged` o `nurturing` si ya
+  existe contexto comercial suficiente
 - [ ] sostener cierre `lost` con `lostReason` obligatorio
 - [ ] sostener cierre `won` con nota y evidencia o referencia
+- [ ] persistir cierre `won` en la misma entrada append only del timeline
+  con `note` y `reference` o `evidence` obligatorias
 - [ ] sostener `won` como cierre comercial estable sin reversion manual por
   omision
 - [ ] sostener reapertura desde `lost` hacia `contacted` como unico camino
@@ -109,8 +117,9 @@ reciente quedan modelados sobre el mismo timeline del caso.
   `priority` al reabrir desde `lost`
 - [ ] limpiar `lostReason` del estado activo al reabrir y conservar su
   traza historica
-- [ ] actualizar `lastPipelineActivityAt` con cambios de etapa y actividad
-  manual relevante
+- [ ] actualizar `lastPipelineActivityAt` con cambios de etapa, entradas
+  `note`, `call`, `whatsapp` y `email`, cierres `won` o `lost` y
+  reapertura desde `lost`
 - [ ] mantener cambios de `pipelineStage` sobre el mismo timeline
 
 ### T4. Sostener `/crm` como superficie del slice
@@ -132,6 +141,8 @@ bandeja filtrable dentro del mismo `/crm`.
   `commercialChannel`, `lostReason` y `lastPipelineActivityAt`
 - [ ] seguir mostrando `commercialOwner`, `assignee`, `nextStep` y
   `followUpAt`
+- [ ] mostrar en detalle y timeline la nota y `reference` o `evidence`
+  del cierre `won`
 - [ ] sostener filtros por `commercialOwner`, `assignee`, `pipelineStage`,
   `priority`, `commercialChannel` y `status`
 - [ ] sostener vistas de pendientes de hoy y vencidos usando `followUpAt`
@@ -177,15 +188,21 @@ protejan la extension controlada de `010`.
 
 - [ ] probar que `011` reutiliza el mismo `customer_relationship_case`
 - [ ] probar que `pipelineStage` es manual y no nulo en casos activos
+- [ ] probar que la apertura usa `new` por defecto y permite override
+  manual a `contacted`, `engaged` o `nurturing` con contexto suficiente
 - [ ] probar cierre `lost` con `lostReason` obligatorio
 - [ ] probar cierre `won` con nota y evidencia o referencia
+- [ ] probar que `won` persiste `note` y `reference` o `evidence` en la
+  misma entrada append only del timeline
 - [ ] probar que `won` queda como cierre comercial estable sin reversion
   manual por omision
 - [ ] probar reapertura desde `lost` hacia `contacted` como unico camino
   canonico
 - [ ] probar revalidacion de `commercialOwner`, `assignee`, `nextStep`,
   `followUpAt` y `priority` al reabrir desde `lost`
-- [ ] probar actualizacion de `lastPipelineActivityAt`
+- [ ] probar actualizacion de `lastPipelineActivityAt` por cambios de
+  etapa, `note`, `call`, `whatsapp`, `email`, cierres `won` o `lost` y
+  reapertura comercial
 - [ ] probar filtros y vistas dentro de `/crm`
 - [ ] probar ausencia de `commercial_opportunity`, scoring y ruta nueva
 

@@ -95,6 +95,8 @@ No incluye:
 
 - `pipelineStage` es manual por `ventas`
 - `pipelineStage` nace por defecto en `new` al abrir el caso
+- `ventas` puede abrir el caso directamente en `contacted`, `engaged` o
+  `nurturing` solo si ya existe contexto comercial suficiente
 - `pipelineStage` no puede quedar nulo mientras el caso siga activo
 - `status` y `pipelineStage` son ejes distintos del mismo
   `customer_relationship_case`
@@ -148,8 +150,11 @@ No incluye:
 - `followUpAt` sigue siendo la unica fecha objetivo operativa del caso
 - `lastPipelineActivityAt` resume actividad comercial reciente
 - `lastPipelineActivityAt` se actualiza con cambios de `pipelineStage`
-- `lastPipelineActivityAt` se actualiza con actividad manual relevante del
-  mismo caso
+- `lastPipelineActivityAt` se actualiza con entradas manuales del timeline
+  tipo `note`, `call`, `whatsapp` y `email`
+- `lastPipelineActivityAt` se actualiza con cierres `won` y `lost`
+- `lastPipelineActivityAt` se actualiza con la reapertura comercial desde
+  `lost`
 - `lastPipelineActivityAt` no reemplaza la lectura completa del timeline
 
 ### RF-08. Bandeja comercial dentro de `/crm`
@@ -180,6 +185,12 @@ No incluye:
 - `won` representa cierre comercial manual por `ventas`
 - pasar a `won` exige nota de cierre
 - pasar a `won` exige evidencia o referencia
+- el cierre `won` se persiste en la misma entrada append only del timeline
+  que traza el cambio de `pipelineStage`
+- esa entrada de cierre exige `note` y `reference` o `evidence` como
+  payload obligatorio del mismo caso
+- `/crm` lee ese cierre desde el detalle y timeline del mismo
+  `customer_relationship_case`
 - `won` cierra de forma estable un ciclo comercial del mismo caso
 - `won` no se revierte normalmente dentro del flujo manual general
 - `won` no se deriva automaticamente por un evento tecnico
@@ -221,11 +232,12 @@ No incluye:
 
 1. El cliente entra a trabajo comercial amplio.
 2. `ventas` abre o retoma el `customer_relationship_case`.
-3. El caso nace en `pipelineStage = new` salvo que ya exista contexto
-   comercial suficiente.
-4. Se definen `commercialOwner`, `assignee`, `nextStep`, `followUpAt`,
+3. El caso nace en `pipelineStage = new` por defecto.
+4. Si ya existe contexto comercial suficiente, `ventas` puede abrirlo
+   directamente en `contacted`, `engaged` o `nurturing`.
+5. Se definen `commercialOwner`, `assignee`, `nextStep`, `followUpAt`,
    `priority` y `commercialChannel`.
-5. El timeline del mismo caso queda listo para trazar cambios de etapa.
+6. El timeline del mismo caso queda listo para trazar cambios de etapa.
 
 ### Escenario B. Operacion de la bandeja comercial
 
@@ -249,7 +261,8 @@ No incluye:
 1. El ciclo comercial se concreta.
 2. `ventas` mueve el caso a `pipelineStage = won`.
 3. Registra nota de cierre y evidencia o referencia.
-4. El timeline guarda el cierre comercial.
+4. La misma entrada append only del timeline guarda el cierre comercial con
+   `note` y `reference` o `evidence`.
 5. El sistema puede sugerir `status = resolved` si ya no queda trabajo
    activo.
 
@@ -270,13 +283,13 @@ No incluye:
 | CA-01 | `011` queda documentado como extension controlada de `010` sobre el mismo `customer_relationship_case` |
 | CA-02 | `pipelineStage`, `priority`, `commercialChannel`, `lostReason` y `lastPipelineActivityAt` quedan formalizados con naming canonico |
 | CA-03 | `commercialOwner`, `assignee`, `nextStep` y `followUpAt` quedan preservados como contrato heredado de `010` |
-| CA-04 | `pipelineStage` queda manual, no nulo y separado de `status` |
+| CA-04 | `pipelineStage` queda manual, no nulo, separado de `status` y nace en `new` salvo override manual controlado a etapa activa con contexto suficiente |
 | CA-05 | la trazabilidad obligatoria de cambios de `pipelineStage` queda ligada al timeline del mismo caso |
 | CA-06 | `priority` queda limitada a `low`, `medium` y `high` |
 | CA-07 | `commercialChannel` queda limitado a los seis valores canonicos y separado de `origin` |
-| CA-08 | `lost` exige `lostReason` y `won` exige nota con evidencia o referencia |
+| CA-08 | `lost` exige `lostReason` y `won` exige nota con evidencia o referencia en la misma entrada append only del timeline del cierre |
 | CA-09 | la reapertura desde `lost` vuelve a `contacted` y revalida disciplina activa del caso |
-| CA-10 | `lastPipelineActivityAt` queda definido como resumen de actividad reciente sin abrir una segunda fecha operativa |
+| CA-10 | `lastPipelineActivityAt` queda definido como resumen derivado de cambios de etapa, `note`, `call`, `whatsapp`, `email`, cierres `won` o `lost` y reapertura comercial, sin abrir una segunda fecha operativa |
 | CA-11 | la bandeja comercial queda fijada dentro de `/crm` con filtros y vistas de pendientes de hoy y vencidos |
 | CA-12 | el slice no abre `commercial_opportunity`, scoring, forecast ni automatizaciones comerciales |
 

@@ -134,12 +134,18 @@ Rutas candidatas:
 Ajustes recomendados:
 
 - formalizar la extension del mismo `customer_relationship_case`
+- sostener apertura por defecto en `new` con override manual permitido a
+  `contacted`, `engaged` o `nurturing` si ya existe contexto comercial
+  suficiente
 - exponer lectura y escritura de `pipelineStage`, `priority`,
   `commercialChannel` y `lostReason`
 - exponer `lastPipelineActivityAt` como lectura visible derivada
 - derivar la actualizacion de `lastPipelineActivityAt` por cambios de
-  `pipelineStage` y actividad manual relevante
+  `pipelineStage`, entradas manuales `note`, `call`, `whatsapp` y `email`,
+  cierres `won` o `lost` y reapertura desde `lost`
 - validar cierres `won` y `lost` sobre el mismo caso
+- persistir el cierre `won` en la misma entrada append only del timeline
+  del caso, exigiendo `note` y `reference` o `evidence`
 - sostener la reapertura desde `lost` hacia `contacted`
 - mantener trazabilidad obligatoria sobre el mismo timeline
 - no abrir un modulo `commercial_opportunity`
@@ -158,6 +164,8 @@ Ajustes recomendados:
 - sostener bandeja filtrable por `commercialOwner`, `assignee`,
   `pipelineStage`, `priority`, `commercialChannel` y `status`
 - mostrar `lastPipelineActivityAt` como lectura secundaria
+- mostrar en el detalle y timeline del caso la nota y `reference` o
+  `evidence` del cierre `won`
 - sostener cierres `won` y `lost` dentro del mismo workbench
 - no abrir una ruta nueva para la cola comercial
 
@@ -171,16 +179,22 @@ Ajustes recomendados:
 5. `followUpAt` sigue siendo la unica fecha objetivo operativa.
 6. `lastPipelineActivityAt` solo resume actividad comercial reciente.
 7. `lastPipelineActivityAt` no se expone como escritura libre y se deriva
-   por cambios de `pipelineStage` y actividad manual relevante.
-8. `pipelineStage` es manual, no nulo y separado de `status`.
-9. la reapertura desde `lost` devuelve `pipelineStage` a `contacted`.
-10. `lostReason` es obligatorio en `lost` y deja de aplicar al estado
+   por cambios de `pipelineStage`, entradas `note`, `call`, `whatsapp` y
+   `email`, cierres `won` o `lost` y reapertura desde `lost`.
+8. `pipelineStage` es manual, no nulo, separado de `status` y nace por
+   defecto en `new`, con override manual permitido a `contacted`,
+   `engaged` o `nurturing` si ya existe contexto comercial suficiente.
+9. el cierre `won` se valida y persiste en la misma entrada append only
+   del timeline del caso, con `note` y `reference` o `evidence`
+   obligatorias.
+10. la reapertura desde `lost` devuelve `pipelineStage` a `contacted`.
+11. `lostReason` es obligatorio en `lost` y deja de aplicar al estado
    activo cuando el caso se reabre.
-11. `commercialChannel` convive con `origin` y no lo reemplaza.
-12. los cambios de `pipelineStage` se trazan en el mismo timeline append
+12. `commercialChannel` convive con `origin` y no lo reemplaza.
+13. los cambios de `pipelineStage` se trazan en el mismo timeline append
     only del caso.
-13. `/crm` sigue siendo la unica superficie del slice.
-14. el slice no abre `commercial_opportunity`, scoring, forecast ni
+14. `/crm` sigue siendo la unica superficie del slice.
+15. el slice no abre `commercial_opportunity`, scoring, forecast ni
     automatizaciones comerciales.
 
 ## Riesgos Tecnicos Y Mitigaciones
@@ -204,7 +218,11 @@ Ajustes recomendados:
   `lastPipelineActivityAt` quedan fijados como lenguaje tecnico canonico
 - `lastPipelineActivityAt` queda visible como lectura derivada y no como
   escritura libre del runtime
+- la apertura del caso conserva `new` por defecto con override manual
+  acotado a etapas activas si existe contexto comercial suficiente
 - `/crm` queda defendido como unica superficie visible del slice
 - el cierre `won` y `lost` queda ligado al mismo timeline del caso
+- `won` exige `note` y `reference` o `evidence` en la misma traza append
+  only del cambio de etapa
 - el slice deja explicito que `commercial_opportunity`, scoring y
   automatizaciones quedan fuera de este corte
