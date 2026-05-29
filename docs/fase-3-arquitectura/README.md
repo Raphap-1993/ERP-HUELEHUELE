@@ -51,6 +51,10 @@ Fijar la arquitectura brownfield de los slices homologados y sus fronteras criti
 - [03.13-pipeline-comercial-amplio.md](03.13-pipeline-comercial-amplio.md)
 - [adr/ADR-011-customers-commercial-pipeline-boundary.md](adr/ADR-011-customers-commercial-pipeline-boundary.md)
 
+## Slice 012 - Scoring Y Automatizaciones Comerciales
+- [03.14-scoring-y-automatizaciones-comerciales.md](03.14-scoring-y-automatizaciones-comerciales.md)
+- [adr/ADR-012-customers-scoring-automation-boundary.md](adr/ADR-012-customers-scoring-automation-boundary.md)
+
 ## Criterio de cierre
 - El ownership y las fronteras criticas de cada slice abierto quedan explícitos.
 - El deploy vigente y la arquitectura base del monorepo quedan conectados a la capa canónica.
