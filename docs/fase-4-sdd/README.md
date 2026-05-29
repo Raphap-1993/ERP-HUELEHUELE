@@ -180,6 +180,28 @@ Convertir los slices brownfield homologados en features ejecutables con specs fu
   [spec-tareas.md](../../specs/011-pipeline-comercial-amplio/spec-tareas.md),
   [traceability.md](../../specs/011-pipeline-comercial-amplio/traceability.md)
 
+## Slice 012 - Scoring Y Automatizaciones Comerciales
+- [../../specs/012-scoring-y-automatizaciones-comerciales/spec-funcional.md](../../specs/012-scoring-y-automatizaciones-comerciales/spec-funcional.md)
+- [../../specs/012-scoring-y-automatizaciones-comerciales/spec-tecnica.md](../../specs/012-scoring-y-automatizaciones-comerciales/spec-tecnica.md)
+- [../../specs/012-scoring-y-automatizaciones-comerciales/spec-tareas.md](../../specs/012-scoring-y-automatizaciones-comerciales/spec-tareas.md)
+- [../../specs/012-scoring-y-automatizaciones-comerciales/traceability.md](../../specs/012-scoring-y-automatizaciones-comerciales/traceability.md)
+- Requerimientos:
+  [01.11-scoring-y-automatizaciones-comerciales.md](../fase-1-analisis-requerimientos/01.11-scoring-y-automatizaciones-comerciales.md),
+  [reglas/scoring-y-automatizaciones-comerciales.md](../fase-1-analisis-requerimientos/reglas/scoring-y-automatizaciones-comerciales.md),
+  [UC-34-calculo-y-explicacion-del-score-comercial.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-34-calculo-y-explicacion-del-score-comercial.md),
+  [UC-35-ejecucion-de-reglas-y-acciones-simples.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-35-ejecucion-de-reglas-y-acciones-simples.md),
+  [UC-36-idempotencia-y-cooldown-de-automatizaciones.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-36-idempotencia-y-cooldown-de-automatizaciones.md)
+- UX/UI:
+  [02.11-scoring-y-automatizaciones-comerciales-ux-ui.md](../fase-2-ux-ui/02.11-scoring-y-automatizaciones-comerciales-ux-ui.md),
+  [product-design.md](../../specs/012-scoring-y-automatizaciones-comerciales/product-design.md),
+  [spdd-frontend.md](../../specs/012-scoring-y-automatizaciones-comerciales/spdd-frontend.md)
+- Arquitectura:
+  [03.14-scoring-y-automatizaciones-comerciales.md](../fase-3-arquitectura/03.14-scoring-y-automatizaciones-comerciales.md),
+  [ADR-012-customers-scoring-automation-boundary.md](../fase-3-arquitectura/adr/ADR-012-customers-scoring-automation-boundary.md)
+- Ejecucion y trazabilidad:
+  [spec-tareas.md](../../specs/012-scoring-y-automatizaciones-comerciales/spec-tareas.md),
+  [traceability.md](../../specs/012-scoring-y-automatizaciones-comerciales/traceability.md)
+
 ## Criterio de cierre
 - Existen features canónicas vivas en `specs/` para los slices abiertos en este corte.
 - Cada feature enlaza requerimientos, UX, arquitectura y ejecución.
