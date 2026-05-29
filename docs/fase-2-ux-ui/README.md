@@ -58,6 +58,11 @@ Formalizar la experiencia visual y los contratos UX de las superficies brownfiel
 - [../../specs/010-crm-transversal-por-cliente/product-design.md](../../specs/010-crm-transversal-por-cliente/product-design.md)
 - [../../specs/010-crm-transversal-por-cliente/spdd-frontend.md](../../specs/010-crm-transversal-por-cliente/spdd-frontend.md)
 
+## Slice 011 - Pipeline Comercial Amplio
+- [02.10-pipeline-comercial-amplio-ux-ui.md](02.10-pipeline-comercial-amplio-ux-ui.md)
+- [../../specs/011-pipeline-comercial-amplio/product-design.md](../../specs/011-pipeline-comercial-amplio/product-design.md)
+- [../../specs/011-pipeline-comercial-amplio/spdd-frontend.md](../../specs/011-pipeline-comercial-amplio/spdd-frontend.md)
+
 ## Criterio de cierre
 - Cada slice con capa UX abierta tiene narrativa y fronteras visuales canónicas.
 - La evidencia visual se ancla al runtime y al dominio homologado correspondiente.
