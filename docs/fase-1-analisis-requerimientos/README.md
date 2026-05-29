@@ -75,6 +75,13 @@ Consolidar requerimientos, actores, casos de uso y reglas de negocio trazables p
 - [casos-de-uso/UC-30-merge-cierre-y-reapertura-del-caso-transversal-del-cliente.md](casos-de-uso/UC-30-merge-cierre-y-reapertura-del-caso-transversal-del-cliente.md)
 - [reglas/crm-transversal-por-cliente.md](reglas/crm-transversal-por-cliente.md)
 
+## Slice 011 - Pipeline Comercial Amplio
+- [01.10-pipeline-comercial-amplio.md](01.10-pipeline-comercial-amplio.md)
+- [casos-de-uso/UC-31-apertura-y-etapado-del-caso-comercial.md](casos-de-uso/UC-31-apertura-y-etapado-del-caso-comercial.md)
+- [casos-de-uso/UC-32-bandeja-y-priorizacion-del-pipeline-comercial.md](casos-de-uso/UC-32-bandeja-y-priorizacion-del-pipeline-comercial.md)
+- [casos-de-uso/UC-33-cierre-comercial-won-lost-y-reapertura.md](casos-de-uso/UC-33-cierre-comercial-won-lost-y-reapertura.md)
+- [reglas/pipeline-comercial-amplio.md](reglas/pipeline-comercial-amplio.md)
+
 ## Criterio de cierre
 - Cada slice abierto en esta fase tiene RF, actores, estados y reglas canonicas.
 - Los ownerships y fronteras operativas criticas quedan explicitos por dominio.
