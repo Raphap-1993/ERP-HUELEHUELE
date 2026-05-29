@@ -224,6 +224,28 @@ Convertir los slices brownfield homologados en features ejecutables con specs fu
   [spec-tareas.md](../../specs/013-commercial-opportunities/spec-tareas.md),
   [traceability.md](../../specs/013-commercial-opportunities/traceability.md)
 
+## Slice 014 - Automatizacion Comercial Amplia
+- [../../specs/014-automatizacion-comercial-amplia/spec-funcional.md](../../specs/014-automatizacion-comercial-amplia/spec-funcional.md)
+- [../../specs/014-automatizacion-comercial-amplia/spec-tecnica.md](../../specs/014-automatizacion-comercial-amplia/spec-tecnica.md)
+- [../../specs/014-automatizacion-comercial-amplia/spec-tareas.md](../../specs/014-automatizacion-comercial-amplia/spec-tareas.md)
+- [../../specs/014-automatizacion-comercial-amplia/traceability.md](../../specs/014-automatizacion-comercial-amplia/traceability.md)
+- Requerimientos:
+  [01.13-automatizacion-comercial-amplia.md](../fase-1-analisis-requerimientos/01.13-automatizacion-comercial-amplia.md),
+  [reglas/automatizacion-comercial-amplia.md](../fase-1-analisis-requerimientos/reglas/automatizacion-comercial-amplia.md),
+  [UC-40-instanciacion-y-ejecucion-del-journey-comercial.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-40-instanciacion-y-ejecucion-del-journey-comercial.md),
+  [UC-41-pasos-manuales-esperas-y-reanudacion-del-journey.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-41-pasos-manuales-esperas-y-reanudacion-del-journey.md),
+  [UC-42-reentrada-cancelacion-y-trazabilidad-del-journey.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-42-reentrada-cancelacion-y-trazabilidad-del-journey.md)
+- UX/UI:
+  [02.13-automatizacion-comercial-amplia-ux-ui.md](../fase-2-ux-ui/02.13-automatizacion-comercial-amplia-ux-ui.md),
+  [product-design.md](../../specs/014-automatizacion-comercial-amplia/product-design.md),
+  [spdd-frontend.md](../../specs/014-automatizacion-comercial-amplia/spdd-frontend.md)
+- Arquitectura:
+  [03.16-automatizacion-comercial-amplia.md](../fase-3-arquitectura/03.16-automatizacion-comercial-amplia.md),
+  [ADR-014-customers-commercial-journey-boundary.md](../fase-3-arquitectura/adr/ADR-014-customers-commercial-journey-boundary.md)
+- Ejecucion y trazabilidad:
+  [spec-tareas.md](../../specs/014-automatizacion-comercial-amplia/spec-tareas.md),
+  [traceability.md](../../specs/014-automatizacion-comercial-amplia/traceability.md)
+
 ## Criterio de cierre
 - Existen features canónicas vivas en `specs/` para los slices abiertos en este corte.
 - Cada feature enlaza requerimientos, UX, arquitectura y ejecución.
