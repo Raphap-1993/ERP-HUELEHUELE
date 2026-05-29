@@ -136,6 +136,28 @@ Convertir los slices brownfield homologados en features ejecutables con specs fu
   [spec-tareas.md](../../specs/009-crm-manual-ampliado/spec-tareas.md),
   [traceability.md](../../specs/009-crm-manual-ampliado/traceability.md)
 
+## Slice 010 - CRM Transversal Por Cliente
+- [../../specs/010-crm-transversal-por-cliente/spec-funcional.md](../../specs/010-crm-transversal-por-cliente/spec-funcional.md)
+- [../../specs/010-crm-transversal-por-cliente/spec-tecnica.md](../../specs/010-crm-transversal-por-cliente/spec-tecnica.md)
+- [../../specs/010-crm-transversal-por-cliente/spec-tareas.md](../../specs/010-crm-transversal-por-cliente/spec-tareas.md)
+- [../../specs/010-crm-transversal-por-cliente/traceability.md](../../specs/010-crm-transversal-por-cliente/traceability.md)
+- Requerimientos:
+  [01.09-crm-transversal-por-cliente.md](../fase-1-analisis-requerimientos/01.09-crm-transversal-por-cliente.md),
+  [reglas/crm-transversal-por-cliente.md](../fase-1-analisis-requerimientos/reglas/crm-transversal-por-cliente.md),
+  [UC-28-apertura-y-clasificacion-del-caso-transversal-del-cliente.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-28-apertura-y-clasificacion-del-caso-transversal-del-cliente.md),
+  [UC-29-timeline-y-workbench-transversal-del-cliente.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-29-timeline-y-workbench-transversal-del-cliente.md),
+  [UC-30-merge-cierre-y-reapertura-del-caso-transversal-del-cliente.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-30-merge-cierre-y-reapertura-del-caso-transversal-del-cliente.md)
+- UX/UI:
+  [02.09-crm-transversal-por-cliente-ux-ui.md](../fase-2-ux-ui/02.09-crm-transversal-por-cliente-ux-ui.md),
+  [product-design.md](../../specs/010-crm-transversal-por-cliente/product-design.md),
+  [spdd-frontend.md](../../specs/010-crm-transversal-por-cliente/spdd-frontend.md)
+- Arquitectura:
+  [03.12-crm-transversal-por-cliente.md](../fase-3-arquitectura/03.12-crm-transversal-por-cliente.md),
+  [ADR-010-customers-crm-transversal-boundary.md](../fase-3-arquitectura/adr/ADR-010-customers-crm-transversal-boundary.md)
+- Ejecucion y trazabilidad:
+  [spec-tareas.md](../../specs/010-crm-transversal-por-cliente/spec-tareas.md),
+  [traceability.md](../../specs/010-crm-transversal-por-cliente/traceability.md)
+
 ## Criterio de cierre
 - Existen features canónicas vivas en `specs/` para los slices abiertos en este corte.
 - Cada feature enlaza requerimientos, UX, arquitectura y ejecución.
