@@ -21,9 +21,15 @@ transversal del cliente.
 1. El operador decide cerrar el pipeline como `won` o `lost`.
 2. Si marca `lost`, registra `lostReason`.
 3. Si marca `won`, registra nota de cierre y evidencia o referencia.
-4. El timeline guarda el cambio de etapa comercial.
-5. Si el caso estaba `lost`, puede reabrirse comercialmente con
-   trazabilidad.
+4. Tras `won`, el sistema sugiere `resolved` si ya no queda trabajo activo
+   en el caso.
+5. Tras `lost`, el sistema sugiere `dormant` si aun podria existir
+   reactivacion futura, o `resolved` si la relacion comercial queda cerrada.
+6. El timeline guarda el cambio de etapa comercial.
+7. Si el caso estaba `lost`, la reapertura devuelve `pipelineStage` a
+   `contacted`, limpia el `lostReason` vigente del estado actual y exige
+   revalidar `commercialOwner`, `assignee`, `nextStep`, `followUpAt` y
+   `priority` para volver a operar el caso.
 
 ## Reglas canonicas
 
@@ -31,7 +37,11 @@ transversal del cliente.
 - `won` exige nota de cierre y evidencia o referencia
 - todo cierre comercial deja trazabilidad en el timeline
 - `won` y `lost` son cierres comerciales, no cierres tecnicos del caso
-- un caso perdido puede reabrirse sin crear otro `customer_relationship_case`
+- un caso perdido puede reabrirse sin crear otro
+  `customer_relationship_case`
+- la reapertura desde `lost` devuelve `pipelineStage` a `contacted`
+- la reapertura limpia el `lostReason` vigente y conserva la razon previa en
+  la traza historica
 
 ## Resultado esperado
 

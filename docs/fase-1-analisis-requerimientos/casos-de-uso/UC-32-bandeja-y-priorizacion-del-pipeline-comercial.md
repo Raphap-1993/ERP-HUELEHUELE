@@ -23,14 +23,19 @@ cola del pipeline amplio sin convertirla en kanban ni en modulo separado.
    `commercialChannel` y `status`.
 3. Revisa las vistas de pendientes de hoy y vencidos usando `followUpAt`.
 4. Usa `lastPipelineActivityAt` para priorizar sin abrir todo el timeline.
-5. Decide el siguiente movimiento comercial del caso.
+5. La cola evita presentar como operables combinaciones invalidadas por los
+   guardrails suaves entre `status` y `pipelineStage`.
+6. Decide el siguiente movimiento comercial del caso.
 
 ## Reglas canonicas
 
 - la bandeja comercial sigue dentro de `/crm`
-- la cola se filtra por owner, assignee, etapa, prioridad, canal y status
+- la cola se filtra por `commercialOwner`, `assignee`, etapa, prioridad,
+  canal y status
 - pendientes de hoy y vencidos se leen desde `followUpAt`
 - `lastPipelineActivityAt` resume la ultima actividad comercial relevante
+- `lastPipelineActivityAt` se actualiza con cambios de etapa, actividad
+  manual relevante, cierres y reaperturas
 - el slice no vende kanban complejo ni app separada
 
 ## Resultado esperado
