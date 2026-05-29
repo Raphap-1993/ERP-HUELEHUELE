@@ -43,6 +43,10 @@ Fijar la arquitectura brownfield de los slices homologados y sus fronteras criti
 - [03.11-crm-manual-ampliado.md](03.11-crm-manual-ampliado.md)
 - [adr/ADR-009-orders-manual-follow-up-boundary.md](adr/ADR-009-orders-manual-follow-up-boundary.md)
 
+## Slice 010 - CRM Transversal Por Cliente
+- [03.12-crm-transversal-por-cliente.md](03.12-crm-transversal-por-cliente.md)
+- [adr/ADR-010-customers-crm-transversal-boundary.md](adr/ADR-010-customers-crm-transversal-boundary.md)
+
 ## Criterio de cierre
 - El ownership y las fronteras criticas de cada slice abierto quedan explícitos.
 - El deploy vigente y la arquitectura base del monorepo quedan conectados a la capa canónica.
