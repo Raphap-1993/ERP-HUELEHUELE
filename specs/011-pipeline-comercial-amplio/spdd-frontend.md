@@ -38,6 +38,10 @@ Fecha: 2026-05-29.
   defecto y no puede quedar nulo al abrir el caso
 - la reapertura comercial desde `lost` devuelve `pipelineStage` a
   `contacted`
+- la reapertura comercial desde `lost` revalida `commercialOwner`,
+  `assignee`, `nextStep`, `followUpAt` y `priority`
+- al reabrirse el caso, `lostReason` deja de aplicar al estado activo y
+  queda solo en la traza historica del cierre anterior
 - `commercialOwner`, `assignee`, `origin`, `nextStep` y `followUpAt` se
   preservan del detalle heredado de `010` y siguen visibles en la operacion
   del caso
@@ -63,6 +67,8 @@ Fecha: 2026-05-29.
 - pendientes de hoy y vencidos son lecturas derivadas desde `followUpAt`
 - sugerencias de `status` despues de `won` o `lost` son comportamiento
   secundario y no cambian el contrato minimo del corte
+- la reapertura desde `lost` conserva traza historica y no abre una entidad
+  comercial nueva
 - agregados visuales por etapa, prioridad o canal son capa operativa
   secundaria y no requisito para que `011` sea una ampliacion seria de `010`
 
@@ -74,7 +80,8 @@ Fecha: 2026-05-29.
 ## Dependencias de Fase 3
 
 - la ampliacion de `customer_relationship_case` con `pipelineStage`,
-  `priority`, `commercialChannel` y `lastPipelineActivityAt`
+  `priority`, `commercialChannel`, `lostReason` y
+  `lastPipelineActivityAt`
 - la ADR que mantiene el pipeline amplio sobre el mismo caso transversal
 - la trazabilidad obligatoria de cambios de etapa y de cierres `won` y
   `lost`

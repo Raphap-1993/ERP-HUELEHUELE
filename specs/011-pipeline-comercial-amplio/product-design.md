@@ -56,6 +56,10 @@ app comercial nueva.
 - al abrir el caso, `pipelineStage` nace en `new` por defecto y no puede
   quedar nulo
 - si el caso se reabre desde `lost`, vuelve a `contacted`
+- la reapertura desde `lost` revalida `commercialOwner`, `assignee`,
+  `nextStep`, `followUpAt` y `priority`
+- al reabrirse, `lostReason` deja de aplicar al estado activo y permanece
+  solo en la traza historica del cierre anterior
 - `priority` usa `low`, `medium` y `high`
 - `commercialChannel` usa `storefront`, `vendor`, `wholesale`,
   `manual_outreach`, `reactivation` y `referral`
@@ -71,6 +75,8 @@ app comercial nueva.
 - pendientes de hoy y vencidos son una lectura derivada desde `followUpAt`
 - sugerencias de pasar `status` a `resolved` o `dormant` tras `won` o
   `lost` son comportamiento secundario, no contrato minimo
+- la reapertura desde `lost` usa la misma traza historica del caso y no
+  crea una entidad comercial nueva
 - metricas agregadas por etapa, prioridad o canal son capa operativa
   secundaria y no requisito para redefinir el workbench base de `010`
 
