@@ -17,6 +17,7 @@ app comercial nueva.
 - bandeja comercial filtrable tipo tabla o lista dentro del mismo modulo
 - `commercialOwner`
 - `assignee`
+- `nextStep`
 - `pipelineStage`
 - `priority`
 - `commercialChannel`
@@ -33,8 +34,8 @@ app comercial nueva.
   reescribe el runtime actual ni crea un pipeline paralelo
 - la cola comercial vive dentro de `/crm` y se opera como tabla o lista
   filtrable alineada al patron de `AdminDataTable`
-- `commercialOwner` y `assignee` siguen anclando ownership estable y
-  movimiento operativo del caso
+- `commercialOwner`, `assignee` y `nextStep` siguen anclando ownership
+  estable y movimiento operativo heredado del caso
 - `status` y `pipelineStage` coexisten como ejes distintos del mismo caso
 - `commercialChannel` expresa el canal principal de la relacion y no
   reemplaza el historial completo del timeline
@@ -55,5 +56,6 @@ ni un CRM enterprise separado.
 
 El slice puede pasar a arquitectura y SDD con una lectura comun entre caso
 transversal, cola comercial amplia, filtros por ownership y etapa,
-ordenamiento por `followUpAt` y `lastPipelineActivityAt`, y cierres
-manuales `won` y `lost` sobre el mismo cliente canonico.
+ordenamiento por `followUpAt` y `lastPipelineActivityAt`, continuidad de
+`nextStep`, y cierres manuales `won` y `lost` sobre el mismo cliente
+canonico.

@@ -14,6 +14,7 @@ Fecha: 2026-05-29.
 - un `customer_relationship_case` por cliente canonico como base del slice
 - `commercialOwner`
 - `assignee`
+- `nextStep`
 - `pipelineStage`
 - `priority`
 - `commercialChannel`
@@ -30,8 +31,10 @@ Fecha: 2026-05-29.
   nueva
 - la bandeja comercial usa patron de busqueda, filtros y tabla o lista; no
   se presenta como kanban en este corte
+- la bandeja comercial no usa drag and drop
 - `pipelineStage` es manual y convive separado de `status`
-- `commercialOwner` y `assignee` se ven tanto en bandeja como en detalle
+- `commercialOwner`, `assignee` y `nextStep` se preservan del detalle
+  heredado de `010` y se ven en la operacion del caso
 - `priority` y `commercialChannel` son facetas manuales para triage y no
   scoring encubierto
 - `followUpAt` sigue siendo la unica fecha objetivo operativa del caso
