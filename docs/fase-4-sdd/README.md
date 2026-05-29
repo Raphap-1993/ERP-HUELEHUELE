@@ -158,6 +158,28 @@ Convertir los slices brownfield homologados en features ejecutables con specs fu
   [spec-tareas.md](../../specs/010-crm-transversal-por-cliente/spec-tareas.md),
   [traceability.md](../../specs/010-crm-transversal-por-cliente/traceability.md)
 
+## Slice 011 - Pipeline Comercial Amplio
+- [../../specs/011-pipeline-comercial-amplio/spec-funcional.md](../../specs/011-pipeline-comercial-amplio/spec-funcional.md)
+- [../../specs/011-pipeline-comercial-amplio/spec-tecnica.md](../../specs/011-pipeline-comercial-amplio/spec-tecnica.md)
+- [../../specs/011-pipeline-comercial-amplio/spec-tareas.md](../../specs/011-pipeline-comercial-amplio/spec-tareas.md)
+- [../../specs/011-pipeline-comercial-amplio/traceability.md](../../specs/011-pipeline-comercial-amplio/traceability.md)
+- Requerimientos:
+  [01.10-pipeline-comercial-amplio.md](../fase-1-analisis-requerimientos/01.10-pipeline-comercial-amplio.md),
+  [reglas/pipeline-comercial-amplio.md](../fase-1-analisis-requerimientos/reglas/pipeline-comercial-amplio.md),
+  [UC-31-apertura-y-etapado-del-caso-comercial.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-31-apertura-y-etapado-del-caso-comercial.md),
+  [UC-32-bandeja-y-priorizacion-del-pipeline-comercial.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-32-bandeja-y-priorizacion-del-pipeline-comercial.md),
+  [UC-33-cierre-comercial-won-lost-y-reapertura.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-33-cierre-comercial-won-lost-y-reapertura.md)
+- UX/UI:
+  [02.10-pipeline-comercial-amplio-ux-ui.md](../fase-2-ux-ui/02.10-pipeline-comercial-amplio-ux-ui.md),
+  [product-design.md](../../specs/011-pipeline-comercial-amplio/product-design.md),
+  [spdd-frontend.md](../../specs/011-pipeline-comercial-amplio/spdd-frontend.md)
+- Arquitectura:
+  [03.13-pipeline-comercial-amplio.md](../fase-3-arquitectura/03.13-pipeline-comercial-amplio.md),
+  [ADR-011-customers-commercial-pipeline-boundary.md](../fase-3-arquitectura/adr/ADR-011-customers-commercial-pipeline-boundary.md)
+- Ejecucion y trazabilidad:
+  [spec-tareas.md](../../specs/011-pipeline-comercial-amplio/spec-tareas.md),
+  [traceability.md](../../specs/011-pipeline-comercial-amplio/traceability.md)
+
 ## Criterio de cierre
 - Existen features canónicas vivas en `specs/` para los slices abiertos en este corte.
 - Cada feature enlaza requerimientos, UX, arquitectura y ejecución.
