@@ -63,6 +63,11 @@ Formalizar la experiencia visual y los contratos UX de las superficies brownfiel
 - [../../specs/011-pipeline-comercial-amplio/product-design.md](../../specs/011-pipeline-comercial-amplio/product-design.md)
 - [../../specs/011-pipeline-comercial-amplio/spdd-frontend.md](../../specs/011-pipeline-comercial-amplio/spdd-frontend.md)
 
+## Slice 012 - Scoring Y Automatizaciones Comerciales
+- [02.11-scoring-y-automatizaciones-comerciales-ux-ui.md](02.11-scoring-y-automatizaciones-comerciales-ux-ui.md)
+- [../../specs/012-scoring-y-automatizaciones-comerciales/product-design.md](../../specs/012-scoring-y-automatizaciones-comerciales/product-design.md)
+- [../../specs/012-scoring-y-automatizaciones-comerciales/spdd-frontend.md](../../specs/012-scoring-y-automatizaciones-comerciales/spdd-frontend.md)
+
 ## Criterio de cierre
 - Cada slice con capa UX abierta tiene narrativa y fronteras visuales canónicas.
 - La evidencia visual se ancla al runtime y al dominio homologado correspondiente.
