@@ -109,7 +109,11 @@ No incluye:
 - el pipeline usa `nurturing`
 - el pipeline usa `won`
 - el pipeline usa `lost`
-- se permiten saltos manuales entre etapas
+- se permiten saltos manuales entre etapas activas
+- `lost` no reabre hacia cualquier etapa: toda reapertura vuelve a
+  `contacted` bajo `RF-11`
+- `won` es cierre comercial estable y no se revierte por la regla general
+  de saltos manuales
 - todo cambio de `pipelineStage` deja traza obligatoria en el timeline del
   mismo caso
 
@@ -176,7 +180,8 @@ No incluye:
 - `won` representa cierre comercial manual por `ventas`
 - pasar a `won` exige nota de cierre
 - pasar a `won` exige evidencia o referencia
-- `won` cierra un ciclo comercial del mismo caso
+- `won` cierra de forma estable un ciclo comercial del mismo caso
+- `won` no se revierte normalmente dentro del flujo manual general
 - `won` no se deriva automaticamente por un evento tecnico
 
 ### RF-11. Reapertura controlada desde `lost`

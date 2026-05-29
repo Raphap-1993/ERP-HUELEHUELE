@@ -135,7 +135,10 @@ Ajustes recomendados:
 
 - formalizar la extension del mismo `customer_relationship_case`
 - exponer lectura y escritura de `pipelineStage`, `priority`,
-  `commercialChannel`, `lostReason` y `lastPipelineActivityAt`
+  `commercialChannel` y `lostReason`
+- exponer `lastPipelineActivityAt` como lectura visible derivada
+- derivar la actualizacion de `lastPipelineActivityAt` por cambios de
+  `pipelineStage` y actividad manual relevante
 - validar cierres `won` y `lost` sobre el mismo caso
 - sostener la reapertura desde `lost` hacia `contacted`
 - mantener trazabilidad obligatoria sobre el mismo timeline
@@ -167,15 +170,17 @@ Ajustes recomendados:
    caso.
 5. `followUpAt` sigue siendo la unica fecha objetivo operativa.
 6. `lastPipelineActivityAt` solo resume actividad comercial reciente.
-7. `pipelineStage` es manual, no nulo y separado de `status`.
-8. la reapertura desde `lost` devuelve `pipelineStage` a `contacted`.
-9. `lostReason` es obligatorio en `lost` y deja de aplicar al estado
+7. `lastPipelineActivityAt` no se expone como escritura libre y se deriva
+   por cambios de `pipelineStage` y actividad manual relevante.
+8. `pipelineStage` es manual, no nulo y separado de `status`.
+9. la reapertura desde `lost` devuelve `pipelineStage` a `contacted`.
+10. `lostReason` es obligatorio en `lost` y deja de aplicar al estado
    activo cuando el caso se reabre.
-10. `commercialChannel` convive con `origin` y no lo reemplaza.
-11. los cambios de `pipelineStage` se trazan en el mismo timeline append
+11. `commercialChannel` convive con `origin` y no lo reemplaza.
+12. los cambios de `pipelineStage` se trazan en el mismo timeline append
     only del caso.
-12. `/crm` sigue siendo la unica superficie del slice.
-13. el slice no abre `commercial_opportunity`, scoring, forecast ni
+13. `/crm` sigue siendo la unica superficie del slice.
+14. el slice no abre `commercial_opportunity`, scoring, forecast ni
     automatizaciones comerciales.
 
 ## Riesgos Tecnicos Y Mitigaciones
@@ -197,6 +202,8 @@ Ajustes recomendados:
   pipeline amplio
 - `pipelineStage`, `priority`, `commercialChannel`, `lostReason` y
   `lastPipelineActivityAt` quedan fijados como lenguaje tecnico canonico
+- `lastPipelineActivityAt` queda visible como lectura derivada y no como
+  escritura libre del runtime
 - `/crm` queda defendido como unica superficie visible del slice
 - el cierre `won` y `lost` queda ligado al mismo timeline del caso
 - el slice deja explicito que `commercial_opportunity`, scoring y

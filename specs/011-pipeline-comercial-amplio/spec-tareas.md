@@ -76,7 +76,10 @@ La API expresa el pipeline amplio como parte del mismo
 
 - [ ] exponer lectura del pipeline amplio dentro del mismo caso
 - [ ] exponer escritura de `pipelineStage`, `priority`,
-  `commercialChannel`, `lostReason` y `lastPipelineActivityAt`
+  `commercialChannel` y `lostReason`
+- [ ] exponer `lastPipelineActivityAt` como lectura visible derivada
+- [ ] derivar `lastPipelineActivityAt` por cambios de `pipelineStage` y
+  actividad manual relevante
 - [ ] mantener un solo `customer_relationship_case` por cliente canonico
 - [ ] preservar `commercialOwner`, `assignee`, `nextStep` y `followUpAt`
 - [ ] no mover ownership a `orders` ni a otro modulo
@@ -98,7 +101,12 @@ reciente quedan modelados sobre el mismo timeline del caso.
 - [ ] sostener `pipelineStage = new` por defecto al abrir el caso
 - [ ] sostener cierre `lost` con `lostReason` obligatorio
 - [ ] sostener cierre `won` con nota y evidencia o referencia
-- [ ] sostener reapertura desde `lost` hacia `contacted`
+- [ ] sostener `won` como cierre comercial estable sin reversion manual por
+  omision
+- [ ] sostener reapertura desde `lost` hacia `contacted` como unico camino
+  canonico de reapertura
+- [ ] revalidar `commercialOwner`, `assignee`, `nextStep`, `followUpAt` y
+  `priority` al reabrir desde `lost`
 - [ ] limpiar `lostReason` del estado activo al reabrir y conservar su
   traza historica
 - [ ] actualizar `lastPipelineActivityAt` con cambios de etapa y actividad
@@ -171,7 +179,12 @@ protejan la extension controlada de `010`.
 - [ ] probar que `pipelineStage` es manual y no nulo en casos activos
 - [ ] probar cierre `lost` con `lostReason` obligatorio
 - [ ] probar cierre `won` con nota y evidencia o referencia
-- [ ] probar reapertura desde `lost` hacia `contacted`
+- [ ] probar que `won` queda como cierre comercial estable sin reversion
+  manual por omision
+- [ ] probar reapertura desde `lost` hacia `contacted` como unico camino
+  canonico
+- [ ] probar revalidacion de `commercialOwner`, `assignee`, `nextStep`,
+  `followUpAt` y `priority` al reabrir desde `lost`
 - [ ] probar actualizacion de `lastPipelineActivityAt`
 - [ ] probar filtros y vistas dentro de `/crm`
 - [ ] probar ausencia de `commercial_opportunity`, scoring y ruta nueva
