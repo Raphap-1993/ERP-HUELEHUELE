@@ -17,7 +17,7 @@ canoniza un pipeline comercial amplio sobre ese mismo caso.
 El problema de este corte no es abrir oportunidades complejas, forecast,
 scoring ni automatizaciones, sino fijar la frontera que permita ordenar la
 operacion comercial del cliente con etapa, prioridad, canal principal y
-criterios de cierre sin romper la base ya aprobada en `010`.
+criterios de cierre de ciclo sin romper la base ya aprobada en `010`.
 
 Ademas, el repo ya deja visibles varias fronteras que deben conservarse:
 
@@ -46,17 +46,31 @@ La decision incluye estas reglas:
 5. `commercialOwner` sigue siendo el owner estable heredado de `010`.
 6. `assignee` sigue siendo el responsable operativo del siguiente
    movimiento.
-7. `commercialChannel` agrega el canal principal del caso y no reemplaza
-   `origin`.
-8. `followUpAt` sigue siendo la unica fecha objetivo operativa del caso.
-9. `won` y `lost` son cierres manuales del pipeline sobre el mismo caso.
-10. pasar a `lost` exige `lostReason`.
-11. pasar a `won` exige nota de cierre y evidencia o referencia.
-12. todo cambio de `pipelineStage` deja trazabilidad obligatoria en el
+7. `origin` sigue heredado de `010` como motivo de apertura del caso y debe
+   permanecer estable salvo correccion excepcional del dato inicial.
+8. `commercialChannel` agrega el canal principal del ciclo comercial activo,
+   no reemplaza `origin` y solo se corrige por decision operativa
+   explicita.
+9. `followUpAt` sigue siendo la unica fecha objetivo operativa del caso.
+10. `won` y `lost` son cierres manuales de un ciclo comercial dentro del
+    mismo caso; no cierran por si solos la relacion completa del cliente ni
+    equivalen a `commercial_opportunity`.
+11. si el caso sigue en `open` o `waiting_customer` despues de `won` o
+    `lost`, `nextStep` y `followUpAt` siguen siendo obligatorios.
+12. tras `won`, el caso puede seguir activo solo si queda trabajo operativo
+    inmediato sobre el mismo `customer_relationship_case`; si no queda
+    trabajo, se sugiere `resolved`.
+13. tras `lost`, el caso puede seguir activo solo si existe un movimiento
+    inmediato de reactivacion o cierre operativo; si el ciclo termino pero
+    podria reabrirse luego, se sugiere `dormant`; si no queda trabajo ni
+    expectativa concreta, se sugiere `resolved`.
+14. pasar a `lost` exige `lostReason`.
+15. pasar a `won` exige nota de cierre y evidencia o referencia.
+16. todo cambio de `pipelineStage` deja trazabilidad obligatoria en el
     timeline del caso.
-13. la superficie del slice sigue siendo detalle y bandeja filtrable dentro
+17. la superficie del slice sigue siendo detalle y bandeja filtrable dentro
     de `/crm`.
-14. este corte no abre `commercial_opportunity`, forecast, probabilidad,
+18. este corte no abre `commercial_opportunity`, forecast, probabilidad,
     scoring, automatizaciones ni kanban complejo.
 
 ## Guardrails Derivados
@@ -67,10 +81,15 @@ La decision incluye estas reglas:
 2. `011` solo agrega la capa de pipeline amplio sobre el mismo
    `customer_relationship_case`.
 3. `status` y `pipelineStage` no deben fusionarse en un solo campo.
-4. `lastPipelineActivityAt` no debe competir con `followUpAt`.
-5. `commercialChannel` no debe convertirse en subpipeline separado por
+4. `won` y `lost` no deben interpretarse como cierre definitivo de la
+   relacion completa del cliente.
+5. `lastPipelineActivityAt` no debe competir con `followUpAt`.
+6. `commercialChannel` no debe convertirse en subpipeline separado por
    canal.
-6. cualquier apertura futura de `commercial_opportunity`, scoring o
+7. mover el caso a `dormant` o `resolved` corta la obligacion activa de
+   `nextStep` y `followUpAt`; mantenerlo en `open` o `waiting_customer`
+   la conserva.
+8. cualquier apertura futura de `commercial_opportunity`, scoring o
    automatizaciones requiere ADR y slice propios.
 
 ## Alternativas Rechazadas
@@ -83,7 +102,9 @@ Rechazada porque:
 - introduce multi-entidad comercial antes de estabilizar el caso
   transversal;
 - mezcla pipeline amplio con forecast, monto o probabilidad demasiado
-  pronto.
+  pronto;
+- borra que `won` y `lost` hoy solo cierran ciclos manuales dentro del
+  mismo caso.
 
 ### 2. Colapsar `status` y `pipelineStage` en un solo eje
 
@@ -115,6 +136,8 @@ Rechazada porque:
 
 - consolida el pipeline amplio sobre el mismo `customer_relationship_case`;
 - deja explicita la separacion entre `status` y `pipelineStage`;
+- fija que `won` y `lost` cierran ciclos comerciales, no la relacion
+  completa del cliente;
 - habilita cola comercial seria dentro de `/crm` sin crear otra entidad;
 - deja una base estable para futuros slices de oportunidades, scoring o
   automatizaciones.
