@@ -202,6 +202,28 @@ Convertir los slices brownfield homologados en features ejecutables con specs fu
   [spec-tareas.md](../../specs/012-scoring-y-automatizaciones-comerciales/spec-tareas.md),
   [traceability.md](../../specs/012-scoring-y-automatizaciones-comerciales/traceability.md)
 
+## Slice 013 - Commercial Opportunities
+- [../../specs/013-commercial-opportunities/spec-funcional.md](../../specs/013-commercial-opportunities/spec-funcional.md)
+- [../../specs/013-commercial-opportunities/spec-tecnica.md](../../specs/013-commercial-opportunities/spec-tecnica.md)
+- [../../specs/013-commercial-opportunities/spec-tareas.md](../../specs/013-commercial-opportunities/spec-tareas.md)
+- [../../specs/013-commercial-opportunities/traceability.md](../../specs/013-commercial-opportunities/traceability.md)
+- Requerimientos:
+  [01.12-commercial-opportunities.md](../fase-1-analisis-requerimientos/01.12-commercial-opportunities.md),
+  [reglas/commercial-opportunities.md](../fase-1-analisis-requerimientos/reglas/commercial-opportunities.md),
+  [UC-37-apertura-y-conversion-de-la-oportunidad-comercial.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-37-apertura-y-conversion-de-la-oportunidad-comercial.md),
+  [UC-38-negociacion-y-cierre-de-la-oportunidad-comercial.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-38-negociacion-y-cierre-de-la-oportunidad-comercial.md),
+  [UC-39-reapertura-e-historico-de-oportunidades-comerciales.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-39-reapertura-e-historico-de-oportunidades-comerciales.md)
+- UX/UI:
+  [02.12-commercial-opportunities-ux-ui.md](../fase-2-ux-ui/02.12-commercial-opportunities-ux-ui.md),
+  [product-design.md](../../specs/013-commercial-opportunities/product-design.md),
+  [spdd-frontend.md](../../specs/013-commercial-opportunities/spdd-frontend.md)
+- Arquitectura:
+  [03.15-commercial-opportunities.md](../fase-3-arquitectura/03.15-commercial-opportunities.md),
+  [ADR-013-customers-commercial-opportunity-boundary.md](../fase-3-arquitectura/adr/ADR-013-customers-commercial-opportunity-boundary.md)
+- Ejecucion y trazabilidad:
+  [spec-tareas.md](../../specs/013-commercial-opportunities/spec-tareas.md),
+  [traceability.md](../../specs/013-commercial-opportunities/traceability.md)
+
 ## Criterio de cierre
 - Existen features canónicas vivas en `specs/` para los slices abiertos en este corte.
 - Cada feature enlaza requerimientos, UX, arquitectura y ejecución.
