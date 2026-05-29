@@ -96,6 +96,13 @@ Consolidar requerimientos, actores, casos de uso y reglas de negocio trazables p
 - [casos-de-uso/UC-39-reapertura-e-historico-de-oportunidades-comerciales.md](casos-de-uso/UC-39-reapertura-e-historico-de-oportunidades-comerciales.md)
 - [reglas/commercial-opportunities.md](reglas/commercial-opportunities.md)
 
+## Slice 014 - Automatizacion Comercial Amplia
+- [01.13-automatizacion-comercial-amplia.md](01.13-automatizacion-comercial-amplia.md)
+- [casos-de-uso/UC-40-instanciacion-y-ejecucion-del-journey-comercial.md](casos-de-uso/UC-40-instanciacion-y-ejecucion-del-journey-comercial.md)
+- [casos-de-uso/UC-41-pasos-manuales-esperas-y-reanudacion-del-journey.md](casos-de-uso/UC-41-pasos-manuales-esperas-y-reanudacion-del-journey.md)
+- [casos-de-uso/UC-42-reentrada-cancelacion-y-trazabilidad-del-journey.md](casos-de-uso/UC-42-reentrada-cancelacion-y-trazabilidad-del-journey.md)
+- [reglas/automatizacion-comercial-amplia.md](reglas/automatizacion-comercial-amplia.md)
+
 ## Criterio de cierre
 - Cada slice abierto en esta fase tiene RF, actores, estados y reglas canonicas.
 - Los ownerships y fronteras operativas criticas quedan explicitos por dominio.
