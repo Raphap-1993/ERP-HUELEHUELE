@@ -7,7 +7,7 @@ Fecha: 2026-05-29.
 Definir el slice brownfield `015-notifications-outbox-y-expansion-de-canales`
 como el outbox canonico unificado para todo mensaje saliente del producto,
 formalizando `notifications`, `worker`, adapters por canal, trazabilidad
-append-only e idempotencia por mensaje sin abrir inbox bidireccional,
+append-only y guardrails de unicidad del mensaje sin abrir inbox bidireccional,
 conversaciones por cliente, inbound tecnico ni una consola manual de
 remediacion.
 
@@ -42,8 +42,9 @@ El slice `015` cubre:
 - canales `email`, `sms`, `whatsapp` e `internal`
 - lifecycle unificado `pending`, `sent`, `delivered`, `failed`
 - `NotificationLog` como timeline tecnico append-only
-- idempotencia por origen de negocio + destinatario + canal
-- trazabilidad fuerte de origen con `source`, `relatedType`, `relatedId`
+- guardrails de idempotencia por origen de negocio + destinatario + canal
+- trazabilidad fuerte de origen con `source` y, cuando el flujo ya los
+  resuelve, `relatedType` y `relatedId`
 - frontera tecnica `notifications` + `worker` + adapters/provider por canal
 - retry y backoff por canal con capacidad graduada
 - workbench principal en `/notificaciones`
@@ -99,6 +100,8 @@ Reglas:
 - el contenido no se renderiza en vivo al momento del dispatch
 - editar una plantilla, campaña o journey aguas arriba no reescribe una
   `Notification` ya creada
+- `audience` representa el snapshot textual del destino ya resuelto por canal:
+  email, telefono/contacto o etiqueta interna segun corresponda
 - el destinatario se trata como snapshot materializado, no como identidad viva
   que se resuelve tarde desde `customers` o `vendors`
 
@@ -209,8 +212,10 @@ El outbox fija una traza fuerte de procedencia.
 Reglas:
 
 - `source` es obligatorio
-- `relatedType` y `relatedId` son obligatorios cuando el mensaje nace de un
-  flujo de negocio real
+- cuando el flujo de negocio ya resuelve `relatedType` y `relatedId`, la
+  expectativa canonica es conservarlos en la `Notification`
+- el runtime visible no endurece hoy esa traza como hard gate universal del
+  modulo o de la UI manual
 - solo lo puramente manual o interno puede quedar sin relacion fuerte
 
 Lecturas tipicas:
@@ -249,9 +254,9 @@ El agregado `Notification` conserva solo:
 - estado funcional
 - timestamps principales
 
-## Idempotencia
+## Guardrails De Idempotencia
 
-El outbox canoniza idempotencia por:
+El outbox fija guardrails de idempotencia por:
 
 - origen de negocio
 - destinatario
@@ -259,11 +264,14 @@ El outbox canoniza idempotencia por:
 
 Reglas:
 
-- el mismo evento de negocio no debe materializar otra `Notification`
-  equivalente para el mismo destinatario y canal sin intencion explicita
+- la direccion canonica del dominio es evitar que el mismo evento de negocio
+  materialice otra `Notification` equivalente para el mismo destinatario y
+  canal sin intencion explicita
+- el runtime visible de `createNotification` no endurece hoy ese control como
+  hard gate universal del modulo
 - los reintentos tecnicos viven dentro de la misma `Notification`
-- la idempotencia protege especialmente flujos transaccionales, campaigns y
-  journeys cuando hay reintentos aguas arriba
+- la deduplicacion fuerte sigue siendo un frente de hardening posterior si el
+  brownfield decide cerrarlo de forma mas estricta
 
 ## Frontera Tecnica De Dispatch
 
@@ -290,9 +298,11 @@ Reglas:
 
 - la politica vive en la frontera del adapter/canal
 - `email` tiene la evidencia real mas fuerte hoy
-- `sms` y `whatsapp` quedan con contrato progresivo de retry/backoff
+- `sms` y `whatsapp` quedan con contrato progresivo de retry/backoff, no con
+  evidencia uniforme de runtime ya probada
 - los reintentos no crean otra `Notification`
-- la traza de retry y backoff vive en `NotificationLog`
+- la traza de retry y backoff vive en `NotificationLog` cuando el adapter del
+  canal realmente la expone
 
 ## Productores Aguas Arriba
 

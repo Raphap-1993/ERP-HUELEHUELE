@@ -4,7 +4,7 @@
 
 **Goal:** Abrir el slice canonico `015-notifications-outbox-y-expansion-de-canales` en `ERP-HUELEHUELE` como homologacion brownfield `as-is`, formalizando `notifications` como outbox saliente unificado, con `Notification` individual por destinatario/canal, snapshot materializado, `NotificationLog` append-only, adapters por canal y capacidad graduada de delivery sin abrir inbox, inbound tecnico ni conversacion bidireccional.
 
-**Architecture:** La homologacion aterriza sobre el modulo `notifications`, su `worker` y la frontera ya fijada desde `006`, manteniendo a `campaigns`, `orders`, `loyalty`, `012` y `014` como productores aguas arriba. El slice consolida `/notificaciones` como workbench operativo principal, fija el lifecycle unificado `pending/sent/delivered/failed`, separa evidencia funcional de evidencia tecnica y deja `email` como delivery real probado, con `sms`, `whatsapp` e `internal` como canales canonizados de capacidad graduada.
+**Architecture:** La homologacion aterriza sobre el modulo `notifications`, su `worker` y la frontera ya fijada desde `006`, manteniendo a `campaigns`, `orders`, `loyalty`, `012` y `014` como productores aguas arriba. El slice consolida `/notificaciones` como workbench operativo principal, fija el lifecycle unificado `pending/sent/delivered/failed`, separa evidencia funcional de evidencia tecnica y deja `email` como delivery real probado, con `sms`, `whatsapp` e `internal` como canales canonizados de capacidad graduada, mientras la trazabilidad relacionada y la idempotencia fuerte quedan documentadas segun la evidencia visible del runtime actual.
 
 **Tech Stack:** Markdown, git worktree, monorepo `Next.js` + `NestJS` + `Prisma`, runtime real en `apps/admin`, `apps/api`, `apps/worker`, contratos en `packages/shared`, outline API y capa transversal documental, verificacion con `git diff --check`, `git status`, `rg`, `find` y `sed`.
 
@@ -52,7 +52,7 @@
 
 ### Responsibilities
 
-- Fase 1 fija el dominio funcional del outbox: una `Notification` individual por destinatario/canal, snapshot materializado, inmutabilidad, `NotificationLog` append-only, `source/relatedType/relatedId`, lifecycle unificado y `scheduledAt` solo como metadata visible.
+- Fase 1 fija el dominio funcional del outbox: una `Notification` individual por destinatario/canal, snapshot materializado, inmutabilidad, `NotificationLog` append-only, `source` obligatorio, trazabilidad relacionada cuando el flujo ya la resuelve, lifecycle unificado y `scheduledAt` solo como metadata visible.
 - Fase 2 fija `/notificaciones` como workbench principal `as-is`: creacion manual, tabla del outbox, filtros por origen, estado y canal, y lectura de logs tecnicos sin consola de remediacion ni edicion post-creacion.
 - Fase 3 fija la frontera entre `notifications`, `worker`, adapters por canal, productores aguas arriba y la separacion entre evidencia funcional y evidencia tecnica del dispatch.
 - Fase 4 convierte el slice en paquete SDD trazable para evolucion futura sin mezclar outbox saliente con inbox, inbound tecnico o conversacion bidireccional.
@@ -121,7 +121,7 @@ Homologar `notifications` como outbox saliente canonico del brownfield, con una 
 - `relatedId`
 - `scheduledAt` como metadata visible
 - retry/backoff por canal
-- idempotencia por origen + destinatario + canal
+- guardrails de idempotencia por origen + destinatario + canal
 - `/notificaciones` como workbench principal
 
 ## Fuera de alcance
@@ -159,7 +159,7 @@ Crear `UC-43-materializacion-y-encolado-de-notificaciones-salientes.md`:
 ## Flujo principal
 1. un productor aguas arriba decide disparar un mensaje saliente
 2. se materializa una `Notification` individual por destinatario y canal
-3. el snapshot congela `audience`, `subject`, `body`, `channel`, `source`, `relatedType` y `relatedId`
+3. el snapshot congela `audience`, `subject`, `body`, `channel`, `source`, `relatedType`, `relatedId` y `scheduledAt`
 4. la `Notification` queda en estado `pending`
 5. `notifications` la encola para `worker`
 ```
@@ -194,8 +194,8 @@ Crear `UC-45-idempotencia-y-capacidad-graduada-por-canal.md`:
 
 ## Flujo principal
 1. un mismo origen intenta disparar un mensaje equivalente
-2. el sistema valida idempotencia por origen de negocio + destinatario + canal
-3. no materializa una nueva `Notification` equivalente sin intencion explicita
+2. el slice fija guardrails de idempotencia por origen de negocio + destinatario + canal
+3. el runtime visible no prueba todavia un hard gate universal en `createNotification`
 4. `email` se trata como delivery real visible
 5. `sms`, `whatsapp` e `internal` quedan canonizados con capacidad graduada
 ```
@@ -214,15 +214,17 @@ Crear `docs/fase-1-analisis-requerimientos/reglas/notifications-outbox-y-expansi
 - el snapshot funcional es inmutable
 - `NotificationLog` es append-only
 - `source` es obligatorio
-- `relatedType` y `relatedId` son obligatorios en flujos de negocio reales
+- cuando un flujo de negocio ya resuelve `relatedType` y `relatedId`, la
+  expectativa canonica es conservarlos en la `Notification`
 - lifecycle unificado: `pending`, `sent`, `delivered`, `failed`
 - `delivered` solo aplica cuando el canal/adapter realmente puede confirmarlo
 - `scheduledAt` no implica scheduler real en este corte
 - `notifications` gobierna el outbox
 - `worker` ejecuta el dispatch
 - la evidencia tecnica vive principalmente en `NotificationLog`
-- retry y backoff viven por canal/adapter
-- idempotencia por origen de negocio + destinatario + canal
+- retry y backoff viven por canal/adapter con evidencia fuerte hoy en `email`
+- los guardrails de idempotencia no equivalen todavia a un hard gate visible
+  universal del modulo
 - `/notificaciones` es la superficie principal
 ```
 
