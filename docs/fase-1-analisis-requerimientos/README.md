@@ -103,6 +103,13 @@ Consolidar requerimientos, actores, casos de uso y reglas de negocio trazables p
 - [casos-de-uso/UC-42-reentrada-cancelacion-y-trazabilidad-del-journey.md](casos-de-uso/UC-42-reentrada-cancelacion-y-trazabilidad-del-journey.md)
 - [reglas/automatizacion-comercial-amplia.md](reglas/automatizacion-comercial-amplia.md)
 
+## Slice 015 - Notifications Outbox Y Expansion De Canales
+- [01.14-notifications-outbox-y-expansion-de-canales.md](01.14-notifications-outbox-y-expansion-de-canales.md)
+- [casos-de-uso/UC-43-materializacion-y-encolado-de-notificaciones-salientes.md](casos-de-uso/UC-43-materializacion-y-encolado-de-notificaciones-salientes.md)
+- [casos-de-uso/UC-44-delivery-worker-y-trazabilidad-append-only.md](casos-de-uso/UC-44-delivery-worker-y-trazabilidad-append-only.md)
+- [casos-de-uso/UC-45-idempotencia-y-capacidad-graduada-por-canal.md](casos-de-uso/UC-45-idempotencia-y-capacidad-graduada-por-canal.md)
+- [reglas/notifications-outbox-y-expansion-de-canales.md](reglas/notifications-outbox-y-expansion-de-canales.md)
+
 ## Criterio de cierre
 - Cada slice abierto en esta fase tiene RF, actores, estados y reglas canonicas.
 - Los ownerships y fronteras operativas criticas quedan explicitos por dominio.
