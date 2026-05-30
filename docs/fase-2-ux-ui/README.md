@@ -78,6 +78,11 @@ Formalizar la experiencia visual y los contratos UX de las superficies brownfiel
 - [../../specs/014-automatizacion-comercial-amplia/product-design.md](../../specs/014-automatizacion-comercial-amplia/product-design.md)
 - [../../specs/014-automatizacion-comercial-amplia/spdd-frontend.md](../../specs/014-automatizacion-comercial-amplia/spdd-frontend.md)
 
+## Slice 015 - Notifications Outbox Y Expansion De Canales
+- [02.14-notifications-outbox-y-expansion-de-canales-ux-ui.md](02.14-notifications-outbox-y-expansion-de-canales-ux-ui.md)
+- [../../specs/015-notifications-outbox-y-expansion-de-canales/product-design.md](../../specs/015-notifications-outbox-y-expansion-de-canales/product-design.md)
+- [../../specs/015-notifications-outbox-y-expansion-de-canales/spdd-frontend.md](../../specs/015-notifications-outbox-y-expansion-de-canales/spdd-frontend.md)
+
 ## Criterio de cierre
 - Cada slice con capa UX abierta tiene narrativa y fronteras visuales canónicas.
 - La evidencia visual se ancla al runtime y al dominio homologado correspondiente.
