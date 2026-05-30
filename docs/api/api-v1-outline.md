@@ -278,6 +278,18 @@ Reglas:
 - `GET /admin/campaigns/events`
 - `GET /admin/loyalty`
 - `GET /admin/notifications`
+- `POST /admin/notifications`
+- `GET /admin/notifications/logs`
+
+Reglas de notificaciones:
+
+- `notifications` funciona como outbox saliente unificado del backoffice.
+- `POST /admin/notifications` materializa una unidad individual por
+  destinatario/canal.
+- `scheduledAt` es metadata visible del snapshot; no implica scheduler real en
+  este corte.
+- `GET /admin/notifications/logs` expone bitacora tecnica/operativa del
+  delivery y no un inbox conversacional.
 
 ## Reglas De Contrato
 
