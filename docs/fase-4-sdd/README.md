@@ -246,6 +246,28 @@ Convertir los slices brownfield homologados en features ejecutables con specs fu
   [spec-tareas.md](../../specs/014-automatizacion-comercial-amplia/spec-tareas.md),
   [traceability.md](../../specs/014-automatizacion-comercial-amplia/traceability.md)
 
+## Slice 015 - Notifications Outbox Y Expansion De Canales
+- [../../specs/015-notifications-outbox-y-expansion-de-canales/spec-funcional.md](../../specs/015-notifications-outbox-y-expansion-de-canales/spec-funcional.md)
+- [../../specs/015-notifications-outbox-y-expansion-de-canales/spec-tecnica.md](../../specs/015-notifications-outbox-y-expansion-de-canales/spec-tecnica.md)
+- [../../specs/015-notifications-outbox-y-expansion-de-canales/spec-tareas.md](../../specs/015-notifications-outbox-y-expansion-de-canales/spec-tareas.md)
+- [../../specs/015-notifications-outbox-y-expansion-de-canales/traceability.md](../../specs/015-notifications-outbox-y-expansion-de-canales/traceability.md)
+- Requerimientos:
+  [01.14-notifications-outbox-y-expansion-de-canales.md](../fase-1-analisis-requerimientos/01.14-notifications-outbox-y-expansion-de-canales.md),
+  [reglas/notifications-outbox-y-expansion-de-canales.md](../fase-1-analisis-requerimientos/reglas/notifications-outbox-y-expansion-de-canales.md),
+  [UC-43-materializacion-y-encolado-de-notificaciones-salientes.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-43-materializacion-y-encolado-de-notificaciones-salientes.md),
+  [UC-44-delivery-worker-y-trazabilidad-append-only.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-44-delivery-worker-y-trazabilidad-append-only.md),
+  [UC-45-idempotencia-y-capacidad-graduada-por-canal.md](../fase-1-analisis-requerimientos/casos-de-uso/UC-45-idempotencia-y-capacidad-graduada-por-canal.md)
+- UX/UI:
+  [02.14-notifications-outbox-y-expansion-de-canales-ux-ui.md](../fase-2-ux-ui/02.14-notifications-outbox-y-expansion-de-canales-ux-ui.md),
+  [product-design.md](../../specs/015-notifications-outbox-y-expansion-de-canales/product-design.md),
+  [spdd-frontend.md](../../specs/015-notifications-outbox-y-expansion-de-canales/spdd-frontend.md)
+- Arquitectura:
+  [03.17-notifications-outbox-y-expansion-de-canales.md](../fase-3-arquitectura/03.17-notifications-outbox-y-expansion-de-canales.md),
+  [ADR-015-notifications-outbox-channel-boundary.md](../fase-3-arquitectura/adr/ADR-015-notifications-outbox-channel-boundary.md)
+- Ejecucion y trazabilidad:
+  [spec-tareas.md](../../specs/015-notifications-outbox-y-expansion-de-canales/spec-tareas.md),
+  [traceability.md](../../specs/015-notifications-outbox-y-expansion-de-canales/traceability.md)
+
 ## Criterio de cierre
 - Existen features canónicas vivas en `specs/` para los slices abiertos en este corte.
 - Cada feature enlaza requerimientos, UX, arquitectura y ejecución.
