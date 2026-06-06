@@ -834,6 +834,8 @@ export interface ProductVariantSummary extends ProductVariantDescriptor {
   defaultWarehouseId?: string;
   defaultWarehouseCode?: string;
   defaultWarehouseName?: string;
+  inventoryManagedByWarehouses?: boolean;
+  warehouseBalanceCount?: number;
 }
 
 export interface ProductImageSummary {

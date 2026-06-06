@@ -74,6 +74,8 @@ type VariantDraft = {
   stockOnHand: string;
   lowStockThreshold: string;
   status: ProductVariantStatusValue;
+  inventoryManagedByWarehouses: boolean;
+  warehouseBalanceCount: number;
 };
 
 type BundleComponentDraft = {
@@ -230,8 +232,22 @@ function createVariantDraft(seed?: Partial<VariantDraft>): VariantDraft {
     compareAtPrice: seed?.compareAtPrice ?? "",
     stockOnHand: seed?.stockOnHand ?? "0",
     lowStockThreshold: seed?.lowStockThreshold ?? "100",
-    status: seed?.status ?? "active"
+    status: seed?.status ?? "active",
+    inventoryManagedByWarehouses: seed?.inventoryManagedByWarehouses ?? false,
+    warehouseBalanceCount: seed?.warehouseBalanceCount ?? 0
   };
+}
+
+function variantInventoryHelp(variant: VariantDraft, isComboProduct: boolean) {
+  if (isComboProduct) {
+    return "El combo no registra stock inicial ni almacén base propio. Inventario calcula su disponibilidad desde el stock de los componentes.";
+  }
+
+  if (variant.inventoryManagedByWarehouses) {
+    return `Esta variante ya opera con ${variant.warehouseBalanceCount} saldo(s) por almacén. Ajusta el stock desde Inventario; aquí solo dejas la ficha comercial.`;
+  }
+
+  return "El stock operativo por variante y almacén se mantiene en `Inventario`. Aquí solo configuras el valor inicial/base de la ficha.";
 }
 
 function createBundleComponentDraft(seed?: Partial<BundleComponentDraft>): BundleComponentDraft {
@@ -320,7 +336,9 @@ function fromProductDetail(product: ProductAdminDetail): ProductFormState {
             compareAtPrice: variant.compareAtPrice != null ? String(variant.compareAtPrice) : "",
             stockOnHand: String(variant.stockOnHand),
             lowStockThreshold: String(variant.lowStockThreshold ?? 100),
-            status: variant.status
+            status: variant.status,
+            inventoryManagedByWarehouses: Boolean(variant.inventoryManagedByWarehouses),
+            warehouseBalanceCount: variant.warehouseBalanceCount ?? 0
           })
         : createVariantDraft({
             name: index === 0 ? "Variante principal" : `Variante ${index + 1}`
@@ -990,7 +1008,7 @@ export function ProductsWorkspace() {
     });
   }
 
-  function updateVariant(index: number, field: keyof VariantDraft, value: string | boolean) {
+  function updateVariant(index: number, field: keyof VariantDraft, value: VariantDraft[keyof VariantDraft]) {
     setForm((current) => ({
       ...current,
       variants: current.variants.map((variant, currentIndex) =>
@@ -1921,9 +1939,7 @@ export function ProductsWorkspace() {
                           </div>
 
                           <div className="mt-4 rounded-[1rem] border border-black/8 bg-white px-3 py-2 text-xs text-black/55">
-                            {isComboProduct
-                              ? "El combo no registra stock inicial ni almacén base propio. Inventario calcula su disponibilidad desde el stock de los componentes."
-                              : "El stock operativo por variante y almacén se mantiene en `Inventario`. Aquí solo configuras el valor inicial/base de la ficha."}
+                            {variantInventoryHelp(variant, isComboProduct)}
                           </div>
 
                           <div className={`mt-4 grid gap-4 ${isComboProduct ? "md:grid-cols-3" : "md:grid-cols-5"}`}>
@@ -1957,8 +1973,15 @@ export function ProductsWorkspace() {
                                     min="0"
                                     step="1"
                                     value={variant.stockOnHand}
+                                    disabled={variant.inventoryManagedByWarehouses}
+                                    readOnly={variant.inventoryManagedByWarehouses}
                                     onChange={(event) => updateVariant(index, "stockOnHand", event.target.value)}
                                   />
+                                  {variant.inventoryManagedByWarehouses ? (
+                                    <span className="text-xs text-[#8b5e1a]">
+                                      Bloqueado en Productos porque esta variante ya usa saldos por almacén en Inventario.
+                                    </span>
+                                  ) : null}
                                 </label>
                                 <label className="space-y-1.5">
                                   <span className="text-sm font-medium text-[#132016]">Umbral alerta</span>
@@ -2075,9 +2098,7 @@ export function ProductsWorkspace() {
                       </div>
 
                       <div className="mt-4 rounded-[1rem] border border-black/8 bg-white px-3 py-2 text-xs text-black/55">
-                        {isComboProduct
-                          ? "El combo no registra stock inicial ni almacén base propio. Inventario calcula su disponibilidad desde el stock de los componentes."
-                          : "El stock operativo por variante y almacén se mantiene en `Inventario`. Aquí solo configuras el valor inicial/base de la ficha."}
+                        {variantInventoryHelp(primaryVariant, isComboProduct)}
                       </div>
 
                       <div className={`mt-4 grid gap-4 ${isComboProduct ? "md:grid-cols-3" : "md:grid-cols-5"}`}>
@@ -2111,8 +2132,15 @@ export function ProductsWorkspace() {
                                 min="0"
                                 step="1"
                                 value={primaryVariant.stockOnHand}
+                                disabled={primaryVariant.inventoryManagedByWarehouses}
+                                readOnly={primaryVariant.inventoryManagedByWarehouses}
                                 onChange={(event) => updateVariant(0, "stockOnHand", event.target.value)}
                               />
+                              {primaryVariant.inventoryManagedByWarehouses ? (
+                                <span className="text-xs text-[#8b5e1a]">
+                                  Bloqueado en Productos porque esta variante ya usa saldos por almacén en Inventario.
+                                </span>
+                              ) : null}
                             </label>
                             <label className="space-y-1.5">
                               <span className="text-sm font-medium text-[#132016]">Umbral alerta</span>

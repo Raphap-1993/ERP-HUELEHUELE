@@ -582,6 +582,14 @@ function resolveFulfillmentWarehouseId(variant: ProductVariantWithOptionalWareho
   );
 }
 
+function isWarehouseManagedVariant(variant: ProductVariantWithOptionalWarehouse) {
+  return (variant.warehouseBalances?.length ?? 0) > 0;
+}
+
+function warehouseManagedVariantConflictMessage(sku: string) {
+  return `La variante ${sku} ya gobierna su stock desde Inventario. Ajusta el stock por almacén en Inventario y deja Productos solo para catálogo.`;
+}
+
 function resolveVariantStockState(variant?: ProductVariantWithOptionalWarehouse) {
   const threshold = Math.max(0, variant?.lowStockThreshold ?? 0);
 
@@ -800,6 +808,7 @@ function resolveProductBenefits(product: {
 
 function mapVariant(variant: ProductVariantWithOptionalWarehouse, productKind: ProductKindValue | string = "single"): ProductVariantSummary {
   const hasPhysicalStock = productKind !== "bundle";
+  const warehouseBalanceCount = variant.warehouseBalances?.length ?? 0;
 
   return {
     id: variant.id,
@@ -816,7 +825,9 @@ function mapVariant(variant: ProductVariantWithOptionalWarehouse, productKind: P
     status: variant.status,
     defaultWarehouseId: hasPhysicalStock ? variant.defaultWarehouseId ?? undefined : undefined,
     defaultWarehouseCode: hasPhysicalStock ? variant.defaultWarehouse?.code ?? undefined : undefined,
-    defaultWarehouseName: hasPhysicalStock ? variant.defaultWarehouse?.name ?? undefined : undefined
+    defaultWarehouseName: hasPhysicalStock ? variant.defaultWarehouse?.name ?? undefined : undefined,
+    inventoryManagedByWarehouses: hasPhysicalStock ? warehouseBalanceCount > 0 : false,
+    warehouseBalanceCount: hasPhysicalStock ? warehouseBalanceCount : 0
   };
 }
 
@@ -1011,7 +1022,11 @@ export class ProductsService {
     const existing = await this.prisma.product.findUnique({
       where: { id },
       include: {
-        variants: true
+        variants: {
+          include: {
+            warehouseBalances: true
+          }
+        }
       }
     });
 
@@ -1020,6 +1035,7 @@ export class ProductsService {
     }
 
     const input = await this.normalizeUpsertInput(body, existing.id);
+    this.assertInventoryManagedVariantsStayInInventory(existing.variants, input.variants);
 
     try {
       const product = await this.prisma.$transaction(async (tx) => {
@@ -1907,6 +1923,26 @@ export class ProductsService {
       variants: normalizedVariants,
       bundleComponents
     };
+  }
+
+  private assertInventoryManagedVariantsStayInInventory(
+    existingVariants: ProductVariantWithOptionalWarehouse[],
+    nextVariants: Awaited<ReturnType<ProductsService["normalizeUpsertInput"]>>["variants"]
+  ) {
+    for (const [index, variant] of nextVariants.entries()) {
+      const current =
+        existingVariants.find((candidate) => candidate.id === variant.id) ??
+        existingVariants.find((candidate) => candidate.sku === variant.sku) ??
+        (existingVariants.length === nextVariants.length ? existingVariants[index] : undefined);
+
+      if (!current || !isWarehouseManagedVariant(current)) {
+        continue;
+      }
+
+      if (current.stockOnHand !== variant.stockOnHand) {
+        throw new ConflictException(warehouseManagedVariantConflictMessage(current.sku));
+      }
+    }
   }
 
   private async syncVariants(

@@ -117,6 +117,57 @@ type TestWarehouseRecord = {
   }>;
 };
 
+type TestProductRecord = {
+  id: string;
+  name: string;
+  slug: string;
+  status: "active" | "inactive" | "draft";
+  salesChannel: ProductSalesChannel;
+  productKind: "single" | "bundle";
+  shortDescription: string | null;
+  longDescription: string | null;
+  badge: string | null;
+  tone: "emerald" | "graphite" | "amber" | null;
+  benefitsJson: null;
+  detailAttributesJson: null;
+  reportingGroup: string | null;
+  isFeatured: boolean;
+  category: null;
+  variants: TestVariantRecord[];
+  images: Array<{
+    id: string;
+    url: string;
+    altText: string | null;
+    sortOrder: number;
+    isPrimary: boolean;
+    variantId: string | null;
+  }>;
+  bundleComponents: Array<{
+    id: string;
+    componentProductId: string;
+    quantity: number;
+    sortOrder: number;
+    componentProduct: {
+      id: string;
+      name: string;
+      slug: string;
+      category: null;
+      images: Array<{
+        id: string;
+        url: string;
+        altText: string | null;
+        sortOrder: number;
+        isPrimary: boolean;
+        variantId: string | null;
+      }>;
+      variants: TestVariantRecord[];
+    };
+    componentVariant: TestVariantRecord | null;
+  }>;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 type TestTransferLineRecord = {
   id: string;
   transferId: string;
@@ -258,6 +309,33 @@ class PrismaStub {
     }
   };
 
+  readonly product = {
+    findMany: async (args?: { where?: { slug?: { in?: string[] } } }) => {
+      const slugs = args?.where?.slug?.in;
+      return this.listProducts()
+        .filter((product) => (slugs ? slugs.includes(product.slug) : true))
+        .map((product) => this.cloneProduct(product));
+    },
+    findUnique: async (args: { where: { id?: string; slug?: string } }) => {
+      const product = this.listProducts().find(
+        (record) => record.id === args.where.id || record.slug === args.where.slug
+      );
+      return product ? this.cloneProduct(product) : null;
+    },
+    findUniqueOrThrow: async (args: { where: { id?: string; slug?: string } }) => {
+      const product = await this.product.findUnique(args);
+      if (!product) {
+        throw new Error("Producto no encontrado en stub.");
+      }
+
+      return product;
+    }
+  };
+
+  readonly category = {
+    findUnique: async () => null
+  };
+
   $transaction = async <T>(callback: (tx: this) => Promise<T>) => callback(this);
 
   readonly moduleSnapshot = {
@@ -339,6 +417,11 @@ class PrismaStub {
       variant.warehouseBalances.push(created);
       return { ...created, updatedAt: new Date(created.updatedAt) };
     }
+  };
+
+  readonly productBundleComponent = {
+    deleteMany: async () => null,
+    createMany: async () => null
   };
 
   readonly inventoryMovement = {
@@ -685,6 +768,43 @@ class PrismaStub {
     }
   };
 
+  private listProducts(): TestProductRecord[] {
+    const grouped = new Map<string, TestProductRecord>();
+
+    for (const variant of this.variants) {
+      const existing = grouped.get(variant.productId);
+      if (existing) {
+        existing.variants.push(variant);
+        continue;
+      }
+
+      grouped.set(variant.productId, {
+        id: variant.product.id,
+        name: variant.product.name,
+        slug: variant.product.slug,
+        status: "active",
+        salesChannel: variant.product.salesChannel,
+        productKind: "single",
+        shortDescription: null,
+        longDescription: null,
+        badge: null,
+        tone: null,
+        benefitsJson: null,
+        detailAttributesJson: null,
+        reportingGroup: variant.product.reportingGroup ?? null,
+        isFeatured: false,
+        category: null,
+        variants: [variant],
+        images: [],
+        bundleComponents: [],
+        createdAt: new Date(variant.createdAt),
+        updatedAt: new Date(variant.updatedAt)
+      });
+    }
+
+    return Array.from(grouped.values());
+  }
+
   private cloneVariant(variant: TestVariantRecord): TestVariantRecord {
     return {
       ...variant,
@@ -711,6 +831,25 @@ class PrismaStub {
           componentVariant: component.componentVariant ? this.cloneVariant(component.componentVariant) : null
         }))
       }
+    };
+  }
+
+  private cloneProduct(product: TestProductRecord): TestProductRecord {
+    return {
+      ...product,
+      variants: product.variants.map((variant) => this.cloneVariant(variant)),
+      images: product.images.map((image) => ({ ...image })),
+      bundleComponents: product.bundleComponents.map((component) => ({
+        ...component,
+        componentProduct: {
+          ...component.componentProduct,
+          images: component.componentProduct.images.map((image) => ({ ...image })),
+          variants: component.componentProduct.variants.map((variant) => this.cloneVariant(variant))
+        },
+        componentVariant: component.componentVariant ? this.cloneVariant(component.componentVariant) : null
+      })),
+      createdAt: new Date(product.createdAt),
+      updatedAt: new Date(product.updatedAt)
     };
   }
 
@@ -2273,6 +2412,85 @@ test("la misma orden web idempotente no descuenta stock dos veces", async () => 
   const row = await findInventoryRow(context, "HG-PN-001");
   assert.equal(row.unitsSold, 1);
   assert.equal(row.availableStock, 4);
+});
+
+test("productos rechaza cambios de stock cuando la variante ya se gobierna por inventario por almacen", async () => {
+  const warehouses = [
+    buildWarehouse({
+      id: "wh-lima-central",
+      code: "WH-LIMA-CENTRAL",
+      name: "Lima Central"
+    }),
+    buildWarehouse({
+      id: "wh-lima-secundario",
+      code: "WH-LIMA-SEC",
+      name: "Lima Secundario",
+      priority: 1
+    })
+  ];
+  const products = new ProductsService(
+    new PrismaStub(
+      [
+        buildVariant({
+          id: "var-premium-negro",
+          productId: "prod-premium-negro",
+          productName: "Premium Negro",
+          productSlug: "premium-negro",
+          sku: "HG-PN-001",
+          variantName: "Premium Negro 10 ml",
+          stockOnHand: 54,
+          warehouseBalances: [
+            {
+              warehouseId: "wh-lima-central",
+              variantId: "var-premium-negro",
+              stockOnHand: 30,
+              reservedQuantity: 4,
+              committedQuantity: 6,
+              updatedAt: new Date("2026-04-01T12:00:00.000Z")
+            },
+            {
+              warehouseId: "wh-lima-secundario",
+              variantId: "var-premium-negro",
+              stockOnHand: 24,
+              reservedQuantity: 1,
+              committedQuantity: 2,
+              updatedAt: new Date("2026-04-01T12:00:00.000Z")
+            }
+          ]
+        })
+      ],
+      warehouses
+    ) as never,
+    {} as never
+  );
+
+  await assert.rejects(
+    () =>
+      products.updateProduct("prod-premium-negro", {
+        name: "Premium Negro",
+        slug: "premium-negro",
+        status: "active",
+        isFeatured: false,
+        salesChannel: ProductSalesChannel.Public,
+        variants: [
+          {
+            id: "var-premium-negro",
+            sku: "HG-PN-001",
+            name: "Premium Negro 10 ml",
+            price: 39.9,
+            stockOnHand: 120,
+            lowStockThreshold: 100,
+            status: "active",
+            defaultWarehouseId: "wh-lima-central"
+          }
+        ],
+        bundleComponents: []
+      }),
+    (error: unknown) =>
+      error instanceof ConflictException &&
+      error.message ===
+        "La variante HG-PN-001 ya gobierna su stock desde Inventario. Ajusta el stock por almacén en Inventario y deja Productos solo para catálogo."
+  );
 });
 
 test("la idempotencia de checkout trata como equivalentes request items sin variantId y con variantId canónico", async () => {
