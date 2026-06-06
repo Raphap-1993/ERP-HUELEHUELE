@@ -814,7 +814,7 @@ export class InventoryService implements OnModuleInit {
     const warehouseId = normalizeWarehouseId(input.warehouseId);
     const warehouseCode = normalizeUpperText(input.warehouseCode);
     const quantity = Math.trunc(Number(input.quantity));
-    const reason = normalizeText(input.reason);
+    const reason = normalizeText(input.reason) ?? defaultInventoryStockReason(mode);
     const referenceId = input.referenceId ?? randomUUID();
 
     if (!variantId && !sku) {
@@ -831,10 +831,6 @@ export class InventoryService implements OnModuleInit {
           ? "La cantidad de ingreso debe ser un entero mayor a cero."
           : "El stock físico debe ser un número entero mayor o igual a cero."
       );
-    }
-
-    if (!reason) {
-      throw new BadRequestException("Indica el motivo del movimiento de inventario.");
     }
 
     const result = await this.prisma.$transaction(async (tx) => {

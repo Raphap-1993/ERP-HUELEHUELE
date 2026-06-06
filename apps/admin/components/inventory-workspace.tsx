@@ -189,7 +189,7 @@ function sortWarehouseRows(rows: InventoryReportRow[]) {
 }
 
 function assignmentFallbackReason(warehouse?: WarehouseSummary) {
-  return warehouse ? `Alta inicial en ${warehouse.name}` : "Alta inicial en almacén";
+  return warehouse ? `Ingreso de mercadería en ${warehouse.name}` : "Ingreso de mercadería";
 }
 
 function buildInventoryGroups(rows: InventoryReportRow[]) {
@@ -421,6 +421,10 @@ function inventoryBulkQuantityLabel(mode: InventoryStockOperationMode) {
 }
 
 function parseStockDraft(value: string | undefined) {
+  if (!value?.trim()) {
+    return undefined;
+  }
+
   const parsed = Number(value ?? "");
   if (!Number.isFinite(parsed)) {
     return undefined;
@@ -501,7 +505,7 @@ export function InventoryWorkspace() {
   const rows = report?.rows ?? [];
 
   useEffect(() => {
-    setStockDrafts(Object.fromEntries(rows.map((row) => [rowKey(row), String(row.stockOnHand)])));
+    setStockDrafts(Object.fromEntries(rows.map((row) => [rowKey(row), ""])));
     setReasonDrafts({});
   }, [report?.generatedAt]);
 
@@ -588,19 +592,28 @@ export function InventoryWorkspace() {
   const selectedKey = selectedRow ? rowKey(selectedRow) : undefined;
   const selectedStockDraft = selectedKey ? stockDrafts[selectedKey] : undefined;
   const selectedReasonDraft = selectedKey ? reasonDrafts[selectedKey] ?? "" : "";
-  const selectedNextStock = parseStockDraft(selectedStockDraft);
+  const selectedStockReceipt = parseStockDraft(selectedStockDraft);
+  const selectedNextStock =
+    selectedRow && selectedStockReceipt !== undefined ? selectedRow.stockOnHand + selectedStockReceipt : undefined;
   const selectedNextAvailable =
     selectedRow && selectedNextStock !== undefined
       ? selectedNextStock - selectedRow.reservedQuantity - selectedRow.committedQuantity
       : undefined;
-  const selectedStockChanged = selectedRow && selectedNextStock !== undefined && selectedNextStock !== selectedRow.stockOnHand;
+  const selectedBlockingMessage =
+    !selectedRow
+      ? null
+      : selectedRow.warehouseId === "unassigned"
+        ? "Esta variante no tiene almacén operativo asignado. Asigna un almacén antes de ingresar stock."
+        : selectedStockReceipt === undefined
+          ? "Escribe cuántas unidades ingresan."
+          : selectedStockReceipt <= 0
+            ? "Las unidades a ingresar deben ser mayores que cero."
+            : null;
   const canSaveSelected =
     Boolean(selectedRow) &&
     selectedRow?.warehouseId !== "unassigned" &&
-    selectedNextStock !== undefined &&
-    selectedNextStock >= 0 &&
-    Boolean(selectedReasonDraft.trim()) &&
-    Boolean(selectedStockChanged) &&
+    selectedStockReceipt !== undefined &&
+    selectedStockReceipt > 0 &&
     !saving;
   const activeWarehouses = useMemo(
     () => warehouses.filter((warehouse) => warehouse.status === "active"),
@@ -618,11 +631,21 @@ export function InventoryWorkspace() {
   const assignmentWarehouse = assignment
     ? activeWarehouses.find((warehouse) => warehouse.id === assignment.warehouseId)
     : undefined;
+  const assignmentBlockingMessage =
+    !assignment
+      ? null
+      : !assignment.warehouseId
+        ? "Selecciona un almacén activo."
+        : assignmentStock === undefined
+          ? "Escribe cuántas unidades ingresan."
+          : assignmentStock <= 0
+            ? "Las unidades a ingresar deben ser mayores que cero."
+            : null;
   const canSaveAssignment =
     Boolean(assignment) &&
     Boolean(assignment?.warehouseId) &&
     assignmentStock !== undefined &&
-    assignmentStock >= 0 &&
+    assignmentStock > 0 &&
     !saving;
 
   const alertRows = useMemo(
@@ -688,7 +711,7 @@ export function InventoryWorkspace() {
     setSelectedRowKey(key);
     setStockDrafts((current) => ({
       ...current,
-      [key]: current[key] ?? String(row.stockOnHand)
+      [key]: current[key] ?? ""
     }));
     setActionError(null);
     setActionMessage(null);
@@ -709,7 +732,7 @@ export function InventoryWorkspace() {
     setAssignment({
       group,
       warehouseId: firstAvailableWarehouse?.id ?? "",
-      stockOnHand: "0",
+      stockOnHand: "",
       reason: ""
     });
     setActionError(null);
@@ -725,7 +748,7 @@ export function InventoryWorkspace() {
   }
 
   async function handleSaveStock() {
-    if (!selectedRow || !selectedKey || selectedNextStock === undefined) {
+    if (!selectedRow || !selectedKey || selectedStockReceipt === undefined) {
       return;
     }
 
@@ -737,18 +760,23 @@ export function InventoryWorkspace() {
       const response = await adjustInventoryStock({
         variantId: selectedRow.variantId,
         warehouseId: selectedRow.warehouseId,
-        stockOnHand: selectedNextStock,
-        reason: selectedReasonDraft
+        stockOnHand: selectedStockReceipt,
+        reason: selectedReasonDraft,
+        mode: "stock_receipt"
       });
       setActionMessage(response.message);
       setReasonDrafts((current) => ({
         ...current,
         [selectedKey]: ""
       }));
+      setStockDrafts((current) => ({
+        ...current,
+        [selectedKey]: ""
+      }));
       setSelectedRowKey(null);
       setRefreshKey((current) => current + 1);
     } catch (saveError) {
-      setActionError(saveError instanceof Error ? saveError.message : "No pudimos actualizar el stock físico.");
+      setActionError(saveError instanceof Error ? saveError.message : "No pudimos registrar el ingreso de stock.");
     } finally {
       setSaving(false);
     }
@@ -768,7 +796,8 @@ export function InventoryWorkspace() {
         variantId: assignment.group.anchor.variantId,
         warehouseId: assignment.warehouseId,
         stockOnHand: assignmentStock,
-        reason: assignment.reason.trim() || assignmentFallbackReason(assignmentWarehouse)
+        reason: assignment.reason.trim() || assignmentFallbackReason(assignmentWarehouse),
+        mode: "stock_receipt"
       });
       setActionMessage(response.message);
       setAssignment(null);
@@ -778,7 +807,7 @@ export function InventoryWorkspace() {
       }));
       setRefreshKey((current) => current + 1);
     } catch (saveError) {
-      setActionError(saveError instanceof Error ? saveError.message : "No pudimos agregar el producto al almacén.");
+      setActionError(saveError instanceof Error ? saveError.message : "No pudimos registrar el ingreso en el almacén.");
     } finally {
       setSaving(false);
     }
@@ -866,7 +895,7 @@ export function InventoryWorkspace() {
     <div className="space-y-6 pb-8">
       <SectionHeader
         title="Stock por producto y almacén"
-        description="Control diario de SKUs físicos por almacén. Los combos virtuales se calculan desde sus productos unitarios."
+        description="Control diario de SKUs físicos por almacén. Los ingresos a almacén se registran aquí y la web pública compra según este saldo."
       />
 
       <div className="flex flex-wrap items-center gap-3">
@@ -1038,7 +1067,7 @@ export function InventoryWorkspace() {
                               </Button>
                               {primaryRow ? (
                                 <Button type="button" size="sm" variant="secondary" onClick={() => openAdjustment(primaryRow)}>
-                                  Ajustar
+                                  Ingresar stock
                                 </Button>
                               ) : null}
                               <Button
@@ -1051,7 +1080,7 @@ export function InventoryWorkspace() {
                                 )}
                                 className="disabled:cursor-not-allowed disabled:opacity-40"
                               >
-                                Agregar almacén
+                                Ingresar en otro almacén
                               </Button>
                             </div>
                           </TableCell>
@@ -1064,7 +1093,7 @@ export function InventoryWorkspace() {
                                   <div>
                                     <div className="text-sm font-semibold text-[#132016]">Stock por almacén</div>
                                     <div className="text-xs text-black/50">
-                                      Ajusta sólo el almacén contado; el total del producto se recalcula automáticamente.
+                                      Registra ingresos en un almacén; el total del producto y la web pública se recalculan automáticamente.
                                     </div>
                                   </div>
                                   <div className="flex flex-wrap items-center gap-2">
@@ -1079,7 +1108,7 @@ export function InventoryWorkspace() {
                                       )}
                                       className="disabled:cursor-not-allowed disabled:opacity-40"
                                     >
-                                      Agregar almacén
+                                      Ingresar en otro almacén
                                     </Button>
                                   </div>
                                 </div>
@@ -1111,7 +1140,7 @@ export function InventoryWorkspace() {
                                               variant="secondary"
                                               onClick={() => openAdjustment(row)}
                                             >
-                                              Ajustar
+                                              Ingresar stock
                                             </Button>
                                             <Button href="/transferencias" size="sm" variant="ghost">
                                               Transferir
@@ -1441,9 +1470,9 @@ export function InventoryWorkspace() {
       <Dialog open={Boolean(selectedRow)} onClose={closeAdjustment} size="lg">
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Ajustar stock físico</DialogTitle>
+            <DialogTitle>Registrar ingreso de stock</DialogTitle>
             <DialogDescription>
-              Actualiza sólo la cantidad que existe en el almacén. El sistema calcula lo disponible.
+              Escribe sólo las unidades que entran a este almacén. El sistema suma el ingreso y recalcula el disponible para venta.
             </DialogDescription>
           </DialogHeader>
 
@@ -1472,11 +1501,11 @@ export function InventoryWorkspace() {
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-black/45">
-                      Nuevo stock contado
+                      Unidades que ingresan
                     </label>
                     <Input
                       type="number"
-                      min={0}
+                      min={1}
                       step={1}
                       value={selectedStockDraft ?? ""}
                       onChange={(event) =>
@@ -1489,15 +1518,24 @@ export function InventoryWorkspace() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  <Badge tone={selectedNextAvailable != null && selectedNextAvailable < 0 ? "danger" : "success"}>
-                    Disponible: {selectedNextAvailable == null ? "-" : formatNumber(selectedNextAvailable)}
-                  </Badge>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-black/45">
+                      Stock después del ingreso
+                    </label>
+                    <Input value={selectedNextStock == null ? "" : formatNumber(selectedNextStock)} readOnly />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-black/45">
+                      Disponible web después del ingreso
+                    </label>
+                    <Input value={selectedNextAvailable == null ? "" : formatNumber(selectedNextAvailable)} readOnly />
+                  </div>
                 </div>
 
                 <div>
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-black/45">
-                    Motivo del ajuste
+                    Motivo opcional
                   </label>
                   <Textarea
                     value={selectedReasonDraft}
@@ -1507,19 +1545,22 @@ export function InventoryWorkspace() {
                         [rowKey(selectedRow)]: event.target.value
                       }))
                     }
-                    placeholder="Ejemplo: conteo de almacén, compra recibida, corrección documentada"
+                    placeholder="Ejemplo: ingreso proveedor mayo, regularización"
                   />
+                  <p className="mt-2 text-xs leading-5 text-black/50">
+                    Si lo dejas vacío, se guardará con el motivo “Ingreso de mercadería”.
+                  </p>
                 </div>
 
-                {selectedRow.warehouseId === "unassigned" ? (
+                {selectedBlockingMessage ? (
                   <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-                    Esta variante no tiene almacén operativo asignado. Asigna un almacén antes de guardar ajustes.
+                    {selectedBlockingMessage}
                   </div>
                 ) : null}
 
                 {selectedNextAvailable != null && selectedNextAvailable < 0 ? (
                   <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-950">
-                    Este ajuste dejará disponible negativo. Revisa pedidos pendientes antes de guardar.
+                    Incluso con este ingreso el disponible seguirá negativo. Revisa pedidos pendientes antes de guardar.
                   </div>
                 ) : null}
               </DialogBody>
@@ -1529,7 +1570,7 @@ export function InventoryWorkspace() {
                   Cancelar
                 </Button>
                 <Button type="button" onClick={() => void handleSaveStock()} disabled={!canSaveSelected}>
-                  {saving ? "Guardando..." : "Guardar ajuste"}
+                  {saving ? "Guardando..." : "Registrar ingreso"}
                 </Button>
               </DialogFooter>
             </>
@@ -1540,9 +1581,9 @@ export function InventoryWorkspace() {
       <Dialog open={Boolean(assignment)} onClose={closeAssignment} size="lg">
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Agregar producto a almacén</DialogTitle>
+            <DialogTitle>Registrar ingreso en otro almacén</DialogTitle>
             <DialogDescription>
-              Crea la fila de stock para un almacén nuevo y registra el conteo físico inicial.
+              Selecciona el almacén y registra las unidades que entran por primera vez para este SKU.
             </DialogDescription>
           </DialogHeader>
 
@@ -1591,11 +1632,11 @@ export function InventoryWorkspace() {
 
                     <div>
                       <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-black/45">
-                        Stock contado inicial
+                        Unidades que ingresan
                       </label>
                       <Input
                         type="number"
-                        min={0}
+                        min={1}
                         step={1}
                         value={assignment.stockOnHand}
                         onChange={(event) =>
@@ -1610,7 +1651,7 @@ export function InventoryWorkspace() {
                         }
                       />
                       <p className="mt-2 text-xs leading-5 text-black/50">
-                        Usa 0 o déjalo vacío si sólo quieres habilitar el almacén para este producto y cargar stock después.
+                        La fila del almacén se crea con este ingreso inicial y queda disponible para la web pública.
                       </p>
                     </div>
 
@@ -1636,6 +1677,12 @@ export function InventoryWorkspace() {
                         Si lo dejas vacío, se guardará con el motivo “{assignmentFallbackReason(assignmentWarehouse)}”.
                       </p>
                     </div>
+
+                    {assignmentBlockingMessage ? (
+                      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                        {assignmentBlockingMessage}
+                      </div>
+                    ) : null}
                   </>
                 ) : (
                   <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
@@ -1654,7 +1701,7 @@ export function InventoryWorkspace() {
                   disabled={!canSaveAssignment}
                   className="disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {saving ? "Guardando..." : "Agregar almacén"}
+                  {saving ? "Guardando..." : "Registrar ingreso"}
                 </Button>
               </DialogFooter>
             </>

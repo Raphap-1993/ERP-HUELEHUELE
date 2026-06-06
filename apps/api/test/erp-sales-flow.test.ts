@@ -368,15 +368,37 @@ class PrismaStub {
       );
       return balance ? { ...balance, updatedAt: new Date(balance.updatedAt) } : null;
     },
-    findMany: async (args: { where: { variantId: string }; select?: { stockOnHand?: boolean } }) => {
-      const variant = this.variants.find((record) => record.id === args.where.variantId);
-      const balances = variant?.warehouseBalances ?? [];
+    findMany: async (args: {
+      where: { variantId?: string; OR?: Array<{ variantId: string; warehouseId: string }> };
+      select?: { stockOnHand?: boolean };
+    }) => {
+      const filters = args.where.OR ?? [];
+      const balances = this.variants.flatMap((variant) =>
+        variant.warehouseBalances
+          .filter((balance) =>
+            filters.length > 0
+              ? filters.some(
+                  (filter) => filter.variantId === balance.variantId && filter.warehouseId === balance.warehouseId
+                )
+              : args.where.variantId
+                ? balance.variantId === args.where.variantId
+                : true
+          )
+          .map((balance) => ({
+            ...balance,
+            warehouse: this.warehouses.find((warehouse) => warehouse.id === balance.warehouseId) ?? null
+          }))
+      );
 
       if (args.select?.stockOnHand) {
         return balances.map((balance) => ({ stockOnHand: balance.stockOnHand }));
       }
 
-      return balances.map((balance) => ({ ...balance, updatedAt: new Date(balance.updatedAt) }));
+      return balances.map((balance) => ({
+        ...balance,
+        updatedAt: new Date(balance.updatedAt),
+        warehouse: balance.warehouse ? this.cloneWarehouse(balance.warehouse) : null
+      }));
     },
     upsert: async (args: {
       where: { warehouseId_variantId: { warehouseId: string; variantId: string } };
@@ -2776,6 +2798,79 @@ test("un ingreso de mercaderia suma stock al almacen y recalcula el agregado de 
   assert.equal(arequipaRow.stockOnHand, 30);
   assert.equal(limaRow.variantStockOnHand, 55);
   assert.equal(arequipaRow.variantStockOnHand, 55);
+});
+
+test("ingresar stock desde inventario habilita la compra publica segun balances por almacen", async () => {
+  const warehouse = buildWarehouse({
+    id: "wh-lima-central",
+    code: "WH-LIMA-CENTRAL",
+    name: "Lima Central"
+  });
+  const prisma = new PrismaStub(
+    [
+      buildVariant({
+        id: "var-premium-negro",
+        productId: "prod-premium-negro",
+        productName: "Premium Negro",
+        productSlug: "premium-negro",
+        sku: "HG-PN-001",
+        variantName: "Premium Negro 10 ml",
+        stockOnHand: 0,
+        warehouseBalances: [
+          {
+            warehouseId: "wh-lima-central",
+            variantId: "var-premium-negro",
+            stockOnHand: 0,
+            reservedQuantity: 0,
+            committedQuantity: 0,
+            updatedAt: new Date("2026-04-01T12:00:00.000Z")
+          }
+        ]
+      })
+    ],
+    [warehouse]
+  );
+  const inventory = new InventoryService(prisma as never, new MemoryModuleStateService() as never);
+  const products = new ProductsService(prisma as never, {} as never);
+
+  await inventory.onModuleInit();
+
+  await assert.rejects(
+    () =>
+      products.resolveCheckoutItems([
+        {
+          slug: "premium-negro",
+          variantId: "var-premium-negro",
+          quantity: 1
+        }
+      ]),
+    (error: unknown) => error instanceof ConflictException && error.message.includes("No hay stock suficiente")
+  );
+
+  const adjustment = await inventory.adjustWarehouseStock({
+    variantId: "var-premium-negro",
+    warehouseId: warehouse.id,
+    stockOnHand: 7,
+    mode: "stock_receipt",
+    reason: ""
+  });
+
+  assert.equal(adjustment.mode, "stock_receipt");
+  assert.equal(adjustment.previousStockOnHand, 0);
+  assert.equal(adjustment.nextStockOnHand, 7);
+  assert.equal(adjustment.delta, 7);
+
+  const quote = await products.resolveCheckoutItems([
+    {
+      slug: "premium-negro",
+      variantId: "var-premium-negro",
+      quantity: 2
+    }
+  ]);
+
+  assert.equal(quote.items[0]?.variantId, "var-premium-negro");
+  assert.equal(quote.items[0]?.sku, "HG-PN-001");
+  assert.equal(quote.items[0]?.inventoryAllocations?.[0]?.warehouseId, warehouse.id);
 });
 
 test("el lote masivo de inventario procesa lineas por sku o variantId y devuelve errores parciales", async () => {
