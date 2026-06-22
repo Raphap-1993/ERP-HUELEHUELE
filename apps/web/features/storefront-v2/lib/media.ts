@@ -50,18 +50,33 @@ export function isRemoteStorefrontMediaUrl(src: string) {
   }
 }
 
-export function cloudflareImageLoader({ src, width, quality }: ImageLoaderProps) {
+export function resolveStorefrontMediaRequestSrc(
+  src: string,
+  options?: {
+    width?: number;
+    quality?: number;
+  }
+) {
   const resolvedSrc = resolveStorefrontMediaSrc(src);
   if (!isRemoteStorefrontMediaUrl(resolvedSrc)) {
     return resolvedSrc;
   }
 
   const url = new URL(resolvedSrc);
-  url.searchParams.set("width", String(width));
-  url.searchParams.set("quality", String(quality ?? 82));
+  if (options?.width) {
+    url.searchParams.set("width", String(options.width));
+  }
+  url.searchParams.set("quality", String(options?.quality ?? 82));
   url.searchParams.set("format", "auto");
 
   return url.toString();
+}
+
+export function cloudflareImageLoader({ src, width, quality }: ImageLoaderProps) {
+  return resolveStorefrontMediaRequestSrc(src, {
+    width,
+    quality
+  });
 }
 
 export const storefrontV2Media = {

@@ -1,0 +1,35 @@
+<svg width="720" height="840" viewBox="0 0 720 840" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <ellipse cx="362" cy="756" rx="166" ry="28" fill="#17341C" fill-opacity=".12"/>
+  <circle cx="178" cy="152" r="80" fill="#E6EDC7"/>
+  <circle cx="548" cy="642" r="98" fill="#E9C687" fill-opacity=".42"/>
+  <path d="M124 592C188 478 268 398 366 348" stroke="#93B86B" stroke-width="24" stroke-linecap="round"/>
+  <rect x="182" y="244" width="152" height="304" rx="40" fill="#151817"/>
+  <rect x="182" y="206" width="152" height="66" rx="32" fill="#1D211F"/>
+  <rect x="386" y="272" width="144" height="238" rx="34" fill="#111412"/>
+  <rect x="420" y="190" width="30" height="96" rx="15" fill="#1D211F"/>
+  <rect x="470" y="190" width="30" height="96" rx="15" fill="#1D211F"/>
+  <rect x="274" y="536" width="170" height="102" rx="28" fill="#171D18"/>
+  <rect x="198" y="266" width="120" height="226" rx="28" fill="url(#greenLabel)"/>
+  <path d="M232 362H286" stroke="#17341C" stroke-width="12" stroke-linecap="round"/>
+  <path d="M226 390H292" stroke="#17341C" stroke-width="12" stroke-linecap="round"/>
+  <rect x="410" y="306" width="96" height="170" rx="24" fill="url(#goldLabel)"/>
+  <path d="M430 388H486" stroke="#17341C" stroke-width="12" stroke-linecap="round"/>
+  <path d="M226 650H494" stroke="#D8B25F" stroke-width="18" stroke-linecap="round"/>
+  <path d="M266 682H454" stroke="#17341C" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="566" cy="248" r="18" fill="#F4D56A"/>
+  <path d="M566 222V200" stroke="#17341C" stroke-width="8" stroke-linecap="round"/>
+  <path d="M586 248H608" stroke="#17341C" stroke-width="8" stroke-linecap="round"/>
+  <path d="M548 266L532 282" stroke="#17341C" stroke-width="8" stroke-linecap="round"/>
+  <rect x="126" y="646" width="468" height="84" rx="26" fill="#FAF5E4" stroke="#17341C" stroke-width="10"/>
+  <path d="M166 684H554" stroke="#17341C" stroke-width="10" stroke-linecap="round"/>
+  <defs>
+    <linearGradient id="greenLabel" x1="210" y1="266" x2="306" y2="492" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#B8E389"/>
+      <stop offset="1" stop-color="#6AB24F"/>
+    </linearGradient>
+    <linearGradient id="goldLabel" x1="410" y1="306" x2="506" y2="476" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F9E29A"/>
+      <stop offset="1" stop-color="#E6B654"/>
+    </linearGradient>
+  </defs>
+</svg>

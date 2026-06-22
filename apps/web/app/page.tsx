@@ -1,5 +1,5 @@
-import { StorefrontV2PremiumExperience } from "../features/storefront-v2-premium/layouts/storefront-v2-premium-page";
+import { StorefrontGameHome } from "../components/storefront-game-home";
 
-export default function HomePage() {
-  return <StorefrontV2PremiumExperience />;
+export default async function HomePage() {
+  return <StorefrontGameHome />;
 }

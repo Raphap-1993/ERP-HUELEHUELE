@@ -20,6 +20,7 @@ import type {
   PeruProvinceSummary,
   VendorApplicationInput,
   VendorApplicationSummary,
+  WebNavigationGroup,
   WholesaleLeadInput,
   WholesalePlan,
   WholesaleLeadSummary
@@ -216,6 +217,12 @@ export async function fetchCmsSiteSettings() {
   });
 }
 
+export async function fetchCmsNavigation() {
+  return requestJson<CmsNavigationEnvelope>("/store/navigation", {
+    cache: "no-store"
+  });
+}
+
 export async function fetchLoyaltySummary(token?: string) {
   return requestJson<LoyaltySummaryEnvelope>("/store/me/loyalty", {
     headers: getSessionHeaders(token)
@@ -275,6 +282,11 @@ export type CatalogSummaryResponseEnvelope = {
 
 export type CatalogProductsEnvelope = {
   data: CatalogProduct[];
+  meta?: Record<string, unknown>;
+};
+
+export type CmsNavigationEnvelope = {
+  data: WebNavigationGroup[];
   meta?: Record<string, unknown>;
 };
 

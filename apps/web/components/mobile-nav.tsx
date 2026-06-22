@@ -89,7 +89,7 @@ export function MobileNav({ links, brandName, ctaHref = "/catalogo" }: MobileNav
       </button>
 
       {/* Full-screen overlay — rendered via portal to escape backdrop-blur stacking context */}
-      {mounted && createPortal(
+      {mounted && open && createPortal(
         <div
           role="dialog"
           aria-label={`Menú de ${brandName}`}
@@ -97,7 +97,7 @@ export function MobileNav({ links, brandName, ctaHref = "/catalogo" }: MobileNav
           className={[
             "fixed inset-0 z-[200] flex flex-col bg-white md:hidden",
             "transition-opacity duration-300 ease-in-out",
-            open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
+            "opacity-100 pointer-events-auto",
           ].join(" ")}
         >
           {/* Header */}
