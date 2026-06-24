@@ -135,6 +135,13 @@ describe("public visual contract", () => {
     assert.match(globals, /\.hh-tiktok-card::before\s*\{[\s\S]*z-index: 4/);
     assert.match(globals, /\.hh-tiktok-card:focus-visible::before\s*\{[\s\S]*box-shadow:\s*inset 0 0 0 4px var\(--hh-sun\)/);
     assert.match(globals, /\.hh-tiktok-modal\s*\{[\s\S]*z-index: 1000/);
+    assert.doesNotMatch(globals, /\.hh-tiktok-modal-panel\s*\{[\s\S]*var\(--hh-cream\)/);
+    assert.match(globals, /\.hh-tiktok-modal-panel\s*\{[\s\S]*background:\s*linear-gradient\(180deg,\s*rgba\(255,\s*253,\s*245,\s*0\.98\),\s*rgba\(244,\s*251,\s*246,\s*0\.96\)\)/);
+    assert.match(globals, /\.hh-tiktok-modal-header,\s*\.hh-tiktok-modal-footer\s*\{[\s\S]*background:\s*rgba\(255,\s*253,\s*245,\s*0\.94\)/);
+    assert.match(globals, /\.hh-tiktok-modal-footer\s*\{[\s\S]*color:\s*var\(--hh-ink\)/);
+    assert.match(globals, /\.hh-tiktok-modal-close\s*\{[\s\S]*background:\s*rgba\(255,\s*199,\s*70,\s*0\.24\)/);
+    assert.match(globals, /\.hh-tiktok-modal-close\s*\{[\s\S]*border:\s*1px solid rgba\(16,\s*36,\s*22,\s*0\.14\)/);
+    assert.match(globals, /\.hh-tiktok-modal-footer a\s*\{[\s\S]*font-weight:\s*1000/);
     assert.match(globals, /\.hh-tiktok-player-frame iframe\s*\{[\s\S]*border: 0/);
     assert.match(globals, /scroll-snap-type: x mandatory/);
     assert.doesNotMatch(home, /TestimonialsSection|Historias reales de quienes ya lo usan|Lo dicen ellos|Testimonios en texto/);
