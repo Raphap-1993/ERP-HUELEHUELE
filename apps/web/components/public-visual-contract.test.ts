@@ -86,6 +86,32 @@ describe("public visual contract", () => {
     assert.match(globals, /\.hh-product-showcase\s*\{[\s\S]*grid-template-columns: minmax\(300px, 0\.36fr\) minmax\(0, 0\.64fr\)/);
   });
 
+  it("passes curated TikTok CMS items into the new Huele green home without old testimonial UX", () => {
+    const homeShell = readSource("components/storefront-game-home.tsx");
+    const home = readSource("components/huele-home-experience.tsx");
+    const globals = readSource("app/globals.css");
+
+    assert.match(homeShell, /resolveHueleHomeTikTokVideos/);
+    assert.match(homeShell, /tiktokVideos=\{resolveHueleHomeTikTokVideos\(cms\?\.testimonials \?\? \[\]\)\}/);
+    assert.match(home, /tiktokVideos: HueleHomeTikTokVideo\[\]/);
+    assert.match(home, /tiktokVideos\.length > 0/);
+    assert.match(home, /id="tiktok"/);
+    assert.match(home, /hh-tiktok-section/);
+    assert.match(home, /Lo que más se está viendo\./);
+    assert.match(home, /Videos reales de la comunidad Huele Huele\./);
+    assert.match(home, /href=\{video\.href\}/);
+    assert.match(home, /aria-label=\{`Ver video de TikTok: \$\{video\.title\}`\}/);
+    assert.match(globals, /\.hh-tiktok-section\s*\{[\s\S]*grid-template-columns: minmax\(240px, 0\.34fr\) minmax\(0, 0\.66fr\)/);
+    assert.match(globals, /\.hh-tiktok-rail\s*\{[\s\S]*grid-auto-columns: minmax\(210px, calc\(\(100% - 28px\) \/ 3\)\)/);
+    assert.match(globals, /\.hh-tiktok-rail\s*\{[\s\S]*grid-auto-flow: column/);
+    assert.match(globals, /\.hh-tiktok-rail\s*\{[\s\S]*overflow-x: auto/);
+    assert.match(globals, /\.hh-tiktok-card\s*\{[\s\S]*min-height: 360px/);
+    assert.match(globals, /\.hh-tiktok-card::before\s*\{[\s\S]*z-index: 4/);
+    assert.match(globals, /\.hh-tiktok-card:focus-visible::before\s*\{[\s\S]*box-shadow:\s*inset 0 0 0 4px var\(--hh-sun\)/);
+    assert.match(globals, /scroll-snap-type: x mandatory/);
+    assert.doesNotMatch(home, /TestimonialsSection|Historias reales de quienes ya lo usan|Lo dicen ellos|Testimonios en texto/);
+  });
+
   it("keeps checkout framed as a calmer transactional surface", () => {
     const checkout = readSource("components/checkout-workspace.tsx");
 

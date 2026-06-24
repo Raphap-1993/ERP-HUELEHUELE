@@ -1,4 +1,9 @@
-import type { CatalogProduct } from "@huelegood/shared";
+import {
+  CmsSocialPlatform,
+  CmsTestimonialKind,
+  type CatalogProduct,
+  type CmsTestimonial
+} from "@huelegood/shared";
 import { resolveStorefrontPrimaryAction, type StorefrontPrimaryAction } from "./storefront-purchase";
 
 export type HueleHomeMomentKey = "trafico" | "oficina" | "viaje" | "sierra" | "noche";
@@ -37,6 +42,17 @@ export type HueleHomeProductCard = HueleHomeProduct & {
   ctaLabel: string;
   action: StorefrontPrimaryAction | { mode: "catalog"; label: "Ver catálogo"; href: "/catalogo" };
   source: "runtime" | "fallback";
+};
+
+export type HueleHomeTikTokVideo = {
+  id: string;
+  title: string;
+  caption: string;
+  subcopy: string;
+  href: string;
+  imageAlt: string;
+  imageUrl: string;
+  platformLabel: "TikTok";
 };
 
 export const hueleHomeMoments: HueleHomeMoment[] = [
@@ -205,6 +221,96 @@ function resolveRuntimeProductCard(product: CatalogProduct): HueleHomeProductCar
     action,
     source: "runtime"
   };
+}
+
+function truncateHueleHomeText(value: string | undefined, maxLength: number) {
+  const text = value?.trim() ?? "";
+
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  return text.slice(0, maxLength).trimEnd();
+}
+
+function firstNonEmptyHueleHomeText(...values: string[]) {
+  return values.map((value) => value.trim()).find(Boolean) ?? "";
+}
+
+const TIKTOK_SOCIAL_HOSTNAMES = new Set([
+  "tiktok.com",
+  "www.tiktok.com",
+  "m.tiktok.com",
+  "vm.tiktok.com",
+  "vt.tiktok.com"
+]);
+
+function hasUsableTikTokSocialUrl(socialUrl?: string) {
+  const href = socialUrl?.trim();
+  if (!href) {
+    return false;
+  }
+
+  try {
+    const parsedUrl = new URL(href);
+    return parsedUrl.protocol === "https:" && TIKTOK_SOCIAL_HOSTNAMES.has(parsedUrl.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
+function hasUsableTikTokCover(coverImageUrl?: string) {
+  const imageUrl = coverImageUrl?.trim();
+  if (!imageUrl) {
+    return false;
+  }
+
+  if (imageUrl.startsWith("/") && !imageUrl.startsWith("//")) {
+    return true;
+  }
+
+  try {
+    const parsedUrl = new URL(imageUrl);
+    return parsedUrl.protocol === "https:" && parsedUrl.hostname === "media.huelegood.com";
+  } catch {
+    return false;
+  }
+}
+
+export function resolveHueleHomeTikTokVideos(testimonials: CmsTestimonial[]): HueleHomeTikTokVideo[] {
+  return testimonials
+    .filter((testimonial) => {
+      const socialUrl = testimonial.socialUrl?.trim();
+      const coverImageUrl = testimonial.coverImageUrl?.trim();
+
+      return (
+        testimonial.status === "active" &&
+        testimonial.kind === CmsTestimonialKind.Social &&
+        testimonial.socialPlatform === CmsSocialPlatform.Tiktok &&
+        hasUsableTikTokSocialUrl(socialUrl) &&
+        Boolean(coverImageUrl) &&
+        hasUsableTikTokCover(coverImageUrl)
+      );
+    })
+    .sort((left, right) => (left.position ?? 0) - (right.position ?? 0))
+    .slice(0, 5)
+    .map((testimonial) => {
+      const title = truncateHueleHomeText(
+        firstNonEmptyHueleHomeText(testimonial.name, testimonial.quote ?? "", "Video Huele Huele"),
+        48
+      );
+
+      return {
+        id: testimonial.id,
+        title,
+        caption: truncateHueleHomeText(testimonial.quote, 92),
+        subcopy: truncateHueleHomeText(testimonial.role, 42),
+        href: testimonial.socialUrl?.trim() ?? "",
+        imageAlt: `TikTok Huele Huele: ${title}`,
+        imageUrl: testimonial.coverImageUrl?.trim() ?? "",
+        platformLabel: "TikTok"
+      };
+    });
 }
 
 export function resolveHueleHomeProductCards(products: CatalogProduct[]): HueleHomeProductCard[] {

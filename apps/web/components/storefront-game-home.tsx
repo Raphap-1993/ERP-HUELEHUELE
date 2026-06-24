@@ -2,7 +2,7 @@ import { Baloo_2, Nunito } from "next/font/google";
 import { featuredProducts } from "@huelegood/shared";
 import { fetchCatalogSummary, fetchCmsSnapshot } from "../lib/api";
 import { HueleHomeExperience } from "./huele-home-experience";
-import { resolveHueleHomeProductCards } from "../lib/huele-home-content";
+import { resolveHueleHomeProductCards, resolveHueleHomeTikTokVideos } from "../lib/huele-home-content";
 import { curateStorefrontProducts, isStorefrontStaticFallbackEnabled } from "../lib/storefront-runtime";
 
 const hueleDisplayFont = Baloo_2({
@@ -67,6 +67,7 @@ export async function StorefrontGameHome() {
       fontClassName={`${hueleDisplayFont.variable} ${hueleBodyFont.variable}`}
       logoUrl={resolvePublicLogoUrl(siteSetting?.headerLogoUrl)}
       productCards={resolveHueleHomeProductCards(curatedProducts)}
+      tiktokVideos={resolveHueleHomeTikTokVideos(cms?.testimonials ?? [])}
       supportLines={supportLines}
     />
   );

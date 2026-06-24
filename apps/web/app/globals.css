@@ -1995,6 +1995,7 @@ body:has(.hh-checkout-page) .hh-public-header-shell > button[aria-expanded] {
 .hh-moment-detail,
 .hh-benefits-panel,
 .hh-products-section,
+.hh-tiktok-section,
 .hh-seller-band,
 .hh-natural-band,
 .hh-support-band,
@@ -2489,6 +2490,7 @@ body:has(.hh-checkout-page) .hh-public-header-shell > button[aria-expanded] {
 .hh-benefits-panel,
 .hh-selector-card,
 .hh-product-hero-card,
+.hh-tiktok-section,
 .hh-seller-band,
 .hh-natural-band,
 .hh-support-band {
@@ -2711,6 +2713,7 @@ body:has(.hh-checkout-page) .hh-public-header-shell > button[aria-expanded] {
 
 .hh-selector-card,
 .hh-product-hero-card,
+.hh-tiktok-section,
 .hh-seller-band,
 .hh-natural-band,
 .hh-support-band {
@@ -2859,6 +2862,174 @@ body:has(.hh-checkout-page) .hh-public-header-shell > button[aria-expanded] {
   color: var(--hh-green-800);
   font-size: 1.45rem;
   font-weight: 1000;
+}
+
+.hh-tiktok-section {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: minmax(240px, 0.34fr) minmax(0, 0.66fr);
+  align-items: center;
+  gap: clamp(24px, 3vw, 40px);
+  margin-top: 42px;
+  scroll-margin-top: 120px;
+  overflow: hidden;
+  padding: 34px;
+  background:
+    radial-gradient(circle at 8% 18%, rgba(144, 236, 83, 0.18), transparent 34%),
+    rgba(255, 253, 245, 0.96);
+}
+
+.hh-tiktok-heading h2 {
+  margin: 14px 0 0;
+  color: var(--hh-ink);
+  font-size: clamp(2.15rem, 4vw, 3.9rem);
+  line-height: 0.94;
+}
+
+.hh-tiktok-heading p {
+  margin: 14px 0 0;
+  color: var(--hh-muted);
+  font-weight: 850;
+  line-height: 1.5;
+}
+
+.hh-tiktok-rail {
+  display: grid;
+  grid-auto-columns: minmax(210px, calc((100% - 28px) / 3));
+  grid-auto-flow: column;
+  grid-template-columns: none;
+  gap: 14px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 4px;
+}
+
+.hh-tiktok-card {
+  position: relative;
+  display: grid;
+  min-height: 360px;
+  overflow: hidden;
+  border-radius: 8px;
+  color: var(--hh-white);
+  background: var(--hh-green-950);
+  box-shadow: 0 20px 42px rgba(4, 24, 12, 0.18);
+  scroll-snap-align: start;
+  transition:
+    transform 180ms var(--hh-ease-out),
+    box-shadow 180ms var(--hh-ease-out);
+}
+
+.hh-tiktok-card::before {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  border-radius: inherit;
+  pointer-events: none;
+  content: "";
+  box-shadow: inset 0 0 0 0 transparent;
+  transition: box-shadow 180ms var(--hh-ease-out);
+}
+
+.hh-tiktok-card:hover,
+.hh-tiktok-card:focus-visible {
+  transform: translateY(-5px);
+  box-shadow: 0 26px 54px rgba(4, 24, 12, 0.24);
+}
+
+.hh-tiktok-card:focus-visible {
+  outline: none;
+}
+
+.hh-tiktok-card:focus-visible::before {
+  box-shadow: inset 0 0 0 4px var(--hh-sun);
+}
+
+.hh-tiktok-media {
+  position: absolute;
+  inset: 0;
+}
+
+.hh-tiktok-media::after {
+  position: absolute;
+  inset: auto 0 0;
+  height: 58%;
+  content: "";
+  background: linear-gradient(180deg, transparent, rgba(3, 24, 13, 0.86));
+}
+
+.hh-tiktok-media img {
+  object-fit: cover;
+  transition: transform 260ms var(--hh-ease-out);
+}
+
+.hh-tiktok-card:hover .hh-tiktok-media img,
+.hh-tiktok-card:focus-visible .hh-tiktok-media img {
+  transform: scale(1.04);
+}
+
+.hh-tiktok-play {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  color: var(--hh-green-950);
+  background: rgba(255, 253, 245, 0.92);
+  box-shadow: 0 12px 28px rgba(4, 24, 12, 0.18);
+}
+
+.hh-tiktok-card-copy {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  align-content: end;
+  min-height: 360px;
+  padding: 18px;
+}
+
+.hh-tiktok-card-copy small,
+.hh-tiktok-card-copy em {
+  display: inline-flex;
+  justify-self: start;
+  border-radius: 999px;
+  font-style: normal;
+  font-weight: 1000;
+}
+
+.hh-tiktok-card-copy small {
+  margin-bottom: 10px;
+  padding: 6px 9px;
+  color: var(--hh-green-950);
+  background: var(--hh-sun);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+}
+
+.hh-tiktok-card-copy strong {
+  font-family: var(--font-hh-display), ui-rounded, sans-serif;
+  font-size: 1.24rem;
+  line-height: 1;
+}
+
+.hh-tiktok-card-copy span {
+  margin-top: 7px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.82rem;
+  font-weight: 850;
+  line-height: 1.35;
+}
+
+.hh-tiktok-card-copy em {
+  margin-top: 10px;
+  padding: 5px 9px;
+  color: rgba(255, 255, 255, 0.86);
+  background: rgba(255, 255, 255, 0.14);
+  font-size: 0.68rem;
 }
 
 .hh-seller-band {
@@ -3111,6 +3282,7 @@ body:has(.hh-checkout-page) .hh-public-header-shell > button[aria-expanded] {
   .hh-moment-detail,
   .hh-benefits-panel,
   .hh-products-section,
+  .hh-tiktok-section,
   .hh-seller-band,
   .hh-natural-band,
   .hh-support-band,
@@ -3202,6 +3374,7 @@ body:has(.hh-checkout-page) .hh-public-header-shell > button[aria-expanded] {
 
   .hh-section-heading,
   .hh-product-showcase,
+  .hh-tiktok-section,
   .hh-seller-band,
   .hh-natural-band {
     grid-template-columns: 1fr;
@@ -3220,6 +3393,34 @@ body:has(.hh-checkout-page) .hh-public-header-shell > button[aria-expanded] {
 
   .hh-product-large-visual {
     width: min(100%, 420px);
+  }
+
+  .hh-tiktok-section {
+    display: block;
+    padding: 26px 18px;
+  }
+
+  .hh-tiktok-heading {
+    margin-bottom: 20px;
+  }
+
+  .hh-tiktok-rail {
+    display: grid;
+    grid-auto-columns: minmax(230px, 76vw);
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 4px;
+  }
+
+  .hh-tiktok-card {
+    min-height: 340px;
+    scroll-snap-align: start;
+  }
+
+  .hh-tiktok-card-copy {
+    min-height: 340px;
   }
 
   .hh-seller-band {

@@ -12,7 +12,8 @@ import {
   hueleHomeSellerStats,
   type HueleHomeBenefit,
   type HueleHomeMomentKey,
-  type HueleHomeProductCard
+  type HueleHomeProductCard,
+  type HueleHomeTikTokVideo
 } from "../lib/huele-home-content";
 import {
   cloudflareImageLoader,
@@ -25,6 +26,7 @@ type HueleHomeExperienceProps = {
   fontClassName: string;
   logoUrl: string;
   productCards: HueleHomeProductCard[];
+  tiktokVideos: HueleHomeTikTokVideo[];
   supportLines: string[];
 };
 
@@ -127,6 +129,7 @@ export function HueleHomeExperience({
   fontClassName,
   logoUrl,
   productCards,
+  tiktokVideos,
   supportLines
 }: HueleHomeExperienceProps) {
   const [activeMoment, setActiveMoment] = useState<HueleHomeMomentKey>("trafico");
@@ -387,6 +390,53 @@ export function HueleHomeExperience({
           ) : null}
         </div>
       </section>
+
+      {tiktokVideos.length > 0 ? (
+        <section id="tiktok" className="hh-tiktok-section" aria-labelledby="tiktok-title">
+          <div className="hh-tiktok-heading">
+            <span className="hh-section-kicker">TikTok real</span>
+            <h2 id="tiktok-title">Lo que más se está viendo.</h2>
+            <p>Videos reales de la comunidad Huele Huele.</p>
+          </div>
+
+          <div className="hh-tiktok-rail" aria-label="Videos de TikTok Huele Huele">
+            {tiktokVideos.map((video) => {
+              const imageSrc = resolveStorefrontMediaSrc(video.imageUrl);
+              const remote = isRemoteStorefrontMediaUrl(imageSrc);
+
+              return (
+                <Link
+                  key={video.id}
+                  href={video.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hh-tiktok-card"
+                  aria-label={`Ver video de TikTok: ${video.title}`}
+                >
+                  <span className="hh-tiktok-media">
+                    <Image
+                      fill
+                      src={imageSrc}
+                      loader={remote ? cloudflareImageLoader : undefined}
+                      alt={video.imageAlt}
+                      sizes="(min-width: 921px) 230px, 72vw"
+                    />
+                    <span className="hh-tiktok-play" aria-hidden="true">
+                      <Icon name="play" />
+                    </span>
+                  </span>
+                  <span className="hh-tiktok-card-copy">
+                    <small>{video.platformLabel}</small>
+                    <strong>{video.title}</strong>
+                    {video.caption ? <span>{video.caption}</span> : null}
+                    {video.subcopy ? <em>{video.subcopy}</em> : null}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
       <section id="mayoristas" className="hh-seller-band" aria-labelledby="seller-title">
         <Image className="hh-mini-mascot hh-seller-mascot" src="/brand/lorito-cutout.png" alt="" aria-hidden="true" width={240} height={240} />
