@@ -15,6 +15,7 @@ type TikTokVideoResolver = (testimonials: CmsTestimonial[]) => {
   caption: string;
   subcopy: string;
   href: string;
+  playerUrl: string;
   imageAlt: string;
   imageUrl: string;
   platformLabel: "TikTok";
@@ -179,6 +180,7 @@ test("huele home TikTok videos include only active TikTok social testimonials wi
       caption: "Me ayuda con mareos y olores en el camino.",
       subcopy: "Viajes y oficina",
       href: "https://www.tiktok.com/@huelegood/video/123",
+      playerUrl: "https://www.tiktok.com/player/v1/123?autoplay=1&controls=1&rel=0",
       imageAlt: "TikTok Huele Huele: Ana lleva Huele Huele en la mochila",
       imageUrl: "/media/testimonials/tiktok-ana.webp",
       platformLabel: "TikTok"
@@ -281,6 +283,30 @@ test("huele home TikTok videos reject local or non-TikTok social URLs", () => {
 
   assert.deepEqual(
     videos.map((video) => video.id),
-    ["canonical-tiktok", "short-tiktok", "bare-tiktok"]
+    ["canonical-tiktok", "bare-tiktok"]
+  );
+});
+
+test("huele home TikTok videos expose an official player URL for inline modal playback", () => {
+  const videos = resolveTikTokVideos([
+    cmsTestimonial({
+      id: "creator-video",
+      socialUrl: "https://www.tiktok.com/@huele.good/video/7620939616262114580",
+      coverImageUrl: "https://media.huelegood.com/testimonials/tiktok-player.webp"
+    }),
+    cmsTestimonial({
+      id: "player-video",
+      socialUrl: "https://www.tiktok.com/player/v1/7621563297229278485",
+      coverImageUrl: "https://media.huelegood.com/testimonials/tiktok-player-2.webp",
+      position: 2
+    })
+  ]);
+
+  assert.deepEqual(
+    videos.map((video) => video.playerUrl),
+    [
+      "https://www.tiktok.com/player/v1/7620939616262114580?autoplay=1&controls=1&rel=0",
+      "https://www.tiktok.com/player/v1/7621563297229278485?autoplay=1&controls=1&rel=0"
+    ]
   );
 });

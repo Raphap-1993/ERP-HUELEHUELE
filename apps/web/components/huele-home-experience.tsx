@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { type PointerEvent, type ReactNode, useMemo, useState } from "react";
+import { type KeyboardEvent as ReactKeyboardEvent, type PointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { AddToCartLink } from "./add-to-cart-link";
 import {
   hueleHomeBenefits,
@@ -30,7 +30,7 @@ type HueleHomeExperienceProps = {
   supportLines: string[];
 };
 
-function Icon({ name }: { name: "leaf" | "bag" | "play" | "store" | "shield" | "box" | "truck" | "mountain" | "wind" | "sparkles" | "zap" | "map" | "chevron" }) {
+function Icon({ name }: { name: "leaf" | "bag" | "play" | "store" | "shield" | "box" | "truck" | "mountain" | "wind" | "sparkles" | "zap" | "map" | "chevron" | "x" }) {
   const common = {
     "aria-hidden": true,
     fill: "none",
@@ -57,7 +57,8 @@ function Icon({ name }: { name: "leaf" | "bag" | "play" | "store" | "shield" | "
     sparkles: <><path d="m12 3 1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3Z" /><path d="M5 16v3" /><path d="M3.5 17.5h3" /></>,
     zap: <path d="M13 2 4 14h7l-1 8 10-13h-7l0-7Z" />,
     map: <><path d="M12 21s7-5 7-12a7 7 0 1 0-14 0c0 7 7 12 7 12Z" /><circle cx="12" cy="9" r="2.5" /></>,
-    chevron: <path d="m9 18 6-6-6-6" />
+    chevron: <path d="m9 18 6-6-6-6" />,
+    x: <><path d="M18 6 6 18" /><path d="m6 6 12 12" /></>
   };
 
   return <svg {...common}>{paths[name]}</svg>;
@@ -135,6 +136,9 @@ export function HueleHomeExperience({
   const [activeMoment, setActiveMoment] = useState<HueleHomeMomentKey>("trafico");
   const [selectedProduct, setSelectedProduct] = useState(productCards[0]?.key ?? "");
   const [burst, setBurst] = useState(false);
+  const [activeTikTokVideo, setActiveTikTokVideo] = useState<HueleHomeTikTokVideo | null>(null);
+  const tiktokCloseButtonRef = useRef<HTMLButtonElement>(null);
+  const lastTikTokTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   const activeMomentData = useMemo(
     () => hueleHomeMoments.find((moment) => moment.key === activeMoment) ?? hueleHomeMoments[0],
@@ -160,6 +164,70 @@ export function HueleHomeExperience({
     setBurst(true);
     window.setTimeout(() => setBurst(false), 800);
   }
+
+  function closeTikTokModal() {
+    setActiveTikTokVideo(null);
+  }
+
+  function openTikTokModal(video: HueleHomeTikTokVideo, trigger: HTMLButtonElement) {
+    lastTikTokTriggerRef.current = trigger;
+    setActiveTikTokVideo(video);
+  }
+
+  function trapTikTokModalFocus(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Tab") {
+      return;
+    }
+
+    const focusableElements = Array.from(
+      event.currentTarget.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), iframe, [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter((element) => !element.hasAttribute("disabled"));
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    if (!firstElement || !lastElement) {
+      return;
+    }
+
+    if (event.shiftKey && document.activeElement === firstElement) {
+      event.preventDefault();
+      lastElement.focus();
+      return;
+    }
+
+    if (!event.shiftKey && document.activeElement === lastElement) {
+      event.preventDefault();
+      firstElement.focus();
+    }
+  }
+
+  useEffect(() => {
+    if (!activeTikTokVideo) {
+      return undefined;
+    }
+
+    window.setTimeout(() => tiktokCloseButtonRef.current?.focus(), 0);
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        closeTikTokModal();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeTikTokVideo]);
+
+  useEffect(() => {
+    if (activeTikTokVideo) {
+      return;
+    }
+
+    lastTikTokTriggerRef.current?.focus();
+  }, [activeTikTokVideo]);
 
   return (
     <div data-huele-green-home="true" className={`hh-page ${fontClassName}`} onPointerMove={updatePointer}>
@@ -394,7 +462,6 @@ export function HueleHomeExperience({
       {tiktokVideos.length > 0 ? (
         <section id="tiktok" className="hh-tiktok-section" aria-labelledby="tiktok-title">
           <div className="hh-tiktok-heading">
-            <span className="hh-section-kicker">TikTok real</span>
             <h2 id="tiktok-title">Lo que más se está viendo.</h2>
             <p>Videos reales de la comunidad Huele Huele.</p>
           </div>
@@ -405,12 +472,11 @@ export function HueleHomeExperience({
               const remote = isRemoteStorefrontMediaUrl(imageSrc);
 
               return (
-                <Link
+                <button
                   key={video.id}
-                  href={video.href}
-                  target="_blank"
-                  rel="noreferrer"
+                  type="button"
                   className="hh-tiktok-card"
+                  onClick={(event) => openTikTokModal(video, event.currentTarget)}
                   aria-label={`Ver video de TikTok: ${video.title}`}
                 >
                   <span className="hh-tiktok-media">
@@ -431,10 +497,52 @@ export function HueleHomeExperience({
                     {video.caption ? <span>{video.caption}</span> : null}
                     {video.subcopy ? <em>{video.subcopy}</em> : null}
                   </span>
-                </Link>
+                </button>
               );
             })}
           </div>
+
+          {activeTikTokVideo ? (
+            <div
+              className="hh-tiktok-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="tiktok-player-title"
+              onClick={closeTikTokModal}
+              onKeyDown={trapTikTokModalFocus}
+            >
+              <div className="hh-tiktok-modal-panel" onClick={(event) => event.stopPropagation()}>
+                <div className="hh-tiktok-modal-header">
+                  <h3 id="tiktok-player-title">{activeTikTokVideo.title}</h3>
+                  <button
+                    ref={tiktokCloseButtonRef}
+                    type="button"
+                    className="hh-tiktok-modal-close"
+                    aria-label="Cerrar video"
+                    onClick={closeTikTokModal}
+                  >
+                    <Icon name="x" />
+                  </button>
+                </div>
+                <div className="hh-tiktok-player-frame">
+                  <iframe
+                    src={activeTikTokVideo.playerUrl}
+                    title={`Reproductor TikTok: ${activeTikTokVideo.title}`}
+                    allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                  />
+                </div>
+                <div className="hh-tiktok-modal-footer">
+                  {activeTikTokVideo.subcopy ? <span>{activeTikTokVideo.subcopy}</span> : null}
+                  <Link href={activeTikTokVideo.href} target="_blank" rel="noreferrer">
+                    Abrir en TikTok
+                  </Link>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </section>
       ) : null}
 

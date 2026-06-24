@@ -2908,12 +2908,17 @@ body:has(.hh-checkout-page) .hh-public-header-shell > button[aria-expanded] {
 .hh-tiktok-card {
   position: relative;
   display: grid;
+  width: 100%;
   min-height: 360px;
   overflow: hidden;
+  border: 0;
   border-radius: 8px;
   color: var(--hh-white);
   background: var(--hh-green-950);
   box-shadow: 0 20px 42px rgba(4, 24, 12, 0.18);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
   scroll-snap-align: start;
   transition:
     transform 180ms var(--hh-ease-out),
@@ -3030,6 +3035,94 @@ body:has(.hh-checkout-page) .hh-public-header-shell > button[aria-expanded] {
   color: rgba(255, 255, 255, 0.86);
   background: rgba(255, 255, 255, 0.14);
   font-size: 0.68rem;
+}
+
+.hh-tiktok-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: clamp(18px, 4vw, 42px);
+  background: rgba(3, 24, 13, 0.74);
+  backdrop-filter: blur(14px);
+}
+
+.hh-tiktok-modal-panel {
+  width: min(100%, 440px);
+  max-height: min(92vh, 860px);
+  overflow: auto;
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(144, 236, 83, 0.2), transparent 42%),
+    var(--hh-cream);
+  box-shadow: 0 30px 90px rgba(2, 20, 10, 0.36);
+}
+
+.hh-tiktok-modal-header,
+.hh-tiktok-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+}
+
+.hh-tiktok-modal-header h3 {
+  margin: 0;
+  color: var(--hh-ink);
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.hh-tiktok-modal-close {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 50%;
+  color: var(--hh-ink);
+  background: rgba(4, 80, 38, 0.08);
+  cursor: pointer;
+}
+
+.hh-tiktok-modal-close:hover,
+.hh-tiktok-modal-close:focus-visible {
+  background: var(--hh-sun);
+  outline: none;
+}
+
+.hh-tiktok-player-frame {
+  width: min(100% - 32px, 390px);
+  margin: 0 auto;
+  aspect-ratio: 9 / 16;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--hh-green-950);
+}
+
+.hh-tiktok-player-frame iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.hh-tiktok-modal-footer {
+  color: var(--hh-muted);
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.hh-tiktok-modal-footer a {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 10px 14px;
+  color: var(--hh-green-950);
+  background: var(--hh-sun);
+  text-decoration: none;
 }
 
 .hh-seller-band {

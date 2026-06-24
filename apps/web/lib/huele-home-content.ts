@@ -50,6 +50,7 @@ export type HueleHomeTikTokVideo = {
   caption: string;
   subcopy: string;
   href: string;
+  playerUrl: string;
   imageAlt: string;
   imageUrl: string;
   platformLabel: "TikTok";
@@ -259,6 +260,29 @@ function hasUsableTikTokSocialUrl(socialUrl?: string) {
   }
 }
 
+function resolveTikTokPlayerUrl(socialUrl?: string) {
+  const href = socialUrl?.trim();
+  if (!href) {
+    return null;
+  }
+
+  try {
+    const parsedUrl = new URL(href);
+    if (parsedUrl.protocol !== "https:" || !TIKTOK_SOCIAL_HOSTNAMES.has(parsedUrl.hostname.toLowerCase())) {
+      return null;
+    }
+
+    const videoId = parsedUrl.pathname.match(/\/(?:video|player\/v1)\/(\d+)/)?.[1];
+    if (!videoId) {
+      return null;
+    }
+
+    return `https://www.tiktok.com/player/v1/${videoId}?autoplay=1&controls=1&rel=0`;
+  } catch {
+    return null;
+  }
+}
+
 function hasUsableTikTokCover(coverImageUrl?: string) {
   const imageUrl = coverImageUrl?.trim();
   if (!imageUrl) {
@@ -282,12 +306,14 @@ export function resolveHueleHomeTikTokVideos(testimonials: CmsTestimonial[]): Hu
     .filter((testimonial) => {
       const socialUrl = testimonial.socialUrl?.trim();
       const coverImageUrl = testimonial.coverImageUrl?.trim();
+      const playerUrl = resolveTikTokPlayerUrl(socialUrl);
 
       return (
         testimonial.status === "active" &&
         testimonial.kind === CmsTestimonialKind.Social &&
         testimonial.socialPlatform === CmsSocialPlatform.Tiktok &&
         hasUsableTikTokSocialUrl(socialUrl) &&
+        Boolean(playerUrl) &&
         Boolean(coverImageUrl) &&
         hasUsableTikTokCover(coverImageUrl)
       );
@@ -306,6 +332,7 @@ export function resolveHueleHomeTikTokVideos(testimonials: CmsTestimonial[]): Hu
         caption: truncateHueleHomeText(testimonial.quote, 92),
         subcopy: truncateHueleHomeText(testimonial.role, 42),
         href: testimonial.socialUrl?.trim() ?? "",
+        playerUrl: resolveTikTokPlayerUrl(testimonial.socialUrl) ?? "",
         imageAlt: `TikTok Huele Huele: ${title}`,
         imageUrl: testimonial.coverImageUrl?.trim() ?? "",
         platformLabel: "TikTok"
