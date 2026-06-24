@@ -1814,12 +1814,6 @@ body[data-huele-chrome="true"] div[role="dialog"][aria-label^="Menú de"] > div:
   padding-bottom: 36px;
 }
 
-body:has(.hh-checkout-page) .hh-public-desktop-nav,
-body:has(.hh-checkout-page) .hh-public-header-cta,
-body:has(.hh-checkout-page) .hh-public-header-shell > button[aria-expanded] {
-  display: none;
-}
-
 @media (hover: hover) and (pointer: fine) {
   .hh-public-button:hover {
     transform: translateY(-2px);

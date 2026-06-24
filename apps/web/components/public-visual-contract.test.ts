@@ -149,10 +149,14 @@ describe("public visual contract", () => {
 
   it("keeps checkout framed as a calmer transactional surface", () => {
     const checkout = readSource("components/checkout-workspace.tsx");
+    const globals = readSource("app/globals.css");
 
     assert.match(checkout, /hh-checkout-page/);
     assert.match(checkout, /Finaliza tu compra/);
     assert.match(checkout, /bg-\[var\(--hh-public-sun\)\]/);
+    assert.doesNotMatch(globals, /body:has\(\.hh-checkout-page\)\s+\.hh-public-desktop-nav[\s\S]*display:\s*none/);
+    assert.doesNotMatch(globals, /body:has\(\.hh-checkout-page\)\s+\.hh-public-header-cta[\s\S]*display:\s*none/);
+    assert.doesNotMatch(globals, /body:has\(\.hh-checkout-page\)\s+\.hh-public-header-shell > button\[aria-expanded\][\s\S]*display:\s*none/);
     assert.doesNotMatch(checkout, /Checkout real|Checkout seguro|Quote manda|lookup documental|ruta transaccional|Pago serio|quote recalculando|total listo/);
     assert.doesNotMatch(checkout, />\s*Paso [1-4]\s*</);
     assert.doesNotMatch(checkout, /Paso \{activeStep\}/);
