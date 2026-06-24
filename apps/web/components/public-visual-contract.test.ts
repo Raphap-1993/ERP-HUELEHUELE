@@ -118,6 +118,15 @@ describe("public visual contract", () => {
     assert.match(home, /href=\{activeTikTokVideo\.href\}/);
     assert.doesNotMatch(home, /href=\{video\.href\}/);
     assert.match(home, /aria-label=\{`Ver video de TikTok: \$\{video\.title\}`\}/);
+    const tiktokSectionStart = home.indexOf('<section id="tiktok"');
+    const tiktokSectionEnd = home.indexOf("</section>", tiktokSectionStart);
+    const tiktokModalStart = home.indexOf('className="hh-tiktok-modal"');
+    assert.ok(tiktokSectionStart >= 0, "home keeps a TikTok section");
+    assert.ok(tiktokSectionEnd > tiktokSectionStart, "TikTok section closes before later page content");
+    assert.ok(
+      tiktokModalStart > tiktokSectionEnd,
+      "TikTok modal must render outside hh-tiktok-section so section z-index and overflow cannot cover it"
+    );
     assert.match(globals, /\.hh-tiktok-section\s*\{[\s\S]*grid-template-columns: minmax\(240px, 0\.34fr\) minmax\(0, 0\.66fr\)/);
     assert.match(globals, /\.hh-tiktok-rail\s*\{[\s\S]*grid-auto-columns: minmax\(210px, calc\(\(100% - 28px\) \/ 3\)\)/);
     assert.match(globals, /\.hh-tiktok-rail\s*\{[\s\S]*grid-auto-flow: column/);
@@ -125,7 +134,7 @@ describe("public visual contract", () => {
     assert.match(globals, /\.hh-tiktok-card\s*\{[\s\S]*min-height: 360px/);
     assert.match(globals, /\.hh-tiktok-card::before\s*\{[\s\S]*z-index: 4/);
     assert.match(globals, /\.hh-tiktok-card:focus-visible::before\s*\{[\s\S]*box-shadow:\s*inset 0 0 0 4px var\(--hh-sun\)/);
-    assert.match(globals, /\.hh-tiktok-modal\s*\{/);
+    assert.match(globals, /\.hh-tiktok-modal\s*\{[\s\S]*z-index: 1000/);
     assert.match(globals, /\.hh-tiktok-player-frame iframe\s*\{[\s\S]*border: 0/);
     assert.match(globals, /scroll-snap-type: x mandatory/);
     assert.doesNotMatch(home, /TestimonialsSection|Historias reales de quienes ya lo usan|Lo dicen ellos|Testimonios en texto/);

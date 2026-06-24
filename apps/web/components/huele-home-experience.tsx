@@ -501,49 +501,49 @@ export function HueleHomeExperience({
               );
             })}
           </div>
-
-          {activeTikTokVideo ? (
-            <div
-              className="hh-tiktok-modal"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="tiktok-player-title"
-              onClick={closeTikTokModal}
-              onKeyDown={trapTikTokModalFocus}
-            >
-              <div className="hh-tiktok-modal-panel" onClick={(event) => event.stopPropagation()}>
-                <div className="hh-tiktok-modal-header">
-                  <h3 id="tiktok-player-title">{activeTikTokVideo.title}</h3>
-                  <button
-                    ref={tiktokCloseButtonRef}
-                    type="button"
-                    className="hh-tiktok-modal-close"
-                    aria-label="Cerrar video"
-                    onClick={closeTikTokModal}
-                  >
-                    <Icon name="x" />
-                  </button>
-                </div>
-                <div className="hh-tiktok-player-frame">
-                  <iframe
-                    src={activeTikTokVideo.playerUrl}
-                    title={`Reproductor TikTok: ${activeTikTokVideo.title}`}
-                    allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-                    allowFullScreen
-                    loading="lazy"
-                    referrerPolicy="strict-origin-when-cross-origin"
-                  />
-                </div>
-                <div className="hh-tiktok-modal-footer">
-                  {activeTikTokVideo.subcopy ? <span>{activeTikTokVideo.subcopy}</span> : null}
-                  <Link href={activeTikTokVideo.href} target="_blank" rel="noreferrer">
-                    Abrir en TikTok
-                  </Link>
-                </div>
-              </div>
-            </div>
-          ) : null}
         </section>
+      ) : null}
+
+      {activeTikTokVideo ? (
+        <div
+          className="hh-tiktok-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="tiktok-player-title"
+          onClick={closeTikTokModal}
+          onKeyDown={trapTikTokModalFocus}
+        >
+          <div className="hh-tiktok-modal-panel" onClick={(event) => event.stopPropagation()}>
+            <div className="hh-tiktok-modal-header">
+              <h3 id="tiktok-player-title">{activeTikTokVideo.title}</h3>
+              <button
+                ref={tiktokCloseButtonRef}
+                type="button"
+                className="hh-tiktok-modal-close"
+                aria-label="Cerrar video"
+                onClick={closeTikTokModal}
+              >
+                <Icon name="x" />
+              </button>
+            </div>
+            <div className="hh-tiktok-player-frame">
+              <iframe
+                src={activeTikTokVideo.playerUrl}
+                title={`Reproductor TikTok: ${activeTikTokVideo.title}`}
+                allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="strict-origin-when-cross-origin"
+              />
+            </div>
+            <div className="hh-tiktok-modal-footer">
+              {activeTikTokVideo.subcopy ? <span>{activeTikTokVideo.subcopy}</span> : null}
+              <Link href={activeTikTokVideo.href} target="_blank" rel="noreferrer">
+                Abrir en TikTok
+              </Link>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       <section id="mayoristas" className="hh-seller-band" aria-labelledby="seller-title">
