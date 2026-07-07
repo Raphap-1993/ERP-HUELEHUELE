@@ -3,6 +3,8 @@ import { LifecycleStatus, Prisma, VendorCodeStatus } from "@prisma/client";
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
 import {
   RoleCode,
+  type AccessSurface,
+  type EffectivePermissionSummary,
   type AuthCredentialsInput,
   type AuthRegisterInput,
   type AuthRoleSummary,
@@ -21,6 +23,7 @@ import { actionResponse, wrapResponse } from "../../common/response";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { ModuleStateService } from "../../persistence/module-state.service";
+import { AccessControlService } from "./access-control.service";
 import {
   closeSessionStore,
   parseAuthorizationToken,
@@ -83,6 +86,49 @@ const roleLabels: Record<RoleCode, string> = {
 
 function buildRoles(codes: RoleCode[]) {
   return codes.map((code) => ({ code, label: roleLabels[code] }));
+}
+
+function resolveSurfacesFromRoles(roleCodes: readonly RoleCode[]): AccessSurface[] {
+  const surfaces = new Set<AccessSurface>();
+
+  if (
+    roleCodes.some((code) =>
+      [
+        RoleCode.SuperAdmin,
+        RoleCode.Admin,
+        RoleCode.OperadorPagos,
+        RoleCode.Ventas,
+        RoleCode.Marketing,
+        RoleCode.SellerManager
+      ].includes(code)
+    )
+  ) {
+    surfaces.add("internal_admin");
+  }
+
+  if (
+    roleCodes.some((code) =>
+      [RoleCode.Cliente, RoleCode.Vendedor, RoleCode.Mayorista].includes(code)
+    )
+  ) {
+    surfaces.add("authenticated_portal");
+  }
+
+  return [...surfaces];
+}
+
+function resolveSurfaces(accountType: AccountType, roleCodes: readonly RoleCode[]) {
+  const surfaces = new Set(resolveSurfacesFromRoles(roleCodes));
+
+  if (accountType === "admin" || accountType === "operator") {
+    surfaces.add("internal_admin");
+  }
+
+  if (accountType === "customer" || accountType === "seller" || accountType === "wholesale") {
+    surfaces.add("authenticated_portal");
+  }
+
+  return [...surfaces];
 }
 
 const accounts = new Map<string, AuthRecord>();
@@ -180,21 +226,36 @@ function envOrFallback(name: string, fallback: string) {
   return value ? value : fallback;
 }
 
-async function createSession(account: AuthRecord): Promise<AuthSessionSummary> {
+function buildSessionUser(
+  account: AuthRecord,
+  effectivePermissions?: EffectivePermissionSummary[]
+): AuthSessionSummary["user"] {
+  const roleCodes = account.roles.flatMap((role) => (isRoleCode(role.code) ? [role.code] : []));
+
+  return {
+    id: account.id,
+    name: account.name,
+    email: account.email,
+    roles: account.roles,
+    primaryRoleCode: roleCodes[0],
+    accountType: account.accountType,
+    effectivePermissions,
+    surfaces: resolveSurfaces(account.accountType, roleCodes),
+    vendorCode: account.vendorCode,
+    wholesaleLeadId: account.wholesaleLeadId
+  };
+}
+
+async function createSession(
+  account: AuthRecord,
+  effectivePermissions?: EffectivePermissionSummary[]
+): Promise<AuthSessionSummary> {
   const token = randomUUID();
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString();
   const session: AuthSessionSummary = {
     token,
     expiresAt,
-    user: {
-      id: account.id,
-      name: account.name,
-      email: account.email,
-      roles: account.roles,
-      accountType: account.accountType,
-      vendorCode: account.vendorCode,
-      wholesaleLeadId: account.wholesaleLeadId
-    }
+    user: buildSessionUser(account, effectivePermissions)
   };
 
   await storeSession(session);
@@ -203,6 +264,14 @@ async function createSession(account: AuthRecord): Promise<AuthSessionSummary> {
 
 const databaseAuthUserInclude = {
   roles: {
+    orderBy: [
+      {
+        isPrimary: "desc"
+      },
+      {
+        createdAt: "asc"
+      }
+    ],
     include: {
       role: true
     }
@@ -340,7 +409,8 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly auditService: AuditService,
     private readonly moduleStateService: ModuleStateService,
-    private readonly prisma: PrismaService
+    private readonly prisma: PrismaService,
+    private readonly accessControlService: AccessControlService
   ) {}
 
   async onModuleInit() {
@@ -482,6 +552,21 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
       return wrapResponse<AuthSessionSummary | null>(null, { authenticated: false });
     }
 
+    if (databaseAuthEnabled()) {
+      const account = await this.findDatabaseAccount(session.user.email);
+      if (account) {
+        const effectivePermissions = await this.accessControlService.resolveEffectivePermissions(account.id);
+        const refreshedSession: AuthSessionSummary = {
+          ...session,
+          user: buildSessionUser(account, effectivePermissions)
+        };
+        await storeSession(refreshedSession);
+        return wrapResponse(refreshedSession, {
+          authenticated: true
+        });
+      }
+    }
+
     return wrapResponse(session, {
       authenticated: true
     });
@@ -562,12 +647,13 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
       }
 
       const existingRoleCodes = existingAccount.roles.map((role) => role.code);
-      if (existingRoleCodes.some((role) => isInternalBackofficeRole(role))) {
+      const knownExistingRoleCodes = existingRoleCodes.flatMap((role) => (isRoleCode(role) ? [role] : []));
+      if (knownExistingRoleCodes.some((role) => isInternalBackofficeRole(role))) {
         throw new BadRequestException("Ese email pertenece a un usuario interno. Usa otro email para el acceso comercial.");
       }
 
       const now = new Date().toISOString();
-      const mergedRoleCodes = Array.from(new Set([...existingRoleCodes, ...commercialRolesFor(accountType)]));
+      const mergedRoleCodes = Array.from(new Set([...knownExistingRoleCodes, ...commercialRolesFor(accountType)]));
       existingAccount.name = body.name.trim();
       existingAccount.phone = normalizeOptionalText(body.phone) ?? existingAccount.phone;
       existingAccount.password = temporaryPassword;
@@ -796,10 +882,12 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
 
       const missingRoles = roles.filter((role) => !existing.roles.some((userRole) => userRole.roleId === role.id));
       if (missingRoles.length) {
+        const hasPrimaryRole = existing.roles.some((userRole) => userRole.isPrimary);
         await this.prisma.userRole.createMany({
-          data: missingRoles.map((role) => ({
+          data: missingRoles.map((role, index) => ({
             userId: existing.id,
-            roleId: role.id
+            roleId: role.id,
+            isPrimary: !hasPrimaryRole && index === 0
           })),
           skipDuplicates: true
         });
@@ -859,8 +947,9 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
         passwordHash: hashPassword(temporaryPassword),
         status: LifecycleStatus.active,
         roles: {
-          create: roles.map((role) => ({
-            roleId: role.id
+          create: roles.map((role, index) => ({
+            roleId: role.id,
+            isPrimary: index === 0
           }))
         }
       }
@@ -1036,7 +1125,8 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
 
     await this.touchLastLogin(account.id);
 
-    const session = await createSession(account);
+    const effectivePermissions = await this.accessControlService.resolveEffectivePermissions(account.id);
+    const session = await createSession(account, effectivePermissions);
     this.auditService.recordAudit({
       module: "auth",
       action: "login",
@@ -1085,8 +1175,9 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
         passwordHash: hashPassword(body.password),
         status: LifecycleStatus.active,
         roles: {
-          create: roles.map((role) => ({
-            roleId: role.id
+          create: roles.map((role, index) => ({
+            roleId: role.id,
+            isPrimary: index === 0
           }))
         },
         customer:
@@ -1125,7 +1216,8 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
     const account = this.toAuthRecord(createdUser);
     let session: AuthSessionSummary;
     try {
-      session = await createSession(account);
+      const effectivePermissions = await this.accessControlService.resolveEffectivePermissions(account.id);
+      session = await createSession(account, effectivePermissions);
     } catch (error) {
       await this.rollbackRegisteredUser(createdUser.id, createdUser.vendor?.id);
       throw error;
@@ -1242,8 +1334,19 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
   }
 
   private toAuthRecord(user: DatabaseAuthUser, metadata?: CommercialAccessMetadata): AuthRecord {
-    const roleCodes = user.roles.flatMap((userRole) => (isRoleCode(userRole.role.code) ? [userRole.role.code] : []));
-    const accountType = resolveAccountType(roleCodes);
+    const knownRoleCodes = user.roles.flatMap((userRole) => (isRoleCode(userRole.role.code) ? [userRole.role.code] : []));
+    const allRoles = user.roles.map((userRole) => ({
+      code: userRole.role.code,
+      label: userRole.role.name,
+      isSystem: userRole.role.isSystem
+    }));
+    const accountType = knownRoleCodes.length
+      ? resolveAccountType(knownRoleCodes)
+      : user.roles.some((userRole) => userRole.role.surface === "internal_admin")
+        ? "admin"
+        : user.roles.some((userRole) => userRole.role.surface === "authenticated_portal")
+          ? "customer"
+          : "customer";
     const userUpdatedAt = user.updatedAt.toISOString();
     const updatedAt = metadata?.updatedAt && metadata.updatedAt > userUpdatedAt ? metadata.updatedAt : userUpdatedAt;
 
@@ -1254,7 +1357,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
       phone: user.phone ?? metadata?.phone ?? undefined,
       password: user.passwordHash,
       accountType,
-      roles: buildRoles(roleCodes),
+      roles: allRoles,
       vendorCode: accountType === "seller" ? metadata?.vendorCode ?? user.vendor?.codes[0]?.code : undefined,
       wholesaleLeadId: accountType === "wholesale" ? metadata?.wholesaleLeadId : undefined,
       status: normalizeStatus(user.status),

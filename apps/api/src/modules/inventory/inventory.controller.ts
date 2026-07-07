@@ -1,9 +1,9 @@
 import { Body, Controller, Get, Post } from "@nestjs/common";
-import { adminAccessRoles, type InventoryStockAdjustmentInput, type InventoryStockBulkInput } from "@huelegood/shared";
-import { RequireRoles } from "../auth/auth-rbac";
+import { adminModulePermissions, type InventoryStockAdjustmentInput } from "@huelegood/shared";
+import { RequirePermissions } from "../auth/auth-rbac";
 import { InventoryService } from "./inventory.service";
 
-@RequireRoles(...adminAccessRoles.inventory)
+@RequirePermissions(...adminModulePermissions.inventory.read)
 @Controller("admin/inventory")
 export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
@@ -14,12 +14,8 @@ export class InventoryController {
   }
 
   @Post("stock-adjustments")
+  @RequirePermissions(...adminModulePermissions.inventory.manage!)
   adjustStock(@Body() body: InventoryStockAdjustmentInput) {
     return this.inventoryService.adjustWarehouseStock(body);
-  }
-
-  @Post("stock-adjustments/bulk")
-  adjustStockBulk(@Body() body: InventoryStockBulkInput) {
-    return this.inventoryService.adjustWarehouseStockBulk(body);
   }
 }

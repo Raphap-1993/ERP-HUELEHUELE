@@ -1,0 +1,198 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import { readFileSync } from "node:fs";
+
+function readSource(path: string) {
+  return readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+}
+
+describe("public visual contract", () => {
+  it("keeps public chrome on the Huele green visual system", () => {
+    const layout = readSource("app/layout.tsx");
+    const home = readSource("components/huele-home-experience.tsx");
+    const globals = readSource("app/globals.css");
+
+    assert.match(layout, /data-huele-chrome="true"/);
+    assert.match(layout, /hh-public-root/);
+    assert.match(layout, /resolvePublicLogoUrl/);
+    assert.match(layout, /hh-public-site-header/);
+    assert.match(layout, /hh-public-site-footer/);
+    assert.match(layout, /hh-public-header-cta/);
+    assert.match(home, /logoUrl/);
+    assert.match(home, /hh-brand-logo-image/);
+    assert.match(readSource("components/catalog-browser.tsx"), /hh-catalog-page/);
+    assert.match(readSource("components/storefront-game-product-card.tsx"), /hh-catalog-product-card-inner/);
+    assert.match(globals, /\.hh-catalog-control-bar/);
+    assert.match(globals, /\.hh-catalog-product-grid/);
+    assert.match(globals, /\.hh-public-header-frame\s*\{[\s\S]*width: min\(1120px, calc\(100% - 40px\)\)/);
+    assert.match(globals, /\.hh-public-root\s*\{[\s\S]*linear-gradient\(180deg, var\(--hh-chrome-green-900\)/);
+    assert.match(globals, /\.hh-catalog-product-grid\s*\{[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+    assert.match(globals, /\.hh-catalog-product-card-inner\s*\{[\s\S]*grid-template-rows: auto 1fr/);
+    assert.match(globals, /\.hh-catalog-product-image-shell > div\s*\{[\s\S]*aspect-ratio: 1 \/ 1/);
+    assert.match(globals, /\.hh-catalog-product-price div:first-child\s*\{[\s\S]*font-size: clamp\(2\.1rem, 3vw, 2\.75rem\)/);
+    assert.match(globals, /\.hh-page\s*\{[\s\S]*display: flow-root/);
+    assert.match(globals, /\.hh-top-nav\s*\{[\s\S]*position: sticky/);
+    assert.match(globals, /footer:not\(\[data-site-footer="true"\]\)/);
+    assert.doesNotMatch(globals, /body:has\(\[data-checkout-fullscreen="true"\]\) footer\s*\{/);
+  });
+
+  it("avoids invalid Tailwind opacity shorthands in critical public surfaces", () => {
+    const sources = [
+      readSource("components/checkout-workspace.tsx"),
+      readSource("components/huele-public-ui.tsx"),
+      readSource("app/layout.tsx")
+    ].join("\n");
+
+    assert.doesNotMatch(sources, /\bbg-white\/(?:82|84|96|98)\b/);
+    assert.doesNotMatch(sources, /\btext-\[[^\]]+\]\/(?:64|72|78)\b/);
+  });
+
+  it("routes home menu product links to public pages", () => {
+    const home = readSource("components/huele-home-experience.tsx");
+
+    assert.match(home, /<Link href="\/catalogo">Productos<\/Link>/);
+    assert.match(home, /<Link href="\/mayoristas">Mayoristas<\/Link>/);
+    assert.doesNotMatch(home, /href="#productos"[\s\S]*>Productos/);
+    assert.doesNotMatch(home, /href="#mayoristas"[\s\S]*>Mayoristas/);
+  });
+
+  it("keeps home footer support content explicit instead of count summaries", () => {
+    const homeShell = readSource("components/storefront-game-home.tsx");
+    const home = readSource("components/huele-home-experience.tsx");
+    const globals = readSource("app/globals.css");
+
+    assert.match(home, /<span>WhatsApp<\/span>/);
+    assert.match(home, /<span>Envío gratis<\/span>/);
+    assert.match(home, /<span>Soporte<\/span>/);
+    assert.match(home, /© 2026 Huele Huele\. Perú\./);
+    assert.match(home, /<Link href="\/catalogo">Comprar<\/Link>/);
+    assert.match(globals, /\.hh-support-band\s*\{[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+    assert.doesNotMatch(homeShell, /testimonios activos|preguntas frecuentes activas|Testimonios listos|FAQ conectada|Cliente:|Pregunta frecuente:/);
+    assert.doesNotMatch(home, /Contenido oficial|runtime de catálogo|dirección visual verde|Cliente:|Pregunta frecuente:/);
+  });
+
+  it("keeps home product and benefits sections spatially balanced", () => {
+    const home = readSource("components/huele-home-experience.tsx");
+    const globals = readSource("app/globals.css");
+
+    assert.match(home, /hh-benefits-heading/);
+    assert.match(home, /hh-product-card-copy/);
+    assert.match(globals, /\.hh-products-section\s*\{[\s\S]*scroll-margin-top: 120px/);
+    assert.match(globals, /\.hh-benefits-panel\s*\{[\s\S]*scroll-margin-top: 120px/);
+    assert.match(globals, /\.hh-benefits-heading\s*\{[\s\S]*text-align: center/);
+    assert.match(globals, /\.hh-benefit-icon\s*\{[\s\S]*width: 120px/);
+    assert.match(globals, /\.hh-benefit-icon svg\s*\{[\s\S]*width: 30px/);
+    assert.match(globals, /\.hh-product-hero-card\s*\{[\s\S]*gap: clamp\(24px, 2\.7vw, 36px\)/);
+    assert.match(globals, /\.hh-product-showcase\s*\{[\s\S]*grid-template-columns: minmax\(300px, 0\.36fr\) minmax\(0, 0\.64fr\)/);
+  });
+
+  it("passes curated TikTok CMS items into the new Huele green home without old testimonial UX", () => {
+    const homeShell = readSource("components/storefront-game-home.tsx");
+    const home = readSource("components/huele-home-experience.tsx");
+    const globals = readSource("app/globals.css");
+
+    assert.match(homeShell, /resolveHueleHomeTikTokVideos/);
+    assert.match(homeShell, /tiktokVideos=\{resolveHueleHomeTikTokVideos\(cms\?\.testimonials \?\? \[\]\)\}/);
+    assert.match(home, /tiktokVideos: HueleHomeTikTokVideo\[\]/);
+    assert.match(home, /tiktokVideos\.length > 0/);
+    assert.match(home, /id="tiktok"/);
+    assert.match(home, /hh-tiktok-section/);
+    assert.match(home, /Lo que más se está viendo\./);
+    assert.match(home, /Videos reales de la comunidad Huele Huele\./);
+    assert.doesNotMatch(home, /TikTok real/);
+    assert.match(home, /activeTikTokVideo/);
+    assert.match(home, /lastTikTokTriggerRef/);
+    assert.match(home, /tiktokCloseButtonRef/);
+    assert.match(home, /function openTikTokModal/);
+    assert.match(home, /function closeTikTokModal/);
+    assert.match(home, /function trapTikTokModalFocus/);
+    assert.match(home, /onClick=\{\(event\) => openTikTokModal\(video, event\.currentTarget\)\}/);
+    assert.match(home, /tiktokCloseButtonRef\.current\?\.focus\(\)/);
+    assert.match(home, /lastTikTokTriggerRef\.current\?\.focus\(\)/);
+    assert.match(home, /role="dialog"/);
+    assert.match(home, /aria-modal="true"/);
+    assert.match(home, /onKeyDown=\{trapTikTokModalFocus\}/);
+    assert.match(home, /<iframe/);
+    assert.match(home, /src=\{activeTikTokVideo\.playerUrl\}/);
+    assert.match(home, /Abrir en TikTok/);
+    assert.match(home, /href=\{activeTikTokVideo\.href\}/);
+    assert.doesNotMatch(home, /href=\{video\.href\}/);
+    assert.match(home, /aria-label=\{`Ver video de TikTok: \$\{video\.title\}`\}/);
+    const tiktokSectionStart = home.indexOf('<section id="tiktok"');
+    const tiktokSectionEnd = home.indexOf("</section>", tiktokSectionStart);
+    const tiktokModalStart = home.indexOf('className="hh-tiktok-modal"');
+    assert.ok(tiktokSectionStart >= 0, "home keeps a TikTok section");
+    assert.ok(tiktokSectionEnd > tiktokSectionStart, "TikTok section closes before later page content");
+    assert.ok(
+      tiktokModalStart > tiktokSectionEnd,
+      "TikTok modal must render outside hh-tiktok-section so section z-index and overflow cannot cover it"
+    );
+    assert.match(globals, /\.hh-tiktok-section\s*\{[\s\S]*grid-template-columns: minmax\(240px, 0\.34fr\) minmax\(0, 0\.66fr\)/);
+    assert.match(globals, /\.hh-tiktok-rail\s*\{[\s\S]*grid-auto-columns: minmax\(210px, calc\(\(100% - 28px\) \/ 3\)\)/);
+    assert.match(globals, /\.hh-tiktok-rail\s*\{[\s\S]*grid-auto-flow: column/);
+    assert.match(globals, /\.hh-tiktok-rail\s*\{[\s\S]*overflow-x: auto/);
+    assert.match(globals, /\.hh-tiktok-card\s*\{[\s\S]*min-height: 360px/);
+    assert.match(globals, /\.hh-tiktok-card::before\s*\{[\s\S]*z-index: 4/);
+    assert.match(globals, /\.hh-tiktok-card:focus-visible::before\s*\{[\s\S]*box-shadow:\s*inset 0 0 0 4px var\(--hh-sun\)/);
+    assert.match(globals, /\.hh-tiktok-modal\s*\{[\s\S]*z-index: 1000/);
+    assert.doesNotMatch(globals, /\.hh-tiktok-modal-panel\s*\{[\s\S]*var\(--hh-cream\)/);
+    assert.match(globals, /\.hh-tiktok-modal-panel\s*\{[\s\S]*background:\s*linear-gradient\(180deg,\s*rgba\(255,\s*253,\s*245,\s*0\.98\),\s*rgba\(244,\s*251,\s*246,\s*0\.96\)\)/);
+    assert.match(globals, /\.hh-tiktok-modal-header,\s*\.hh-tiktok-modal-footer\s*\{[\s\S]*background:\s*rgba\(255,\s*253,\s*245,\s*0\.94\)/);
+    assert.match(globals, /\.hh-tiktok-modal-footer\s*\{[\s\S]*color:\s*var\(--hh-ink\)/);
+    assert.match(globals, /\.hh-tiktok-modal-close\s*\{[\s\S]*background:\s*rgba\(255,\s*199,\s*70,\s*0\.24\)/);
+    assert.match(globals, /\.hh-tiktok-modal-close\s*\{[\s\S]*border:\s*1px solid rgba\(16,\s*36,\s*22,\s*0\.14\)/);
+    assert.match(globals, /\.hh-tiktok-modal-footer a\s*\{[\s\S]*font-weight:\s*1000/);
+    assert.match(globals, /\.hh-tiktok-player-frame iframe\s*\{[\s\S]*border: 0/);
+    assert.match(globals, /scroll-snap-type: x mandatory/);
+    assert.doesNotMatch(home, /TestimonialsSection|Historias reales de quienes ya lo usan|Lo dicen ellos|Testimonios en texto/);
+  });
+
+  it("keeps checkout framed as a calmer transactional surface", () => {
+    const checkout = readSource("components/checkout-workspace.tsx");
+    const globals = readSource("app/globals.css");
+
+    assert.match(checkout, /hh-checkout-page/);
+    assert.match(checkout, /Finaliza tu compra/);
+    assert.match(checkout, /bg-\[var\(--hh-public-sun\)\]/);
+    assert.doesNotMatch(globals, /body:has\(\.hh-checkout-page\)\s+\.hh-public-desktop-nav[\s\S]*display:\s*none/);
+    assert.doesNotMatch(globals, /body:has\(\.hh-checkout-page\)\s+\.hh-public-header-cta[\s\S]*display:\s*none/);
+    assert.doesNotMatch(globals, /body:has\(\.hh-checkout-page\)\s+\.hh-public-header-shell > button\[aria-expanded\][\s\S]*display:\s*none/);
+    assert.doesNotMatch(checkout, /Checkout real|Checkout seguro|Quote manda|lookup documental|ruta transaccional|Pago serio|quote recalculando|total listo/);
+    assert.doesNotMatch(checkout, />\s*Paso [1-4]\s*</);
+    assert.doesNotMatch(checkout, /Paso \{activeStep\}/);
+    assert.doesNotMatch(checkout, /Total a pagar ahora[\s\S]{0,250}formatCurrency\(summary\.grandTotal/);
+    assert.doesNotMatch(checkout, /<HuelePanel tone="sun">\s*<p[^>]*>Paso actual/);
+    assert.doesNotMatch(checkout, /data-checkout-fullscreen/);
+  });
+
+  it("keeps PDP variant selection retail-focused", () => {
+    const productPage = readSource("app/producto/[slug]/page.tsx");
+    const gallery = readSource("components/product-media-gallery.tsx");
+    const selector = readSource("components/product-variant-selector.tsx");
+    const globals = readSource("app/globals.css");
+    const galleryMainBlock =
+      globals.match(/\.hh-pdp-gallery-main\s*\{[^}]+\}/)?.[0] ?? "";
+
+    assert.match(productPage, /ProductMediaGallery/);
+    assert.match(productPage, /embedded/);
+    assert.match(gallery, /useState/);
+    assert.match(gallery, /setSelectedId/);
+    assert.match(globals, /\.hh-pdp-detail-grid/);
+    assert.match(globals, /\.hh-pdp-gallery-thumbs/);
+    assert.match(selector, /hh-pdp-variant-shell/);
+    assert.match(selector, /hh-pdp-variant-embed/);
+    assert.match(selector, /hh-pdp-variant-reference/);
+    assert.match(selector, /images\?: ProductImage\[\]/);
+    assert.match(selector, /images\[\]\.variantId|variantId/);
+    assert.match(globals, /\.hh-pdp-variant-layout/);
+    assert.match(globals, /\.hh-pdp-variant-option/);
+    assert.match(globals, /\.hh-pdp-variant-embed \.hh-pdp-variant-option\s*\{[\s\S]*min-height: 68px/);
+    assert.match(globals, /\.hh-pdp-variant-embed \.hh-pdp-variant-option\s*\{[\s\S]*grid-template-columns: 48px minmax\(0, 1fr\) auto/);
+    assert.doesNotMatch(selector, /hh-pdp-variant-main-media|hh-pdp-variant-thumb-row|hh-pdp-variant-option-price/);
+    assert.doesNotMatch(globals, /\.hh-pdp-variant-main-media|\.hh-pdp-variant-thumb|\.hh-pdp-variant-option-price/);
+    assert.doesNotMatch(galleryMainBlock, /\bborder:/);
+    assert.doesNotMatch(productPage, /Precio por variante|Desde/);
+    assert.doesNotMatch(productPage, /Ficha de lectura|Producto real|La variante se elige abajo|Volver al catálogo|Información operativa/);
+    assert.doesNotMatch(selector, /configuración|Compra directa con la opción elegida|Agregar variante seleccionada|CTA|variantId\./);
+  });
+});

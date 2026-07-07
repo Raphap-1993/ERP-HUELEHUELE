@@ -1,16 +1,8 @@
 import { Controller, Get, Query } from "@nestjs/common";
-import { adminAccessRoles, type MediaAssetKindValue } from "@huelegood/shared";
+import { adminModulePermissions, type MediaAssetKindValue } from "@huelegood/shared";
 import { wrapResponse } from "../../common/response";
-import { RequireRoles } from "../auth/auth-rbac";
+import { RequirePermissions } from "../auth/auth-rbac";
 import { MediaService } from "./media.service";
-
-const mediaLibraryRoles = Array.from(
-  new Set([
-    ...adminAccessRoles.configuration,
-    ...adminAccessRoles.cms,
-    ...adminAccessRoles.products
-  ])
-);
 
 function normalizeKind(value?: string): MediaAssetKindValue | undefined {
   if (
@@ -26,7 +18,7 @@ function normalizeKind(value?: string): MediaAssetKindValue | undefined {
   return undefined;
 }
 
-@RequireRoles(...mediaLibraryRoles)
+@RequirePermissions(...adminModulePermissions.configuration.read)
 @Controller("admin/media")
 export class AdminMediaController {
   constructor(private readonly mediaService: MediaService) {}

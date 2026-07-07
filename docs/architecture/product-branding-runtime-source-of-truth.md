@@ -14,7 +14,7 @@ La fuente unica de runtime se separa en tres capas:
 2. `cms` para branding y contenido editorial publico
 3. `media` para binarios publicos, con referencias guardadas por el modulo dueno
 
-`packages/shared/src/mock-data.ts` queda como semilla y fallback de desarrollo, no como fuente operativa de produccion para catalogo, precio, stock o disponibilidad.
+`packages/shared/src/mock-data.ts` queda como semilla y fallback tecnico opt-in, no como fuente operativa de produccion para catalogo, precio, stock o disponibilidad.
 
 ## Ownership Por Tipo De Dato
 
@@ -41,14 +41,10 @@ La fuente unica de runtime se separa en tres capas:
 - el merch visible del producto (`badge`, `tone`, `benefits`) pertenece a `products`; no se hardcodea por slug en el runtime publico.
 - `media` solo entrega y versiona binarios; la referencia logica vive en `product_images`, `siteSetting` o el artefacto CMS correspondiente.
 - `detailAttributesJson` pertenece a `products` porque alimenta la ficha publica del producto, pero es editorial de PDP y no reemplaza una futura taxonomia estructurada de variantes.
-- `detailAttributesJson` no define opciones vendibles. Si un atributo afecta seleccion de compra, precio, stock, fulfillment o descuento de inventario, debe vivir en `product_variants`.
-- `Aromas` o `Presentacion` en la ficha publica son copy informativo. El contrato comprable real es `variantId`.
-- un aroma vendible siempre debe existir como variante `active` con `sku`, `flavorCode`, `flavorLabel`, `presentationCode`, `presentationLabel`, precio y balances propios por almacen.
-- el saldo operativo canonico de venta es `WarehouseInventoryBalance(variantId, warehouseId)`, no un stock agregado por producto generico.
 
 ## Excepciones Permitidas
 
-- En desarrollo local o si el runtime publico no esta disponible, `shared/mock-data` puede seguir sirviendo como semilla o fallback tecnico.
+- En desarrollo local, `shared/mock-data` solo puede activarse como fallback tecnico cuando `NEXT_PUBLIC_ALLOW_STOREFRONT_STATIC_FALLBACKS=true`.
 - En produccion no se debe sintetizar catalogo vendible, precio o stock desde `shared/mock-data`.
 - El shell publico puede conservar fallback minimo de marca para no romper render estructural si `siteSetting` no responde, pero eso no convierte a `shared/mock-data` en fuente de verdad.
 
@@ -58,6 +54,7 @@ Para considerar cerrado `F2-URG-01`:
 
 - `apps/web` consume catalogo vendible desde `/store/catalog` o `/store/products/:slug`
 - `apps/web` consume branding y contenido desde `/store/cms` o `/store/site-settings`
+- `apps/web/app/layout.tsx` consume navegacion publica desde `/store/navigation` y solo cae a `webNavigation` como resiliencia
 - el premium landing no declara productos ni tiers mayoristas como contenido estatico fuente
 - `shared/mock-data` se trata como bootstrap/fallback, no como runtime canonico
 - la documentacion vigente refleja esta separacion

@@ -22,6 +22,7 @@ import type {
   WholesaleLeadStatus,
   WholesaleQuoteStatus
 } from "../domain/enums";
+import type { AccessSurface, EffectivePermissionSummary } from "../domain/access-control";
 import type {
   AdminMetric,
   CommissionRow,
@@ -36,7 +37,6 @@ import type {
   HeroCopy,
   LoyaltyAccountSummary,
   PromoBanner,
-  ProductVariantDescriptor,
   ProductToneValue,
   SiteSetting,
   AdminActionSummary,
@@ -88,8 +88,9 @@ export interface ActionEnvelope {
 }
 
 export interface AuthRoleSummary {
-  code: RoleCode;
+  code: string;
   label: string;
+  isSystem?: boolean;
 }
 
 export interface AuthUserSummary {
@@ -97,7 +98,10 @@ export interface AuthUserSummary {
   name: string;
   email: string;
   roles: AuthRoleSummary[];
+  primaryRoleCode?: string;
   accountType: "admin" | "seller" | "wholesale" | "customer" | "operator";
+  effectivePermissions?: EffectivePermissionSummary[];
+  surfaces?: AccessSurface[];
   vendorCode?: string;
   wholesaleLeadId?: string;
 }
@@ -822,10 +826,14 @@ export interface ProductVariantRolloutAudit {
   recommendedActions: string[];
 }
 
-export interface ProductVariantSummary extends ProductVariantDescriptor {
+export interface ProductVariantSummary {
   id: string;
   sku: string;
   name: string;
+  flavorCode?: string;
+  flavorLabel?: string;
+  presentationCode?: string;
+  presentationLabel?: string;
   price: number;
   compareAtPrice?: number;
   stockOnHand: number;
@@ -834,6 +842,8 @@ export interface ProductVariantSummary extends ProductVariantDescriptor {
   defaultWarehouseId?: string;
   defaultWarehouseCode?: string;
   defaultWarehouseName?: string;
+  inventoryManagedByWarehouses?: boolean;
+  warehouseBalanceCount?: number;
 }
 
 export interface ProductImageSummary {
@@ -872,12 +882,9 @@ export interface ProductAdminSummary {
   compareAtPrice?: number;
   sku: string;
   defaultVariantId?: string;
-  variantCount: number;
-  variants: ProductVariantSummary[];
   defaultWarehouseId?: string;
   defaultWarehouseCode?: string;
   defaultWarehouseName?: string;
-  variantAudit: ProductVariantRolloutAudit;
   salesChannel?: ProductSalesChannel;
   reportingGroup?: string;
   currencyCode: string;
@@ -893,10 +900,14 @@ export interface ProductAdminDetail extends ProductAdminSummary {
   images: ProductImageSummary[];
 }
 
-export interface ProductVariantInput extends ProductVariantDescriptor {
+export interface ProductVariantInput {
   id?: string;
   sku: string;
   name: string;
+  flavorCode?: string;
+  flavorLabel?: string;
+  presentationCode?: string;
+  presentationLabel?: string;
   price: number;
   compareAtPrice?: number;
   stockOnHand: number;
@@ -1150,7 +1161,7 @@ export interface PeruUbigeoCatalog {
   districts: PeruDistrictSummary[];
 }
 
-export interface CheckoutQuoteItemSummary extends ProductVariantDescriptor {
+export interface CheckoutQuoteItemSummary {
   slug: string;
   name: string;
   sku: string;
@@ -1214,7 +1225,7 @@ export interface CheckoutActionSummary {
   evidenceRequired?: boolean;
 }
 
-export interface OrderItemSummary extends ProductVariantDescriptor {
+export interface OrderItemSummary {
   slug: string;
   name: string;
   sku: string;
@@ -1636,16 +1647,17 @@ export type InventoryStockOperationMode = "physical_count" | "stock_receipt";
 export interface InventoryStockAdjustmentInput {
   variantId: string;
   warehouseId: string;
-  stockOnHand: number;
-  reason: string;
-  mode?: InventoryStockOperationMode;
+  stockOnHand?: number;
+  quantityDelta?: number;
+  mode?: InventoryStockOperationMode | "set" | "increase";
+  reason?: string;
 }
 
 export interface InventoryStockAdjustmentEnvelope {
   status: "ok" | "queued" | "pending_review" | "rejected";
   message: string;
   referenceId?: string;
-  mode: InventoryStockOperationMode;
+  mode?: InventoryStockOperationMode | "set" | "increase";
   balance: WarehouseInventoryBalanceSummary;
   previousStockOnHand: number;
   nextStockOnHand: number;
@@ -1817,6 +1829,173 @@ export interface AdminActionsEnvelope {
 
 export interface SecurityPostureEnvelope {
   data: SecurityPostureSummary;
+  meta?: Record<string, unknown>;
+}
+
+export interface SecurityPermissionSummary {
+  code: string;
+  label: string;
+  description?: string;
+  moduleId: string;
+  action: string;
+  supportedScopes: string[];
+  isSystem: boolean;
+  isActive: boolean;
+}
+
+export interface SecurityScopeSummary {
+  code: string;
+  label: string;
+  description?: string;
+  precedence: number;
+  isSystem: boolean;
+  isActive: boolean;
+}
+
+export interface SecurityModuleSummary {
+  code: string;
+  label: string;
+  description?: string;
+  surface: AccessSurface;
+  route: string;
+  navGroup: string;
+  isSystem: boolean;
+  isActive: boolean;
+}
+
+export interface SecurityNavigationGroupSummary {
+  code: string;
+  label: string;
+  surface: AccessSurface;
+  sortOrder: number;
+  isSystem: boolean;
+  isActive: boolean;
+}
+
+export interface SecurityNavigationItemSummary {
+  moduleCode: string;
+  navigationGroupCode?: string;
+  labelOverride?: string;
+  icon?: string;
+  sortOrder: number;
+  isVisible: boolean;
+}
+
+export interface SecurityCatalogSummary {
+  permissions: SecurityPermissionSummary[];
+  scopes: SecurityScopeSummary[];
+  modules: SecurityModuleSummary[];
+  navigationGroups: SecurityNavigationGroupSummary[];
+  navigationItems: SecurityNavigationItemSummary[];
+}
+
+export interface SecurityRolePermissionGrantSummary {
+  permissionCode: string;
+  scopeCode: string;
+}
+
+export interface SecurityRoleSummary {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  surface: AccessSurface;
+  isSystem: boolean;
+  isAssignable: boolean;
+  isActive: boolean;
+  permissionGrants: SecurityRolePermissionGrantSummary[];
+}
+
+export interface SecurityRoleCreateInput {
+  code: string;
+  name: string;
+  description?: string;
+  surface: AccessSurface;
+  isAssignable?: boolean;
+  isActive?: boolean;
+  permissionGrants: SecurityRolePermissionGrantSummary[];
+}
+
+export interface SecurityRoleUpdateInput {
+  name?: string;
+  description?: string;
+  surface?: AccessSurface;
+  isAssignable?: boolean;
+  isActive?: boolean;
+  permissionGrants?: SecurityRolePermissionGrantSummary[];
+}
+
+export interface SecurityUserRoleAssignmentInput {
+  roleIds: string[];
+  primaryRoleId?: string;
+}
+
+export interface SecurityUserRoleAssignmentSummary {
+  userId: string;
+  roleIds: string[];
+  primaryRoleId?: string;
+}
+
+export interface SecurityOverrideSummary {
+  id: string;
+  userId: string;
+  permissionCode: string;
+  scopeCode: string;
+  effect: "grant" | "revoke";
+  expiresAt: string;
+  status: string;
+  reason: string;
+  approvedByUserId: string;
+  createdByUserId: string;
+  startsAt: string;
+}
+
+export interface SecurityOverrideCreateInput {
+  permissionCode: string;
+  scopeCode: string;
+  effect: "grant" | "revoke";
+  reason: string;
+  approvedByUserId: string;
+  createdByUserId: string;
+  startsAt: string;
+  expiresAt: string;
+}
+
+export interface SecurityNavigationItemUpdateInput {
+  moduleCode: string;
+  navigationGroupCode: string;
+  labelOverride?: string;
+  icon?: string;
+  sortOrder?: number;
+  isVisible?: boolean;
+}
+
+export interface SecurityNavigationUpdateInput {
+  items: SecurityNavigationItemUpdateInput[];
+}
+
+export interface SecurityCatalogEnvelope {
+  data: SecurityCatalogSummary;
+  meta?: Record<string, unknown>;
+}
+
+export interface SecurityRolesEnvelope {
+  data: SecurityRoleSummary[];
+  meta?: Record<string, unknown>;
+}
+
+export interface SecurityRoleEnvelope {
+  data: SecurityRoleSummary;
+  meta?: Record<string, unknown>;
+}
+
+export interface SecurityOverrideEnvelope {
+  data: SecurityOverrideSummary;
+  meta?: Record<string, unknown>;
+}
+
+export interface SecurityNavigationEnvelope {
+  data: SecurityNavigationItemSummary[];
   meta?: Record<string, unknown>;
 }
 

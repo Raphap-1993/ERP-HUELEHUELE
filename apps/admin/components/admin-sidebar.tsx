@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
-import { adminNavigation, filterNavigationGroupsByRoles, type SiteSetting } from "@huelegood/shared";
+import { adminNavigation, filterNavigationGroupsByPermissions, type SiteSetting } from "@huelegood/shared";
 import { useAdminSession } from "./admin-session-provider";
 
 type AdminSidebarProps = {
@@ -126,9 +126,12 @@ export function AdminSidebar({
   const { session, logout } = useAdminSession();
   const roleCodes = session?.user.roles.map((role) => role.code) ?? [];
   const roleCodesSignature = roleCodes.join("|");
+  const effectivePermissions = session?.user.effectivePermissions;
+  const permissionSignature =
+    effectivePermissions?.map((entry) => `${entry.permissionCode}:${entry.scopes.join(",")}`).join("|") ?? "";
   const visibleNavigation = useMemo(
-    () => (session ? filterNavigationGroupsByRoles(adminNavigation, roleCodes) : []),
-    [session, roleCodesSignature]
+    () => (session ? filterNavigationGroupsByPermissions(adminNavigation, effectivePermissions, roleCodes) : []),
+    [effectivePermissions, permissionSignature, roleCodesSignature, session]
   );
   const activeGroupTitle = visibleNavigation.find((group) =>
     group.items.some((item) => isNavigationItemActive(pathname, item.href))

@@ -11,7 +11,9 @@ coverage
 *.log
 logs/
 backups/
+output/
 outputs/
+.playwright-cli/
 storage/
 prisma/dev.db
 apps/**/.next

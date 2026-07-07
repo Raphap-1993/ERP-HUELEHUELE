@@ -24,11 +24,12 @@ El codigo local es la fuente de verdad de aplicacion; produccion debe homologars
 1. [Arquitectura general](./architecture/overview.md)
 2. [Diagramas del sistema](./architecture/system-diagrams.md)
 3. [Mapa de modulos](./architecture/modules.md)
-4. [Fuente única producto y branding runtime](./architecture/product-branding-runtime-source-of-truth.md)
-5. [Modelo de dominio](./data/domain-model.md)
-6. [Contratos API v1](./api/api-v1-outline.md)
-7. [Despliegue y homologacion](./infra/deployment-strategy.md)
-8. [Validacion y pruebas](./06-validacion-y-pruebas.md)
+4. [Control de acceso y gobernanza de navegacion](./architecture/access-control-and-navigation-governance.md)
+5. [Fuente única producto y branding runtime](./architecture/product-branding-runtime-source-of-truth.md)
+6. [Modelo de dominio](./data/domain-model.md)
+7. [Contratos API v1](./api/api-v1-outline.md)
+8. [Despliegue y homologacion](./infra/deployment-strategy.md)
+9. [Validacion y pruebas](./06-validacion-y-pruebas.md)
 
 ### Producto y operacion
 
@@ -40,10 +41,7 @@ El codigo local es la fuente de verdad de aplicacion; produccion debe homologars
 
 ### Flujos operativos
 
-- [Contrato canónico aroma variante](./flows/aroma-variant-purchase-contract.md)
-- [Playbook corto rollout multi-aroma productivo](./flows/multi-aroma-rollout-playbook.md)
 - [Checkout y Openpay](./flows/checkout-openpay.md)
-- [Inventario por variante, sabor y almacén](./flows/inventory-variant-warehouse-operations.md)
 - [Pagos manuales](./flows/manual-payments.md)
 - [Etiquetas de despacho](./flows/order-dispatch-labels.md)
 - [Fulfillment por almacenes](./flows/warehouse-fulfillment-triangulation.md)
@@ -64,12 +62,16 @@ El codigo local es la fuente de verdad de aplicacion; produccion debe homologars
 ### UX
 
 - [Sistema visual](./ux/design-system.md)
+- [Brief operativo storefront game temporal](./ux/storefront-game-temporal-brief.md)
+- [Spec de superficies públicas](./ux/public-storefront-surface-spec.md)
+- [Spec de componentes y estados del storefront](./ux/storefront-component-state-spec.md)
 - [Backoffice UX](./ux/backoffice-ux-redesign-v2.md)
 - [Checkout UX](./ux/checkout-redesign.md)
 
 ### Ingenieria
 
 - [Estandar de desarrollo](./engineering/development-standard.md)
+- [Checklist de verificacion de control de acceso](./engineering/access-control-verification-checklist.md)
 - [Checklist de release](./engineering/release-checklist.md)
 
 ## Documentacion Historica
@@ -127,6 +129,7 @@ Si una decision historica sigue aplicando, debe estar reflejada en los documento
 - `/accesos`
 - `/crm`
 - `/cms`
+- `/seguridad`
 - `/auditoria`
 - `/observabilidad`
 
@@ -135,6 +138,7 @@ Si una decision historica sigue aplicando, debe estar reflejada en los documento
 - Si se agrega un modulo, primero actualizar [modules.md](./architecture/modules.md) y [system-diagrams.md](./architecture/system-diagrams.md).
 - Si cambia una tabla o agregado, actualizar [domain-model.md](./data/domain-model.md) y `prisma/schema.prisma` en el mismo corte.
 - Si cambia un endpoint, actualizar [api-v1-outline.md](./api/api-v1-outline.md).
+- Si cambia autorizacion, roles, permisos, scopes u overrides, actualizar [access-control-and-navigation-governance.md](./architecture/access-control-and-navigation-governance.md), [roles-and-permissions.md](./product/roles-and-permissions.md) y [access-control-verification-checklist.md](./engineering/access-control-verification-checklist.md).
 - Si cambia despliegue, puertos o `.env`, actualizar [deployment-strategy.md](./infra/deployment-strategy.md) y [environments.md](./infra/environments.md).
 - No crear handoffs nuevos como fuente permanente; los handoffs deben cerrarse integrando su contenido en la documentacion vigente.
 

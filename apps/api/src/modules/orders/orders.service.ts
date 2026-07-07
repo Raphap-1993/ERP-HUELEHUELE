@@ -365,29 +365,13 @@ function cloneInventoryAllocations(allocations?: InventoryAllocationSummary[]) {
   return allocations?.map((allocation) => ({ ...allocation }));
 }
 
-function normalizeVariantDescriptors(item: {
-  variantName?: string;
-  flavorCode?: string;
-  flavorLabel?: string;
-  presentationCode?: string;
-  presentationLabel?: string;
-}) {
-  return {
-    variantName: normalizeText(item.variantName),
-    flavorCode: normalizeText(item.flavorCode),
-    flavorLabel: normalizeText(item.flavorLabel),
-    presentationCode: normalizeText(item.presentationCode),
-    presentationLabel: normalizeText(item.presentationLabel)
-  };
-}
-
 function buildOrderItems(items: CheckoutQuoteSummary["items"]): OrderItemSummary[] {
   return items.map((item) => ({
     slug: item.slug,
     name: item.name,
     sku: item.sku,
     variantId: item.variantId,
-    ...normalizeVariantDescriptors(item),
+    variantName: item.variantName,
     quantity: item.quantity,
     unitPrice: item.unitPrice,
     lineTotal: item.lineTotal,
@@ -432,7 +416,6 @@ function summarizeMissingLines(missingLines: FulfillmentMissingLineSummary[]) {
 function cloneOrderItems(items: OrderItemSummary[]) {
   return items.map((item) => ({
     ...item,
-    ...normalizeVariantDescriptors(item),
     inventoryAllocations: cloneInventoryAllocations(item.inventoryAllocations)
   }));
 }
@@ -444,7 +427,6 @@ function normalizeQuoteItems(items: CheckoutQuoteSummary["items"]) {
       name: item.name.trim(),
       sku: item.sku.trim(),
       variantId: item.variantId?.trim() || undefined,
-      ...normalizeVariantDescriptors(item),
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       lineTotal: item.lineTotal,
@@ -458,19 +440,12 @@ function normalizeQuoteItems(items: CheckoutQuoteSummary["items"]) {
     );
 }
 
-function normalizeRequestItemsFromQuote(items: CheckoutQuoteSummary["items"]) {
-  return [...items]
-    .map((item) => ({
-      slug: item.slug.trim(),
-      quantity: item.quantity,
-      variantId: item.variantId?.trim() || null
-    }))
-    .sort(
-      (left, right) =>
-        left.slug.localeCompare(right.slug) ||
-        (left.variantId ?? "").localeCompare(right.variantId ?? "") ||
-        left.quantity - right.quantity
-    );
+function normalizeResolvedRequestItems(items: CheckoutQuoteSummary["items"]) {
+  return normalizeQuoteItems(items).map((item) => ({
+    slug: item.slug,
+    quantity: item.quantity,
+    variantId: item.variantId ?? null
+  }));
 }
 
 function normalizeCheckoutRequest(input: CreateCheckoutOrderInput) {
@@ -511,7 +486,7 @@ function normalizeCheckoutRequest(input: CreateCheckoutOrderInput) {
           normalizeDocumentNumber(request.customer.documentNumber, normalizeDocumentType(request.customer.documentType)) ?? null
       },
       address: normalizeAddress(request.address),
-      items: normalizeRequestItemsFromQuote(input.quote.items)
+      items: normalizeResolvedRequestItems(input.quote.items)
     }
   };
 }
@@ -965,7 +940,24 @@ export class OrdersService implements OnModuleInit {
     });
     const address = this.normalizeBackofficeAddress(customer, input.address);
 
-    const orderItems = await this.inventoryService.hydrateBackofficeOrderItems(input.items);
+    const orderItems = await this.inventoryService.hydrateOrderItems(
+      input.items.map((item) => {
+        const unitPrice = item.unitPrice ?? 0;
+
+        return {
+          slug: item.slug ?? "",
+          name: item.name ?? "",
+          sku: item.sku ?? "",
+          variantId: item.variantId,
+          quantity: item.quantity,
+          unitPrice,
+          lineTotal: unitPrice * item.quantity,
+          imageUrl: undefined,
+          originalUnitPrice: unitPrice,
+          discountApplied: 0
+        };
+      })
+    );
 
     const subtotal = orderItems.reduce((sum, i) => sum + i.lineTotal, 0);
     const isPaid = input.initialStatus === "paid";

@@ -1,9 +1,9 @@
 import { Controller, Get } from "@nestjs/common";
-import { adminAccessRoles } from "@huelegood/shared";
-import { RequireRoles } from "../auth/auth-rbac";
+import { adminModulePermissions } from "@huelegood/shared";
+import { RequirePermissions } from "../auth/auth-rbac";
 import { OrdersService } from "./orders.service";
 
-@RequireRoles(...adminAccessRoles.dispatch)
+@RequirePermissions(...adminModulePermissions.dispatch.read)
 @Controller("admin/dispatch")
 export class DispatchController {
   constructor(private readonly ordersService: OrdersService) {}

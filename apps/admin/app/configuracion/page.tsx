@@ -1,6 +1,6 @@
 import { SettingsWorkspace } from "../../components/settings-workspace";
 import { AdminAuthGate } from "../../components/admin-auth-gate";
-import { adminAccessRoles } from "@huelegood/shared";
+import { adminAccessRoles, adminModulePermissions } from "@huelegood/shared";
 
 export default function SettingsPage() {
   return (
@@ -8,6 +8,7 @@ export default function SettingsPage() {
       title="Configuración"
       description="Branding del admin y storefront, contacto operativo y navegación pública."
       allowedRoles={adminAccessRoles.configuration}
+      allowedPermissions={adminModulePermissions.configuration.read}
     >
       <SettingsWorkspace />
     </AdminAuthGate>

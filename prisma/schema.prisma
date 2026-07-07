@@ -345,6 +345,24 @@ enum FulfillmentAssignmentStatus {
   cancelled
 }
 
+enum AccessSurface {
+  public_web
+  authenticated_portal
+  internal_admin
+}
+
+enum AccessOverrideEffect {
+  grant
+  revoke
+}
+
+enum AccessOverrideStatus {
+  scheduled
+  active
+  revoked
+  expired
+}
+
 model User {
   id            String        @id @default(uuid()) @db.Uuid
   email         String        @unique
@@ -362,59 +380,162 @@ model User {
   adminActions  AdminAction[] @relation("AdminActionActor")
   orderStatusChanges OrderStatusHistory[] @relation("OrderStatusChangedBy")
   fulfillmentAssignments OrderFulfillmentAssignment[] @relation("FulfillmentAssignmentAssignedBy")
+  permissionOverrides UserPermissionOverride[]
 
   @@map("users")
 }
 
 model Role {
-  id          String         @id @default(uuid()) @db.Uuid
-  code        String         @unique
-  name        String
-  isSystem    Boolean        @default(false)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  users       UserRole[]
-  permissions RolePermission[]
+  id           String         @id @default(uuid()) @db.Uuid
+  code         String         @unique
+  name         String
+  description  String?
+  surface      AccessSurface  @default(internal_admin)
+  isSystem     Boolean        @default(false)
+  isAssignable Boolean        @default(true)
+  isActive     Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  users        UserRole[]
+  permissions  RolePermission[]
 
   @@map("roles")
 }
 
 model Permission {
-  id        String   @id @default(uuid()) @db.Uuid
-  code      String   @unique
-  name      String
-  module    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  roles     RolePermission[]
+  id             String                 @id @default(uuid()) @db.Uuid
+  code           String                 @unique
+  name           String
+  description    String?
+  action         String                 @default("read")
+  module         String
+  supportedScopes Json?
+  isSystem       Boolean                @default(true)
+  isActive       Boolean                @default(true)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  roles          RolePermission[]
+  userOverrides  UserPermissionOverride[]
 
   @@map("permissions")
 }
 
 model UserRole {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @db.Uuid
-  roleId    String   @db.Uuid
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @db.Uuid
+  roleId           String   @db.Uuid
+  isPrimary        Boolean  @default(false)
+  assignedByUserId String?  @db.Uuid
+  assignedAt       DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role             Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@unique([userId, roleId])
   @@map("user_roles")
 }
 
 model RolePermission {
-  id           String     @id @default(uuid()) @db.Uuid
-  roleId       String     @db.Uuid
-  permissionId String     @db.Uuid
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  id           String      @id @default(uuid()) @db.Uuid
+  roleId       String      @db.Uuid
+  permissionId String      @db.Uuid
+  scopeCode    String      @default("all")
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  role         Role        @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission  @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
-  @@unique([roleId, permissionId])
+  @@unique([roleId, permissionId, scopeCode])
   @@map("role_permissions")
+}
+
+model AccessScope {
+  id          String           @id @default(uuid()) @db.Uuid
+  code        String           @unique
+  label       String
+  description String?
+  precedence  Int
+  isSystem    Boolean          @default(true)
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  userOverrides UserPermissionOverride[]
+
+  @@map("access_scopes")
+}
+
+model AccessModule {
+  id          String                 @id @default(uuid()) @db.Uuid
+  code        String                 @unique
+  label       String
+  description String?
+  surface     AccessSurface
+  route       String
+  navGroup    String
+  isSystem    Boolean                @default(true)
+  isActive    Boolean                @default(true)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  navigationItems AccessNavigationItem[]
+
+  @@map("access_modules")
+}
+
+model AccessNavigationGroup {
+  id          String                 @id @default(uuid()) @db.Uuid
+  code        String                 @unique
+  label       String
+  surface     AccessSurface
+  sortOrder   Int                    @default(0)
+  isSystem    Boolean                @default(true)
+  isActive    Boolean                @default(true)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  navigationItems AccessNavigationItem[]
+
+  @@map("access_navigation_groups")
+}
+
+model AccessNavigationItem {
+  id              String                @id @default(uuid()) @db.Uuid
+  moduleCode      String
+  navigationGroupId String?             @db.Uuid
+  labelOverride   String?
+  icon            String?
+  sortOrder       Int                   @default(0)
+  isVisible       Boolean               @default(true)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  module          AccessModule          @relation(fields: [moduleCode], references: [code], onDelete: Cascade)
+  navigationGroup AccessNavigationGroup? @relation(fields: [navigationGroupId], references: [id], onDelete: SetNull)
+
+  @@unique([moduleCode, navigationGroupId])
+  @@map("access_navigation_items")
+}
+
+model UserPermissionOverride {
+  id               String               @id @default(uuid()) @db.Uuid
+  userId           String               @db.Uuid
+  permissionId     String               @db.Uuid
+  scopeCode        String
+  effect           AccessOverrideEffect
+  status           AccessOverrideStatus @default(active)
+  reason           String
+  approvedByUserId String               @db.Uuid
+  createdByUserId  String               @db.Uuid
+  startsAt         DateTime
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  revokedByUserId  String?              @db.Uuid
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission       Permission           @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  scope            AccessScope          @relation(fields: [scopeCode], references: [code], onDelete: Restrict)
+
+  @@index([userId, status, expiresAt])
+  @@map("user_permission_overrides")
 }
 
 model Admin {
@@ -690,7 +811,6 @@ model ProductVariant {
   wholesaleQuoteItems WholesaleQuoteItem[]
 
   @@index([defaultWarehouseId])
-  @@unique([productId, flavorCode, presentationCode])
   @@map("product_variants")
 }
 

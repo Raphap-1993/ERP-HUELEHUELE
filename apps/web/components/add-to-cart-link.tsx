@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import * as React from "react";
 import type { AnchorHTMLAttributes, MouseEvent, ReactNode } from "react";
 import { addStoredCartItem } from "../lib/session";
 

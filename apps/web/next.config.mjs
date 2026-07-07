@@ -1,6 +1,7 @@
 import path from "node:path";
 
 const nextConfig = {
+  devIndicators: false,
   transpilePackages: ["@huelegood/shared", "@huelegood/ui"],
   outputFileTracingRoot: path.resolve(process.cwd(), "../.."),
   experimental: {

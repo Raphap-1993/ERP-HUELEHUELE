@@ -37,7 +37,6 @@ import {
 import { actionResponse, wrapResponse } from "../../common/response";
 import { PrismaService } from "../../prisma/prisma.service";
 import { MediaService } from "../media/media.service";
-import { buildProductVariantRolloutAudit } from "./product-variant-rollout-audit";
 
 type AdminProductRecord = Prisma.ProductGetPayload<{
   include: {
@@ -279,54 +278,6 @@ function selectDefaultVariant<T extends ProductVariant>(variants: T[]) {
 
       return left.createdAt.getTime() - right.createdAt.getTime();
     })[0];
-}
-
-function selectCanonicalCatalogVariant<T extends ProductVariantWithOptionalWarehouse>(variants: T[]) {
-  return variants
-    .slice()
-    .sort((left, right) => {
-      if (left.status === "active" && right.status !== "active") {
-        return -1;
-      }
-
-      if (left.status !== "active" && right.status === "active") {
-        return 1;
-      }
-
-      const leftState = resolveVariantStockState(left);
-      const rightState = resolveVariantStockState(right);
-
-      if (leftState.isPurchasable && !rightState.isPurchasable) {
-        return -1;
-      }
-
-      if (!leftState.isPurchasable && rightState.isPurchasable) {
-        return 1;
-      }
-
-      return left.createdAt.getTime() - right.createdAt.getTime();
-    })[0];
-}
-
-function buildVariantCombinationKey(variant: {
-  flavorCode?: string;
-  presentationCode?: string;
-}) {
-  return `${normalizeText(variant.flavorCode) ?? "__missing_flavor__"}::${normalizeText(variant.presentationCode) ?? "__missing_presentation__"}`;
-}
-
-function describeVariantCombination(variant: {
-  sku: string;
-  flavorCode?: string;
-  flavorLabel?: string;
-  presentationCode?: string;
-  presentationLabel?: string;
-}) {
-  const flavor = normalizeText(variant.flavorLabel) ?? normalizeText(variant.flavorCode) ?? "sin aroma";
-  const presentation =
-    normalizeText(variant.presentationLabel) ?? normalizeText(variant.presentationCode) ?? "sin presentación";
-
-  return `${variant.sku} (${flavor} / ${presentation})`;
 }
 
 function normalizeSalesChannel(value?: string): ProductSalesChannel {
@@ -582,6 +533,14 @@ function resolveFulfillmentWarehouseId(variant: ProductVariantWithOptionalWareho
   );
 }
 
+function isWarehouseManagedVariant(variant: ProductVariantWithOptionalWarehouse) {
+  return (variant.warehouseBalances?.length ?? 0) > 0;
+}
+
+function warehouseManagedVariantConflictMessage(sku: string) {
+  return `La variante ${sku} ya gobierna su stock desde Inventario. Ajusta el stock por almacén en Inventario y deja Productos solo para catálogo.`;
+}
+
 function resolveVariantStockState(variant?: ProductVariantWithOptionalWarehouse) {
   const threshold = Math.max(0, variant?.lowStockThreshold ?? 0);
 
@@ -638,35 +597,10 @@ function resolveComponentVariant(component: ProductBundleComponent & {
 }
 
 function resolveProductStockState(product: CatalogProductSummaryRecord | CatalogProductDetailRecord) {
-  const variant = selectCanonicalCatalogVariant(product.variants);
+  const variant = selectDefaultVariant(product.variants);
 
   if (product.productKind !== "bundle" && product.bundleComponents.length === 0) {
-    const purchasableVariants = product.variants
-      .filter((candidate) => candidate.status === "active")
-      .map((candidate) => resolveVariantStockState(candidate))
-      .filter((state) => state.isPurchasable);
-
-    if (purchasableVariants.length === 0) {
-      return resolveUnavailableStockState(variant?.lowStockThreshold);
-    }
-
-    const availableStock = purchasableVariants.reduce((sum, state) => sum + state.availableStock, 0);
-    const lowStockThreshold = Math.max(0, ...purchasableVariants.map((state) => state.lowStockThreshold));
-    const stockStatus: NonNullable<CatalogProduct["stockStatus"]> =
-      availableStock <= 0 ? "out_of_stock" : availableStock <= lowStockThreshold ? "low_stock" : "available";
-
-    return {
-      availableStock,
-      lowStockThreshold,
-      stockStatus,
-      stockLabel:
-        stockStatus === "out_of_stock"
-          ? "Sin stock"
-          : stockStatus === "low_stock"
-            ? "quedan pocas unidades"
-            : "Disponible",
-      isPurchasable: availableStock > 0
-    };
+    return resolveVariantStockState(variant);
   }
 
   if (product.bundleComponents.length === 0) {
@@ -766,6 +700,41 @@ function resolveBundleAllocations(product: CheckoutProductRecord, quantity: numb
   return allocations;
 }
 
+function resolveCheckoutPurchasableVariants(product: CheckoutProductRecord) {
+  const activeVariants = product.variants.filter((variant) => variant.status === "active");
+
+  if (product.productKind === "bundle" || product.bundleComponents.length > 0) {
+    return resolveProductStockState(product).isPurchasable ? activeVariants : [];
+  }
+
+  return activeVariants.filter((variant) => resolveVariantStockState(variant).isPurchasable);
+}
+
+function resolveCheckoutVariant(product: CheckoutProductRecord, item: CheckoutItemInput) {
+  const requestedVariantId = normalizeVariantId(item.variantId);
+  if (requestedVariantId) {
+    const variant = product.variants.find((candidate) => candidate.id === requestedVariantId);
+    if (!variant || variant.status !== "active") {
+      throw new BadRequestException(`La variante indicada para ${item.slug} no está disponible.`);
+    }
+
+    return variant;
+  }
+
+  const purchasableVariants = resolveCheckoutPurchasableVariants(product);
+  if (purchasableVariants.length === 1) {
+    return purchasableVariants[0];
+  }
+
+  if (purchasableVariants.length > 1) {
+    throw new BadRequestException(
+      `Debes indicar una variante para ${item.slug} porque tiene múltiples opciones disponibles.`
+    );
+  }
+
+  throw new BadRequestException(`La variante indicada para ${item.slug} no está disponible.`);
+}
+
 function resolveProductBadge(product: {
   badge?: string | null;
   isFeatured?: boolean;
@@ -800,6 +769,7 @@ function resolveProductBenefits(product: {
 
 function mapVariant(variant: ProductVariantWithOptionalWarehouse, productKind: ProductKindValue | string = "single"): ProductVariantSummary {
   const hasPhysicalStock = productKind !== "bundle";
+  const warehouseBalanceCount = variant.warehouseBalances?.length ?? 0;
 
   return {
     id: variant.id,
@@ -816,7 +786,9 @@ function mapVariant(variant: ProductVariantWithOptionalWarehouse, productKind: P
     status: variant.status,
     defaultWarehouseId: hasPhysicalStock ? variant.defaultWarehouseId ?? undefined : undefined,
     defaultWarehouseCode: hasPhysicalStock ? variant.defaultWarehouse?.code ?? undefined : undefined,
-    defaultWarehouseName: hasPhysicalStock ? variant.defaultWarehouse?.name ?? undefined : undefined
+    defaultWarehouseName: hasPhysicalStock ? variant.defaultWarehouse?.name ?? undefined : undefined,
+    inventoryManagedByWarehouses: hasPhysicalStock ? warehouseBalanceCount > 0 : false,
+    warehouseBalanceCount: hasPhysicalStock ? warehouseBalanceCount : 0
   };
 }
 
@@ -1011,7 +983,11 @@ export class ProductsService {
     const existing = await this.prisma.product.findUnique({
       where: { id },
       include: {
-        variants: true
+        variants: {
+          include: {
+            warehouseBalances: true
+          }
+        }
       }
     });
 
@@ -1020,6 +996,7 @@ export class ProductsService {
     }
 
     const input = await this.normalizeUpsertInput(body, existing.id);
+    this.assertInventoryManagedVariantsStayInInventory(existing.variants, input.variants);
 
     try {
       const product = await this.prisma.$transaction(async (tx) => {
@@ -1378,23 +1355,7 @@ export class ProductsService {
         throw new NotFoundException(`Producto no encontrado: ${item.slug}`);
       }
 
-      const requestedVariantId = normalizeVariantId(item.variantId);
-      const activeVariants = product.variants.filter((candidate) => candidate.status === "active");
-      const purchasableActiveVariants = activeVariants.filter((candidate) => resolveVariantStockState(candidate).isPurchasable);
-
-      if (requestedVariantId == null && purchasableActiveVariants.length > 1) {
-        throw new BadRequestException(
-          `El producto ${item.slug} requiere variantId explícito porque tiene múltiples sabores o presentaciones activas.`
-        );
-      }
-      const variant =
-        requestedVariantId == null
-          ? selectCanonicalCatalogVariant(purchasableActiveVariants) ?? selectCanonicalCatalogVariant(product.variants)
-          : product.variants.find((candidate) => candidate.id === requestedVariantId);
-
-      if (!variant || variant.status !== "active") {
-        throw new BadRequestException(`La variante indicada para ${item.slug} no está disponible.`);
-      }
+      const variant = resolveCheckoutVariant(product, item);
 
       const quantity = Math.trunc(Number(item.quantity));
       if (!Number.isFinite(quantity) || quantity <= 0) {
@@ -1423,10 +1384,6 @@ export class ProductsService {
         sku: variant.sku,
         variantId: variant.id,
         variantName: variant.name,
-        flavorCode: normalizeText(variant.flavorCode ?? undefined) ?? undefined,
-        flavorLabel: normalizeText(variant.flavorLabel ?? undefined) ?? undefined,
-        presentationCode: normalizeText(variant.presentationCode ?? undefined) ?? undefined,
-        presentationLabel: normalizeText(variant.presentationLabel ?? undefined) ?? undefined,
         quantity,
         unitPrice,
         lineTotal,
@@ -1723,54 +1680,6 @@ export class ProductsService {
       throw new BadRequestException(`SKU duplicado en la misma solicitud: ${duplicateSku.sku}.`);
     }
 
-    if (normalizedVariants.length > 1) {
-      for (const variant of normalizedVariants) {
-        if (!variant.flavorCode || !variant.presentationCode) {
-          throw new BadRequestException(
-            `La variante ${variant.sku} debe definir flavorCode/flavorLabel y presentationCode/presentationLabel cuando el producto tiene múltiples variantes.`
-          );
-        }
-      }
-    }
-
-    const duplicateVariantCombination = normalizedVariants.find(
-      (variant, index) =>
-        normalizedVariants.findIndex(
-          (candidate) => buildVariantCombinationKey(candidate) === buildVariantCombinationKey(variant)
-        ) !== index
-    );
-
-    if (duplicateVariantCombination) {
-      throw new BadRequestException(
-        `La combinación aroma/presentación debe ser única dentro del producto. Repite ${describeVariantCombination(duplicateVariantCombination)}.`
-      );
-    }
-
-    const flavorLabelByCode = new Map<string, string>();
-    const presentationLabelByCode = new Map<string, string>();
-
-    for (const variant of normalizedVariants) {
-      if (variant.flavorCode && variant.flavorLabel) {
-        const existingFlavorLabel = flavorLabelByCode.get(variant.flavorCode);
-        if (existingFlavorLabel && existingFlavorLabel !== variant.flavorLabel) {
-          throw new BadRequestException(
-            `El flavorCode ${variant.flavorCode} usa etiquetas inconsistentes dentro del producto.`
-          );
-        }
-        flavorLabelByCode.set(variant.flavorCode, variant.flavorLabel);
-      }
-
-      if (variant.presentationCode && variant.presentationLabel) {
-        const existingPresentationLabel = presentationLabelByCode.get(variant.presentationCode);
-        if (existingPresentationLabel && existingPresentationLabel !== variant.presentationLabel) {
-          throw new BadRequestException(
-            `El presentationCode ${variant.presentationCode} usa etiquetas inconsistentes dentro del producto.`
-          );
-        }
-        presentationLabelByCode.set(variant.presentationCode, variant.presentationLabel);
-      }
-    }
-
     const defaultWarehouseIds = [
       ...new Set(
         normalizedVariants
@@ -1909,6 +1818,26 @@ export class ProductsService {
     };
   }
 
+  private assertInventoryManagedVariantsStayInInventory(
+    existingVariants: ProductVariantWithOptionalWarehouse[],
+    nextVariants: Awaited<ReturnType<ProductsService["normalizeUpsertInput"]>>["variants"]
+  ) {
+    for (const [index, variant] of nextVariants.entries()) {
+      const current =
+        existingVariants.find((candidate) => candidate.id === variant.id) ??
+        existingVariants.find((candidate) => candidate.sku === variant.sku) ??
+        (existingVariants.length === nextVariants.length ? existingVariants[index] : undefined);
+
+      if (!current || !isWarehouseManagedVariant(current)) {
+        continue;
+      }
+
+      if (current.stockOnHand !== variant.stockOnHand) {
+        throw new ConflictException(warehouseManagedVariantConflictMessage(current.sku));
+      }
+    }
+  }
+
   private async syncVariants(
     tx: Prisma.TransactionClient,
     productId: string,
@@ -2012,13 +1941,6 @@ export class ProductsService {
     const primaryImage = sortImages(product.images)[0];
     const hasPhysicalStock = product.productKind !== "bundle";
     const benefits = resolveProductBenefits(product);
-    const detailAttributes = mapStoredProductDetailAttributes(product.detailAttributesJson);
-    const variants = product.variants.map((variant) => mapVariant(variant, product.productKind));
-    const variantAudit = buildProductVariantRolloutAudit({
-      productKind: product.productKind,
-      detailAttributes,
-      variants: product.variants
-    });
 
     return {
       id: product.id,
@@ -2040,12 +1962,9 @@ export class ProductsService {
       compareAtPrice: defaultVariant ? toNumber(defaultVariant.compareAtPrice) : undefined,
       sku: defaultVariant?.sku ?? "SIN-SKU",
       defaultVariantId: defaultVariant?.id,
-      variantCount: product.variants.length,
-      variants,
       defaultWarehouseId: hasPhysicalStock ? defaultVariant?.defaultWarehouseId ?? undefined : undefined,
       defaultWarehouseCode: hasPhysicalStock ? defaultVariant?.defaultWarehouse?.code ?? undefined : undefined,
       defaultWarehouseName: hasPhysicalStock ? defaultVariant?.defaultWarehouse?.name ?? undefined : undefined,
-      variantAudit,
       currencyCode: CATALOG_CURRENCY_CODE,
       primaryImageUrl: primaryImage?.url,
       updatedAt: product.updatedAt.toISOString()
@@ -2068,7 +1987,7 @@ export class ProductsService {
       return null;
     }
 
-    const variant = selectCanonicalCatalogVariant(product.variants);
+    const variant = selectDefaultVariant(product.variants);
     if (!variant) {
       return null;
     }
@@ -2159,7 +2078,7 @@ export class ProductsService {
 
     return {
       ...summary,
-      defaultVariantId: summary.defaultVariantId ?? selectCanonicalCatalogVariant(product.variants)?.id,
+      defaultVariantId: summary.defaultVariantId ?? selectDefaultVariant(product.variants)?.id,
       currencyCode: CATALOG_CURRENCY_CODE,
       variants,
       images,

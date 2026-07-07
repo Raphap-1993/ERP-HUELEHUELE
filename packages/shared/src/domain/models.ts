@@ -20,6 +20,7 @@ import type {
   WholesaleLeadStatus,
   WholesaleQuoteStatus
 } from "./enums";
+import type { RequiredAccessPermission } from "./access-control";
 
 export interface Money {
   amount: number;
@@ -31,6 +32,7 @@ export interface NavigationItem {
   href: string;
   external?: boolean;
   requiredRoles?: readonly RoleCode[];
+  requiredPermissions?: readonly RequiredAccessPermission[];
 }
 
 export interface ProductDetailAttribute {
@@ -46,27 +48,6 @@ export interface HeroCopy {
   description: string;
   primaryCta: NavigationItem;
   secondaryCta: NavigationItem;
-}
-
-export interface ProductVariantDescriptor {
-  flavorCode?: string;
-  flavorLabel?: string;
-  presentationCode?: string;
-  presentationLabel?: string;
-}
-
-export interface CatalogProductVariant extends ProductVariantDescriptor {
-  id: string;
-  sku: string;
-  name: string;
-  price: number;
-  compareAtPrice?: number;
-  status: "active" | "inactive" | "out_of_stock";
-  availableStock?: number;
-  lowStockThreshold?: number;
-  stockStatus?: "available" | "low_stock" | "out_of_stock";
-  stockLabel?: string;
-  isPurchasable?: boolean;
 }
 
 export interface CatalogProduct {
@@ -96,7 +77,23 @@ export interface CatalogProduct {
   stockLabel?: string;
   isPurchasable?: boolean;
   detailAttributes?: ProductDetailAttribute[];
-  variants?: CatalogProductVariant[];
+  variants?: {
+    id: string;
+    sku: string;
+    name: string;
+    flavorCode?: string;
+    flavorLabel?: string;
+    presentationCode?: string;
+    presentationLabel?: string;
+    price: number;
+    compareAtPrice?: number;
+    status: "active" | "inactive" | "out_of_stock";
+    availableStock?: number;
+    lowStockThreshold?: number;
+    stockStatus?: "available" | "low_stock" | "out_of_stock";
+    stockLabel?: string;
+    isPurchasable?: boolean;
+  }[];
   images?: {
     id: string;
     url: string;

@@ -6,6 +6,7 @@ import {
   CHECKOUT_DOCUMENT_TYPE_OPTIONS,
   CrmStage,
   OrderStatus,
+  adminModulePermissions,
   adminAccessRoles,
   hasAdminAccess,
   type AdminOrderDetail,
@@ -18,7 +19,6 @@ import {
   type PeruDepartmentSummary,
   type PeruDistrictSummary,
   type PeruProvinceSummary,
-  type PeruUbigeoCatalog,
   type ProductAdminSummary,
   type AdminOrderVendorOption
 } from "@huelegood/shared";
@@ -36,7 +36,6 @@ import {
   fetchPeruDepartments,
   fetchPeruDistricts,
   fetchPeruProvinces,
-  fetchPeruUbigeoCatalog,
   registerAdminManualPayment,
   rejectManualPaymentRequest,
   resendOrderApprovalEmail,
@@ -44,7 +43,7 @@ import {
   transitionOrderStatus,
   updateOrderVendor
 } from "../lib/api";
-import { downloadBulkOrdersTemplate, parseBulkOrdersInput, readBulkOrdersFile } from "../lib/order-bulk-import";
+import { downloadBulkOrdersTemplate, parseBulkOrdersInput } from "../lib/order-bulk-import";
 import { useAdminSession } from "./admin-session-provider";
 
 function formatCurrency(value: number) {
@@ -66,6 +65,23 @@ function normalizeSearchValue(value: string) {
   return value.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
+function getProductSearchRank(product: ProductAdminSummary, query: string) {
+  const name = normalizeSearchValue(product.name);
+  const sku = normalizeSearchValue(product.sku);
+  const slug = normalizeSearchValue(product.slug);
+  const category = normalizeSearchValue(product.categoryName ?? "");
+
+  if (name.startsWith(query)) return 0;
+  if (sku.startsWith(query)) return 1;
+  if (slug.startsWith(query)) return 2;
+  if (category.startsWith(query)) return 3;
+  if (name.includes(query)) return 4;
+  if (sku.includes(query)) return 5;
+  if (slug.includes(query)) return 6;
+  if (category.includes(query)) return 7;
+  return 99;
+}
+
 function getVendorSearchRank(vendor: AdminOrderVendorOption, query: string) {
   const code = normalizeSearchValue(vendor.code);
   const name = normalizeSearchValue(vendor.name);
@@ -81,41 +97,6 @@ function getVendorSearchRank(vendor: AdminOrderVendorOption, query: string) {
   if (city.includes(query)) return 6;
   if (email.includes(query)) return 7;
   return 99;
-}
-
-function createItemKey(variantId?: string, sku?: string, slug?: string) {
-  return variantId ?? sku ?? slug ?? "item";
-}
-
-function variantPickerLabel(product: ProductAdminSummary, variant: ProductAdminSummary["variants"][number]) {
-  const fragments = [product.name];
-  if (variant.name && variant.name !== product.name) {
-    fragments.push(variant.name);
-  }
-  if (variant.flavorLabel) {
-    fragments.push(`Sabor ${variant.flavorLabel}`);
-  }
-  if (variant.presentationLabel) {
-    fragments.push(`Presentación ${variant.presentationLabel}`);
-  }
-
-  return fragments.join(" · ");
-}
-
-function variantPickerSearchText(product: ProductAdminSummary, variant: ProductAdminSummary["variants"][number]) {
-  return normalizeSearchValue(
-    [
-      product.name,
-      product.slug,
-      product.categoryName,
-      variant.sku,
-      variant.name,
-      variant.flavorLabel,
-      variant.presentationLabel
-    ]
-      .filter(Boolean)
-      .join(" ")
-  );
 }
 
 function documentTypeLabel(value?: string) {
@@ -447,22 +428,8 @@ const ORDER_DETAIL_TABS = [
 
 type OrderDetailTab = (typeof ORDER_DETAIL_TABS)[number]["value"];
 
-type CreateItemState = {
-  key: string;
-  slug: string;
-  name: string;
-  sku: string;
-  variantId?: string;
-  variantName?: string;
-  flavorLabel?: string;
-  presentationLabel?: string;
-  quantity: number;
-  unitPrice: number;
-};
-
 type ProductPickerOption = ComboboxOption & {
   product: ProductAdminSummary;
-  variant: ProductAdminSummary["variants"][number];
   selectedQuantity: number;
   categoryLabel: string;
   priceLabel: string;
@@ -517,7 +484,7 @@ export function OrdersWorkspace() {
     notes: "", vendorCode: "",
     initialStatus: "pending_payment" as "paid" | "pending_payment"
   });
-  const [createItems, setCreateItems] = useState<CreateItemState[]>([]);
+  const [createItems, setCreateItems] = useState<Array<{ slug: string; name: string; sku: string; variantId?: string; quantity: number; unitPrice: number }>>([]);
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [createOptionsLoading, setCreateOptionsLoading] = useState(false);
@@ -533,10 +500,6 @@ export function OrdersWorkspace() {
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [bulkResult, setBulkResult] = useState<BulkCreateResult | null>(null);
-  const [bulkOptionsLoading, setBulkOptionsLoading] = useState(false);
-  const [bulkOptionsNotice, setBulkOptionsNotice] = useState<string | null>(null);
-  const [bulkTemplateLoading, setBulkTemplateLoading] = useState(false);
-  const [bulkUbigeoCatalog, setBulkUbigeoCatalog] = useState<PeruUbigeoCatalog | null>(null);
   const activeOrder = selectedOrder?.orderNumber === selectedOrderNumber ? selectedOrder : null;
 
   useEffect(() => {
@@ -739,7 +702,7 @@ export function OrdersWorkspace() {
   const canConfirmOnlinePayment = Boolean(activeOrder && activeOrder.paymentMethod === "openpay" && activeOrder.paymentStatus !== "paid");
   const canAccessDispatchModule = useMemo(() => {
     const roleCodes = session?.user.roles.map((role) => role.code) ?? [];
-    return hasAdminAccess(roleCodes, adminAccessRoles.dispatch);
+    return hasAdminAccess(roleCodes, adminAccessRoles.dispatch, session?.user.effectivePermissions, adminModulePermissions.dispatch.read);
   }, [session]);
   const canOpenDispatchLabel = canAccessDispatchModule && Boolean(activeOrder?.dispatchLabel?.available);
   const dispatchLabelBlockReason =
@@ -755,59 +718,38 @@ export function OrdersWorkspace() {
       suggestedWarehouseId !== assignedWarehouseId
   );
   const selectableProducts = availableProducts.filter((product) => product.status === "active" || product.status === "draft");
-  const selectableProductVariants = useMemo(
-    () =>
-      selectableProducts.flatMap((product) =>
-        (product.variants ?? [])
-          .filter((variant) => variant.status === "active")
-          .map((variant) => ({
-            product,
-            variant,
-            key: createItemKey(variant.id, variant.sku, product.slug),
-            searchText: variantPickerSearchText(product, variant)
-          }))
-      ),
-    [selectableProducts]
-  );
   const selectableVendors = useMemo(
     () => availableVendors.filter((vendor) => vendor.status === "active"),
     [availableVendors]
   );
-  const selectedQuantityByItemKey = useMemo(
-    () => new Map(createItems.map((item) => [item.key, item.quantity])),
+  const selectedQuantityBySlug = useMemo(
+    () => new Map(createItems.map((item) => [item.slug, item.quantity])),
     [createItems]
   );
-  const filteredSelectableProductVariants = useMemo(() => {
+  const filteredSelectableProducts = useMemo(() => {
     const query = normalizeSearchValue(productSearch);
-    const sortedVariants = [...selectableProductVariants].sort(
-      (left, right) =>
-        left.product.name.localeCompare(right.product.name, "es") ||
-        left.variant.name.localeCompare(right.variant.name, "es") ||
-        left.variant.sku.localeCompare(right.variant.sku, "es")
-    );
+    const sortedProducts = [...selectableProducts].sort((left, right) => left.name.localeCompare(right.name, "es"));
 
     if (!query) {
-      return sortedVariants;
+      return sortedProducts;
     }
 
-    return sortedVariants
-      .filter((option) => option.searchText.includes(query))
+    return sortedProducts
+      .filter((product) => getProductSearchRank(product, query) < 99)
       .sort((left, right) => {
-        return (
-          left.product.name.localeCompare(right.product.name, "es") ||
-          left.variant.name.localeCompare(right.variant.name, "es") ||
-          left.variant.sku.localeCompare(right.variant.sku, "es")
-        );
+        const rankDifference = getProductSearchRank(left, query) - getProductSearchRank(right, query);
+        if (rankDifference !== 0) {
+          return rankDifference;
+        }
+
+        return left.name.localeCompare(right.name, "es");
       });
-  }, [productSearch, selectableProductVariants]);
-  const visibleSelectableProductVariants = useMemo(
-    () => filteredSelectableProductVariants.slice(0, productSearch.trim() ? 12 : 8),
-    [filteredSelectableProductVariants, productSearch]
+  }, [productSearch, selectableProducts]);
+  const visibleSelectableProducts = useMemo(
+    () => filteredSelectableProducts.slice(0, productSearch.trim() ? 12 : 8),
+    [filteredSelectableProducts, productSearch]
   );
-  const hiddenSelectableProductsCount = Math.max(
-    filteredSelectableProductVariants.length - visibleSelectableProductVariants.length,
-    0
-  );
+  const hiddenSelectableProductsCount = Math.max(filteredSelectableProducts.length - visibleSelectableProducts.length, 0);
   const filteredSelectableVendors = useMemo(() => {
     const query = normalizeSearchValue(vendorSearch);
     const sortedVendors = [...selectableVendors].sort((left, right) => left.name.localeCompare(right.name, "es"));
@@ -846,17 +788,16 @@ export function OrdersWorkspace() {
   );
   const productPickerOptions = useMemo<ProductPickerOption[]>(
     () =>
-      visibleSelectableProductVariants.map((option) => ({
-        value: option.key,
-        label: variantPickerLabel(option.product, option.variant),
-        description: option.variant.sku,
-        product: option.product,
-        variant: option.variant,
-        selectedQuantity: selectedQuantityByItemKey.get(option.key) ?? 0,
-        categoryLabel: option.product.categoryName ?? "Sin categoría",
-        priceLabel: formatCurrency(option.variant.price)
+      visibleSelectableProducts.map((product) => ({
+        value: product.id,
+        label: product.name,
+        description: product.sku,
+        product,
+        selectedQuantity: selectedQuantityBySlug.get(product.slug) ?? 0,
+        categoryLabel: product.categoryName ?? "Sin categoría",
+        priceLabel: formatCurrency(product.price)
       })),
-    [selectedQuantityByItemKey, visibleSelectableProductVariants]
+    [selectedQuantityBySlug, visibleSelectableProducts]
   );
   const vendorPickerOptions = useMemo<VendorPickerOption[]>(
     () =>
@@ -877,20 +818,6 @@ export function OrdersWorkspace() {
     () => bulkResult?.results.filter((result) => result.status === "created") ?? [],
     [bulkResult]
   );
-  const bulkCatalogProducts = useMemo(
-    () =>
-      selectableProducts
-        .slice()
-        .sort((left, right) => left.name.localeCompare(right.name, "es"))
-        .slice(0, 6),
-    [selectableProducts]
-  );
-  const bulkCatalogBundlesCount = useMemo(
-    () => selectableProducts.filter((product) => product.productKind === "bundle").length,
-    [selectableProducts]
-  );
-  const bulkProvinceCount = bulkUbigeoCatalog?.provinces.length ?? 0;
-  const bulkDistrictCount = bulkUbigeoCatalog?.districts.length ?? 0;
 
   function openApproveConfirm() {
     if (!activeOrder?.manualRequest) return;
@@ -1211,90 +1138,12 @@ export function OrdersWorkspace() {
     }
   }
 
-  async function ensureBulkTemplateOptionsLoaded() {
-    const shouldLoadProducts = availableProducts.length === 0;
-    const shouldLoadVendors = availableVendors.length === 0;
-    const shouldLoadUbigeo = !bulkUbigeoCatalog;
-
-    if (!shouldLoadProducts && !shouldLoadVendors && !shouldLoadUbigeo) {
-      setBulkOptionsNotice(null);
-      return {
-        products: availableProducts,
-        vendors: availableVendors,
-        peruUbigeo: bulkUbigeoCatalog
-      };
-    }
-
-    setBulkOptionsLoading(true);
-
-    try {
-      const [productsResponse, vendorsResponse, ubigeoResponse] = await Promise.allSettled([
-        shouldLoadProducts ? fetchAdminProducts() : Promise.resolve({ data: availableProducts }),
-        shouldLoadVendors ? fetchOrderVendorOptions() : Promise.resolve({ data: availableVendors }),
-        shouldLoadUbigeo ? fetchPeruUbigeoCatalog() : Promise.resolve({ data: bulkUbigeoCatalog })
-      ]);
-
-      const notices: string[] = [];
-      const nextProducts = productsResponse.status === "fulfilled" ? (productsResponse.value.data ?? []) : availableProducts;
-      const nextVendors = vendorsResponse.status === "fulfilled" ? (vendorsResponse.value.data ?? []) : availableVendors;
-      const nextPeruUbigeo = ubigeoResponse.status === "fulfilled" ? (ubigeoResponse.value.data ?? bulkUbigeoCatalog) : bulkUbigeoCatalog;
-
-      if (productsResponse.status === "fulfilled") {
-        setAvailableProducts(nextProducts);
-      } else {
-        notices.push("No pudimos cargar el catálogo para enriquecer la plantilla.");
-      }
-
-      if (vendorsResponse.status === "fulfilled") {
-        setAvailableVendors(nextVendors);
-      } else {
-        notices.push("No pudimos cargar vendedores para los combos del archivo.");
-      }
-
-      if (ubigeoResponse.status === "fulfilled") {
-        setBulkUbigeoCatalog(nextPeruUbigeo);
-      } else {
-        notices.push("No pudimos cargar el catálogo completo de ubigeo para los combos de destino.");
-      }
-
-      setBulkOptionsNotice(notices.length ? notices.join(" ") : null);
-
-      return {
-        products: nextProducts,
-        vendors: nextVendors,
-        peruUbigeo: nextPeruUbigeo
-      };
-    } finally {
-      setBulkOptionsLoading(false);
-    }
-  }
-
   function openBulkModal() {
     setBulkSource("");
     setBulkSourceName(null);
     setBulkError(null);
     setBulkResult(null);
-    setBulkOptionsNotice(null);
     setBulkOpen(true);
-    void ensureBulkTemplateOptionsLoaded();
-  }
-
-  async function handleDownloadBulkTemplate() {
-    setBulkError(null);
-    setBulkTemplateLoading(true);
-
-    try {
-      const { products, vendors, peruUbigeo } = await ensureBulkTemplateOptionsLoaded();
-      await downloadBulkOrdersTemplate({
-        products,
-        vendors,
-        peruUbigeo: peruUbigeo ?? undefined
-      });
-    } catch (error) {
-      setBulkError(error instanceof Error ? error.message : "No se pudo generar la plantilla.");
-    } finally {
-      setBulkTemplateLoading(false);
-    }
   }
 
   async function handleBulkFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -1305,7 +1154,7 @@ export function OrdersWorkspace() {
     }
 
     try {
-      const text = await readBulkOrdersFile(file);
+      const text = await file.text();
       setBulkSource(text);
       setBulkSourceName(file.name);
       setBulkError(null);
@@ -1348,38 +1197,20 @@ export function OrdersWorkspace() {
     }
   }
 
-  function addItem(option: ProductPickerOption) {
-    const itemKey = createItemKey(option.variant.id, option.variant.sku, option.product.slug);
+  function addItem(product: ProductAdminSummary) {
     setCreateItems((prev) => {
-      const existing = prev.find((item) => item.key === itemKey);
-      if (existing) {
-        return prev.map((item) => (item.key === itemKey ? { ...item, quantity: item.quantity + 1 } : item));
-      }
-
-      return [
-        ...prev,
-        {
-          key: itemKey,
-          slug: option.product.slug,
-          name: option.product.name,
-          sku: option.variant.sku,
-          variantId: option.variant.id,
-          variantName: option.variant.name,
-          flavorLabel: option.variant.flavorLabel,
-          presentationLabel: option.variant.presentationLabel,
-          quantity: 1,
-          unitPrice: option.variant.price
-        }
-      ];
+      const existing = prev.find((i) => i.slug === product.slug);
+      if (existing) return prev.map((i) => i.slug === product.slug ? { ...i, quantity: i.quantity + 1 } : i);
+      return [...prev, { slug: product.slug, name: product.name, sku: product.sku, variantId: product.defaultVariantId, quantity: 1, unitPrice: product.price }];
     });
   }
 
-  function removeItem(itemKey: string) {
-    setCreateItems((prev) => prev.filter((item) => item.key !== itemKey));
+  function removeItem(slug: string) {
+    setCreateItems((prev) => prev.filter((i) => i.slug !== slug));
   }
 
-  function updateItem(itemKey: string, field: "quantity" | "unitPrice", value: number) {
-    setCreateItems((prev) => prev.map((item) => (item.key === itemKey ? { ...item, [field]: value } : item)));
+  function updateItem(slug: string, field: "quantity" | "unitPrice", value: number) {
+    setCreateItems((prev) => prev.map((i) => i.slug === slug ? { ...i, [field]: value } : i));
   }
 
   function handleCreateDepartmentChange(nextCode: string) {
@@ -1442,14 +1273,7 @@ export function OrdersWorkspace() {
           districtCode: createForm.districtCode,
           districtName: createForm.districtName
         },
-        items: createItems.map((item) => ({
-          slug: item.slug,
-          name: item.name,
-          sku: item.sku,
-          variantId: item.variantId,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice
-        })),
+        items: createItems,
         initialStatus: createForm.initialStatus,
         notes: createForm.notes.trim() || undefined,
         vendorCode: createForm.vendorCode.trim() || undefined
@@ -1544,7 +1368,7 @@ export function OrdersWorkspace() {
           <DialogHeader>
             <DialogTitle>Carga masiva de pedidos</DialogTitle>
             <DialogDescription className="mt-2 text-sm text-black/55">
-              Pega un CSV/TSV o sube un archivo. La plantilla XLSX trae combos desplegables para <span className="font-medium text-[#132016]">estado_pago</span>, <span className="font-medium text-[#132016]">producto_sku</span>, <span className="font-medium text-[#132016]">vendedor_codigo</span> y el ubigeo de <span className="font-medium text-[#132016]">departamento / provincia / distrito</span>. Repite el mismo <span className="font-medium text-[#132016]">pedido_ref</span> cuando un pedido tenga varias líneas.
+              Pega un CSV/TSV o sube un archivo. Repite el mismo <span className="font-medium text-[#132016]">pedido_ref</span> cuando un pedido tenga varias líneas.
             </DialogDescription>
           </DialogHeader>
           <DialogBody className="space-y-5">
@@ -1553,54 +1377,24 @@ export function OrdersWorkspace() {
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-[#132016]">Plantilla operativa</p>
                   <p className="text-xs text-black/55">
-                    Soporta <span className="font-medium">producto_sku</span> o <span className="font-medium">variant_id</span>. Ahora el selector del XLSX representa la variante física exacta, así que sabor y presentación quedan explícitos desde la carga.
+                    Soporta <span className="font-medium">producto_sku</span> o <span className="font-medium">variant_id</span>, y destino por ubigeo o por ciudad.
                   </p>
                 </div>
-                <Button type="button" variant="secondary" onClick={() => void handleDownloadBulkTemplate()} disabled={bulkTemplateLoading || bulkOptionsLoading}>
-                  {bulkTemplateLoading ? "Generando..." : "Descargar plantilla XLSX"}
+                <Button type="button" variant="secondary" onClick={downloadBulkOrdersTemplate}>
+                  Descargar plantilla
                 </Button>
               </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-4">
-                <SummaryTile label="Productos guía" value={String(selectableProducts.length)} />
-                <SummaryTile label="Combos virtuales" value={String(bulkCatalogBundlesCount)} />
-                <SummaryTile label="Distritos guiados" value={String(bulkDistrictCount)} />
-                <SummaryTile label="Vendedores activos" value={String(selectableVendors.length)} />
-              </div>
-              <div className="mt-3 grid gap-3 md:grid-cols-3">
-                <SummaryTile label="Departamentos" value={String(bulkUbigeoCatalog?.departments.length ?? 0)} />
-                <SummaryTile label="Provincias" value={String(bulkProvinceCount)} />
-                <SummaryTile label="Estados guiados" value="2" />
-              </div>
-              {bulkCatalogProducts.length > 0 ? (
-                <div className="mt-4 rounded-[12px] border border-black/10 bg-white px-3 py-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-black/40">Referencia rápida</p>
-                  <div className="mt-2 space-y-1.5 text-xs text-black/60">
-                    {bulkCatalogProducts.map((product) => (
-                      <p key={product.id}>
-                        <span className="font-medium text-[#132016]">{product.sku}</span> · {product.name} · {product.productKind === "bundle" ? "Combo virtual" : "Producto simple"} · {formatCurrency(product.price)}
-                      </p>
-                    ))}
-                    <p className="text-black/45">La plantilla XLSX incluye más productos, vendedores y ubigeo en sus hojas auxiliares.</p>
-                  </div>
-                </div>
-              ) : null}
-              {bulkOptionsNotice ? <p className="mt-3 text-xs text-amber-900/80">{bulkOptionsNotice}</p> : null}
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <label className="inline-flex cursor-pointer items-center rounded-[10px] border border-black/10 bg-white px-3 py-2 text-sm font-medium text-[#132016] transition hover:border-[#52b788] hover:bg-[#f5fbf7]">
                   Subir archivo
-                  <input
-                    type="file"
-                    accept=".csv,.tsv,.xlsx,text/csv,text/tab-separated-values,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    className="hidden"
-                    onChange={handleBulkFileChange}
-                  />
+                  <input type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values,text/plain" className="hidden" onChange={handleBulkFileChange} />
                 </label>
                 {bulkSourceName ? <span className="text-xs text-black/55">Archivo: {bulkSourceName}</span> : null}
               </div>
             </div>
 
             <div>
-              <label className="mb-1 block text-[11px] text-black/50">CSV, TSV o contenido extraído de XLSX</label>
+              <label className="mb-1 block text-[11px] text-black/50">CSV o TSV</label>
               <textarea
                 value={bulkSource}
                 onChange={(event) => {
@@ -1665,7 +1459,7 @@ export function OrdersWorkspace() {
                       <div className="mt-3 space-y-1.5 text-xs text-black/65">
                         {order.items.map((item, index) => (
                           <p key={`${order.clientReference}-${item.sku ?? item.variantId ?? index}`}>
-                            {(item.sku ?? item.variantId) || "Item"} · {item.quantity} u. · {typeof item.unitPrice === "number" ? `S/ ${item.unitPrice.toFixed(2)}` : "precio catálogo"}
+                            {(item.sku ?? item.variantId) || "Item"} · {item.quantity} u. · S/ {(item.unitPrice ?? 0).toFixed(2)}
                           </p>
                         ))}
                       </div>
@@ -1745,12 +1539,12 @@ export function OrdersWorkspace() {
                     value={productSearch}
                     onValueChange={setProductSearch}
                     onSelect={(option) => {
-                      addItem(option);
+                      addItem(option.product);
                       setProductSearch("");
                     }}
                     options={productPickerOptions}
                     ariaLabel="Buscar productos para el pedido manual"
-                    placeholder="Busca por nombre, SKU, sabor o presentación"
+                    placeholder="Busca por nombre, SKU o slug"
                     alwaysOpen
                     summary={createItems.length > 0 ? (
                       <div className="rounded-[12px] border border-[#d9e9df] bg-white p-3">
@@ -1758,7 +1552,7 @@ export function OrdersWorkspace() {
                           <div>
                             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#2d6a4f]">Seleccionados</p>
                             <p className="mt-1 text-xs text-black/50">
-                              {createItems.length} variante(s) distintas · {createItemsCount} item(s) en el pedido
+                              {createItems.length} producto(s) distintos · {createItemsCount} item(s) en el pedido
                             </p>
                           </div>
                           <div className="rounded-full bg-[#eef7f1] px-3 py-1 text-xs font-semibold text-[#2d6a4f]">
@@ -1767,28 +1561,24 @@ export function OrdersWorkspace() {
                         </div>
                         <div className="space-y-2">
                           {createItems.map((item) => (
-                            <div key={item.key} className="flex items-center gap-3 rounded-[10px] border border-black/10 bg-[#fbfbf8] px-3 py-2 text-sm">
+                            <div key={item.slug} className="flex items-center gap-3 rounded-[10px] border border-black/10 bg-[#fbfbf8] px-3 py-2 text-sm">
                               <div className="min-w-0 flex-1">
                                 <div className="truncate font-medium text-[#132016]">{item.name}</div>
-                                <div className="text-xs text-black/45">
-                                  {item.variantName ?? item.sku} · {item.sku}
-                                  {item.flavorLabel ? ` · Sabor ${item.flavorLabel}` : ""}
-                                  {item.presentationLabel ? ` · ${item.presentationLabel}` : ""}
-                                </div>
+                                <div className="text-xs text-black/45">{item.sku}</div>
                               </div>
                               <input type="number" min={1} value={item.quantity}
-                                onChange={(e) => updateItem(item.key, "quantity", Math.max(1, Number(e.target.value)))}
+                                onChange={(e) => updateItem(item.slug, "quantity", Math.max(1, Number(e.target.value)))}
                                 className="w-14 rounded-[8px] border border-black/15 bg-white px-2 py-1 text-center text-sm"
                               />
                               <span className="text-black/45">×</span>
                               <input type="number" min={0} step={0.5} value={item.unitPrice}
-                                onChange={(e) => updateItem(item.key, "unitPrice", Number(e.target.value))}
+                                onChange={(e) => updateItem(item.slug, "unitPrice", Number(e.target.value))}
                                 className="w-20 rounded-[8px] border border-black/15 bg-white px-2 py-1 text-right text-sm"
                               />
                               <span className="w-16 text-right text-sm font-semibold text-[#132016]">
                                 S/ {(item.unitPrice * item.quantity).toFixed(0)}
                               </span>
-                              <button type="button" onClick={() => removeItem(item.key)} className="text-red-400 transition hover:text-red-600">✕</button>
+                              <button type="button" onClick={() => removeItem(item.slug)} className="text-red-400 transition hover:text-red-600">✕</button>
                             </div>
                           ))}
                         </div>
@@ -1800,11 +1590,11 @@ export function OrdersWorkspace() {
                           {createOptionsLoading
                             ? "Cargando catálogo..."
                             : productSearch.trim()
-                              ? `${filteredSelectableProductVariants.length} variante(s) encontrada(s)`
-                              : `${selectableProductVariants.length} variante(s) disponibles`}
+                              ? `${filteredSelectableProducts.length} resultado(s)`
+                              : `${selectableProducts.length} producto(s) disponibles`}
                         </span>
                         {hiddenSelectableProductsCount > 0 ? (
-                          <span>Mostrando {visibleSelectableProductVariants.length}; sigue escribiendo para refinar</span>
+                          <span>Mostrando {visibleSelectableProducts.length}; sigue escribiendo para refinar</span>
                         ) : null}
                       </div>
                     )}
@@ -1816,10 +1606,10 @@ export function OrdersWorkspace() {
                     )}
                     emptyState={(
                       <p className="rounded-[10px] border border-dashed border-black/10 bg-white px-3 py-3 text-xs text-black/45">
-                        {!selectableProductVariants.length
+                        {!selectableProducts.length
                           ? createOptionsNotice?.includes("productos")
                             ? "No pudimos cargar productos."
-                            : "No hay variantes activas disponibles todavía."
+                            : "No hay productos disponibles todavía."
                           : "No encontramos coincidencias para esa búsqueda."}
                       </p>
                     )}
@@ -1828,7 +1618,7 @@ export function OrdersWorkspace() {
                         <div className="min-w-0 flex-1">
                           <div className="truncate font-medium text-[#132016]">{option.label}</div>
                           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-black/45">
-                            <span>{option.variant.sku}</span>
+                            <span>{option.product.sku}</span>
                             <span>{option.categoryLabel}</span>
                             <span>{option.priceLabel}</span>
                           </div>

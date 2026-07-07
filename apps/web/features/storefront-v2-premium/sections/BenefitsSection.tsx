@@ -1,80 +1,103 @@
+import { cn } from "@huelegood/ui";
 import { StorefrontReveal } from "../components/StorefrontReveal";
+import { StorefrontV2PremiumPanel, StorefrontV2PremiumSectionHeading } from "../components/storefront-v2-premium-section";
 
-const BENEFITS = [
+type LandingBenefit = {
+  label: string;
+  eyebrow: string;
+  title: string;
+  body: string;
+  tone?: "dark";
+};
+
+const BENEFITS: LandingBenefit[] = [
   {
-    icon: "⛰️",
-    title: "Alivio del Soroche",
-    body: "La mezcla de mentol y eucalipto expande las vías respiratorias y apoya tu adaptación a la altitud. Ideal para Cusco, Puno y la sierra peruana.",
-    kw: "remedio natural soroche Perú",
+    label: "01",
+    eyebrow: "Portátil",
+    title: "Cabe fácil en bolso, carro o escritorio.",
+    body: "El valor se entiende rápido cuando el formato acompaña trayectos, oficina y días largos sin pedir una rutina nueva."
   },
   {
-    icon: "🤢",
-    title: "Adiós Mareos y Náuseas",
-    body: "El aroma fresco distrae al cerebro del malestar por movimiento. Perfecto para combis, buses interprovinciales, aviones y barcos.",
-    kw: "aliviar mareos rápido",
+    label: "02",
+    eyebrow: "Reset fresco",
+    title: "La sensación herbal se lee en segundos.",
+    body: "La home baja ruido visual para que la promesa principal se entienda antes de abrir catálogo o detalle."
   },
   {
-    icon: "🚗",
-    title: "Escudo contra Malos Olores",
-    body: "En el tráfico de Lima, mercados, buses llenos o espacios cerrados: acércalo a la nariz y reemplaza cualquier olor por frescura herbal inmediata.",
-    kw: "inhalador aceites esenciales ciudad",
+    label: "03",
+    eyebrow: "Compra clara",
+    title: "Tres formatos bien diferenciados para decidir rápido.",
+    body: "Clásico Verde abre la puerta, Premium Negro sube el acabado y el Combo resuelve una compra doble con más valor.",
+    tone: "dark"
   },
   {
-    icon: "⚡",
-    title: "Energía Instantánea",
-    body: 'El mentol y los aceites cítricos activan zonas del cerebro relacionadas con el foco y la alerta. Un "shot" natural sin cafeína ni efectos secundarios.',
-    kw: "aromaterapia energía concentración",
+    label: "04",
+    eyebrow: "Escenas reales",
+    title: "Funciona mejor cuando se muestra en movimiento.",
+    body: "Trayectos, altura, oficina y vida diaria hacen más creíble la historia del producto que una metáfora de videojuego."
   },
   {
-    icon: "🌬️",
-    title: "Descongestión Nasal",
-    body: "La combinación de eucalipto y hierbas mentoladas despeja las fosas nasales en segundos. Respira profundo y vuelve a sentirte bien.",
-    kw: "descongestión nasal natural herbal",
+    label: "05",
+    eyebrow: "Compra directa",
+    title: "Si ya sabes cuál te gusta, compras sin rodeos.",
+    body: "La landing ordena la decisión y deja que PDP y checkout resuelvan variante, carrito y pago sin contaminar la lectura."
   },
   {
-    icon: "🌱",
-    title: "100% Natural y Seguro",
-    body: "Sin nicotina, sin alcohol, sin parabenos. Solo aceites esenciales puros y hierbas herbales sobre un filtro de algodón. No es un vape.",
-    kw: "inhalador herbal natural sin químicos",
-  },
+    label: "06",
+    eyebrow: "Cobertura Perú",
+    title: "Retail, mayoristas y vendedores en rutas separadas.",
+    body: "La compra DTC sigue limpia; volumen y representación comercial aparecen después, como salidas secundarias bien ubicadas."
+  }
 ] as const;
 
 export function BenefitsSection() {
   return (
-    <section id="beneficios" className="bg-white py-24">
-      <div className="mx-auto max-w-[1120px] px-4 md:px-6">
-        {/* Heading */}
-        <StorefrontReveal className="mb-14">
-          <span className="mb-4 inline-block rounded-full bg-[#eef6e8] px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-[#61a740]">
-            Por qué funciona
-          </span>
-          <h2 className="mb-4 font-serif text-4xl font-black leading-tight text-[#1a3a2e] md:text-5xl">
-            6 razones para tener uno<br />en tu bolsillo hoy
-          </h2>
-          <p className="max-w-xl text-base leading-relaxed text-[#6b7280]">
-            Cuando inhalas Huele Huele, las moléculas aromáticas viajan directo al sistema límbico — el centro emocional del cerebro — y actúan en segundos.
-          </p>
-        </StorefrontReveal>
+    <section id="beneficios" className="space-y-6">
+      <StorefrontReveal>
+        <StorefrontV2PremiumSectionHeading
+          eyebrow="6 razones"
+          title="La energía del prototipo aterrizada a una compra real."
+          description="Tomamos la memoria de marca, la mascota y la idea de reset fresco, pero ordenamos la home para conversión, confianza y lectura rápida."
+        />
+      </StorefrontReveal>
 
-        {/* Grid */}
-        <StorefrontReveal className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3" selector="[data-storefront-reveal-item]" stagger={0.08} y={20}>
-          {BENEFITS.map((b) => (
-            <div
-              key={b.title}
-              data-storefront-reveal-item
-              className="group relative overflow-hidden rounded-2xl border border-[#1a3a2e]/7 bg-[#faf8f3] p-7 transition hover:-translate-y-1 hover:shadow-[0_20px_60px_rgba(26,58,46,0.12)]"
+      <StorefrontReveal className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" selector="[data-benefit-item]" stagger={0.06} y={18}>
+        {BENEFITS.map((benefit, index) => {
+          const dark = benefit.tone === "dark";
+
+          return (
+            <StorefrontV2PremiumPanel
+              key={benefit.title}
+              data-benefit-item
+              tone={dark ? "dark" : index === 4 ? "muted" : "light"}
+              className="group min-h-[220px] transition-transform duration-200 hover:-translate-y-1"
             >
-              <div className="absolute inset-x-0 top-0 h-0.5 origin-left scale-x-0 bg-gradient-to-r from-[#61a740] to-[#c9a84c] transition-transform duration-300 group-hover:scale-x-100" />
-              <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#eef6e8] text-2xl">
-                {b.icon}
+              <div className="space-y-5">
+                <div className="flex items-center justify-between gap-3">
+                  <span
+                    className={cn(
+                      "inline-flex h-10 w-10 items-center justify-center rounded-[1rem] border text-sm font-semibold",
+                      dark ? "border-white/12 bg-white/10 text-white" : "border-[#162117]/8 bg-white/84 text-[#162117]"
+                    )}
+                  >
+                    {benefit.label}
+                  </span>
+                  <span className={cn("text-[11px] uppercase tracking-[0.26em]", dark ? "text-white/42" : "text-black/38")}>
+                    {benefit.eyebrow}
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className={cn("text-[1.55rem] font-semibold leading-tight tracking-[-0.03em]", dark ? "text-white" : "text-[#162117]")}>
+                    {benefit.title}
+                  </h3>
+                  <p className={cn("text-sm leading-7", dark ? "text-white/72" : "text-black/62")}>{benefit.body}</p>
+                </div>
               </div>
-              <h3 className="mb-3 font-serif text-lg font-bold text-[#1a3a2e]">{b.title}</h3>
-              <p className="mb-3 text-sm leading-relaxed text-[#6b7280]">{b.body}</p>
-              <p className="text-xs font-semibold text-[#61a740]">{b.kw}</p>
-            </div>
-          ))}
-        </StorefrontReveal>
-      </div>
+            </StorefrontV2PremiumPanel>
+          );
+        })}
+      </StorefrontReveal>
     </section>
   );
 }

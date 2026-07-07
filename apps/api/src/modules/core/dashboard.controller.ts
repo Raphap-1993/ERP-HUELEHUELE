@@ -1,13 +1,13 @@
 import { Controller, Get, Req } from "@nestjs/common";
-import { adminAccessRoles, type AuthSessionSummary } from "@huelegood/shared";
-import { RequireRoles } from "../auth/auth-rbac";
+import { adminModulePermissions, type AuthSessionSummary } from "@huelegood/shared";
+import { RequirePermissions } from "../auth/auth-rbac";
 import { CoreService } from "./core.service";
 
 interface AuthenticatedRequest {
   authUser?: AuthSessionSummary["user"];
 }
 
-@RequireRoles(...adminAccessRoles.dashboard)
+@RequirePermissions(...adminModulePermissions.dashboard.read)
 @Controller("admin/dashboard")
 export class DashboardController {
   constructor(private readonly coreService: CoreService) {}

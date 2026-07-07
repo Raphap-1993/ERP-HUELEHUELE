@@ -3,11 +3,13 @@ import { LifecycleStatus, Prisma, PrismaClient, VendorCodeStatus, VendorStatus }
 import { scryptSync } from "node:crypto";
 import { RoleCode } from "@huelegood/shared";
 import {
-  localDemoCategories,
-  localDemoCmsSnapshot,
-  localDemoProducts,
-  type LocalDemoProductSeed
-} from "./demo-content";
+  systemAccessModules,
+  systemAccessScopes,
+  systemPermissionCatalog,
+  systemRoleCatalog,
+  systemRolePermissionGrants
+} from "./access-control-catalog";
+import { localDemoCategories, localDemoCmsSnapshot, localDemoProducts } from "./demo-content";
 
 const prisma = new PrismaClient();
 
@@ -197,42 +199,6 @@ function inferVariantAttributes(productSlug: string) {
   };
 }
 
-function resolveDemoVariantSeeds(product: LocalDemoProductSeed) {
-  const fallbackAttributes = inferVariantAttributes(product.slug);
-
-  if (!product.variants?.length) {
-    return [
-      {
-        sku: product.sku,
-        name: product.name,
-        price: product.price,
-        compareAtPrice: product.compareAtPrice,
-        stockOnHand: 120,
-        imageUrl: product.imageUrl,
-        imageAlt: product.imageAlt,
-        flavorCode: fallbackAttributes.flavorCode,
-        flavorLabel: fallbackAttributes.flavorLabel,
-        presentationCode: fallbackAttributes.presentationCode,
-        presentationLabel: fallbackAttributes.presentationLabel
-      }
-    ];
-  }
-
-  return product.variants.map((variant) => ({
-    sku: variant.sku,
-    name: variant.name ?? product.name,
-    price: variant.price ?? product.price,
-    compareAtPrice: variant.compareAtPrice ?? product.compareAtPrice,
-    stockOnHand: variant.stockOnHand ?? 120,
-    imageUrl: variant.imageUrl ?? product.imageUrl,
-    imageAlt: variant.imageAlt ?? product.imageAlt,
-    flavorCode: variant.flavorCode ?? fallbackAttributes.flavorCode,
-    flavorLabel: variant.flavorLabel ?? fallbackAttributes.flavorLabel,
-    presentationCode: variant.presentationCode ?? fallbackAttributes.presentationCode,
-    presentationLabel: variant.presentationLabel ?? fallbackAttributes.presentationLabel
-  }));
-}
-
 async function seedSiteSettings() {
   await prisma.siteSetting.upsert({
     where: { key: "brand" },
@@ -248,43 +214,225 @@ async function seedSiteSettings() {
   });
 }
 
-async function seedRolesAndPermissions() {
-  const roles = [
-    { code: "super_admin", name: "Super Admin" },
-    { code: "admin", name: "Admin" },
-    { code: "operador_pagos", name: "Operador de pagos" },
-    { code: "ventas", name: "Ventas" },
-    { code: "marketing", name: "Marketing" },
-    { code: "seller_manager", name: "Seller Manager" },
-    { code: "vendedor", name: "Vendedor" },
-    { code: "mayorista", name: "Mayorista" },
-    { code: "cliente", name: "Cliente" }
-  ];
+function navigationGroupLabel(group: string) {
+  const labels: Record<string, string> = {
+    general: "General",
+    ventas: "Ventas",
+    operacion: "Operación",
+    catalogo: "Catálogo",
+    comercial: "Comercial",
+    growth: "Growth",
+    gobernanza: "Gobernanza",
+    portal: "Portal"
+  };
 
-  for (const role of roles) {
-    await prisma.role.upsert({
-      where: { code: role.code },
-      update: { name: role.name, isSystem: true },
-      create: { code: role.code, name: role.name, isSystem: true }
+  return labels[group] ?? group;
+}
+
+async function seedAccessControlCatalog() {
+  for (const scope of systemAccessScopes) {
+    await prisma.accessScope.upsert({
+      where: { code: scope.code },
+      update: {
+        label: scope.label,
+        description: scope.description,
+        precedence: scope.precedence,
+        isSystem: scope.isSystem,
+        isActive: true
+      },
+      create: {
+        code: scope.code,
+        label: scope.label,
+        description: scope.description,
+        precedence: scope.precedence,
+        isSystem: scope.isSystem,
+        isActive: true
+      }
     });
   }
 
-  const permissions = [
-    { code: "cms.read", name: "Leer CMS", module: "cms" },
-    { code: "cms.write", name: "Editar CMS", module: "cms" },
-    { code: "catalog.write", name: "Editar catálogo", module: "catalog" },
-    { code: "orders.manage", name: "Gestionar pedidos", module: "orders" },
-    { code: "payments.review", name: "Revisar pagos", module: "payments" },
-    { code: "vendors.manage", name: "Gestionar vendedores", module: "vendors" },
-    { code: "commissions.manage", name: "Gestionar comisiones", module: "commissions" },
-    { code: "marketing.execute", name: "Ejecutar campañas", module: "marketing" }
-  ];
+  for (const role of systemRoleCatalog) {
+    await prisma.role.upsert({
+      where: { code: role.code },
+      update: {
+        name: role.name,
+        description: role.description,
+        surface: role.surface,
+        isSystem: role.isSystem,
+        isAssignable: role.isAssignable,
+        isActive: role.isActive
+      },
+      create: {
+        code: role.code,
+        name: role.name,
+        description: role.description,
+        surface: role.surface,
+        isSystem: role.isSystem,
+        isAssignable: role.isAssignable,
+        isActive: role.isActive
+      }
+    });
+  }
 
-  for (const permission of permissions) {
+  const groups = Array.from(
+    new Map(
+      systemAccessModules.map((module) => [
+        `${module.surface}:${module.navGroup}`,
+        {
+          code: `${module.surface}:${module.navGroup}`,
+          label: navigationGroupLabel(module.navGroup),
+          surface: module.surface
+        }
+      ])
+    ).values()
+  );
+
+  for (const group of groups) {
+    await prisma.accessNavigationGroup.upsert({
+      where: { code: group.code },
+      update: {
+        label: group.label,
+        surface: group.surface,
+        isSystem: true,
+        isActive: true
+      },
+      create: {
+        code: group.code,
+        label: group.label,
+        surface: group.surface,
+        isSystem: true,
+        isActive: true
+      }
+    });
+  }
+
+  const groupRecords = await prisma.accessNavigationGroup.findMany({
+    where: {
+      code: {
+        in: groups.map((group) => group.code)
+      }
+    }
+  });
+  const groupIdByCode = new Map(groupRecords.map((group) => [group.code, group.id]));
+
+  for (const module of systemAccessModules) {
+    await prisma.accessModule.upsert({
+      where: { code: module.code },
+      update: {
+        label: module.label,
+        description: module.description,
+        surface: module.surface,
+        route: module.route,
+        navGroup: module.navGroup,
+        isSystem: module.isSystem,
+        isActive: module.isActive
+      },
+      create: {
+        code: module.code,
+        label: module.label,
+        description: module.description,
+        surface: module.surface,
+        route: module.route,
+        navGroup: module.navGroup,
+        isSystem: module.isSystem,
+        isActive: module.isActive
+      }
+    });
+  }
+
+  for (const permission of systemPermissionCatalog) {
     await prisma.permission.upsert({
       where: { code: permission.code },
-      update: { name: permission.name, module: permission.module },
-      create: permission
+      update: {
+        name: permission.label,
+        description: permission.description,
+        action: permission.action,
+        module: permission.moduleId,
+        supportedScopes: permission.supportedScopes as unknown as Prisma.InputJsonValue,
+        isSystem: permission.isSystem,
+        isActive: permission.isActive
+      },
+      create: {
+        code: permission.code,
+        name: permission.label,
+        description: permission.description,
+        action: permission.action,
+        module: permission.moduleId,
+        supportedScopes: permission.supportedScopes as unknown as Prisma.InputJsonValue,
+        isSystem: permission.isSystem,
+        isActive: permission.isActive
+      }
+    });
+  }
+
+  for (const module of systemAccessModules) {
+    const groupCode = `${module.surface}:${module.navGroup}`;
+    const navigationGroupId = groupIdByCode.get(groupCode);
+
+    if (!navigationGroupId) {
+      continue;
+    }
+
+    await prisma.accessNavigationItem.upsert({
+      where: {
+        moduleCode_navigationGroupId: {
+          moduleCode: module.code,
+          navigationGroupId
+        }
+      },
+      update: {
+        labelOverride: module.label,
+        isVisible: true
+      },
+      create: {
+        moduleCode: module.code,
+        navigationGroupId,
+        labelOverride: module.label,
+        isVisible: true
+      }
+    });
+  }
+
+  const roles = await prisma.role.findMany({
+    where: {
+      code: {
+        in: systemRoleCatalog.map((role) => role.code)
+      }
+    }
+  });
+  const permissions = await prisma.permission.findMany({
+    where: {
+      code: {
+        in: systemPermissionCatalog.map((permission) => permission.code)
+      }
+    }
+  });
+
+  const roleIdByCode = new Map(roles.map((role) => [role.code, role.id]));
+  const permissionIdByCode = new Map(permissions.map((permission) => [permission.code, permission.id]));
+
+  for (const grant of systemRolePermissionGrants) {
+    const roleId = roleIdByCode.get(grant.roleCode);
+    const permissionId = permissionIdByCode.get(grant.permissionCode);
+
+    if (!roleId || !permissionId) {
+      continue;
+    }
+
+    await prisma.rolePermission.upsert({
+      where: {
+        roleId_permissionId_scopeCode: {
+          roleId,
+          permissionId,
+          scopeCode: grant.scopeCode
+        }
+      },
+      update: {},
+      create: {
+        roleId,
+        permissionId,
+        scopeCode: grant.scopeCode
+      }
     });
   }
 }
@@ -304,8 +452,15 @@ async function seedOperationalUsers() {
       email: bootstrapEnv("BOOTSTRAP_SELLER_EMAIL", "monica@seller.com"),
       password: bootstrapEnv("BOOTSTRAP_SELLER_PASSWORD", "huelegood123"),
       accountType: "seller" as const,
-      roles: [RoleCode.SellerManager, RoleCode.Vendedor],
+      roles: [RoleCode.Vendedor],
       vendorCode: bootstrapEnv("BOOTSTRAP_SELLER_VENDOR_CODE", "VEND-014")
+    },
+    {
+      name: bootstrapEnv("BOOTSTRAP_WHOLESALE_NAME", "Mayorista Huelegood"),
+      email: bootstrapEnv("BOOTSTRAP_WHOLESALE_EMAIL", "mayorista@huelegood.com"),
+      password: bootstrapEnv("BOOTSTRAP_WHOLESALE_PASSWORD", "huelegood123"),
+      accountType: "wholesale" as const,
+      roles: [RoleCode.Mayorista]
     },
     {
       name: bootstrapEnv("BOOTSTRAP_PAYMENTS_NAME", "Operador de Pagos"),
@@ -357,9 +512,10 @@ async function seedOperationalUsers() {
       data: account.roles
         .map((code) => roleIdByCode.get(code))
         .filter((roleId): roleId is string => Boolean(roleId))
-        .map((roleId) => ({
+        .map((roleId, index) => ({
           userId: user.id,
-          roleId
+          roleId,
+          isPrimary: index === 0
         }))
     });
 
@@ -458,7 +614,7 @@ async function seedCatalog() {
 
   for (const product of localDemoProducts) {
     const isBundle = (product.bundleComponents?.length ?? 0) > 0;
-    const variantSeeds = resolveDemoVariantSeeds(product);
+    const variantAttributes = inferVariantAttributes(product.slug);
     const category = await prisma.category.findUnique({
       where: { slug: product.categorySlug }
     });
@@ -506,106 +662,99 @@ async function seedCatalog() {
       }
     });
 
-    await prisma.productImage.deleteMany({
-      where: { productId: record.id }
+    const variant = await prisma.productVariant.upsert({
+      where: { sku: product.sku },
+      update: {
+        name: product.name,
+        price: new Prisma.Decimal(product.price),
+        compareAtPrice: product.compareAtPrice != null ? new Prisma.Decimal(product.compareAtPrice) : null,
+        stockOnHand: isBundle ? 0 : 120,
+        status: "active",
+        productId: record.id,
+        defaultWarehouseId: isBundle ? null : defaultWarehouse.id,
+        flavorCode: variantAttributes.flavorCode,
+        flavorLabel: variantAttributes.flavorLabel,
+        presentationCode: variantAttributes.presentationCode,
+        presentationLabel: variantAttributes.presentationLabel
+      },
+      create: {
+        productId: record.id,
+        sku: product.sku,
+        name: product.name,
+        price: new Prisma.Decimal(product.price),
+        compareAtPrice: product.compareAtPrice != null ? new Prisma.Decimal(product.compareAtPrice) : null,
+        stockOnHand: isBundle ? 0 : 120,
+        status: "active",
+        defaultWarehouseId: isBundle ? null : defaultWarehouse.id,
+        flavorCode: variantAttributes.flavorCode,
+        flavorLabel: variantAttributes.flavorLabel,
+        presentationCode: variantAttributes.presentationCode,
+        presentationLabel: variantAttributes.presentationLabel
+      }
     });
 
-    const seededVariantIds: string[] = [];
+    if (isBundle) {
+      await prisma.warehouseInventoryBalance.deleteMany({
+        where: { variantId: variant.id }
+      });
+    } else {
+      const stockSplit = splitStockAcrossWarehouses(120);
 
-    for (const [index, variantSeed] of variantSeeds.entries()) {
-      const stockOnHand = isBundle ? 0 : Math.max(0, Math.trunc(variantSeed.stockOnHand));
-      const variant = await prisma.productVariant.upsert({
-        where: { sku: variantSeed.sku },
+      await prisma.warehouseInventoryBalance.upsert({
+        where: {
+          warehouseId_variantId: {
+            warehouseId: defaultWarehouse.id,
+            variantId: variant.id
+          }
+        },
         update: {
-          name: variantSeed.name,
-          price: new Prisma.Decimal(variantSeed.price),
-          compareAtPrice: variantSeed.compareAtPrice != null ? new Prisma.Decimal(variantSeed.compareAtPrice) : null,
-          stockOnHand,
-          status: "active",
-          productId: record.id,
-          defaultWarehouseId: isBundle ? null : defaultWarehouse.id,
-          flavorCode: variantSeed.flavorCode,
-          flavorLabel: variantSeed.flavorLabel,
-          presentationCode: variantSeed.presentationCode,
-          presentationLabel: variantSeed.presentationLabel
+          stockOnHand: stockSplit.primaryStock
         },
         create: {
-          productId: record.id,
-          sku: variantSeed.sku,
-          name: variantSeed.name,
-          price: new Prisma.Decimal(variantSeed.price),
-          compareAtPrice: variantSeed.compareAtPrice != null ? new Prisma.Decimal(variantSeed.compareAtPrice) : null,
-          stockOnHand,
-          status: "active",
-          defaultWarehouseId: isBundle ? null : defaultWarehouse.id,
-          flavorCode: variantSeed.flavorCode,
-          flavorLabel: variantSeed.flavorLabel,
-          presentationCode: variantSeed.presentationCode,
-          presentationLabel: variantSeed.presentationLabel
+          warehouseId: defaultWarehouse.id,
+          variantId: variant.id,
+          stockOnHand: stockSplit.primaryStock,
+          reservedQuantity: 0,
+          committedQuantity: 0
         }
       });
 
-      seededVariantIds.push(variant.id);
-
-      if (isBundle) {
-        await prisma.warehouseInventoryBalance.deleteMany({
-          where: { variantId: variant.id }
-        });
-      } else {
-        const stockSplit = splitStockAcrossWarehouses(stockOnHand);
-
-        await prisma.warehouseInventoryBalance.upsert({
-          where: {
-            warehouseId_variantId: {
-              warehouseId: defaultWarehouse.id,
-              variantId: variant.id
-            }
-          },
-          update: {
-            stockOnHand: stockSplit.primaryStock
-          },
-          create: {
-            warehouseId: defaultWarehouse.id,
-            variantId: variant.id,
-            stockOnHand: stockSplit.primaryStock,
-            reservedQuantity: 0,
-            committedQuantity: 0
-          }
-        });
-
-        await prisma.warehouseInventoryBalance.upsert({
-          where: {
-            warehouseId_variantId: {
-              warehouseId: secondaryWarehouse.id,
-              variantId: variant.id
-            }
-          },
-          update: {
-            stockOnHand: stockSplit.secondaryStock
-          },
-          create: {
+      await prisma.warehouseInventoryBalance.upsert({
+        where: {
+          warehouseId_variantId: {
             warehouseId: secondaryWarehouse.id,
-            variantId: variant.id,
-            stockOnHand: stockSplit.secondaryStock,
-            reservedQuantity: 0,
-            committedQuantity: 0
+            variantId: variant.id
           }
-        });
-      }
-
-      await prisma.productImage.create({
-        data: {
-          productId: record.id,
+        },
+        update: {
+          stockOnHand: stockSplit.secondaryStock
+        },
+        create: {
+          warehouseId: secondaryWarehouse.id,
           variantId: variant.id,
-          url: variantSeed.imageUrl,
-          altText: variantSeed.imageAlt,
-          sortOrder: index + 1,
-          isPrimary: index === 0
+          stockOnHand: stockSplit.secondaryStock,
+          reservedQuantity: 0,
+          committedQuantity: 0
         }
       });
     }
 
-    seededProducts.set(product.slug, { id: record.id, variantId: seededVariantIds[0] ?? "" });
+    await prisma.productImage.deleteMany({
+      where: { productId: record.id }
+    });
+
+    await prisma.productImage.create({
+      data: {
+        productId: record.id,
+        variantId: variant.id,
+        url: product.imageUrl,
+        altText: product.imageAlt,
+        sortOrder: 1,
+        isPrimary: true
+      }
+    });
+
+    seededProducts.set(product.slug, { id: record.id, variantId: variant.id });
   }
 
   for (const product of localDemoProducts) {
@@ -758,7 +907,7 @@ async function seedCmsSnapshot() {
 
 async function main() {
   await seedSiteSettings();
-  await seedRolesAndPermissions();
+  await seedAccessControlCatalog();
   await seedOperationalUsers();
   await seedCatalog();
   await seedCmsTables();

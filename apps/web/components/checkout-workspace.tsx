@@ -817,16 +817,9 @@ export function CheckoutWorkspace() {
         const response = await fetchCheckoutQuote({
           items: activeItems,
           paymentMethod,
-          shipping: provinceShalomPickup
-            ? {
-                deliveryMode: "province_shalom_pickup",
-                carrier: "shalom",
-                agencyName: address.agencyName.trim() || undefined,
-                payOnPickup: true
-              }
-            : {
-                deliveryMode: "standard"
-              }
+          shipping: {
+            deliveryMode: "standard"
+          }
         });
 
         if (active) {
@@ -851,7 +844,7 @@ export function CheckoutWorkspace() {
     return () => {
       active = false;
     };
-  }, [activeItems, address.agencyName, paymentMethod, provinceShalomPickup]);
+  }, [activeItems, paymentMethod]);
 
   useEffect(() => {
     if (!shellRef.current) {
@@ -1079,9 +1072,7 @@ export function CheckoutWorkspace() {
       ? "Compártenos tu número de pedido y te ayudamos a confirmar más rápido."
       : successHasCheckoutUrl
         ? "Si necesitas ayuda, también puedes escribirnos por WhatsApp con tu número de pedido."
-        : provinceShalomPickup
-          ? "Si prefieres, también puedes escribirnos por WhatsApp para coordinar el envío por Shalom."
-          : "Si prefieres, también puedes escribirnos por WhatsApp con tu número de pedido.";
+        : "Si prefieres, también puedes escribirnos por WhatsApp con tu número de pedido.";
   const successWhatsappTitle = "Coordinación por WhatsApp";
   const successWhatsappSupport = successHasCheckoutUrl
     ? "Si quieres, escríbenos con tu número de pedido y te ayudamos a completar el pago y coordinar la entrega."
@@ -1112,21 +1103,16 @@ export function CheckoutWorkspace() {
     address.departmentCode &&
       address.provinceCode &&
       address.districtCode &&
-      address.line1.trim() &&
-      (!provinceShalomPickup || address.agencyName.trim())
+      address.line1.trim()
   );
   const contactCompleted = Boolean(customer.fullName.trim() && customer.phone.trim());
   const availableDepartments = useMemo(() => {
-    return provinceShalomPickup
-      ? departments
-      : departments.filter((option) => isCheckoutStandardDeliveryDepartmentCode(option.code));
-  }, [departments, provinceShalomPickup]);
+    return departments.filter((option) => isCheckoutStandardDeliveryDepartmentCode(option.code));
+  }, [departments]);
   const availableProvinces = useMemo(() => {
-    return provinceShalomPickup
-      ? provinces
-      : provinces.filter((option) => isCheckoutStandardDeliveryProvinceCode(option.code));
-  }, [provinceShalomPickup, provinces]);
-  const deliveryModeSummary = provinceShalomPickup ? "Shalom provincias" : "Delivery Lima y Callao";
+    return provinces.filter((option) => isCheckoutStandardDeliveryProvinceCode(option.code));
+  }, [provinces]);
+  const deliveryModeSummary = "Delivery Lima y Callao";
   const fieldClassName =
     "w-full rounded-[20px] border border-[rgba(26,58,46,0.12)] bg-white px-4 py-3.5 text-[15px] text-[#173126] outline-none transition placeholder:text-[#94a39a] focus:border-[#61a740] focus:ring-4 focus:ring-[#61a740]/15";
   const labelClassName =
@@ -1187,7 +1173,7 @@ export function CheckoutWorkspace() {
       normalized.includes("provincia") ||
       normalized.includes("distrito") ||
       normalized.includes("dirección") ||
-      normalized.includes("shalom")
+      normalized.includes("agencia")
     ) {
       return 3;
     }
@@ -1527,13 +1513,7 @@ export function CheckoutWorkspace() {
     }
 
     if (!address.line1.trim()) {
-      return provinceShalomPickup ? "Ingresa una dirección o referencia del cliente." : "Ingresa la dirección de entrega.";
-    }
-
-    if (provinceShalomPickup) {
-      if (!address.agencyName.trim()) {
-        return "Indica la sucursal de Shalom más cercana.";
-      }
+      return "Ingresa la dirección de entrega.";
     }
 
     return null;
@@ -1579,10 +1559,9 @@ export function CheckoutWorkspace() {
         region: address.provinceName.trim() || address.departmentName.trim(),
         postalCode: "",
         countryCode: "PE",
-        deliveryMode: provinceShalomPickup ? "province_shalom_pickup" : "standard",
-        carrier: provinceShalomPickup ? "shalom" : undefined,
-        agencyName: provinceShalomPickup ? address.agencyName.trim() : undefined,
-        payOnPickup: provinceShalomPickup ? true : undefined,
+        deliveryMode: "standard",
+        carrier: undefined,
+        agencyName: undefined,
         departmentCode: address.departmentCode || undefined,
         departmentName: address.departmentName || undefined,
         provinceCode: address.provinceCode || undefined,
@@ -1611,10 +1590,6 @@ export function CheckoutWorkspace() {
   }
 
   const shippingNote = useMemo(() => {
-    if (provinceShalomPickup) {
-      return "Envío exclusivo por Shalom. No pagas el flete ahora; lo cancelas al momento de recoger con tu documento.";
-    }
-
     if (!siteSettings) {
       return "El costo de envío se calcula según el total de tu pedido.";
     }
@@ -1636,7 +1611,7 @@ export function CheckoutWorkspace() {
     }
 
     return "El costo de envío se calcula según el total de tu pedido.";
-  }, [provinceShalomPickup, shippingFlatRate, shippingThreshold, siteSettings, summary.shipping]);
+  }, [shippingFlatRate, shippingThreshold, siteSettings, summary.shipping]);
 
   function handleContinueFromStepOne() {
     if (activeItems.length === 0) {
@@ -1729,13 +1704,9 @@ export function CheckoutWorkspace() {
                 </h2>
                 <p className="mx-auto mt-4 max-w-[520px] text-sm leading-7 text-[#5f6f66]">
                   {successOrderStatus === "payment_under_review"
-                    ? provinceShalomPickup
-                      ? "Ya recibimos tu comprobante. Si quieres agilizar la confirmación, escríbenos por WhatsApp con tu número de pedido y coordinamos el despacho por Shalom."
-                      : "Ya recibimos tu comprobante. Si quieres agilizar la confirmación, escríbenos por WhatsApp con tu número de pedido."
+                    ? "Ya recibimos tu comprobante. Si quieres agilizar la confirmación, escríbenos por WhatsApp con tu número de pedido."
                     : successHasCheckoutUrl
                       ? "Tu pedido ya quedó registrado. Completa el pago para dejarlo confirmado y, si quieres ayuda, escríbenos por WhatsApp con tu número de pedido."
-                    : provinceShalomPickup
-                      ? "Gracias por tu compra. Puedes escribirnos por WhatsApp para recalcar tu pedido y coordinar el envío por Shalom."
                       : "Gracias por tu compra. Puedes escribirnos por WhatsApp para recalcar tu pedido y coordinar la entrega."}
                 </p>
               </div>
@@ -2400,107 +2371,19 @@ export function CheckoutWorkspace() {
                                       Paso 2
                                     </span>
                                     <h3 className="mt-3 font-sans text-2xl font-semibold text-[#163126] sm:text-[2.2rem]">
-                                      ¿Cómo lo recibes?
+                                      Entrega en Lima y Callao
                                     </h3>
                                     <p className="mt-2 text-sm leading-6 text-[#5f6f66]">
-                                      Elige una sola opción.
+                                      Este checkout web hoy procesa entregas en Lima y Callao.
                                     </p>
                                   </div>
-                                  <div
-                                    className={`rounded-full px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] ${
-                                      provinceShalomPickup
-                                        ? "bg-[#fff7e8] text-[#7a5e1c]"
-                                        : "bg-[#f4fbf6] text-[#61a740]"
-                                    }`}
-                                  >
-                                    {provinceShalomPickup ? "Shalom provincias" : "Delivery Lima y Callao"}
+                                  <div className="rounded-full bg-[#f4fbf6] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#61a740]">
+                                    Delivery Lima y Callao
                                   </div>
                                 </div>
 
-                                <div className="mt-6 grid gap-4 xl:grid-cols-2" role="radiogroup" aria-label="Tipo de entrega">
-                                  <button
-                                    type="button"
-                                    role="radio"
-                                    aria-checked={!provinceShalomPickup}
-                                    onClick={() => handleProvinceModeChange(false)}
-                                    className={`min-h-[164px] rounded-[24px] border p-5 text-left transition ${
-                                      !provinceShalomPickup
-                                        ? "border-[#61a740] bg-[#61a740] text-white shadow-[0_18px_34px_rgba(97,167,64,0.22)] ring-2 ring-[#61a740]/30"
-                                        : "border-[rgba(26,58,46,0.08)] bg-[#fbfaf6] text-[#163126] hover:border-[#61a740]/30"
-                                    }`}
-                                  >
-                                    <div className="flex items-start justify-between gap-4">
-                                      <div>
-                                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] opacity-80">
-                                          Opción 1
-                                        </p>
-                                        <h4 className="mt-3 font-sans text-[1.75rem] font-semibold">
-                                          Delivery Lima y Callao
-                                        </h4>
-                                        <p className="mt-2 max-w-[320px] text-sm leading-6 opacity-85">
-                                          Solo para Lima y Callao. Lo llevamos a tu dirección.
-                                        </p>
-                                      </div>
-                                      <span
-                                        className={`mt-1 flex h-10 w-10 items-center justify-center rounded-full border text-base font-bold ${
-                                          !provinceShalomPickup
-                                            ? "border-white bg-white text-[#163126]"
-                                            : "border-[rgba(26,58,46,0.14)] bg-white text-transparent"
-                                        }`}
-                                        aria-hidden="true"
-                                      >
-                                        ✓
-                                      </span>
-                                    </div>
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    role="radio"
-                                    aria-checked={provinceShalomPickup}
-                                    onClick={() => handleProvinceModeChange(true)}
-                                    className={`min-h-[164px] rounded-[24px] border p-5 text-left transition ${
-                                      provinceShalomPickup
-                                        ? "border-[#61a740] bg-[#61a740] text-white shadow-[0_18px_34px_rgba(97,167,64,0.22)] ring-2 ring-[#61a740]/30"
-                                        : "border-[rgba(26,58,46,0.08)] bg-[#fbfaf6] text-[#163126] hover:border-[#61a740]/30"
-                                    }`}
-                                  >
-                                    <div className="flex items-start justify-between gap-4">
-                                      <div>
-                                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] opacity-80">
-                                          Opción 2
-                                        </p>
-                                        <h4 className="mt-3 font-sans text-[1.75rem] font-semibold">
-                                          Shalom provincias
-                                        </h4>
-                                        <p className="mt-2 max-w-[320px] text-sm leading-6 opacity-85">
-                                          Para provincias. Lo recoges en agencia y el flete se paga al retirar.
-                                        </p>
-                                      </div>
-                                      <span
-                                        className={`mt-1 flex h-10 w-10 items-center justify-center rounded-full border text-base font-bold ${
-                                          provinceShalomPickup
-                                            ? "border-white bg-white text-[#163126]"
-                                            : "border-[rgba(26,58,46,0.14)] bg-white text-transparent"
-                                        }`}
-                                        aria-hidden="true"
-                                      >
-                                        ✓
-                                      </span>
-                                    </div>
-                                  </button>
-                                </div>
-
-                                <div
-                                  className={`mt-5 rounded-[24px] px-5 py-4 text-sm leading-7 ${
-                                    provinceShalomPickup
-                                      ? "border border-[#c9a84c]/25 bg-[#fff7e8] text-[#7a5e1c]"
-                                      : "border border-[rgba(97,167,64,0.10)] bg-[#f4fbf6] text-[#61a740]"
-                                  }`}
-                                >
-                                  {provinceShalomPickup
-                                    ? "Si estás en provincia, coordinamos por Shalom y el flete se paga al recoger."
-                                    : "Si estás en Lima o Callao, te lo enviamos a la dirección que completes en el siguiente paso."}
+                                <div className="mt-6 rounded-[24px] border border-[rgba(97,167,64,0.10)] bg-[#f4fbf6] px-5 py-4 text-sm leading-7 text-[#61a740]">
+                                  Completa una dirección válida en Lima o Callao y te lo enviamos al domicilio que indiques.
                                 </div>
 
                                 <div className="mt-6 flex flex-col gap-3 border-t border-[rgba(26,58,46,0.08)] pt-5 sm:flex-row sm:items-center sm:justify-between">
@@ -2530,12 +2413,10 @@ export function CheckoutWorkspace() {
                                       Paso 3
                                     </span>
                                     <h3 className="mt-3 font-sans text-2xl font-semibold text-[#163126] sm:text-[2.2rem]">
-                                      {provinceShalomPickup ? "¿En qué ciudad y agencia lo recoges?" : "¿A dónde lo enviamos en Lima o Callao?"}
+                                      ¿A dónde lo enviamos en Lima o Callao?
                                     </h3>
                                     <p className="mt-2 text-sm leading-6 text-[#5f6f66]">
-                                      {provinceShalomPickup
-                                        ? "Elige tu ubigeo y completa la referencia final."
-                                        : "Elige tu ubigeo de Lima o Callao y completa la referencia final."}
+                                      Elige tu ubigeo de Lima o Callao y completa la referencia final.
                                     </p>
                                   </div>
                                   <div className="rounded-[22px] border border-[rgba(26,58,46,0.08)] bg-[#fbfaf6] px-4 py-3 text-sm font-medium text-[#163126]">
@@ -2555,9 +2436,7 @@ export function CheckoutWorkspace() {
                                         <option value="">
                                           {departmentsLoading
                                             ? "Cargando departamentos..."
-                                            : provinceShalomPickup
-                                              ? "Selecciona departamento"
-                                              : "Selecciona Lima o Callao"}
+                                            : "Selecciona Lima o Callao"}
                                         </option>
                                         {availableDepartments.map((option) => (
                                           <option key={option.code} value={option.code}>
@@ -2628,34 +2507,15 @@ export function CheckoutWorkspace() {
                                   </div>
 
                                   <div className="lg:col-span-2">
-                                    <label className={labelClassName}>
-                                      {provinceShalomPickup ? "Dirección o referencia *" : "Dirección de entrega *"}
-                                    </label>
+                                    <label className={labelClassName}>Dirección de entrega *</label>
                                     <input
                                       className={fieldClassName}
                                       type="text"
-                                      placeholder={
-                                        provinceShalomPickup
-                                          ? "Calle, referencia o zona donde te encuentras"
-                                          : "Calle, número, urbanización, referencia"
-                                      }
+                                      placeholder="Calle, número, urbanización, referencia"
                                       value={address.line1}
                                       onChange={(event) => setAddress((current) => ({ ...current, line1: event.target.value }))}
                                     />
                                   </div>
-
-                                  {provinceShalomPickup ? (
-                                    <div>
-                                      <label className={labelClassName}>Sucursal Shalom *</label>
-                                      <input
-                                        className={fieldClassName}
-                                        type="text"
-                                        placeholder="Ej: Shalom Juliaca Centro"
-                                        value={address.agencyName}
-                                        onChange={(event) => setAddress((current) => ({ ...current, agencyName: event.target.value }))}
-                                      />
-                                    </div>
-                                  ) : null}
                                 </div>
 
                                 <div className="mt-6 flex flex-col gap-3 border-t border-[rgba(26,58,46,0.08)] pt-5 sm:flex-row sm:items-center sm:justify-between">
@@ -2770,14 +2630,11 @@ export function CheckoutWorkspace() {
                                 Ubicación y entrega
                               </p>
                               <h3 className="mt-2 font-sans text-lg font-semibold text-[#163126]">
-                                {provinceShalomPickup ? "Recojo en provincia" : "Entrega convencional"}
+                                Entrega convencional
                               </h3>
                               <div className="mt-3 space-y-1.5 text-sm leading-6 text-[#5f6f66]">
                                 <p>{address.line1 || "Dirección pendiente"}</p>
                                 <p>{locationSummary || "Ubigeo pendiente"}</p>
-                                {provinceShalomPickup ? (
-                                  <p>Sucursal Shalom: {address.agencyName || "Pendiente"}</p>
-                                ) : null}
                               </div>
                             </div>
                           </div>
@@ -2940,11 +2797,11 @@ export function CheckoutWorkspace() {
                   <div className="mt-4 space-y-3 border-t border-[rgba(26,58,46,0.08)] pt-4">
                     <SummaryLine label="Subtotal" value={formatCurrency(summary.subtotal, summary.currencyCode)} />
                     <SummaryLine
-                      label={provinceShalomPickup ? "Envío Shalom" : "Envío"}
-                      value={provinceShalomPickup ? "Pago al recoger" : formatCurrency(summary.shipping, summary.currencyCode)}
+                      label="Envío"
+                      value={formatCurrency(summary.shipping, summary.currencyCode)}
                     />
                     <SummaryLine
-                      label={provinceShalomPickup ? "Total ahora" : "Total"}
+                      label="Total"
                       value={formatCurrency(summary.grandTotal, summary.currencyCode)}
                       strong
                     />
@@ -2955,12 +2812,7 @@ export function CheckoutWorkspace() {
                       <p className="text-sm leading-6 text-[#5f6f66]">Sin productos en el carrito.</p>
                     ) : (
                       <>
-                        {provinceShalomPickup ? (
-                          <div>
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#61a740]">Envío a provincia</p>
-                            <p className="mt-2 text-sm leading-6 text-[#5f6f66]">{shippingNote}</p>
-                          </div>
-                        ) : shippingThreshold > 0 ? (
+                        {shippingThreshold > 0 ? (
                           <div>
                             <div className="flex items-center justify-between gap-3 text-xs font-medium text-[#5f6f66]">
                               <span>{shippingRemaining > 0 ? "Progreso para envío gratis" : "Envío gratis desbloqueado"}</span>

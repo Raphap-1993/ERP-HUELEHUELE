@@ -10,10 +10,10 @@ import {
   UploadedFile,
   UseInterceptors
 } from "@nestjs/common";
-import { adminAccessRoles, type ProductImageUploadInput, type ProductUpsertInput } from "@huelegood/shared";
+import { adminModulePermissions, type ProductImageUploadInput, type ProductUpsertInput } from "@huelegood/shared";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { memoryStorage } from "multer";
-import { RequireRoles } from "../auth/auth-rbac";
+import { RequirePermissions } from "../auth/auth-rbac";
 import { ProductsService } from "./products.service";
 
 type UploadedFileShape = {
@@ -23,7 +23,7 @@ type UploadedFileShape = {
   size?: number;
 };
 
-@RequireRoles(...adminAccessRoles.products)
+@RequirePermissions(...adminModulePermissions.products.read)
 @Controller("admin/products")
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
@@ -49,21 +49,25 @@ export class ProductsController {
   }
 
   @Post()
+  @RequirePermissions(...adminModulePermissions.products.manage!)
   createProduct(@Body() body: ProductUpsertInput) {
     return this.productsService.createProduct(body);
   }
 
   @Patch(":id")
+  @RequirePermissions(...adminModulePermissions.products.manage!)
   updateProduct(@Param("id") id: string, @Body() body: ProductUpsertInput) {
     return this.productsService.updateProduct(id, body);
   }
 
   @Post(":id/archive")
+  @RequirePermissions(...adminModulePermissions.products.manage!)
   archiveProduct(@Param("id") id: string) {
     return this.productsService.archiveProduct(id);
   }
 
   @Post(":id/images")
+  @RequirePermissions(...adminModulePermissions.products.manage!)
   @UseInterceptors(
     FileInterceptor("file", {
       storage: memoryStorage(),
@@ -82,6 +86,7 @@ export class ProductsController {
   }
 
   @Delete(":id/images/:imageId")
+  @RequirePermissions(...adminModulePermissions.products.manage!)
   deleteProductImage(@Param("id") id: string, @Param("imageId") imageId: string) {
     return this.productsService.deleteProductImage(id, imageId);
   }

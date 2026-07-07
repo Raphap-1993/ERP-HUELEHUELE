@@ -3,10 +3,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException, 
 import { InventoryMovementType, ProductKind, type ProductImage, type ProductVariant, type WarehouseInventoryBalance } from "@prisma/client";
 import {
   ProductSalesChannel,
-  type AdminBackofficeOrderItemInput,
   type InventoryStockAdjustmentInput,
-  type InventoryStockBulkInput,
-  type InventoryStockOperationMode,
   type InventoryReportRow,
   type InventoryReportSummary,
   type OrderInventoryLifecycleState,
@@ -46,43 +43,6 @@ interface InventoryWarehouseBalanceState {
   reservedQuantity: number;
   committedQuantity: number;
   updatedAt: string;
-}
-
-interface InventoryStockMutationInput {
-  mode: InventoryStockOperationMode;
-  variantId?: string;
-  sku?: string;
-  warehouseId?: string;
-  warehouseCode?: string;
-  quantity: number;
-  reason: string;
-  referenceType: string;
-  referenceId?: string;
-}
-
-interface InventoryStockMutationResult {
-  mode: InventoryStockOperationMode;
-  quantity: number;
-  referenceId: string;
-  variant: ProductVariant & {
-    product: {
-      id: string;
-      name: string;
-      slug: string;
-      productKind: ProductKind;
-    };
-    warehouseBalances: WarehouseInventoryBalance[];
-  };
-  warehouse: {
-    id: string;
-    code: string;
-    name: string;
-    status: string;
-  };
-  balance: WarehouseInventoryBalance;
-  previousStockOnHand: number;
-  nextStockOnHand: number;
-  delta: number;
 }
 
 function sortInventoryProductImages(images?: ProductImage[]) {
@@ -185,11 +145,6 @@ function normalizeText(value?: string | null) {
   return normalized ? normalized : undefined;
 }
 
-function normalizeUpperText(value?: string | null) {
-  const normalized = normalizeText(value);
-  return normalized ? normalized.toUpperCase() : undefined;
-}
-
 function normalizeVariantId(value?: string) {
   const normalized = normalizeText(value);
   return normalized ? normalized.toLowerCase() : undefined;
@@ -198,30 +153,6 @@ function normalizeVariantId(value?: string) {
 function normalizeWarehouseId(value?: string | null) {
   const normalized = normalizeText(value);
   return normalized ? normalized.toLowerCase() : undefined;
-}
-
-function normalizeVariantDescriptors(item: {
-  variantName?: string;
-  flavorCode?: string | null;
-  flavorLabel?: string | null;
-  presentationCode?: string | null;
-  presentationLabel?: string | null;
-}) {
-  return {
-    variantName: normalizeText(item.variantName),
-    flavorCode: normalizeText(item.flavorCode ?? undefined),
-    flavorLabel: normalizeText(item.flavorLabel ?? undefined),
-    presentationCode: normalizeText(item.presentationCode ?? undefined),
-    presentationLabel: normalizeText(item.presentationLabel ?? undefined)
-  };
-}
-
-function resolveInventoryStockMode(value?: InventoryStockOperationMode) {
-  return value === "stock_receipt" ? "stock_receipt" : "physical_count";
-}
-
-function defaultInventoryStockReason(mode: InventoryStockOperationMode) {
-  return mode === "stock_receipt" ? "Ingreso de mercadería" : "Conteo físico";
 }
 
 function warehouseBalanceKey(warehouseId: string, variantId: string) {
@@ -273,20 +204,18 @@ export class InventoryService implements OnModuleInit {
     const hydrated: OrderItemSummary[] = [];
 
     for (const item of items) {
-      const normalizedAllocations = item.inventoryAllocations?.map((allocation) => ({
-        ...allocation,
-        variantId: allocation.variantId.trim(),
-        sku: allocation.sku.trim(),
-        name: allocation.name.trim(),
-        quantity: allocation.quantity
-      }));
-
-      if (item.variantId && normalizedAllocations?.length && normalizeText(item.variantName)) {
+      if (item.variantId && item.inventoryAllocations?.length) {
         hydrated.push({
           ...item,
           variantId: item.variantId.trim(),
-          ...normalizeVariantDescriptors(item),
-          inventoryAllocations: normalizedAllocations
+          variantName: normalizeText(item.variantName) ?? normalizeText(item.inventoryAllocations[0]?.name),
+          inventoryAllocations: item.inventoryAllocations.map((allocation) => ({
+            ...allocation,
+            variantId: allocation.variantId.trim(),
+            sku: allocation.sku.trim(),
+            name: allocation.name.trim(),
+            quantity: allocation.quantity
+          }))
         });
         continue;
       }
@@ -297,59 +226,8 @@ export class InventoryService implements OnModuleInit {
         slug: normalizeText(item.slug) ?? resolved.variant.product.slug,
         name: normalizeText(item.name) ?? resolved.variant.product.name,
         variantId: resolved.variant.id,
+        variantName: normalizeText(item.variantName) ?? resolved.variant.name,
         sku: normalizeText(item.sku) ?? resolved.variant.sku,
-        ...normalizeVariantDescriptors({
-          variantName: resolved.variant.name,
-          flavorCode: resolved.variant.flavorCode,
-          flavorLabel: resolved.variant.flavorLabel,
-          presentationCode: resolved.variant.presentationCode,
-          presentationLabel: resolved.variant.presentationLabel
-        }),
-        inventoryAllocations: normalizedAllocations?.length ? normalizedAllocations : resolved.allocations
-      });
-    }
-
-    return hydrated;
-  }
-
-  async hydrateBackofficeOrderItems(items: AdminBackofficeOrderItemInput[]) {
-    const hydrated: OrderItemSummary[] = [];
-
-    for (const item of items) {
-      const quantity = Math.trunc(Number(item.quantity));
-      if (!Number.isFinite(quantity) || quantity <= 0) {
-        throw new BadRequestException(`Cantidad inválida en inventario para ${item.slug ?? item.sku ?? item.variantId ?? "item"}.`);
-      }
-
-      const resolved = await this.resolveItemReference({
-        slug: item.slug ?? "",
-        name: item.name ?? "",
-        sku: item.sku ?? "",
-        variantId: item.variantId,
-        quantity,
-        unitPrice: 0,
-        lineTotal: 0
-      });
-      const resolvedUnitPrice =
-        typeof item.unitPrice === "number" && Number.isFinite(item.unitPrice) && item.unitPrice >= 0
-          ? item.unitPrice
-          : Number(resolved.variant.price);
-
-      hydrated.push({
-        slug: normalizeText(item.slug) ?? resolved.variant.product.slug,
-        name: normalizeText(item.name) ?? resolved.variant.product.name,
-        variantId: resolved.variant.id,
-        sku: normalizeText(item.sku) ?? resolved.variant.sku,
-        ...normalizeVariantDescriptors({
-          variantName: resolved.variant.name,
-          flavorCode: resolved.variant.flavorCode,
-          flavorLabel: resolved.variant.flavorLabel,
-          presentationCode: resolved.variant.presentationCode,
-          presentationLabel: resolved.variant.presentationLabel
-        }),
-        quantity,
-        unitPrice: resolvedUnitPrice,
-        lineTotal: resolvedUnitPrice * quantity,
         inventoryAllocations: resolved.allocations
       });
     }
@@ -596,10 +474,6 @@ export class InventoryService implements OnModuleInit {
           variantId: variant.id,
           variantName: variant.name,
           sku: variant.sku,
-          flavorCode: normalizeText(variant.flavorCode ?? undefined),
-          flavorLabel: normalizeText(variant.flavorLabel ?? undefined),
-          presentationCode: normalizeText(variant.presentationCode ?? undefined),
-          presentationLabel: normalizeText(variant.presentationLabel ?? undefined),
           warehouseId: balance.warehouseId,
           warehouseCode: warehouse?.code,
           warehouseName: warehouse?.name,
@@ -669,25 +543,167 @@ export class InventoryService implements OnModuleInit {
   }
 
   async adjustWarehouseStock(input: InventoryStockAdjustmentInput) {
-    const mode = resolveInventoryStockMode(input.mode);
-    const result = await this.applyWarehouseStockMutation({
-      mode,
-      variantId: input.variantId,
-      warehouseId: input.warehouseId,
-      quantity: input.stockOnHand,
-      reason: input.reason,
-      referenceType: mode === "stock_receipt" ? "stock_receipt" : "stock_adjustment"
+    const variantId = normalizeVariantId(input.variantId);
+    const warehouseId = normalizeWarehouseId(input.warehouseId);
+    const mode = input.mode === "increase" ? "increase" : "set";
+    const requestedStockOnHand =
+      input.stockOnHand === undefined || input.stockOnHand === null ? undefined : Math.trunc(Number(input.stockOnHand));
+    const requestedQuantityDelta =
+      input.quantityDelta === undefined || input.quantityDelta === null
+        ? undefined
+        : Math.trunc(Number(input.quantityDelta));
+    const requestedReason = normalizeText(input.reason);
+
+    if (!variantId) {
+      throw new BadRequestException("La variante es obligatoria para ajustar stock.");
+    }
+
+    if (!warehouseId) {
+      throw new BadRequestException("El almacén es obligatorio para ajustar stock.");
+    }
+
+    if (mode === "increase") {
+      if (
+        requestedQuantityDelta === undefined ||
+        Number.isNaN(requestedQuantityDelta) ||
+        requestedQuantityDelta <= 0
+      ) {
+        throw new BadRequestException("Las unidades a ingresar deben ser un número entero mayor que cero.");
+      }
+    } else if (
+      requestedStockOnHand === undefined ||
+      Number.isNaN(requestedStockOnHand) ||
+      requestedStockOnHand < 0
+    ) {
+      throw new BadRequestException("El stock físico debe ser un número entero mayor o igual a cero.");
+    }
+
+    const adjustmentId = randomUUID();
+    const result = await this.prisma.$transaction(async (tx) => {
+      const [variant, warehouse, existingBalance] = await Promise.all([
+        tx.productVariant.findUnique({
+          where: { id: variantId },
+          include: {
+            product: true,
+            warehouseBalances: true
+          }
+        }),
+        tx.warehouse.findUnique({
+          where: { id: warehouseId },
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            status: true
+          }
+        }),
+        tx.warehouseInventoryBalance.findUnique({
+          where: {
+            warehouseId_variantId: {
+              warehouseId,
+              variantId
+            }
+          }
+        })
+      ]);
+
+      if (!variant) {
+        throw new NotFoundException(`No encontramos la variante ${variantId}.`);
+      }
+
+      if (variant.product.productKind === ProductKind.bundle) {
+        throw new ConflictException("Los combos no tienen stock físico propio. Ajusta el stock de sus productos unitarios.");
+      }
+
+      if (!warehouse) {
+        throw new NotFoundException(`No encontramos el almacén ${warehouseId}.`);
+      }
+
+      if (warehouse.status !== "active") {
+        throw new ConflictException(`El almacén ${warehouse.name} no está activo para ajustar stock.`);
+      }
+
+      const previousStockOnHand =
+        existingBalance?.stockOnHand ?? (normalizeWarehouseId(variant.defaultWarehouseId) === warehouseId ? variant.stockOnHand : 0);
+      const reservedQuantity = existingBalance?.reservedQuantity ?? 0;
+      const committedQuantity = existingBalance?.committedQuantity ?? 0;
+      const reason = requestedReason ?? `${mode === "increase" ? "Ingreso manual" : "Ajuste manual"} en ${warehouse.name}`;
+      const increaseQuantityDelta = requestedQuantityDelta ?? 0;
+      const nextRequestedStockOnHand = requestedStockOnHand ?? previousStockOnHand;
+      const nextStockOnHand =
+        mode === "increase" ? previousStockOnHand + increaseQuantityDelta : nextRequestedStockOnHand;
+      const delta = nextStockOnHand - previousStockOnHand;
+      const balance = await tx.warehouseInventoryBalance.upsert({
+        where: {
+          warehouseId_variantId: {
+            warehouseId,
+            variantId
+          }
+        },
+        create: {
+          warehouseId,
+          variantId,
+          stockOnHand: nextStockOnHand,
+          reservedQuantity,
+          committedQuantity
+        },
+        update: {
+          stockOnHand: nextStockOnHand
+        }
+      });
+
+      const balances = await tx.warehouseInventoryBalance.findMany({
+        where: { variantId },
+        select: {
+          stockOnHand: true
+        }
+      });
+      const aggregateStockOnHand = balances.reduce((total, item) => total + item.stockOnHand, 0);
+      await tx.productVariant.update({
+        where: { id: variantId },
+        data: {
+          stockOnHand: aggregateStockOnHand
+        }
+      });
+
+      if (delta !== 0) {
+        await tx.inventoryMovement.create({
+          data: {
+            variantId,
+            warehouseId,
+            type: InventoryMovementType.adjustment,
+            quantity: delta,
+            referenceType: "stock_adjustment",
+            referenceId: adjustmentId,
+            reason
+          }
+        });
+      }
+
+      return {
+        variant,
+        warehouse,
+        balance,
+        previousStockOnHand,
+        nextStockOnHand,
+        delta,
+        reason
+      };
     });
+
+    this.syncVariantMetadata(result.variant);
+    this.ensurePersistedBalancesForVariant(result.variant);
+    this.warehouseBalances.set(warehouseBalanceKey(result.balance.warehouseId, result.balance.variantId), this.mapWarehouseBalance(result.balance));
+    this.refreshAggregateVariantState(result.variant.id, result.balance.updatedAt.toISOString());
     await this.persistState();
 
     return {
       status: "ok" as const,
       message:
-        mode === "stock_receipt"
-          ? `Ingreso registrado para ${result.variant.sku} en ${result.warehouse.name}.`
+        result.delta > 0
+          ? `Stock ingresado para ${result.variant.sku} en ${result.warehouse.name}.`
           : `Stock físico actualizado para ${result.variant.sku} en ${result.warehouse.name}.`,
-      referenceId: result.referenceId,
-      mode,
+      referenceId: adjustmentId,
       balance: {
         warehouseId: result.balance.warehouseId,
         variantId: result.balance.variantId,
@@ -701,281 +717,6 @@ export class InventoryService implements OnModuleInit {
       nextStockOnHand: result.nextStockOnHand,
       delta: result.delta
     };
-  }
-
-  async adjustWarehouseStockBulk(input: InventoryStockBulkInput) {
-    const mode = resolveInventoryStockMode(input.mode);
-    const batchReason = normalizeText(input.reason);
-    const lines = Array.isArray(input.lines) ? input.lines : [];
-
-    if (!lines.length) {
-      throw new BadRequestException("Envía al menos una línea para procesar el lote de inventario.");
-    }
-
-    const batchReferenceId = randomUUID();
-    const results: Array<{
-      lineNumber: number;
-      variantId: string;
-      sku: string;
-      warehouseId: string;
-      warehouseCode?: string;
-      warehouseName?: string;
-      mode: InventoryStockOperationMode;
-      quantity: number;
-      previousStockOnHand: number;
-      nextStockOnHand: number;
-      delta: number;
-      message: string;
-    }> = [];
-    const errors: Array<{
-      lineNumber: number;
-      variantId?: string;
-      sku?: string;
-      warehouseId?: string;
-      warehouseCode?: string;
-      quantity?: number;
-      message: string;
-    }> = [];
-
-    for (const [index, line] of lines.entries()) {
-      const lineNumber = index + 1;
-      try {
-        const result = await this.applyWarehouseStockMutation({
-          mode,
-          variantId: line.variantId,
-          sku: line.sku,
-          warehouseId: line.warehouseId,
-          warehouseCode: line.warehouseCode,
-          quantity: line.quantity,
-          reason: normalizeText(line.reason) ?? batchReason ?? defaultInventoryStockReason(mode),
-          referenceType: mode === "stock_receipt" ? "stock_receipt_batch" : "stock_adjustment_batch",
-          referenceId: batchReferenceId
-        });
-
-        results.push({
-          lineNumber,
-          variantId: result.variant.id,
-          sku: result.variant.sku,
-          warehouseId: result.warehouse.id,
-          warehouseCode: result.warehouse.code,
-          warehouseName: result.warehouse.name,
-          mode,
-          quantity: result.quantity,
-          previousStockOnHand: result.previousStockOnHand,
-          nextStockOnHand: result.nextStockOnHand,
-          delta: result.delta,
-          message:
-            mode === "stock_receipt"
-              ? `Ingreso aplicado a ${result.variant.sku} en ${result.warehouse.name}.`
-              : `Conteo aplicado a ${result.variant.sku} en ${result.warehouse.name}.`
-        });
-      } catch (error) {
-        errors.push({
-          lineNumber,
-          variantId: normalizeVariantId(line.variantId),
-          sku: normalizeUpperText(line.sku),
-          warehouseId: normalizeWarehouseId(line.warehouseId),
-          warehouseCode: normalizeUpperText(line.warehouseCode),
-          quantity: Number.isFinite(Number(line.quantity)) ? Math.trunc(Number(line.quantity)) : undefined,
-          message: error instanceof Error ? error.message : "No pudimos procesar la línea."
-        });
-      }
-    }
-
-    if (results.length > 0) {
-      await this.persistState();
-    }
-
-    const status = errors.length === 0 ? "ok" : results.length > 0 ? "partial" : "rejected";
-    const successLabel =
-      mode === "stock_receipt"
-        ? `${results.length} ingreso(s) aplicado(s)`
-        : `${results.length} conteo(s) aplicado(s)`;
-    const errorLabel = errors.length > 0 ? ` ${errors.length} línea(s) quedaron observadas.` : "";
-
-    return {
-      status,
-      message:
-        status === "rejected"
-          ? "No pudimos procesar ninguna línea del lote de inventario."
-          : `${successLabel}.${errorLabel}`.trim(),
-      processedCount: results.length,
-      failedCount: errors.length,
-      mode,
-      results,
-      errors
-    };
-  }
-
-  private async applyWarehouseStockMutation(input: InventoryStockMutationInput): Promise<InventoryStockMutationResult> {
-    const mode = resolveInventoryStockMode(input.mode);
-    const variantId = normalizeVariantId(input.variantId);
-    const sku = normalizeUpperText(input.sku);
-    const warehouseId = normalizeWarehouseId(input.warehouseId);
-    const warehouseCode = normalizeUpperText(input.warehouseCode);
-    const quantity = Math.trunc(Number(input.quantity));
-    const reason = normalizeText(input.reason);
-    const referenceId = input.referenceId ?? randomUUID();
-
-    if (!variantId && !sku) {
-      throw new BadRequestException("Cada movimiento de inventario requiere variantId o sku.");
-    }
-
-    if (!warehouseId && !warehouseCode) {
-      throw new BadRequestException("Cada movimiento de inventario requiere warehouseId o warehouseCode.");
-    }
-
-    if (!Number.isFinite(quantity) || quantity < 0 || (mode === "stock_receipt" && quantity <= 0)) {
-      throw new BadRequestException(
-        mode === "stock_receipt"
-          ? "La cantidad de ingreso debe ser un entero mayor a cero."
-          : "El stock físico debe ser un número entero mayor o igual a cero."
-      );
-    }
-
-    if (!reason) {
-      throw new BadRequestException("Indica el motivo del movimiento de inventario.");
-    }
-
-    const result = await this.prisma.$transaction(async (tx) => {
-      const [variant, warehouse] = await Promise.all([
-        variantId
-          ? tx.productVariant.findUnique({
-              where: { id: variantId },
-              include: {
-                product: true,
-                warehouseBalances: true
-              }
-            })
-          : tx.productVariant.findUnique({
-              where: { sku: sku! },
-              include: {
-                product: true,
-                warehouseBalances: true
-              }
-            }),
-        warehouseId
-          ? tx.warehouse.findUnique({
-              where: { id: warehouseId },
-              select: {
-                id: true,
-                code: true,
-                name: true,
-                status: true
-              }
-            })
-          : tx.warehouse.findUnique({
-              where: { code: warehouseCode! },
-              select: {
-                id: true,
-                code: true,
-                name: true,
-                status: true
-              }
-            })
-      ]);
-
-      if (!variant) {
-        throw new NotFoundException(`No encontramos la variante ${variantId ?? sku}.`);
-      }
-
-      if (variant.product.productKind === ProductKind.bundle) {
-        throw new ConflictException("Los combos no tienen stock físico propio. Ajusta el stock de sus productos unitarios.");
-      }
-
-      if (!warehouse) {
-        throw new NotFoundException(`No encontramos el almacén ${warehouseId ?? warehouseCode}.`);
-      }
-
-      if (warehouse.status !== "active") {
-        throw new ConflictException(`El almacén ${warehouse.name} no está activo para ajustar stock.`);
-      }
-
-      const existingBalance = await tx.warehouseInventoryBalance.findUnique({
-        where: {
-          warehouseId_variantId: {
-            warehouseId: warehouse.id,
-            variantId: variant.id
-          }
-        }
-      });
-
-      const previousStockOnHand =
-        existingBalance?.stockOnHand ??
-        (normalizeWarehouseId(variant.defaultWarehouseId) === warehouse.id ? variant.stockOnHand : 0);
-      const reservedQuantity = existingBalance?.reservedQuantity ?? 0;
-      const committedQuantity = existingBalance?.committedQuantity ?? 0;
-      const nextStockOnHand = mode === "stock_receipt" ? previousStockOnHand + quantity : quantity;
-      const delta = nextStockOnHand - previousStockOnHand;
-      const balance = await tx.warehouseInventoryBalance.upsert({
-        where: {
-          warehouseId_variantId: {
-            warehouseId: warehouse.id,
-            variantId: variant.id
-          }
-        },
-        create: {
-          warehouseId: warehouse.id,
-          variantId: variant.id,
-          stockOnHand: nextStockOnHand,
-          reservedQuantity,
-          committedQuantity
-        },
-        update: {
-          stockOnHand: nextStockOnHand
-        }
-      });
-
-      const balances = await tx.warehouseInventoryBalance.findMany({
-        where: { variantId: variant.id },
-        select: {
-          stockOnHand: true
-        }
-      });
-      const aggregateStockOnHand = balances.reduce((total, item) => total + item.stockOnHand, 0);
-      await tx.productVariant.update({
-        where: { id: variant.id },
-        data: {
-          stockOnHand: aggregateStockOnHand
-        }
-      });
-
-      if (delta !== 0) {
-        await tx.inventoryMovement.create({
-          data: {
-            variantId: variant.id,
-            warehouseId: warehouse.id,
-            type: mode === "stock_receipt" ? InventoryMovementType.inbound : InventoryMovementType.adjustment,
-            quantity: delta,
-            referenceType: input.referenceType,
-            referenceId,
-            reason
-          }
-        });
-      }
-
-      return {
-        mode,
-        quantity,
-        referenceId,
-        variant,
-        warehouse,
-        balance,
-        previousStockOnHand,
-        nextStockOnHand,
-        delta
-      } satisfies InventoryStockMutationResult;
-    });
-
-    this.syncVariantMetadata(result.variant);
-    this.ensurePersistedBalancesForVariant(result.variant);
-    this.warehouseBalances.set(
-      warehouseBalanceKey(result.balance.warehouseId, result.balance.variantId),
-      this.mapWarehouseBalance(result.balance)
-    );
-    this.refreshAggregateVariantState(result.variant.id, result.balance.updatedAt.toISOString());
-
-    return result;
   }
 
   private async resolveItemReference(item: OrderItemSummary) {

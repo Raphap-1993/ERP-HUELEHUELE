@@ -1,8 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { CatalogProduct } from "@huelegood/shared";
-import { Badge, Button, cn } from "@huelegood/ui";
+import { Badge, cn } from "@huelegood/ui";
 import { AddToCartLink } from "../../../components/add-to-cart-link";
+import {
+  PRODUCT_VARIANTS_SECTION_ID,
+  resolveStorefrontPurchaseMode,
+  resolveStorefrontUnavailableLabel,
+  resolveStorefrontStockBadge
+} from "../../../lib/storefront-purchase";
 import type { PremiumProductHighlight } from "../content";
 import { StorefrontV2PremiumSectionHeading } from "../components/storefront-v2-premium-section";
 import {
@@ -29,18 +35,73 @@ function formatPrice(value: number, currencyCode = "PEN") {
   }
 }
 
+function resolvePurchaseBadge(product: CatalogProduct, catalogSource: "runtime" | "static_fallback") {
+  if (catalogSource !== "runtime") {
+    return {
+      label: "Catálogo no disponible",
+      className: "bg-[#ece9e1] text-[#7a8179]"
+    };
+  }
+
+  const purchaseMode = resolveStorefrontPurchaseMode(product);
+  const stockBadge = resolveStorefrontStockBadge(product);
+
+  if (purchaseMode === "sold_out") {
+    return stockBadge ?? {
+      label: resolveStorefrontUnavailableLabel(product),
+      className: "bg-rose-50 text-rose-700"
+    };
+  }
+
+  if (stockBadge) {
+    return stockBadge;
+  }
+
+  if (purchaseMode === "select_variant") {
+    return {
+      label: "Se elige en detalle",
+      className: "bg-[#f4efe4] text-[#5f6f66]"
+    };
+  }
+
+  return {
+    label: "Compra directa",
+    className: "bg-[#eef6e8] text-[#4f7c2d]"
+  };
+}
+
+function resolvePurchaseNote(product: CatalogProduct) {
+  const purchaseMode = resolveStorefrontPurchaseMode(product);
+
+  if (purchaseMode === "select_variant") {
+    return "Sabor o presentación se define en la ficha.";
+  }
+
+  if (purchaseMode === "sold_out") {
+    return "No disponible para compra directa en este momento.";
+  }
+
+  return "Compra directa desde esta ficha.";
+}
+
 export function ProductCatalogSection({
+  catalogSource = "runtime",
   products,
   highlights
 }: {
+  catalogSource?: "runtime" | "static_fallback";
   products: CatalogProduct[];
   highlights: PremiumProductHighlight[];
 }) {
-  const [classicGreen, premiumBlack, duoPerfecto] = products;
-  const classicGreenRequiresVariantSelection = (classicGreen?.variantCount ?? 1) > 1;
+  const productBySlug = new Map(products.map((product) => [product.slug, product] as const));
+  const orderedProducts = ["clasico-verde", "premium-negro", "combo-duo-perfecto"]
+    .map((slug) => productBySlug.get(slug))
+    .filter((product): product is CatalogProduct => Boolean(product));
+  const visibleProducts = orderedProducts.length > 0 ? orderedProducts : products;
+  const [classicGreen, premiumBlack, duoPerfecto] = visibleProducts;
 
   return (
-    <section className="space-y-6">
+    <section id="tienda" className="space-y-6">
       <StorefrontV2PremiumSectionHeading
         eyebrow="Productos destacados"
         title="Tres piezas editadas para verse claras y comprarse rápido."
@@ -70,67 +131,104 @@ export function ProductCatalogSection({
               </div>
 
               <div className="flex h-full flex-col justify-between gap-8 p-6 md:p-8">
-                <div className="space-y-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-2">
-                      <p className={cn("text-[11px] uppercase tracking-[0.26em]", premiumProductToneClasses(classicGreen.tone).accent)}>
-                        {highlightBySlug(highlights, classicGreen.slug)?.eyebrow ?? classicGreen.badge}
-                      </p>
-                      <h3 className="text-[2.25rem] font-semibold tracking-[-0.04em] text-[#162117] md:text-[2.8rem]">{classicGreen.name}</h3>
-                    </div>
-                    <div className="text-right text-[#162117]">
-                      <div className="text-[2.35rem] font-semibold tracking-tight">
-                        {formatPrice(classicGreen.price, classicGreen.currencyCode ?? "PEN")}
-                      </div>
-                      {classicGreen.compareAtPrice ? (
-                        <div className="text-sm text-black/34 line-through">
-                          {formatPrice(classicGreen.compareAtPrice, classicGreen.currencyCode ?? "PEN")}
+                {(() => {
+                  const highlight = highlightBySlug(highlights, classicGreen.slug);
+                  const runtimePurchaseEnabled = catalogSource === "runtime";
+                  const purchaseBadge = resolvePurchaseBadge(classicGreen, catalogSource);
+                  const purchaseMode = resolveStorefrontPurchaseMode(classicGreen);
+                  const purchaseNote = runtimePurchaseEnabled
+                    ? resolvePurchaseNote(classicGreen)
+                    : "Compra directa disponible cuando el catálogo runtime responda.";
+
+                  return (
+                    <>
+                      <div className="space-y-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="space-y-2">
+                            <p className={cn("text-[11px] uppercase tracking-[0.26em]", premiumProductToneClasses(classicGreen.tone).accent)}>
+                              {highlight?.eyebrow ?? classicGreen.badge}
+                            </p>
+                            <h3 className="text-[2.25rem] font-semibold tracking-[-0.04em] text-[#162117] md:text-[2.8rem]">{classicGreen.name}</h3>
+                          </div>
+                          <div className="text-right text-[#162117]">
+                            <div className="text-[2.35rem] font-semibold tracking-tight">
+                              {formatPrice(classicGreen.price, classicGreen.currencyCode ?? "PEN")}
+                            </div>
+                            {classicGreen.compareAtPrice ? (
+                              <div className="text-sm text-black/34 line-through">
+                                {formatPrice(classicGreen.compareAtPrice, classicGreen.currencyCode ?? "PEN")}
+                              </div>
+                            ) : null}
+                            {purchaseBadge ? (
+                              <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${purchaseBadge.className}`}>
+                                {purchaseBadge.label}
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
-                      ) : null}
-                    </div>
-                  </div>
 
-                  <div className="space-y-3">
-                    <p className="text-sm font-medium text-black/58">{classicGreen.tagline}</p>
-                    <p className="text-sm leading-7 text-black/62">{highlightBySlug(highlights, classicGreen.slug)?.story ?? classicGreen.description}</p>
-                  </div>
+                        <div className="space-y-3">
+                          <p className="text-sm font-medium text-black/58">{classicGreen.tagline}</p>
+                          <p className="text-sm leading-7 text-black/62">{highlight?.story ?? classicGreen.description}</p>
+                        </div>
 
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    {classicGreen.benefits.map((benefit) => (
-                      <div key={benefit} className="rounded-[1.35rem] border border-[#162117]/8 bg-[#f7f3ea] px-4 py-4">
-                        <p className="text-[11px] uppercase tracking-[0.22em] text-black/38">Clave</p>
-                        <p className="mt-2 text-sm font-semibold text-[#162117]">{benefit}</p>
+                        <div className="grid gap-3 sm:grid-cols-3">
+                          {classicGreen.benefits.map((benefit) => (
+                            <div key={benefit} className="rounded-[1.35rem] border border-[#162117]/8 bg-[#f7f3ea] px-4 py-4">
+                              <p className="text-[11px] uppercase tracking-[0.22em] text-black/38">Clave</p>
+                              <p className="mt-2 text-sm font-semibold text-[#162117]">{benefit}</p>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
 
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-sm leading-6 text-black/48">Clásico Verde como entrada limpia a la marca.</p>
-                  <div className="flex items-center gap-3">
-                    <Link
-                      href={`/producto/${classicGreen.slug}`}
-                      className="text-xs font-semibold uppercase tracking-[0.22em] text-[#61a740] hover:text-[#162117]"
-                    >
-                      Ver detalle
-                    </Link>
-                    {classicGreenRequiresVariantSelection ? (
-                      <Link
-                        href={`/producto/${classicGreen.slug}`}
-                        className="inline-flex h-11 items-center justify-center rounded-full bg-[#61a740] px-5 text-sm font-medium text-[#163126] transition-colors hover:bg-[#577e2f] hover:text-white"
-                      >
-                        Elegir sabor
-                      </Link>
-                    ) : (
-                      <AddToCartLink
-                        productSlug={classicGreen.slug}
-                        className="inline-flex h-11 items-center justify-center rounded-full bg-[#61a740] px-5 text-sm font-medium text-[#163126] transition-colors hover:bg-[#577e2f] hover:text-white"
-                      >
-                        Comprar
-                      </AddToCartLink>
-                    )}
-                  </div>
-                </div>
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="space-y-1">
+                          <p className="text-sm leading-6 text-black/48">Clásico Verde como entrada limpia a la marca.</p>
+                          <p className="text-xs leading-5 text-[#5f6f66]">{purchaseNote}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Link
+                            href={`/producto/${classicGreen.slug}`}
+                            className="text-xs font-semibold uppercase tracking-[0.22em] text-[#61a740] hover:text-[#162117]"
+                          >
+                            Ver detalle
+                          </Link>
+                          {!runtimePurchaseEnabled ? (
+                            <span
+                              aria-disabled="true"
+                              className="inline-flex h-11 cursor-not-allowed items-center justify-center rounded-full bg-[#ece9e1] px-5 text-sm font-semibold text-[#7a8179]"
+                            >
+                              Catálogo no disponible
+                            </span>
+                          ) : purchaseMode === "select_variant" ? (
+                            <Link
+                              href={`/producto/${classicGreen.slug}#${PRODUCT_VARIANTS_SECTION_ID}`}
+                              className="inline-flex h-11 items-center justify-center rounded-full bg-[#61a740] px-5 text-sm font-medium text-[#163126] transition-colors hover:bg-[#577e2f] hover:text-white"
+                            >
+                              Ver opciones
+                            </Link>
+                          ) : purchaseMode === "direct" ? (
+                            <AddToCartLink
+                              productSlug={classicGreen.slug}
+                              variantId={classicGreen.defaultVariantId}
+                              className="inline-flex h-11 items-center justify-center rounded-full bg-[#61a740] px-5 text-sm font-medium text-[#163126] transition-colors hover:bg-[#577e2f] hover:text-white"
+                            >
+                              Comprar
+                            </AddToCartLink>
+                          ) : (
+                            <span
+                              aria-disabled="true"
+                              className="inline-flex h-11 cursor-not-allowed items-center justify-center rounded-full bg-[#ece9e1] px-5 text-sm font-semibold text-[#7a8179]"
+                            >
+                              No disponible
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </article>
@@ -141,9 +239,14 @@ export function ProductCatalogSection({
             .filter((product): product is CatalogProduct => Boolean(product))
             .map((product) => {
               const tone = premiumProductToneClasses(product.tone);
-              const requiresVariantSelection = (product.variantCount ?? 1) > 1;
               const highlight = highlightBySlug(highlights, product.slug);
               const resolvedArt = resolveStorefrontMediaSrc(storefrontV2PremiumProductArtBySlug[product.slug] ?? storefrontV2PremiumMedia.hero);
+              const runtimePurchaseEnabled = catalogSource === "runtime";
+              const purchaseBadge = resolvePurchaseBadge(product, catalogSource);
+              const purchaseMode = resolveStorefrontPurchaseMode(product);
+              const purchaseNote = runtimePurchaseEnabled
+                ? resolvePurchaseNote(product)
+                : "Compra directa disponible cuando el catálogo runtime responda.";
 
               return (
                 <article
@@ -180,6 +283,11 @@ export function ProductCatalogSection({
                               {formatPrice(product.compareAtPrice, product.currencyCode ?? "PEN")}
                             </div>
                           ) : null}
+                          {purchaseBadge ? (
+                            <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${purchaseBadge.className}`}>
+                              {purchaseBadge.label}
+                            </span>
+                          ) : null}
                         </div>
                       </div>
 
@@ -199,7 +307,7 @@ export function ProductCatalogSection({
                       </div>
 
                       <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-sm leading-6 text-black/48">Compra directa desde la referencia que ya tienes en mente.</p>
+                        <p className="text-sm leading-6 text-black/48">{purchaseNote}</p>
                         <div className="flex items-center gap-3">
                           <Link
                             href={`/producto/${product.slug}`}
@@ -207,20 +315,35 @@ export function ProductCatalogSection({
                           >
                             Ver detalle
                           </Link>
-                          {requiresVariantSelection ? (
+                          {!runtimePurchaseEnabled ? (
+                            <span
+                              aria-disabled="true"
+                              className="inline-flex h-11 cursor-not-allowed items-center justify-center rounded-full bg-[#ece9e1] px-5 text-sm font-semibold text-[#7a8179]"
+                            >
+                              Catálogo no disponible
+                            </span>
+                          ) : purchaseMode === "select_variant" ? (
                             <Link
-                              href={`/producto/${product.slug}`}
+                              href={`/producto/${product.slug}#${PRODUCT_VARIANTS_SECTION_ID}`}
                               className="inline-flex h-11 items-center justify-center rounded-full bg-[#61a740] px-5 text-sm font-medium text-[#163126] transition-colors hover:bg-[#577e2f] hover:text-white"
                             >
-                              Elegir sabor
+                              Ver opciones
                             </Link>
-                          ) : (
+                          ) : purchaseMode === "direct" ? (
                             <AddToCartLink
                               productSlug={product.slug}
+                              variantId={product.defaultVariantId}
                               className="inline-flex h-11 items-center justify-center rounded-full bg-[#61a740] px-5 text-sm font-medium text-[#163126] transition-colors hover:bg-[#577e2f] hover:text-white"
                             >
                               Comprar
                             </AddToCartLink>
+                          ) : (
+                            <span
+                              aria-disabled="true"
+                              className="inline-flex h-11 cursor-not-allowed items-center justify-center rounded-full bg-[#ece9e1] px-5 text-sm font-semibold text-[#7a8179]"
+                            >
+                              No disponible
+                            </span>
                           )}
                         </div>
                       </div>

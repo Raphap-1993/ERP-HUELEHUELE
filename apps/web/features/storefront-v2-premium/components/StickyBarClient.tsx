@@ -62,7 +62,7 @@ export function StickyBarClient() {
     >
       <p className="text-sm font-medium text-white/90">
         <strong className="text-white">🔥 Oferta limitada:</strong> Combo Dúo Perfecto (Verde + Negro) a solo{" "}
-        <strong className="text-white">{comboPriceLabel ?? "S/ 79.90"}</strong> — Envío rápido a todo el Perú
+        <strong className="text-white">{comboPriceLabel ?? "S/ 79.90"}</strong> — Envío rápido en Lima y Callao
       </p>
       <div className="flex flex-shrink-0 items-center gap-2">
         <Link

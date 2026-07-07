@@ -2,17 +2,24 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { RoleCode, type AuthSessionSummary, type LoyaltyAccountSummary } from "@huelegood/shared";
-import { clearStoredSessionToken, readStoredSessionToken, writeStoredSessionToken } from "../lib/session";
+import type { AuthSessionSummary, LoyaltyAccountSummary } from "@huelegood/shared";
 import { fetchLoyaltySummary, fetchSession, login, logout } from "../lib/api";
-
-function splitName(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  return {
-    firstName: parts[0] ?? "",
-    lastName: parts.slice(1).join(" ")
-  };
-}
+import { clearStoredSessionToken, readStoredSessionToken, writeStoredSessionToken } from "../lib/session";
+import {
+  accountTypeLabel,
+  hasBaseAccountAccess,
+  resolveCommercialPortalHref
+} from "../lib/portal-access";
+import {
+  HueleBadge,
+  HueleButton,
+  HueleButtonLink,
+  HueleFieldShell,
+  HuelePanel,
+  HuelePublicPage,
+  HueleSection,
+  HueleStatusCard
+} from "./huele-public-ui";
 
 function loyaltyMovementLabel(status: LoyaltyAccountSummary["recentMovement"]) {
   const labels: Record<LoyaltyAccountSummary["recentMovement"], string> = {
@@ -35,57 +42,38 @@ function redemptionLabel(status: LoyaltyAccountSummary["redemptionStatus"]) {
   return labels[status];
 }
 
-const sellerPanelPath = "/panel-vendedor";
-const wholesalePanelPath = "/panel-mayorista";
-
-function getRoleCodes(session: AuthSessionSummary) {
-  return session.user.roles.map((role) => role.code);
+function initials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
 }
 
-function hasSellerAccess(session: AuthSessionSummary) {
-  const roles = getRoleCodes(session);
-  return roles.includes(RoleCode.Vendedor) || roles.includes(RoleCode.SellerManager) || session.user.accountType === "seller";
-}
+function AccessFlag({
+  label,
+  value,
+  tone
+}: {
+  label: string;
+  value: string;
+  tone: "green" | "amber" | "neutral";
+}) {
+  const toneClass =
+    tone === "green"
+      ? "bg-[#eef6e8] text-[#61a740]"
+      : tone === "amber"
+        ? "bg-[#fff5df] text-[#8b6118]"
+        : "bg-[#f4f4f0] text-[#6b7280]";
 
-function hasWholesaleAccess(session: AuthSessionSummary) {
-  const roles = getRoleCodes(session);
-  return roles.includes(RoleCode.Mayorista) || session.user.accountType === "wholesale";
-}
-
-function resolveCommercialPanelHref(session: AuthSessionSummary | null) {
-  if (!session) {
-    return null;
-  }
-
-  if (hasSellerAccess(session)) {
-    return sellerPanelPath;
-  }
-
-  if (hasWholesaleAccess(session)) {
-    return wholesalePanelPath;
-  }
-
-  return null;
-}
-
-function accountTypeLabel(accountType: AuthSessionSummary["user"]["accountType"]) {
-  if (accountType === "wholesale") {
-    return "Mayorista";
-  }
-
-  if (accountType === "seller") {
-    return "Vendedor";
-  }
-
-  if (accountType === "admin") {
-    return "Admin";
-  }
-
-  if (accountType === "operator") {
-    return "Operador";
-  }
-
-  return "Cliente";
+  return (
+    <div className="rounded-[14px] border border-[rgba(26,58,46,0.08)] bg-white px-4 py-4">
+      <p className="text-[10px] uppercase tracking-[0.18em] text-[#6b7280]">{label}</p>
+      <div className={`mt-3 inline-flex rounded-full px-3 py-1 text-[11px] font-semibold ${toneClass}`}>{value}</div>
+    </div>
+  );
 }
 
 export function AccountWorkspace() {
@@ -96,8 +84,6 @@ export function AccountWorkspace() {
   const [loyaltySummary, setLoyaltySummary] = useState<LoyaltyAccountSummary | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activePanel, setActivePanel] = useState<"pedidos" | "tracking" | "favoritos" | "direcciones" | "configuracion">("pedidos");
-
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
 
   useEffect(() => {
@@ -139,23 +125,20 @@ export function AccountWorkspace() {
     };
   }, []);
 
-  const commercialPanelHref = useMemo(() => resolveCommercialPanelHref(session), [session]);
+  const commercialPortalHref = useMemo(() => resolveCommercialPortalHref(session), [session]);
+  const accountAccessEnabled = hasBaseAccountAccess(session);
 
   useEffect(() => {
-    if (commercialPanelHref === sellerPanelPath) {
-      router.replace(commercialPanelHref);
+    if (commercialPortalHref) {
+      router.replace(commercialPortalHref);
     }
-
-    if (commercialPanelHref === wholesalePanelPath) {
-      setActivePanel("configuracion");
-    }
-  }, [commercialPanelHref, router]);
+  }, [commercialPortalHref, router]);
 
   useEffect(() => {
     let active = true;
 
     async function loadLoyalty() {
-      if (!session) {
+      if (!session || !accountAccessEnabled) {
         if (active) {
           setLoyaltySummary(null);
           setLoadingLoyalty(false);
@@ -189,18 +172,7 @@ export function AccountWorkspace() {
     return () => {
       active = false;
     };
-  }, [session]);
-
-  const accountState = useMemo(() => {
-    if (!session) {
-      return null;
-    }
-
-    return splitName(session.user.name);
-  }, [session]);
-
-  const hasSellerPanelAccess = commercialPanelHref === sellerPanelPath;
-  const hasWholesalePanelAccess = commercialPanelHref === wholesalePanelPath;
+  }, [accountAccessEnabled, session]);
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -233,350 +205,236 @@ export function AccountWorkspace() {
 
   if (loadingSession) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <p className="text-sm text-[#6b7280]">Verificando tu sesión...</p>
-      </div>
+      <HuelePublicPage
+        eyebrow="Cuenta y acceso"
+        title="Verificando tu sesión"
+        description="Estamos revisando tu acceso para llevarte a la cuenta o al portal comercial que corresponda."
+      >
+        <HueleSection>
+          <HueleStatusCard title="Un momento" tone="dark">
+            <p className="text-sm leading-7 text-white/78">Verificando tu sesion...</p>
+          </HueleStatusCard>
+        </HueleSection>
+      </HuelePublicPage>
     );
   }
 
   if (!session) {
     return (
-      <div className="mx-auto max-w-[1120px] px-6 py-12">
-        <div className="grid gap-8 lg:grid-cols-[1fr_1fr] lg:items-start">
-
-          {/* Left: copy */}
-          <div className="rounded-[22px] bg-[#577e2f] p-10 text-white">
-            <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40">Ingreso comercial</p>
-            <h1 className="mb-4 font-serif text-[2.4rem] font-bold leading-[1.1] text-white">
-              Acceso para vendedores y mayoristas.
-            </h1>
-            <p className="mb-8 text-[14px] leading-7 text-white/60">
-              Ingresa con las credenciales asignadas por Huele Huele para consultar tu operación comercial desde la web.
+      <HuelePublicPage
+        eyebrow="Cuenta y acceso"
+        title="Acceso a cuenta y rutas comerciales"
+        description="Inicia sesion para consultar tu cuenta o entrar automaticamente al portal vendedor o mayorista si ya tienes acceso."
+      >
+        <div className="grid gap-5 lg:grid-cols-[1fr_1fr] lg:items-start">
+          <HuelePanel tone="dark" className="p-8 text-white sm:p-10">
+            <HueleBadge tone="mint">Ingreso Huele</HueleBadge>
+            <h2 className="mb-4 mt-5 text-[2.4rem] leading-[1.05] text-white">
+              Una sola cuenta para comprar y operar.
+            </h2>
+            <p className="mb-8 text-sm leading-7 text-white/70">
+              Usa tus credenciales de Huele Huele. Si tu perfil es vendedor o mayorista, te enviaremos directo a tu portal.
             </p>
             <div className="space-y-3">
-              {["Panel vendedor con ventas y ganancias.", "Acceso para seguimiento comercial mayorista.", "Credenciales entregadas por el equipo Huele Huele."].map((item) => (
+              {[
+                "Cuenta base para identidad y beneficios.",
+                "Panel vendedor cuando tienes codigo activo.",
+                "Portal mayorista o distribuidor bajo la misma sesion."
+              ].map((item) => (
                 <div key={item} className="flex items-center gap-3 text-[13px] text-white/70">
-                  <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[#61a740] text-[10px] text-white">✓</div>
+                  <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[#61a740] text-[10px] text-white">
+                    ✓
+                  </div>
                   {item}
                 </div>
               ))}
             </div>
-            <div className="mt-10 grid grid-cols-3 gap-3">
-              {[{ n: "24/7", l: "Web" }, { n: "S/", l: "Ganancias" }, { n: "HH", l: "Soporte" }].map((stat) => (
-                <div key={stat.l} className="rounded-[12px] border border-white/10 bg-white/6 p-3 text-center">
-                  <div className="font-serif text-[20px] font-black text-[#61a740]">{stat.n}</div>
-                  <div className="mt-1 text-[10px] text-white/35">{stat.l}</div>
-                </div>
-              ))}
-            </div>
-          </div>
+          </HuelePanel>
 
-          {/* Right: form card */}
-          <div className="rounded-[22px] border border-[rgba(26,58,46,0.1)] bg-white p-8 shadow-[0_18px_54px_rgba(26,58,46,0.06)]">
-            <h2 className="mb-1.5 font-serif text-[22px] font-bold text-[#1a3a2e]">Ingresar</h2>
-            <p className="mb-6 text-[13px] text-[#6b7280]">Accede con el correo y contraseña asignados por el equipo comercial.</p>
+          <HuelePanel tone="cream" className="p-8">
+            <HueleBadge tone="sun">Ingreso</HueleBadge>
+            <h2 className="mb-1.5 mt-5 text-[2rem] leading-tight text-[var(--hh-public-green-950)]">Ingresa a tu cuenta</h2>
+            <p className="mb-6 text-sm leading-7 text-[var(--hh-public-muted)]">Accede con el correo y contraseña asignados por Huele Huele.</p>
 
-            {error ? (
-              <div className="mb-5 rounded-[11px] bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
-            ) : null}
+            {error ? <div className="mb-5 rounded-[11px] bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div> : null}
 
             <form className="space-y-4" onSubmit={handleLogin}>
-              <div>
-                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Correo electrónico</label>
+              <HueleFieldShell label="Correo electronico">
                 <input
                   type="email"
                   autoComplete="username"
                   required
                   value={loginForm.email}
-                  onChange={(e) => setLoginForm((c) => ({ ...c, email: e.target.value }))}
-                  placeholder="vendedor@correo.com"
-                  className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#61a740] focus:bg-white"
+                  onChange={(event) => setLoginForm((current) => ({ ...current, email: event.target.value }))}
+                  placeholder="tu@correo.com"
                 />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Contraseña</label>
+              </HueleFieldShell>
+              <HueleFieldShell label="Contrasena">
                 <input
                   type="password"
                   autoComplete="current-password"
                   required
                   value={loginForm.password}
-                  onChange={(e) => setLoginForm((c) => ({ ...c, password: e.target.value }))}
+                  onChange={(event) => setLoginForm((current) => ({ ...current, password: event.target.value }))}
                   placeholder="••••••••"
-                  className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#61a740] focus:bg-white"
                 />
-              </div>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full rounded-[11px] bg-[#61a740] py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#577e2f] hover:-translate-y-px disabled:opacity-60"
-              >
-                {submitting ? "Validando..." : "Ingresar →"}
-              </button>
+              </HueleFieldShell>
+              <HueleButton type="submit" disabled={submitting} tone="dark" className="w-full">
+                {submitting ? "Validando..." : "Ingresar"}
+              </HueleButton>
             </form>
 
             <p className="mt-5 text-center text-[12px] leading-6 text-[#6b7280]">
-              Si aún no tienes acceso, solicita el alta al equipo comercial.
+              Si aún no tienes acceso comercial, solicita el alta al equipo correspondiente.
             </p>
-          </div>
-
+          </HuelePanel>
         </div>
-      </div>
+      </HuelePublicPage>
+    );
+  }
+
+  if (commercialPortalHref) {
+    return (
+      <HuelePublicPage
+        eyebrow="Gateway comercial"
+        title="Tu sesión ya tiene un portal operativo asignado"
+        description="Detectamos tu perfil comercial y te estamos llevando al espacio correcto."
+      >
+        <HueleSection>
+        <HuelePanel tone="cream" className="space-y-5">
+          <HueleBadge tone="green">{accountTypeLabel(session.user.accountType)}</HueleBadge>
+          <h2 className="text-[2rem] leading-tight text-[var(--hh-public-green-950)]">Redirigiendo a tu portal</h2>
+          <p className="text-sm leading-7 text-[#6b7280]">
+            Tu cuenta ya identificó que esta sesión debe operar desde <span className="font-semibold text-[#1a3a2e]">{commercialPortalHref}</span>.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <HueleButtonLink href={commercialPortalHref} tone="dark">Abrir portal ahora</HueleButtonLink>
+            <HueleButton type="button" onClick={() => void handleLogout()} tone="secondary">
+              Cerrar sesión
+            </HueleButton>
+          </div>
+        </HuelePanel>
+        </HueleSection>
+      </HuelePublicPage>
+    );
+  }
+
+  if (!accountAccessEnabled) {
+    return (
+      <HuelePublicPage
+        eyebrow="Cuenta restringida"
+        title="Tu sesión no tiene cuenta base habilitada"
+        description="La autenticación es valida, pero esta cuenta no tiene acceso habilitado a la seccion de cuenta."
+      >
+        <HueleSection>
+        <HuelePanel tone="cream" className="space-y-5">
+          <HueleBadge tone="blue">Acceso no disponible</HueleBadge>
+          <h2 className="text-[2rem] leading-tight text-[var(--hh-public-green-950)]">Tu sesion sigue activa</h2>
+          <p className="text-sm leading-7 text-[#6b7280]">
+            Sesión activa: <span className="font-semibold text-[#1a3a2e]">{session.user.name}</span> · {session.user.email}
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <HueleButtonLink href="/catalogo" tone="dark">Ir al catálogo</HueleButtonLink>
+            <HueleButton type="button" onClick={() => void handleLogout()} tone="secondary">
+              Cerrar sesión
+            </HueleButton>
+          </div>
+        </HuelePanel>
+        </HueleSection>
+      </HuelePublicPage>
     );
   }
 
   return (
-    <div className="mx-auto max-w-[1120px] px-6 py-12">
-      <div className="grid gap-6 lg:grid-cols-[280px_1fr] lg:items-start">
-
-        {/* Sidebar */}
-        <div className="sticky top-[84px] space-y-4">
-
-          {/* Profile card */}
-          <div className="rounded-[22px] border border-[rgba(26,58,46,0.1)] bg-white p-7 text-center">
+    <HuelePublicPage
+      eyebrow="Cuenta base autenticada"
+      title="Tu cuenta Huele Huele"
+      description="Identidad, beneficios y accesos disponibles desde un espacio simple y seguro."
+      actions={
+        <>
+          <HueleButtonLink href="/catalogo" tone="primary">Ir al catalogo</HueleButtonLink>
+          <HueleButtonLink href="/mayoristas" tone="ghost">Canal mayorista</HueleButtonLink>
+        </>
+      }
+    >
+      <HueleSection>
+      <div className="grid gap-6 lg:grid-cols-[320px_1fr] lg:items-start">
+        <div className="space-y-4">
+          <HuelePanel tone="cream" className="p-7 text-center">
             <div className="mx-auto mb-3.5 flex h-[72px] w-[72px] items-center justify-center rounded-full bg-[#eef6e8] font-serif text-[26px] font-black text-[#61a740]">
-              {session.user.name.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase()}
+              {initials(session.user.name)}
             </div>
             <p className="font-serif text-[18px] font-bold text-[#1a3a2e]">{session.user.name}</p>
             <p className="mt-0.5 text-[13px] text-[#6b7280]">{session.user.email}</p>
-            <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#eef6e8] px-3.5 py-1.5 text-[11px] font-bold text-[#61a740]">
-              <span>🛡</span> Cliente activo
+            <HueleBadge tone="green" className="mt-3">Cuenta base activa</HueleBadge>
+            <div className="mt-4 grid gap-2.5">
+              <AccessFlag label="Código vendedor" value={session.user.vendorCode ?? "No asociado"} tone={session.user.vendorCode ? "green" : "neutral"} />
+              <AccessFlag
+                label="Lead mayorista"
+                value={session.user.wholesaleLeadId ?? "No asociado"}
+                tone={session.user.wholesaleLeadId ? "amber" : "neutral"}
+              />
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-2.5">
-              <div className="rounded-[11px] bg-[#f4f4f0] py-3 text-center">
-                <div className="font-serif text-[20px] font-black text-[#1a3a2e]">{loyaltySummary ? loyaltySummary.availablePoints : "—"}</div>
-                <div className="mt-0.5 text-[10px] text-[#6b7280]">Puntos</div>
-              </div>
-              <div className="rounded-[11px] bg-[#f4f4f0] py-3 text-center">
-                <div className="font-serif text-[20px] font-black text-[#1a3a2e]">{session.user.vendorCode ? "✓" : "—"}</div>
-                <div className="mt-0.5 text-[10px] text-[#6b7280]">Vendedor</div>
-              </div>
-            </div>
-          </div>
+          </HuelePanel>
 
-          {/* Nav */}
-          <div className="overflow-hidden rounded-[18px] border border-[rgba(26,58,46,0.1)] bg-white">
-            {([
-              { id: "pedidos" as const, icon: "📦", label: "Mis pedidos" },
-              { id: "tracking" as const, icon: "🚚", label: "Rastrear pedido" },
-              { id: "favoritos" as const, icon: "❤️", label: "Favoritos" },
-              { id: "direcciones" as const, icon: "📍", label: "Mis direcciones" },
-              { id: "configuracion" as const, icon: "⚙️", label: "Configuración" },
-            ]).map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setActivePanel(item.id)}
-                className={`flex w-full items-center gap-2.5 border-b border-[rgba(26,58,46,0.05)] px-4 py-3.5 text-left text-[13px] font-medium last:border-b-0 transition ${
-                  activePanel === item.id
-                    ? "bg-[#eef6e8] font-semibold text-[#1a3a2e]"
-                    : "text-[#6b7280] hover:bg-[#faf8f3] hover:text-[#1a3a2e]"
-                }`}
-              >
-                <span className="text-base">{item.icon}</span>
-                {item.label}
-              </button>
-            ))}
-            <button
+          <HuelePanel tone="cream" className="p-4">
+            <HueleButton
               type="button"
-              onClick={() => { void handleLogout(); }}
-              className="flex w-full items-center gap-2.5 px-4 py-3.5 text-left text-[13px] font-medium text-rose-500 transition hover:bg-rose-50"
+              tone="secondary"
+              onClick={() => {
+                void handleLogout();
+              }}
+              className="w-full"
             >
-              <span className="text-base">🚪</span>
               Cerrar sesión
-            </button>
-          </div>
-
+            </HueleButton>
+          </HuelePanel>
         </div>
 
-        {/* Content panels */}
-        <div>
-
-          {/* Panel: Mis pedidos */}
-          {activePanel === "pedidos" && (
-            <div className="rounded-[22px] border border-[rgba(26,58,46,0.1)] bg-white p-8">
-              <h3 className="mb-1 font-serif text-[19px] font-bold text-[#1a3a2e]">Mis pedidos</h3>
-              <p className="mb-6 text-[14px] text-[#6b7280]">Historial completo de tus compras en Huele Huele.</p>
-              <div className="space-y-4">
-                {[
-                  { id: "#00089", date: "21 de marzo, 2025", status: "Entregado", statusColor: "bg-green-100 text-green-700", products: [{ emoji: "🖤", name: "Premium Negro", qty: "x 2 und." }], total: "S/ 79.80" },
-                  { id: "#00085", date: "18 de marzo, 2025", status: "En camino", statusColor: "bg-blue-100 text-blue-700", products: [{ emoji: "✨", name: "Pack x3", qty: "Verde + Negro + Negro" }], total: "S/ 99.90" },
-                ].map((order) => (
-                  <div key={order.id} className="rounded-[16px] border border-[rgba(26,58,46,0.1)] p-5 transition hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(26,58,46,0.08)]">
-                    <div className="mb-3.5 flex items-center justify-between">
-                      <div>
-                        <p className="text-[14px] font-bold text-[#61a740]">{order.id}</p>
-                        <p className="text-[12px] text-[#6b7280]">{order.date}</p>
-                      </div>
-                      <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${order.statusColor}`}>{order.status}</span>
-                    </div>
-                    <div className="mb-3.5 flex flex-wrap gap-2">
-                      {order.products.map((p) => (
-                        <div key={p.name} className="flex items-center gap-2 rounded-[9px] bg-[#f4f4f0] px-3 py-2">
-                          <span className="text-base">{p.emoji}</span>
-                          <div>
-                            <p className="text-[12px] font-medium text-[#1a3a2e]">{p.name}</p>
-                            <p className="text-[11px] text-[#6b7280]">{p.qty}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="font-serif text-[18px] font-bold text-[#1a3a2e]">{order.total}</span>
-                      <div className="flex gap-2">
-                        <button type="button" className="rounded-[9px] border border-[rgba(26,58,46,0.12)] px-3 py-1.5 text-[12px] font-medium text-[#6b7280] transition hover:border-[#61a740] hover:bg-[#eef6e8] hover:text-[#61a740]">Ver detalle</button>
-                        <button type="button" className="rounded-[9px] bg-[#61a740] px-3 py-1.5 text-[12px] font-medium text-white transition hover:bg-[#577e2f]">Comprar de nuevo</button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+        <div className="space-y-5">
+          <HuelePanel tone="cream" className="p-8">
+            <HueleBadge tone="mint">{accountTypeLabel(session.user.accountType)}</HueleBadge>
+            <h3 className="mb-1 mt-4 text-[2rem] leading-tight text-[#1a3a2e]">Identidad y accesos</h3>
+            <p className="mb-6 text-sm leading-7 text-[#6b7280]">Resumen de tu sesion activa y de los permisos comerciales asociados.</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-[14px] bg-[#f4f4f0] px-4 py-4">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-[#6b7280]">Account type</p>
+                <p className="mt-2 text-[15px] font-semibold text-[#1a3a2e]">{accountTypeLabel(session.user.accountType)}</p>
+              </div>
+              <div className="rounded-[14px] bg-[#f4f4f0] px-4 py-4">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-[#6b7280]">Rol principal</p>
+                <p className="mt-2 text-[15px] font-semibold text-[#1a3a2e]">{session.user.primaryRoleCode ?? "No definido"}</p>
               </div>
             </div>
-          )}
-
-          {/* Panel: Tracking */}
-          {activePanel === "tracking" && (
-            <div className="rounded-[22px] border border-[rgba(26,58,46,0.1)] bg-white p-8">
-              <h3 className="mb-1 font-serif text-[19px] font-bold text-[#1a3a2e]">Rastrear pedido</h3>
-              <p className="mb-6 text-[14px] text-[#6b7280]">Estado actual de tu pedido en camino.</p>
-              <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-[14px] bg-[#eef6e8] p-5">
-                <div>
-                  <p className="text-[12px] font-semibold text-[#61a740]">Pedido en camino</p>
-                  <p className="font-serif text-[22px] font-black text-[#1a3a2e]">#00085</p>
-                  <p className="text-[12px] text-[#6b7280]">Pack x3 · S/ 99.90</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[12px] text-[#6b7280]">Courier</p>
-                  <p className="text-[14px] font-semibold text-[#1a3a2e]">Olva Courier</p>
-                  <p className="text-[12px] font-semibold text-[#61a740]">ABC-123456</p>
-                </div>
-              </div>
-              <div className="space-y-0">
-                {[
-                  { label: "Pedido confirmado", detail: "18 mar · 10:05am — Pago verificado", done: true, current: false },
-                  { label: "Preparando tu pedido", detail: "18 mar · 2:00pm — Empacado y listo", done: true, current: false },
-                  { label: "En camino 🚚", detail: "19 mar · 8:30am — En ruta de entrega", done: false, current: true },
-                  { label: "Entregado", detail: "Estimado: hoy entre 2pm – 6pm", done: false, current: false },
-                ].map((step, i, arr) => (
-                  <div key={step.label} className="flex gap-4 pb-5 last:pb-0">
-                    <div className="flex flex-col items-center">
-                      <div className={`mt-0.5 h-3.5 w-3.5 flex-shrink-0 rounded-full border-2 ${step.done ? "border-[#61a740] bg-[#61a740]" : step.current ? "border-[#61a740] bg-[#61a740] shadow-[0_0_0_4px_rgba(97,167,64,0.2)]" : "border-[rgba(26,58,46,0.2)]"}`} />
-                      {i < arr.length - 1 && <div className={`mt-1 w-0.5 flex-1 ${step.done ? "bg-[#61a740]" : "bg-[rgba(26,58,46,0.1)]"}`} style={{ minHeight: "24px" }} />}
-                    </div>
-                    <div className="pb-0">
-                      <p className={`text-[13px] font-semibold ${step.current ? "text-[#61a740]" : step.done ? "text-[#1a3a2e]" : "text-[#6b7280]"}`}>{step.label}</p>
-                      <p className="text-[12px] text-[#6b7280]">{step.detail}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {session.user.roles.map((role) => (
+                <span key={role.code} className="rounded-full bg-[#eef6e8] px-3 py-1 text-[11px] font-semibold text-[#61a740]">
+                  {role.label}
+                </span>
+              ))}
             </div>
-          )}
-
-          {/* Panel: Favoritos */}
-          {activePanel === "favoritos" && (
-            <div className="rounded-[22px] border border-[rgba(26,58,46,0.1)] bg-white p-8">
-              <h3 className="mb-1 font-serif text-[19px] font-bold text-[#1a3a2e]">Mis favoritos</h3>
-              <p className="mb-6 text-[14px] text-[#6b7280]">Los productos que guardaste para comprar después.</p>
-              <div className="grid gap-4 sm:grid-cols-3">
-                {[
-                  { emoji: "🖤", name: "Premium Negro", price: "S/ 39.90", slug: "premium-negro" },
-                  { emoji: "✨", name: "Pack x3", price: "S/ 99.90", slug: "combo-duo-perfecto" },
-                  { emoji: "🎁", name: "Pack Regalo Premium", price: "S/ 74.90", slug: "combo-duo-perfecto" },
-                ].map((item) => (
-                  <div key={item.name} className="relative rounded-[16px] border border-[rgba(26,58,46,0.1)] bg-[#f4f4f0] p-4 text-center">
-                    <button type="button" className="absolute right-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-full border border-[rgba(26,58,46,0.1)] bg-white text-[12px] text-[#6b7280] transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-500">✕</button>
-                    <div className="mb-2.5 text-4xl">{item.emoji}</div>
-                    <p className="text-[13px] font-semibold text-[#1a3a2e]">{item.name}</p>
-                    <p className="mb-3 mt-1 font-serif text-[16px] font-bold text-[#1a3a2e]">{item.price}</p>
-                    <a href={`/producto/${item.slug}`} className="block w-full rounded-[9px] bg-[#61a740] py-2 text-[12px] font-semibold text-white transition hover:bg-[#577e2f]">Ver detalle</a>
-                  </div>
-                ))}
-              </div>
+            <div className="mt-4 grid gap-4 md:grid-cols-3">
+              <AccessFlag label="Cuenta" value="Habilitada" tone="green" />
+              <AccessFlag label="Seller panel" value="No aplica en esta cuenta" tone="neutral" />
+              <AccessFlag label="Wholesale portal" value="No aplica en esta cuenta" tone="neutral" />
             </div>
-          )}
+          </HuelePanel>
 
-          {/* Panel: Direcciones */}
-          {activePanel === "direcciones" && (
-            <div className="rounded-[22px] border border-[rgba(26,58,46,0.1)] bg-white p-8">
-              <h3 className="mb-1 font-serif text-[19px] font-bold text-[#1a3a2e]">Mis direcciones</h3>
-              <p className="mb-6 text-[14px] text-[#6b7280]">Gestiona las direcciones de entrega guardadas en tu cuenta.</p>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="relative rounded-[15px] border-[1.5px] border-[#61a740] bg-[#eef6e8] p-5">
-                  <span className="absolute right-3 top-3 rounded-full bg-[#61a740] px-2.5 py-0.5 text-[10px] font-bold text-white">Principal</span>
-                  <div className="mb-2.5 text-xl">🏠</div>
-                  <p className="text-[13px] font-semibold text-[#1a3a2e]">Casa</p>
-                  <p className="mt-1.5 text-[12px] leading-relaxed text-[#6b7280]">Av. Javier Prado Este 1234<br />Miraflores, Lima</p>
-                  <div className="mt-3.5">
-                    <button type="button" className="rounded-[9px] border border-[rgba(26,58,46,0.12)] px-3 py-1.5 text-[12px] font-medium text-[#6b7280] transition hover:border-[#61a740] hover:text-[#61a740]">Editar</button>
-                  </div>
-                </div>
-                <div className="rounded-[15px] border-[1.5px] border-[rgba(26,58,46,0.1)] p-5">
-                  <div className="mb-2.5 text-xl">🏢</div>
-                  <p className="text-[13px] font-semibold text-[#1a3a2e]">Trabajo</p>
-                  <p className="mt-1.5 text-[12px] leading-relaxed text-[#6b7280]">Calle Las Begonias 580<br />San Isidro, Lima · Piso 8</p>
-                  <div className="mt-3.5 flex gap-2">
-                    <button type="button" className="rounded-[9px] border border-[rgba(26,58,46,0.12)] px-3 py-1.5 text-[12px] font-medium text-[#6b7280] transition hover:border-[#61a740] hover:text-[#61a740]">Editar</button>
-                    <button type="button" className="rounded-[9px] bg-[#61a740] px-3 py-1.5 text-[12px] font-medium text-white transition hover:bg-[#577e2f]">Usar como principal</button>
-                  </div>
-                </div>
-                <div className="flex cursor-pointer flex-col items-center justify-center gap-2.5 rounded-[15px] border-2 border-dashed border-[rgba(97,167,64,0.25)] p-6 text-center transition hover:border-[#61a740] hover:bg-[#eef6e8]">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-[9px] bg-[#eef6e8]">
-                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#61a740" strokeWidth={2}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                  </div>
-                  <p className="text-[12px] font-semibold text-[#61a740]">Agregar nueva dirección</p>
-                </div>
-              </div>
-            </div>
-          )}
+          <div className="grid gap-5 xl:grid-cols-[1fr_0.95fr]">
+            <HuelePanel tone="cream" className="p-8">
+              <HueleBadge tone="sun">Beneficios</HueleBadge>
+              <h3 className="mb-1 mt-4 text-[2rem] leading-tight text-[#1a3a2e]">Puntos y beneficios</h3>
+              <p className="mb-6 text-sm leading-7 text-[#6b7280]">Si tienes beneficios activos, aqui veras el saldo disponible y los movimientos recientes.</p>
 
-          {/* Panel: Configuración */}
-          {activePanel === "configuracion" && (
-            <div className="space-y-5">
-              <div className="rounded-[22px] border border-[rgba(26,58,46,0.1)] bg-white p-8">
-                <h3 className="mb-1 font-serif text-[19px] font-bold text-[#1a3a2e]">Datos personales</h3>
-                <p className="mb-6 text-[14px] text-[#6b7280]">Tu información de perfil asociada a esta cuenta.</p>
-                <div className="mb-6 flex items-center gap-5 border-b border-[rgba(26,58,46,0.08)] pb-6">
-                  <div className="flex h-[68px] w-[68px] flex-shrink-0 items-center justify-center rounded-full bg-[#eef6e8] font-serif text-[24px] font-black text-[#61a740]">
-                    {session.user.name.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase()}
-                  </div>
-                  <div>
-                    <p className="text-[14px] font-semibold text-[#1a3a2e]">{session.user.name}</p>
-                    <p className="mt-0.5 text-[12px] text-[#6b7280]">{session.user.email}</p>
-                    <p className="mt-1.5 text-[11px] text-[#6b7280]">{accountTypeLabel(session.user.accountType)}</p>
-                  </div>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Nombre</label>
-                    <input defaultValue={accountState?.firstName ?? ""} className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] outline-none transition focus:border-[#61a740] focus:bg-white" />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Apellido</label>
-                    <input defaultValue={accountState?.lastName ?? ""} className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] outline-none transition focus:border-[#61a740] focus:bg-white" />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Email</label>
-                    <input defaultValue={session.user.email} type="email" className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] outline-none transition focus:border-[#61a740] focus:bg-white" />
-                  </div>
-                  {session.user.vendorCode ? (
-                    <div>
-                      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Código vendedor</label>
-                      <input readOnly defaultValue={session.user.vendorCode} className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#6b7280] outline-none" />
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-
-              {/* Loyalty summary */}
-              {!loadingLoyalty && loyaltySummary ? (
-                <div className="rounded-[22px] border border-[rgba(26,58,46,0.1)] bg-white p-8">
-                  <h3 className="mb-1 font-serif text-[19px] font-bold text-[#1a3a2e]">Puntos y beneficios</h3>
-                  <p className="mb-6 text-[14px] text-[#6b7280]">Estado de tu cuenta de puntos Huele Huele.</p>
+              {loadingLoyalty ? (
+                <div className="rounded-[14px] bg-[#f4f4f0] px-4 py-5 text-sm text-[#6b7280]">Cargando loyalty...</div>
+              ) : loyaltySummary ? (
+                <>
                   <div className="grid gap-3 sm:grid-cols-3">
                     {[
                       { label: "Disponibles", value: loyaltySummary.availablePoints, helper: "Listos para usar" },
                       { label: "Pendientes", value: loyaltySummary.pendingPoints, helper: "Se confirman pronto" },
-                      { label: "Canjeados", value: loyaltySummary.redeemedPoints, helper: "Total histórico" },
+                      { label: "Canjeados", value: loyaltySummary.redeemedPoints, helper: "Total histórico" }
                     ].map((stat) => (
                       <div key={stat.label} className="rounded-[13px] border border-[#eef6e8] bg-[#f4f4f0] px-4 py-4">
                         <p className="text-[10px] uppercase tracking-[0.2em] text-[#6b7280]">{stat.label}</p>
@@ -586,39 +444,35 @@ export function AccountWorkspace() {
                     ))}
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <span className="rounded-full bg-[#eef6e8] px-3 py-1 text-[11px] font-semibold text-[#61a740]">{loyaltyMovementLabel(loyaltySummary.recentMovement)}</span>
-                    <span className="rounded-full bg-[#eef6e8] px-3 py-1 text-[11px] font-semibold text-[#61a740]">{redemptionLabel(loyaltySummary.redemptionStatus)}</span>
+                    <span className="rounded-full bg-[#eef6e8] px-3 py-1 text-[11px] font-semibold text-[#61a740]">
+                      {loyaltyMovementLabel(loyaltySummary.recentMovement)}
+                    </span>
+                    <span className="rounded-full bg-[#eef6e8] px-3 py-1 text-[11px] font-semibold text-[#61a740]">
+                      {redemptionLabel(loyaltySummary.redemptionStatus)}
+                    </span>
                   </div>
+                </>
+              ) : (
+                <div className="rounded-[14px] border border-dashed border-[rgba(26,58,46,0.14)] bg-[#faf8f3] px-4 py-5 text-sm leading-7 text-[#6b7280]">
+                  Esta cuenta no expone loyalty hoy, o el servicio no devolvió datos. La sesión y la identidad siguen siendo válidas.
                 </div>
-              ) : null}
+              )}
+            </HuelePanel>
 
-              {/* Seller panel access */}
-              {hasSellerPanelAccess ? (
-                <div className="rounded-[22px] bg-[#577e2f] p-8 text-white">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40">Acceso comercial</p>
-                  <h3 className="mb-2 font-serif text-[22px] font-bold text-white">Tu cuenta tiene panel vendedor.</h3>
-                  <p className="mb-6 text-[13px] leading-7 text-white/60">Revisa pedidos atribuidos, comisiones y liquidaciones desde un solo lugar.</p>
-                  <a href={sellerPanelPath} className="inline-block rounded-full bg-[#61a740] px-6 py-3 text-[13px] font-semibold text-[#1a3a2e] transition hover:bg-[#eef6e8]">
-                    Ir al panel vendedor →
-                  </a>
-                </div>
-              ) : null}
-
-              {hasWholesalePanelAccess ? (
-                <div className="rounded-[22px] border border-[rgba(26,58,46,0.1)] bg-white p-8">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#61a740]">Acceso mayorista</p>
-                  <h3 className="mb-2 font-serif text-[22px] font-bold text-[#1a3a2e]">Tu cuenta mayorista está lista.</h3>
-                  <p className="mb-6 text-[13px] leading-7 text-[#6b7280]">El panel mayorista queda reservado para la siguiente fase; por ahora usa el canal B2B público.</p>
-                  <a href="/mayoristas" className="inline-block rounded-full bg-[#61a740] px-6 py-3 text-[13px] font-semibold text-[#1a3a2e] transition hover:bg-[#eef6e8]">
-                    Ir a mayoristas
-                  </a>
-                </div>
-              ) : null}
-            </div>
-          )}
-
+            <HuelePanel tone="mint" className="p-8">
+              <HueleBadge tone="green">Acciones</HueleBadge>
+              <h3 className="mb-1 mt-4 text-[2rem] leading-tight text-[#1a3a2e]">Acciones rápidas</h3>
+              <p className="mb-6 text-sm leading-7 text-[#6b7280]">Rutas disponibles desde tu cuenta.</p>
+              <div className="space-y-3">
+                <HueleButtonLink href="/catalogo" tone="dark" className="w-full">Ir al catálogo</HueleButtonLink>
+                <HueleButtonLink href="/checkout" tone="secondary" className="w-full">Revisar checkout</HueleButtonLink>
+                <HueleButtonLink href="/mayoristas" tone="secondary" className="w-full">Ver canal mayorista</HueleButtonLink>
+              </div>
+            </HuelePanel>
+          </div>
         </div>
       </div>
-    </div>
+      </HueleSection>
+    </HuelePublicPage>
   );
 }

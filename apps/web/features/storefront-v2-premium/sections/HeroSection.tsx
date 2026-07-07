@@ -63,7 +63,7 @@ export function HeroSection({
             {/* Trust signals */}
             <div data-storefront-reveal-item className="flex flex-wrap gap-5">
               {[
-                "Envíos a todo el Perú",
+                "Checkout web en Lima y Callao",
                 "Acción en segundos",
                 "Sin contraindicaciones",
               ].map((item) => (

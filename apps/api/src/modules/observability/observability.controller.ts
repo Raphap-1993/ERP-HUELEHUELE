@@ -1,9 +1,9 @@
 import { Controller, Get } from "@nestjs/common";
-import { adminAccessRoles } from "@huelegood/shared";
-import { RequireRoles } from "../auth/auth-rbac";
+import { adminModulePermissions } from "@huelegood/shared";
+import { RequirePermissions } from "../auth/auth-rbac";
 import { ObservabilityService } from "./observability.service";
 
-@RequireRoles(...adminAccessRoles.observability)
+@RequirePermissions(...adminModulePermissions.observability.read)
 @Controller("admin/observability")
 export class ObservabilityController {
   constructor(private readonly observabilityService: ObservabilityService) {}

@@ -1,91 +1,88 @@
 import { VendorApplicationForm } from "../components/vendor-application-form";
+import {
+  HueleBadge,
+  HueleMascot,
+  HuelePanel,
+  HuelePublicPage,
+  HueleSection
+} from "../../../components/huele-public-ui";
 
 const ROLES = [
-  { id: "afiliado", icon: "🔗", title: "Afiliado/a de ventas", desc: "Recomienda con tu código personalizado y gana comisión. Sin inversión, sin stock." },
-  { id: "contenido", icon: "📱", title: "Creador/a de contenido", desc: "Crea Reels, TikToks y Stories. Ideal si tienes comunidad en redes sociales." },
-  { id: "vendedor", icon: "🛍️", title: "Vendedor/a presencial", desc: "Vende en ferias, mercados, eventos o tu barrio. Te damos el stock y tú eliges cómo." },
-  { id: "otro", icon: "✨", title: "Otra propuesta", desc: "¿Tienes una idea de cómo colaborar? Cuéntanos — estamos abiertos a todo." },
+  { id: "afiliado", badge: "Código", title: "Afiliado/a de ventas", desc: "Recomienda con tu código personalizado y gana comisión. Sin inversión, sin stock." },
+  { id: "contenido", badge: "Redes", title: "Creador/a de contenido", desc: "Crea Reels, TikToks y Stories. Ideal si tienes comunidad en redes sociales." },
+  { id: "vendedor", badge: "Campo", title: "Vendedor/a presencial", desc: "Vende en ferias, mercados, eventos o tu barrio. Te damos el stock y tú eliges cómo." },
+  { id: "otro", badge: "Idea", title: "Otra propuesta", desc: "¿Tienes una idea de cómo colaborar? Cuéntanos; estamos abiertos a nuevas formas de crecer." },
 ];
 
 const PERKS = [
-  { icon: "💸", text: "Comisiones reales pagadas cada fin de mes por billetera virtual" },
-  { icon: "🎁", text: "Producto gratis para usar y recomendar con honestidad" },
-  { icon: "📈", text: "Mejores condiciones cuanto más vendas" },
-  { icon: "🤝", text: "Comunidad activa de colaboradores con soporte directo" },
+  { title: "Comisiones", text: "Pagos reales cada fin de mes por billetera virtual." },
+  { title: "Producto", text: "Producto gratis para usar y recomendar con honestidad." },
+  { title: "Crecimiento", text: "Mejores condiciones cuanto más vendas." },
+  { title: "Soporte", text: "Comunidad activa de colaboradores con seguimiento directo." },
 ];
 
 export function VendorApplicationPage() {
   return (
-    <section className="bg-[#faf8f3] py-24">
-      <div className="mx-auto max-w-[1120px] px-6">
+    <HuelePublicPage
+      eyebrow="Trabaja con nosotros"
+      title="Crece con Huele Huele"
+      description="Si te apasiona el bienestar, las ventas o crear contenido, puedes sumarte a una marca que crece con producto real, soporte cercano y comisiones claras."
+      actions={
+        <>
+          <HueleBadge tone="sun">Afiliados</HueleBadge>
+          <HueleBadge tone="mint">Contenido</HueleBadge>
+          <HueleBadge tone="cream">Ventas presenciales</HueleBadge>
+        </>
+      }
+    >
+      <HueleSection
+        eyebrow="Postulaciones"
+        title="Elige la forma de colaborar"
+        description="Buscamos personas con energía comercial, criterio para recomendar el producto y ganas de construir una comunidad alrededor de Huele Huele."
+      >
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.85fr)] xl:items-start">
+          <div className="grid gap-5">
+            <HuelePanel tone="green" className="grid gap-5 overflow-visible md:grid-cols-[minmax(0,1fr)_180px] md:items-end">
+              <div>
+                <HueleBadge tone="sun">Convocatoria abierta</HueleBadge>
+                <h2 className="mt-5 text-4xl leading-none md:text-5xl">Una red fresca para vender mejor</h2>
+                <p className="mt-4 text-sm leading-6 text-white/78 md:text-base">
+                  No buscamos solo empleados. Buscamos personas que crean en el producto, lo usen con honestidad y puedan activar su ciudad, comunidad o canal digital.
+                </p>
+              </div>
+              <div className="flex justify-center md:justify-end">
+                <HueleMascot decorative size="md" className="translate-y-3" />
+              </div>
+            </HuelePanel>
 
-        {/* Header centrado */}
-        <div className="text-center mb-14">
-          <span className="inline-block text-xs font-semibold uppercase tracking-widest text-[#61a740] bg-[#eef6e8] px-4 py-1.5 rounded-full mb-5">
-            Únete al equipo
-          </span>
-          <h2 className="font-serif text-4xl font-black text-[#1a3a2e] md:text-5xl mb-4">
-            Trabaja con nosotros
-          </h2>
-          <p className="text-[17px] text-[#6b7280] leading-7 max-w-[520px] mx-auto">
-            ¿Te apasiona el bienestar o las ventas? Huele Huele está creciendo y queremos que seas parte.
-          </p>
-        </div>
-
-        {/* Grid: roles+perks izquierda | formulario derecha */}
-        <div className="grid grid-cols-1 gap-16 xl:grid-cols-2 xl:items-start">
-
-          {/* Columna izquierda */}
-          <div>
-            <h3 className="font-serif text-xl text-[#1a3a2e] mb-2">¿Cómo puedes sumarte?</h3>
-            <p className="text-[15px] text-[#6b7280] leading-7 mb-6">
-              No buscamos solo empleados — buscamos personas con energía que crean en el producto y quieran crecer con la marca.
-            </p>
-
-            {/* Roles: tarjetas estáticas */}
-            <div className="flex flex-col gap-3 mb-8">
-              {ROLES.map((role, i) => (
-                <div
-                  key={role.id}
-                  className={`flex gap-4 items-start rounded-[17px] p-5 border cursor-default transition
-                    ${i === 0
-                      ? "border-[#61a740] bg-[#eef6e8]"
-                      : "border-[rgba(26,58,46,0.08)] bg-white hover:shadow-[0_4px_20px_rgba(26,58,46,0.08)] hover:translate-x-1"
-                    }`}
-                >
-                  <div
-                    className={`w-11 h-11 rounded-[12px] flex-shrink-0 flex items-center justify-center text-[18px]
-                      ${i === 0 ? "bg-white" : "bg-[#eef6e8]"}`}
-                  >
-                    {role.icon}
+            <div className="grid gap-3 md:grid-cols-2">
+              {ROLES.map((role, index) => (
+                <HuelePanel key={role.id} tone={index === 0 ? "mint" : "cream"} className="flex h-full flex-col gap-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <HueleBadge tone={index === 0 ? "green" : "cream"}>{role.badge}</HueleBadge>
+                    <span className="text-2xl font-black text-[var(--hh-public-green-800)]">{String(index + 1).padStart(2, "0")}</span>
                   </div>
                   <div>
-                    <h4 className="text-sm font-semibold text-[#1a3a2e] mb-1">{role.title}</h4>
-                    <p className="text-[13px] text-[#6b7280] leading-[1.5]">{role.desc}</p>
+                    <h3 className="text-2xl leading-none text-[var(--hh-public-green-950)]">{role.title}</h3>
+                    <p className="mt-3 text-sm leading-6 text-[var(--hh-public-muted)]">{role.desc}</p>
                   </div>
-                </div>
+                </HuelePanel>
               ))}
             </div>
 
-            {/* Perks en grid 2 cols */}
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid gap-3 md:grid-cols-4">
               {PERKS.map((perk) => (
-                <div
-                  key={perk.text}
-                  className="bg-white rounded-[13px] p-4 border border-[rgba(26,58,46,0.07)] flex gap-2.5 items-start"
-                >
-                  <span className="text-[17px] flex-shrink-0 mt-0.5">{perk.icon}</span>
-                  <p className="text-[13px] text-[#6b7280] leading-[1.55]">{perk.text}</p>
-                </div>
+                <HuelePanel key={perk.title} tone="cream" className="p-5">
+                  <HueleBadge tone="mint">{perk.title}</HueleBadge>
+                  <p className="mt-3 text-sm leading-6 text-[var(--hh-public-muted)]">{perk.text}</p>
+                </HuelePanel>
               ))}
             </div>
           </div>
 
-          {/* Columna derecha: formulario */}
-          <VendorApplicationForm source="Trabaja con nosotros" />
-
+          <VendorApplicationForm source="Trabaja con nosotros" submitLabel="Enviar postulación" />
         </div>
-      </div>
-    </section>
+      </HueleSection>
+    </HuelePublicPage>
   );
 }

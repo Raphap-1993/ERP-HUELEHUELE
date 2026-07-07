@@ -1,7 +1,7 @@
 import { BadRequestException, Controller, Get, Query, Res } from "@nestjs/common";
 import type { Response } from "express";
-import { adminAccessRoles, type AdminReportFiltersInput, type SalesChannelValue } from "@huelegood/shared";
-import { RequireRoles } from "../auth/auth-rbac";
+import { adminModulePermissions, type AdminReportFiltersInput, type SalesChannelValue } from "@huelegood/shared";
+import { RequirePermissions } from "../auth/auth-rbac";
 import { CoreService } from "./core.service";
 
 function normalizeSalesChannelFilter(value?: string): SalesChannelValue | undefined {
@@ -31,7 +31,7 @@ function buildReportFilters(input: {
   };
 }
 
-@RequireRoles(...adminAccessRoles.dashboard)
+@RequirePermissions(...adminModulePermissions.reports.read)
 @Controller("admin/reports")
 export class ReportsController {
   constructor(private readonly coreService: CoreService) {}
@@ -55,6 +55,7 @@ export class ReportsController {
   }
 
   @Get("export")
+  @RequirePermissions(...adminModulePermissions.reports.export!)
   exportCsv(
     @Res() res: Response,
     @Query("from") from?: string,

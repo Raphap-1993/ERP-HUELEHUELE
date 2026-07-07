@@ -1,9 +1,9 @@
 import { Body, Controller, Get, Post } from "@nestjs/common";
-import { adminAccessRoles, type MarketingCampaignInput } from "@huelegood/shared";
-import { RequireRoles } from "../auth/auth-rbac";
+import { adminModulePermissions, type MarketingCampaignInput } from "@huelegood/shared";
+import { RequirePermissions } from "../auth/auth-rbac";
 import { MarketingService } from "./marketing.service";
 
-@RequireRoles(...adminAccessRoles.marketing)
+@RequirePermissions(...adminModulePermissions.marketing.read)
 @Controller("admin/campaigns")
 export class MarketingController {
   constructor(private readonly marketingService: MarketingService) {}
@@ -14,12 +14,13 @@ export class MarketingController {
   }
 
   @Post()
+  @RequirePermissions(...adminModulePermissions.marketing.manage!)
   createCampaign(@Body() body: MarketingCampaignInput) {
     return this.marketingService.createCampaign(body);
   }
 }
 
-@RequireRoles(...adminAccessRoles.marketing)
+@RequirePermissions(...adminModulePermissions.marketing.read)
 @Controller("admin/campaigns/segments")
 export class CampaignSegmentsController {
   constructor(private readonly marketingService: MarketingService) {}
@@ -30,7 +31,7 @@ export class CampaignSegmentsController {
   }
 }
 
-@RequireRoles(...adminAccessRoles.marketing)
+@RequirePermissions(...adminModulePermissions.marketing.read)
 @Controller("admin/campaigns/templates")
 export class CampaignTemplatesController {
   constructor(private readonly marketingService: MarketingService) {}
@@ -41,7 +42,7 @@ export class CampaignTemplatesController {
   }
 }
 
-@RequireRoles(...adminAccessRoles.marketing)
+@RequirePermissions(...adminModulePermissions.marketing.read)
 @Controller("admin/campaigns/events")
 export class CampaignEventsController {
   constructor(private readonly marketingService: MarketingService) {}

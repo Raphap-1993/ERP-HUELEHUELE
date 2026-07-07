@@ -453,7 +453,7 @@ export function CatalogBrowser() {
 
         <div className="mt-12 text-center">
           <p className="mb-4 text-sm text-[#6b7280]">
-            💳 Billetera virtual · Transferencia · Contra-entrega &nbsp;|&nbsp; 🚚 Envíos 24-72h a todo el Perú
+            💳 Billetera virtual · Transferencia &nbsp;|&nbsp; 🚚 Delivery web 24-72h en Lima y Callao
           </p>
           <a
             href="https://www.instagram.com/huele.good/"

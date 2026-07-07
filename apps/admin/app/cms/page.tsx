@@ -1,6 +1,6 @@
 import { CmsWorkspace } from "../../components/cms-workspace";
 import { AdminAuthGate } from "../../components/admin-auth-gate";
-import { adminAccessRoles } from "@huelegood/shared";
+import { adminAccessRoles, adminModulePermissions } from "@huelegood/shared";
 
 export default function CmsPage() {
   return (
@@ -8,6 +8,7 @@ export default function CmsPage() {
       title="CMS"
       description="Gestión de páginas, bloques, banners y contenido editorial."
       allowedRoles={adminAccessRoles.cms}
+      allowedPermissions={adminModulePermissions.cms.read}
     >
       <CmsWorkspace />
     </AdminAuthGate>

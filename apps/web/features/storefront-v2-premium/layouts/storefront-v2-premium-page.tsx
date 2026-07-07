@@ -1,30 +1,74 @@
-import { heroCopy, wholesalePlans, type CmsTestimonial, type FaqItem } from "@huelegood/shared";
-import { HeroSection } from "../sections/HeroSection";
-import { BenefitsSection } from "../sections/BenefitsSection";
-import { ComparisonSection } from "../sections/ComparisonSection";
-import { PricingSection } from "../sections/PricingSection";
-import { TestimonialsSection } from "../sections/TestimonialsSection";
-import { WholesaleB2BSection } from "../sections/WholesaleB2BSection";
-import { FaqAccordionSection } from "../sections/FaqAccordionSection";
-import { InstagramSection } from "../sections/InstagramSection";
+import {
+  featuredProducts,
+  heroCopy,
+  type CatalogProduct,
+  type CmsTestimonial,
+  type FaqItem,
+  type HeroCopy
+} from "@huelegood/shared";
+import { storefrontV2PremiumContent, type PremiumHeroContent } from "../content";
 import { StickyBarClient } from "../components/StickyBarClient";
-import { fetchCatalogSummary, fetchCmsSnapshot, fetchWholesaleTiers } from "../../../lib/api";
+import { StorefrontReveal } from "../components/StorefrontReveal";
+import { StorefrontV2PremiumShell } from "../components/storefront-v2-premium-shell";
+import { fetchCatalogSummary, fetchCmsSnapshot } from "../../../lib/api";
+import { BenefitsSection } from "../sections/BenefitsSection";
+import { CommercialRoutesSection } from "../sections/CommercialRoutesSection";
+import { CtaBannerSection } from "../sections/CtaBannerSection";
+import { FaqAccordionSection } from "../sections/FaqAccordionSection";
+import { HeroEditorialSection } from "../sections/HeroEditorialSection";
+import { ProductCatalogSection } from "../sections/ProductCatalogSection";
+import { TestimonialsSection } from "../sections/TestimonialsSection";
+import {
+  curateStorefrontProducts,
+  isStorefrontStaticFallbackEnabled
+} from "../../../lib/storefront-runtime";
 
-const allowStaticStorefrontFallbacks = process.env.NODE_ENV !== "production";
+const allowStaticStorefrontFallbacks = isStorefrontStaticFallbackEnabled();
+
+function buildHeroContent(hero: HeroCopy, products: CatalogProduct[]): PremiumHeroContent {
+  const fallback = storefrontV2PremiumContent.hero;
+  const curatedProductChips = products.slice(0, 3).map((product) => product.name);
+
+  return {
+    ...fallback,
+    eyebrow: hero.eyebrow,
+    title: hero.title,
+    description: hero.description,
+    primaryCta: hero.primaryCta,
+    secondaryCta: hero.secondaryCta,
+    productChips: curatedProductChips.length > 0 ? curatedProductChips : fallback.productChips,
+    metrics: fallback.metrics.map((metric, index) => {
+      if (index === 0) {
+        return {
+          ...metric,
+          value: curatedProductChips.length > 0 ? `${curatedProductChips.length} formatos` : metric.value,
+          detail: "Selección corta para elegir rápido sin mezclar compra, detalle y checkout."
+        };
+      }
+
+      if (index === 2) {
+        return {
+          ...metric,
+          detail: "La home ordena la decisión antes de mandar a catálogo, PDP o checkout."
+        };
+      }
+
+      return metric;
+    })
+  };
+}
 
 export async function StorefrontV2PremiumExperience({
   preview = false
 }: {
   preview?: boolean;
 }) {
-  const [cmsResponse, catalogResponse, wholesaleResponse] = await Promise.all([
+  const [cmsResponse, catalogResponse] = await Promise.all([
     fetchCmsSnapshot().catch(() => null),
-    fetchCatalogSummary().catch(() => null),
-    fetchWholesaleTiers().catch(() => null)
+    fetchCatalogSummary().catch(() => null)
   ]);
   const cms = cmsResponse?.data;
   const hero = cms?.heroCopy ?? heroCopy;
-  const heroProductImageUrl = cms?.siteSetting.heroProductImageUrl ?? undefined;
   const testimonials: CmsTestimonial[] = cms?.testimonials.filter((testimonial) => testimonial.status === "active") ?? [];
   const faqs: FaqItem[] =
     cms?.faqs.filter((faq) => faq.status === "active").map((faq) => ({
@@ -32,22 +76,48 @@ export async function StorefrontV2PremiumExperience({
       answer: faq.answer,
       category: faq.category
     })) ?? [];
-  const products = catalogResponse?.data.products ?? [];
-  const currencyCode = catalogResponse?.data.currencyCode ?? "PEN";
-  const wholesaleTiers =
-    wholesaleResponse?.data?.length ? wholesaleResponse.data : allowStaticStorefrontFallbacks ? wholesalePlans : [];
+  const runtimeProducts = catalogResponse?.data.products ?? [];
+  const curatedRuntimeProducts = curateStorefrontProducts(runtimeProducts, cms?.siteSetting.featuredProductSlugs);
+  const curatedProducts =
+    curatedRuntimeProducts.length > 0
+      ? curatedRuntimeProducts
+      : allowStaticStorefrontFallbacks
+        ? featuredProducts
+        : [];
+  const catalogSource = curatedRuntimeProducts.length > 0 ? "runtime" : "static_fallback";
+  const heroContent = buildHeroContent(hero, curatedProducts);
 
   return (
-    <>
-      <HeroSection heroProductImageUrl={heroProductImageUrl} heroCopy={hero} />
-      <BenefitsSection />
-      <ComparisonSection />
-      <PricingSection products={products} currencyCode={currencyCode} />
-      <TestimonialsSection testimonials={testimonials.length > 0 ? testimonials : undefined} />
-      <WholesaleB2BSection plans={wholesaleTiers} />
-      <FaqAccordionSection faqs={faqs.length > 0 ? faqs : undefined} />
-      <InstagramSection />
+    <StorefrontV2PremiumShell preview={preview}>
+      <HeroEditorialSection hero={heroContent} preview={preview} />
+      <StorefrontReveal y={18}>
+        <BenefitsSection />
+      </StorefrontReveal>
+      <StorefrontReveal y={18}>
+        <ProductCatalogSection
+          catalogSource={catalogSource}
+          products={curatedProducts}
+          highlights={storefrontV2PremiumContent.productHighlights}
+        />
+      </StorefrontReveal>
+      <StorefrontReveal y={18}>
+        <TestimonialsSection testimonials={testimonials.length > 0 ? testimonials : undefined} />
+      </StorefrontReveal>
+      <StorefrontReveal y={18}>
+        <div id="mayoristas">
+          <CommercialRoutesSection
+            wholesale={storefrontV2PremiumContent.wholesaleCallout}
+            vendor={storefrontV2PremiumContent.vendorCallout}
+          />
+        </div>
+      </StorefrontReveal>
+      <StorefrontReveal y={18}>
+        <FaqAccordionSection faqs={faqs.length > 0 ? faqs : storefrontV2PremiumContent.faqs} />
+      </StorefrontReveal>
+      <StorefrontReveal y={18}>
+        <CtaBannerSection banner={storefrontV2PremiumContent.ctaBanner} />
+      </StorefrontReveal>
       <StickyBarClient />
-    </>
+    </StorefrontV2PremiumShell>
   );
 }

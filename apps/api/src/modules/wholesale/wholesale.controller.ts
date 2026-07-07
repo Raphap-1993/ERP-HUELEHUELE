@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post } from "@nestjs/common";
-import { adminAccessRoles, type WholesaleLeadInput, type WholesaleLeadStatusInput, type WholesaleQuoteInput } from "@huelegood/shared";
-import { RequireRoles } from "../auth/auth-rbac";
+import { adminModulePermissions, type WholesaleLeadInput, type WholesaleLeadStatusInput, type WholesaleQuoteInput } from "@huelegood/shared";
+import { RequirePermissions } from "../auth/auth-rbac";
 import { WholesaleService } from "./wholesale.service";
 
 @Controller("store/wholesale-leads")
@@ -23,7 +23,7 @@ export class WholesaleTiersController {
   }
 }
 
-@RequireRoles(...adminAccessRoles.wholesale)
+@RequirePermissions(...adminModulePermissions.wholesale.read)
 @Controller("admin/wholesale-leads")
 export class AdminWholesaleLeadsController {
   constructor(private readonly wholesaleService: WholesaleService) {}
@@ -34,12 +34,13 @@ export class AdminWholesaleLeadsController {
   }
 
   @Post(":id/status")
+  @RequirePermissions(...adminModulePermissions.wholesale.manage!)
   updateStatus(@Param("id") id: string, @Body() body: WholesaleLeadStatusInput) {
     return this.wholesaleService.updateLeadStatus(id, body);
   }
 }
 
-@RequireRoles(...adminAccessRoles.wholesale)
+@RequirePermissions(...adminModulePermissions.wholesale.read)
 @Controller("admin/wholesale-quotes")
 export class AdminWholesaleQuotesController {
   constructor(private readonly wholesaleService: WholesaleService) {}
@@ -50,12 +51,13 @@ export class AdminWholesaleQuotesController {
   }
 
   @Post()
+  @RequirePermissions(...adminModulePermissions.wholesale.manage!)
   create(@Body() body: WholesaleQuoteInput) {
     return this.wholesaleService.createQuote(body);
   }
 }
 
-@RequireRoles(...adminAccessRoles.wholesale)
+@RequirePermissions(...adminModulePermissions.wholesale.read)
 @Controller("admin/wholesale-tiers")
 export class AdminWholesaleTiersController {
   constructor(private readonly wholesaleService: WholesaleService) {}

@@ -90,7 +90,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "Huele Huele | Inhalador Herbal Aromático — Frescura Natural para el Perú",
     description:
-      "Huele Huele: el inhalador herbal aromático que alivia el soroche, los mareos y la fatiga mental. 100% natural, de bolsillo y acción doble. Envíos a todo el Perú.",
+      "Huele Huele: el inhalador herbal aromático que alivia el soroche, los mareos y la fatiga mental. 100% natural, de bolsillo y acción doble. Checkout web con delivery en Lima y Callao.",
     icons: siteIconUrl
       ? {
           icon: [{ url: siteIconUrl }],
