@@ -270,9 +270,11 @@ class PrismaStub {
   ) {}
 
   readonly productVariant = {
-    findMany: async (args?: { where?: { id?: { in?: string[] } } }) => {
+    findMany: async (args?: { where?: { id?: { in?: string[] }; status?: { not?: string } } }) => {
       const ids = args?.where?.id?.in;
-      const records = ids ? this.variants.filter((variant) => ids.includes(variant.id)) : this.variants;
+      const excludedStatus = args?.where?.status?.not;
+      const records = (ids ? this.variants.filter((variant) => ids.includes(variant.id)) : this.variants)
+        .filter((variant) => (excludedStatus ? variant.status !== excludedStatus : true));
       return records.map((variant) => this.cloneVariant(variant));
     },
     findUnique: async (args: { where: { id?: string; sku?: string } }) => {
@@ -2538,6 +2540,52 @@ test("el reporte separa saldo por almacen y descuenta solo el origen asignado", 
   assert.equal(arequipaRow.availableStock, 5);
   assert.equal(limaRow.variantAvailableStock, 11);
   assert.equal(arequipaRow.variantAvailableStock, 11);
+});
+
+test("inventario admin oculta variantes inactivas retiradas para no duplicar premium negro", async () => {
+  const context = await createContext({
+    variants: [
+      buildVariant({
+        id: "var-premium-negro-menta",
+        productId: "prod-premium-negro",
+        productName: "Premium Negro",
+        productSlug: "premium-negro",
+        sku: "HG-PN-001",
+        variantName: "Premium Negro - Menta Helada 10 ml",
+        stockOnHand: 8,
+        warehouseBalances: [buildWarehouseBalance({ variantId: "var-premium-negro-menta", stockOnHand: 8 })]
+      }),
+      buildVariant({
+        id: "var-premium-negro-eucalipto",
+        productId: "prod-premium-negro",
+        productName: "Premium Negro",
+        productSlug: "premium-negro",
+        sku: "HG-PN-002",
+        variantName: "Premium Negro - Eucalipto Frío 10 ml",
+        stockOnHand: 3,
+        status: "inactive",
+        warehouseBalances: [buildWarehouseBalance({ variantId: "var-premium-negro-eucalipto", stockOnHand: 3 })]
+      }),
+      buildVariant({
+        id: "var-premium-negro-citrus",
+        productId: "prod-premium-negro",
+        productName: "Premium Negro",
+        productSlug: "premium-negro",
+        sku: "HG-PN-003",
+        variantName: "Premium Negro - Citrus Herbal 10 ml",
+        stockOnHand: 2,
+        status: "inactive",
+        warehouseBalances: [buildWarehouseBalance({ variantId: "var-premium-negro-citrus", stockOnHand: 2 })]
+      })
+    ]
+  });
+
+  const report = await context.inventory.getAdminReport();
+
+  assert.deepEqual(
+    report.data.rows.map((row) => row.sku),
+    ["HG-PN-001"]
+  );
 });
 
 test("una transferencia reserva, despacha y recibe stock sin mezclar almacenes", async () => {

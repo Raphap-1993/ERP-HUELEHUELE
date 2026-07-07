@@ -1246,10 +1246,10 @@ export function ProductsWorkspace() {
           <Card className="border-[#d9e7dd] bg-[#f7fbf8]">
             <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
               <div className="space-y-1.5">
-                <p className="text-sm font-medium text-[#1a3a2e]">Inventario operativo separado del catálogo</p>
+                <p className="text-sm font-medium text-[#1a3a2e]">Catálogo e inventario, cada uno en su lugar</p>
                 <p className="text-sm leading-6 text-black/60">
-                  `Productos` define la ficha comercial y el almacén preferido. El stock físico, reservas y disponible
-                  para vender se mantienen en `Inventario`.
+                  `Productos` define la ficha comercial y el SKU activo. El stock físico, reservas y disponible para
+                  vender se gobiernan desde `Inventario`.
                 </p>
               </div>
               <Button href="/inventario" variant="secondary">

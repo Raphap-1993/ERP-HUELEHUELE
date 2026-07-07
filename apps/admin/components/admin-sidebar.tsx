@@ -15,7 +15,7 @@ type AdminSidebarProps = {
 
 const NAV_GROUP_META: Record<string, string> = {
   "Operación diaria": "Pedidos, despachos y pagos",
-  "Inventario y reportes": "Stock, almacenes y lectura del negocio",
+  "Inventario y logística": "Stock, traslados, almacenes y lectura del negocio",
   "Catálogo": "Productos y CMS comercial",
   Comercial: "Canales, comisiones y mayoristas",
   Clientes: "Clientes, fidelización y campañas",
@@ -30,7 +30,7 @@ const NAV_GROUP_TONES: Record<string, { muted: string; surface: string; accent: 
     guide: "bg-[#8fdcb0]/14",
     activeItem: "bg-[#2a4c3d]"
   },
-  "Inventario y reportes": {
+  "Inventario y logística": {
     muted: "bg-[#1c3932] hover:bg-[#21413a]",
     surface: "bg-[#234239]",
     accent: "bg-[#8fcec4]",

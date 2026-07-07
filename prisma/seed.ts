@@ -175,8 +175,8 @@ function inferVariantAttributes(productSlug: string) {
 
   if (productSlug === "premium-negro") {
     return {
-      flavorCode: "negro-intenso",
-      flavorLabel: "Negro Intenso",
+      flavorCode: "menta-helada",
+      flavorLabel: "Menta Helada",
       presentationCode: "unitario",
       presentationLabel: "Unitario"
     };

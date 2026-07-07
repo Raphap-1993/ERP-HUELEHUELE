@@ -25,7 +25,7 @@
     "prisma:push": "npm run db:push -w @huelegood/api",
     "prisma:seed": "npm run seed -w @huelegood/api",
     "catalog:backfill-phase1": "tsx scripts/backfill-phase1-product-homologation.ts",
-    "catalog:backfill-premium-negro-aromas": "tsx scripts/backfill-premium-negro-aroma-variants.ts",
+    "catalog:retire-premium-negro-extra-aromas": "tsx scripts/retire-premium-negro-extra-aromas.ts",
     "warehouse:bootstrap-default": "tsx scripts/backfill-default-warehouse.ts",
     "inventory:backfill-warehouse-balances": "tsx scripts/backfill-warehouse-balances.ts",
     "local:demo": "npm run prisma:push && npm run prisma:seed",

@@ -4,7 +4,17 @@
 
 ## Objetivo
 
-Convertir un producto modelado como single aroma a multi-aroma vendible real sin romper el contrato de compra ni el control de inventario. El primer corte operativo debe arrancar por `premium-negro`.
+Convertir un producto modelado como single aroma a multi-aroma vendible real sin romper el contrato de compra ni el control de inventario.
+
+## Estado actual `premium-negro`
+
+Desde el corte `2026-07-07`, `premium-negro` volvió a operar con un único aroma comercial activo: `Menta Helada`.
+
+- `HG-PN-001` queda como el SKU vigente.
+- `HG-PN-002` y `HG-PN-003` deben permanecer retirados o `inactive`.
+- el retiro productivo se ejecuta con `npm run catalog:retire-premium-negro-extra-aromas -- --dry-run` y, si corresponde, `--apply --confirm premium-negro-retirement-2026-07-07`.
+
+Este playbook sigue siendo válido para futuros productos multi-aroma reales, pero ya no debe usarse para reabrir aromas extra en `premium-negro` sin una nueva decisión comercial explícita.
 
 ## Regla Madre Del Corte
 

@@ -762,8 +762,8 @@ export function InventoryWorkspace() {
   return (
     <div className="space-y-6 pb-8">
       <SectionHeader
-        title="Stock por producto y almacén"
-        description="Control diario de SKUs físicos por almacén. Todo ingreso de mercadería se registra aquí y la web pública compra según este saldo."
+        title="Inventario operativo por SKU y almacén"
+        description="Cada fila representa un SKU vendible. Aquí registras ingresos, revisas saldos por almacén y validas lo que la web pública puede vender."
       />
 
       <div className="flex flex-wrap items-center gap-3">
@@ -771,7 +771,7 @@ export function InventoryWorkspace() {
           {loading ? "Actualizando..." : "Actualizar"}
         </Button>
         <Badge tone="neutral">Actualizado: {formatDateTime(report?.generatedAt)}</Badge>
-        <Badge tone="info">{visibleProductGroups.length} producto(s) visibles</Badge>
+        <Badge tone="info">{visibleProductGroups.length} SKU(s) visibles</Badge>
         <Badge tone="neutral">{visibleWarehouseRows} almacén(es) en detalle</Badge>
       </div>
 
@@ -795,7 +795,7 @@ export function InventoryWorkspace() {
       <Card>
         <CardHeader>
           <CardTitle>Trabajo diario</CardTitle>
-          <CardDescription>Busca un SKU, filtra por almacén o enfócate solo en alertas.</CardDescription>
+          <CardDescription>Busca un SKU, filtra por almacén y quédate solo con alertas operativas reales.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-[1.4fr_0.9fr_0.9fr]">
           <Input
@@ -834,24 +834,24 @@ export function InventoryWorkspace() {
       <section className="space-y-4">
         <div>
           <Badge tone="info">Operación</Badge>
-          <h2 className="mt-2 text-xl font-semibold text-[#132016]">Resumen diario por producto</h2>
+          <h2 className="mt-2 text-xl font-semibold text-[#132016]">Resumen diario por SKU</h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-black/55">
-            Una fila por SKU. Abre el detalle sólo cuando necesites ver o ajustar un almacén específico.
+            Un SKU vendible se lee una sola vez. Abre el detalle sólo cuando necesites revisar o ajustar una sede puntual.
           </p>
         </div>
 
         <Card className="rounded-[1.6rem] border-black/8 bg-white shadow-[0_12px_34px_rgba(18,34,20,0.05)]">
           <CardHeader>
-            <CardTitle>Productos consolidados</CardTitle>
+            <CardTitle>SKUs operativos</CardTitle>
             <CardDescription>
-              Los almacenes se muestran como detalle desplegable para evitar duplicidad visual.
+              Los almacenes quedan dentro del detalle para que cada SKU se lea una sola vez, sin filas duplicadas.
             </CardDescription>
           </CardHeader>
           <CardContent className="overflow-x-auto p-0">
             <Table>
               <TableHeader className="bg-[#f7f8f4]">
                 <TableRow>
-                  <TableHead>Producto / SKU</TableHead>
+                  <TableHead>SKU comercial</TableHead>
                   <TableHead>Stock físico</TableHead>
                   <TableHead>Disponible para vender</TableHead>
                   <TableHead>Estado</TableHead>
@@ -903,7 +903,7 @@ export function InventoryWorkspace() {
                               {formatNumber(group.summary.availableStock)}
                             </div>
                             <div className="mt-1 text-xs text-black/45">
-                              {warehouseFilter === "all" ? "Total producto" : "Total almacén filtrado"}
+                              {warehouseFilter === "all" ? "Total del SKU" : "Total del almacén filtrado"}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -925,7 +925,7 @@ export function InventoryWorkspace() {
                           <TableCell>
                             <div className="flex flex-wrap gap-2">
                               <Button type="button" size="sm" variant="secondary" onClick={() => toggleGroup(group.key)}>
-                                {expanded ? "Ocultar" : "Ver almacenes"}
+                                {expanded ? "Ocultar sedes" : "Ver sedes"}
                               </Button>
                               {primaryRow ? (
                                 <Button type="button" size="sm" variant="secondary" onClick={() => openAdjustment(primaryRow)}>
@@ -942,7 +942,7 @@ export function InventoryWorkspace() {
                                 )}
                                 className="disabled:cursor-not-allowed disabled:opacity-40"
                               >
-                                Ingresar en otro almacén
+                                Registrar en otro almacén
                               </Button>
                             </div>
                           </TableCell>
@@ -953,9 +953,9 @@ export function InventoryWorkspace() {
                               <div className="space-y-3">
                                 <div className="flex flex-wrap items-center justify-between gap-3">
                                   <div>
-                                    <div className="text-sm font-semibold text-[#132016]">Stock por almacén</div>
+                                    <div className="text-sm font-semibold text-[#132016]">Saldos por almacén</div>
                                     <div className="text-xs text-black/50">
-                                      Registra ingresos sobre un almacén; el total del producto y la web pública se recalculan automáticamente.
+                                      Registra ingresos sobre una sede puntual; el total del SKU y la venta pública se recalculan automáticamente.
                                     </div>
                                   </div>
                                   <div className="flex flex-wrap items-center gap-2">
@@ -970,7 +970,7 @@ export function InventoryWorkspace() {
                                       )}
                                       className="disabled:cursor-not-allowed disabled:opacity-40"
                                     >
-                                      Ingresar en otro almacén
+                                      Registrar en otro almacén
                                     </Button>
                                   </div>
                                 </div>

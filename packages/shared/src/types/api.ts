@@ -1167,6 +1167,10 @@ export interface CheckoutQuoteItemSummary {
   sku: string;
   variantId?: string;
   variantName?: string;
+  flavorCode?: string;
+  flavorLabel?: string;
+  presentationCode?: string;
+  presentationLabel?: string;
   quantity: number;
   unitPrice: number;
   lineTotal: number;

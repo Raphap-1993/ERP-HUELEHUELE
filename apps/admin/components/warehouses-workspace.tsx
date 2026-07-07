@@ -941,8 +941,8 @@ export function WarehousesWorkspace() {
   return (
     <div className="space-y-6 pb-10">
       <SectionHeader
-        title="Configuración de almacenes"
-        description="Define puntos de salida, cobertura y prioridad operativa para pedidos y despachos."
+        title="Almacenes y cobertura"
+        description="Define qué sedes pueden despachar, qué zonas cubren y en qué prioridad entran cuando más de una puede atender el pedido."
       />
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -964,7 +964,7 @@ export function WarehousesWorkspace() {
           <div className="flex items-center justify-between gap-4">
             <div>
               <CardTitle>Almacenes configurados</CardTitle>
-              <CardDescription>La actualización de stock físico se realiza desde Inventario.</CardDescription>
+              <CardDescription>El stock físico diario se actualiza desde Inventario; aquí defines la base operativa.</CardDescription>
             </div>
             <Button type="button" size="sm" onClick={openCreate}>
               Nuevo almacén
@@ -972,7 +972,7 @@ export function WarehousesWorkspace() {
           </div>
           <div className="flex items-center gap-2 text-xs text-black/45">
             <Badge tone="info">{warehouses.length} registros</Badge>
-            <span>Aquí dejas lista la base operativa para sugerir desde qué punto debe salir cada pedido.</span>
+            <span>Aquí dejas lista la lógica para decidir desde qué sede conviene despachar cada pedido.</span>
           </div>
         </CardHeader>
         <CardContent>

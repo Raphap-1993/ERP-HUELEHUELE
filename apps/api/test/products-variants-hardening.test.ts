@@ -260,7 +260,70 @@ test("la cotización exige variantId cuando hay varias variantes activas comprab
       ]),
     (error) =>
       error instanceof BadRequestException &&
-      error.message.includes("variantId explícito")
+      error.message.includes("múltiples opciones disponibles")
+  );
+});
+
+test("el catálogo público oculta aromas retirados e inactivos de premium negro", async () => {
+  const retiredEucalipto = {
+    ...buildVariant({
+      id: "var-premium-negro-eucalipto",
+      sku: "HG-PN-002",
+      name: "Premium Negro - Eucalipto Frío 10 ml",
+      stockOnHand: 3,
+      availableStock: 3,
+      flavorCode: "eucalipto-frio",
+      flavorLabel: "Eucalipto Frío",
+      createdAtOffset: 1_000
+    }),
+    status: "inactive" as const
+  };
+  const retiredCitrus = {
+    ...buildVariant({
+      id: "var-premium-negro-citrus",
+      sku: "HG-PN-003",
+      name: "Premium Negro - Citrus Herbal 10 ml",
+      stockOnHand: 2,
+      availableStock: 2,
+      flavorCode: "citrus-herbal",
+      flavorLabel: "Citrus Herbal",
+      createdAtOffset: 2_000
+    }),
+    status: "inactive" as const
+  };
+  const service = createService([
+    buildProduct([
+      buildVariant({
+        id: "var-premium-negro-menta",
+        sku: "HG-PN-001",
+        name: "Premium Negro - Menta Helada 10 ml",
+        stockOnHand: 9,
+        availableStock: 9,
+        flavorCode: "menta-helada",
+        flavorLabel: "Menta Helada"
+      }),
+      retiredEucalipto,
+      retiredCitrus
+    ])
+  ]);
+
+  const product = await service.findCatalogProductBySlug("premium-negro");
+  assert.ok(product);
+  assert.equal(product.variantCount, 1);
+  assert.equal(product.defaultVariantId, "var-premium-negro-menta");
+  assert.deepEqual(
+    product.variants?.map((variant) => ({
+      sku: variant.sku,
+      flavorLabel: variant.flavorLabel,
+      status: variant.status
+    })),
+    [
+      {
+        sku: "HG-PN-001",
+        flavorLabel: "Menta Helada",
+        status: "active"
+      }
+    ]
   );
 });
 

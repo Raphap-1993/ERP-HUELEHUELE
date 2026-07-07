@@ -268,6 +268,13 @@ function selectDefaultVariant<T extends ProductVariant>(variants: T[]) {
   return variants
     .slice()
     .sort((left, right) => {
+      const leftState = resolveVariantStockState(left as ProductVariantWithOptionalWarehouse);
+      const rightState = resolveVariantStockState(right as ProductVariantWithOptionalWarehouse);
+
+      if (leftState.isPurchasable !== rightState.isPurchasable) {
+        return leftState.isPurchasable ? -1 : 1;
+      }
+
       if (left.status === "active" && right.status !== "active") {
         return -1;
       }
@@ -1384,6 +1391,10 @@ export class ProductsService {
         sku: variant.sku,
         variantId: variant.id,
         variantName: variant.name,
+        flavorCode: normalizeText(variant.flavorCode ?? undefined) ?? undefined,
+        flavorLabel: normalizeText(variant.flavorLabel ?? undefined) ?? undefined,
+        presentationCode: normalizeText(variant.presentationCode ?? undefined) ?? undefined,
+        presentationLabel: normalizeText(variant.presentationLabel ?? undefined) ?? undefined,
         quantity,
         unitPrice,
         lineTotal,
@@ -1678,6 +1689,20 @@ export class ProductsService {
 
     if (duplicateSku) {
       throw new BadRequestException(`SKU duplicado en la misma solicitud: ${duplicateSku.sku}.`);
+    }
+
+    const duplicateFlavorPresentation = normalizedVariants.find((variant, index) => {
+      const variantKey = `${variant.flavorCode ?? "__no-flavor__"}::${variant.presentationCode ?? "__no-presentation__"}`;
+      return (
+        normalizedVariants.findIndex((candidate) => {
+          const candidateKey = `${candidate.flavorCode ?? "__no-flavor__"}::${candidate.presentationCode ?? "__no-presentation__"}`;
+          return candidateKey === variantKey;
+        }) !== index
+      );
+    });
+
+    if (duplicateFlavorPresentation) {
+      throw new BadRequestException("La combinación aroma/presentación debe ser única dentro del mismo producto.");
     }
 
     const defaultWarehouseIds = [
@@ -2041,12 +2066,15 @@ export class ProductsService {
 
     const isBundle = product.productKind === "bundle" || product.bundleComponents.length > 0;
     const productStockState = resolveProductStockState(product);
+    const visibleVariantIds = new Set(
+      product.variants.filter((variant) => variant.status === "active").map((variant) => variant.id)
+    );
     const variants = product.variants
       .slice()
       .sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime())
+      .filter((variant) => visibleVariantIds.has(variant.id))
       .map((variant) => {
         const stockState = isBundle ? productStockState : resolveVariantStockState(variant);
-        const isVariantActive = variant.status === "active";
 
         return {
           id: variant.id,
@@ -2061,20 +2089,22 @@ export class ProductsService {
           status: variant.status,
           availableStock: stockState.availableStock,
           lowStockThreshold: stockState.lowStockThreshold,
-          stockStatus: isVariantActive ? stockState.stockStatus : "out_of_stock",
-          stockLabel: isVariantActive ? stockState.stockLabel : "Sin stock",
-          isPurchasable: isVariantActive && stockState.isPurchasable
+          stockStatus: stockState.stockStatus,
+          stockLabel: stockState.stockLabel,
+          isPurchasable: stockState.isPurchasable
         };
       });
 
-    const images = sortImages(product.images).map((image) => ({
-      id: image.id,
-      url: image.url,
-      altText: image.altText ?? undefined,
-      sortOrder: image.sortOrder,
-      isPrimary: image.isPrimary,
-      variantId: image.variantId ?? undefined
-    }));
+    const images = sortImages(product.images)
+      .filter((image) => !image.variantId || visibleVariantIds.has(image.variantId))
+      .map((image) => ({
+        id: image.id,
+        url: image.url,
+        altText: image.altText ?? undefined,
+        sortOrder: image.sortOrder,
+        isPrimary: image.isPrimary,
+        variantId: image.variantId ?? undefined
+      }));
 
     return {
       ...summary,

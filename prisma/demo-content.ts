@@ -76,7 +76,7 @@ export const localDemoProducts: LocalDemoProductSeed[] = [
     tone: "graphite",
     benefits: ["Acabado premium", "Diseño discreto", "Listo para llevar"],
     detailAttributes: [
-      { label: "Aromas", value: "Mentolado intenso con nota herbal fresca" },
+      { label: "Aromas", value: "Menta Helada con frescura mentolada intensa" },
       { label: "Ideal para", value: "Viajes, altura y trayectos largos" },
       { label: "Presentación", value: "Unitario premium" }
     ],

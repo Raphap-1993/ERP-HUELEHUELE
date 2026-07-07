@@ -1,6 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { BadRequestException, ConflictException, Injectable, NotFoundException, OnModuleInit } from "@nestjs/common";
-import { InventoryMovementType, ProductKind, type ProductImage, type ProductVariant, type WarehouseInventoryBalance } from "@prisma/client";
+import {
+  InventoryMovementType,
+  ProductKind,
+  VariantStatus,
+  type ProductImage,
+  type ProductVariant,
+  type WarehouseInventoryBalance
+} from "@prisma/client";
 import {
   ProductSalesChannel,
   type InventoryStockAdjustmentInput,
@@ -358,6 +365,9 @@ export class InventoryService implements OnModuleInit {
   async getAdminReport() {
     const variants = await this.prisma.productVariant.findMany({
       where: {
+        status: {
+          not: VariantStatus.inactive
+        },
         product: {
           productKind: ProductKind.single
         }

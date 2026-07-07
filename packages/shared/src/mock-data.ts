@@ -96,7 +96,7 @@ export const adminNavigation: AdminNavigationGroup[] = [
     ]
   },
   {
-    title: "Inventario y reportes",
+    title: "Inventario y logística",
     items: [
       { label: "Inventario", href: "/inventario", requiredRoles: adminAccessRoles.inventory, requiredPermissions: adminModulePermissions.inventory.read },
       { label: "Transferencias", href: "/transferencias", requiredRoles: adminAccessRoles.transfers, requiredPermissions: adminModulePermissions.transfers.read },

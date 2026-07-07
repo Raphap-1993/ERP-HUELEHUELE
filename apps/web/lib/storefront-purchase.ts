@@ -41,6 +41,11 @@ export function isStorefrontPurchasable(product: StockAwareProduct) {
 }
 
 export function getStorefrontVariantCount(product: Pick<CatalogProduct, "variantCount" | "variants">) {
+  const activeVariantCount = product.variants?.filter((variant) => variant.status === "active").length ?? 0;
+  if (activeVariantCount > 0) {
+    return activeVariantCount;
+  }
+
   return Math.max(product.variantCount ?? 0, product.variants?.length ?? 0, 1);
 }
 

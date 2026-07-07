@@ -621,7 +621,7 @@ export function TransfersWorkspace() {
     <div className="space-y-6 pb-8">
       <SectionHeader
         title="Transferencias"
-        description="Reserva, despacho y recepción real de stock entre almacenes, sin editar balances a mano."
+        description="Mueve stock entre almacenes sin tocar balances a mano: primero reservas, luego despachas y al final confirmas la recepción."
       />
 
       <div className="flex flex-wrap items-center gap-3">
@@ -654,7 +654,7 @@ export function TransfersWorkspace() {
         <Card>
           <CardHeader>
             <CardTitle>Nueva transferencia</CardTitle>
-            <CardDescription>Crea el movimiento y reserva stock en el almacén origen.</CardDescription>
+            <CardDescription>Arma el traslado y bloquea stock en el almacén origen antes de moverlo.</CardDescription>
           </CardHeader>
           <CardContent>
             <form className="space-y-4" onSubmit={handleCreateTransfer}>
