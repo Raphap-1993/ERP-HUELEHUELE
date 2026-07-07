@@ -1,6 +1,6 @@
 import { LoyaltyWorkspace } from "../../components/loyalty-workspace";
 import { AdminAuthGate } from "../../components/admin-auth-gate";
-import { adminAccessRoles, adminModulePermissions } from "@huelegood/shared";
+import { adminAccessRoles } from "@huelegood/shared";
 
 export default function LoyaltyPage() {
   return (
@@ -8,7 +8,6 @@ export default function LoyaltyPage() {
       title="Fidelización"
       description="Puntos, movimientos, canjes y reglas base."
       allowedRoles={adminAccessRoles.loyalty}
-      allowedPermissions={adminModulePermissions.loyalty.read}
     >
       <LoyaltyWorkspace />
     </AdminAuthGate>

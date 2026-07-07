@@ -22,7 +22,6 @@ import type {
   WholesaleLeadStatus,
   WholesaleQuoteStatus
 } from "../domain/enums";
-import type { AccessSurface, EffectivePermissionSummary } from "../domain/access-control";
 import type {
   AdminMetric,
   CommissionRow,
@@ -88,9 +87,8 @@ export interface ActionEnvelope {
 }
 
 export interface AuthRoleSummary {
-  code: string;
+  code: RoleCode;
   label: string;
-  isSystem?: boolean;
 }
 
 export interface AuthUserSummary {
@@ -98,10 +96,7 @@ export interface AuthUserSummary {
   name: string;
   email: string;
   roles: AuthRoleSummary[];
-  primaryRoleCode?: string;
   accountType: "admin" | "seller" | "wholesale" | "customer" | "operator";
-  effectivePermissions?: EffectivePermissionSummary[];
-  surfaces?: AccessSurface[];
   vendorCode?: string;
   wholesaleLeadId?: string;
 }
@@ -810,21 +805,6 @@ export interface CatalogSummaryResponse {
 export type ProductStatusValue = "draft" | "active" | "inactive" | "archived";
 export type ProductKindValue = "single" | "bundle";
 export type ProductVariantStatusValue = "active" | "inactive" | "out_of_stock";
-export type ProductVariantRolloutStatusValue =
-  | "not_applicable"
-  | "single_variant"
-  | "copy_needs_variants"
-  | "multi_variant_incomplete"
-  | "multi_variant_ready";
-
-export interface ProductVariantRolloutAudit {
-  status: ProductVariantRolloutStatusValue;
-  activeVariantCount: number;
-  totalVariantCount: number;
-  aromaCopyValues: string[];
-  warnings: string[];
-  recommendedActions: string[];
-}
 
 export interface ProductVariantSummary {
   id: string;
@@ -1646,14 +1626,12 @@ export interface InventoryReportSummary {
   generatedAt: string;
 }
 
-export type InventoryStockOperationMode = "physical_count" | "stock_receipt";
-
 export interface InventoryStockAdjustmentInput {
   variantId: string;
   warehouseId: string;
   stockOnHand?: number;
   quantityDelta?: number;
-  mode?: InventoryStockOperationMode | "set" | "increase";
+  mode?: "physical_count" | "stock_receipt" | "set" | "increase";
   reason?: string;
 }
 
@@ -1661,61 +1639,11 @@ export interface InventoryStockAdjustmentEnvelope {
   status: "ok" | "queued" | "pending_review" | "rejected";
   message: string;
   referenceId?: string;
-  mode?: InventoryStockOperationMode | "set" | "increase";
+  mode?: "physical_count" | "stock_receipt" | "set" | "increase";
   balance: WarehouseInventoryBalanceSummary;
   previousStockOnHand: number;
   nextStockOnHand: number;
   delta: number;
-}
-
-export interface InventoryStockBulkLineInput {
-  variantId?: string;
-  sku?: string;
-  warehouseId?: string;
-  warehouseCode?: string;
-  quantity: number;
-  reason?: string;
-}
-
-export interface InventoryStockBulkInput {
-  mode: InventoryStockOperationMode;
-  reason?: string;
-  lines: InventoryStockBulkLineInput[];
-}
-
-export interface InventoryStockBulkLineResult {
-  lineNumber: number;
-  variantId: string;
-  sku: string;
-  warehouseId: string;
-  warehouseCode?: string;
-  warehouseName?: string;
-  mode: InventoryStockOperationMode;
-  quantity: number;
-  previousStockOnHand: number;
-  nextStockOnHand: number;
-  delta: number;
-  message: string;
-}
-
-export interface InventoryStockBulkLineError {
-  lineNumber: number;
-  variantId?: string;
-  sku?: string;
-  warehouseId?: string;
-  warehouseCode?: string;
-  quantity?: number;
-  message: string;
-}
-
-export interface InventoryStockBulkEnvelope {
-  status: "ok" | "partial" | "rejected";
-  message: string;
-  processedCount: number;
-  failedCount: number;
-  mode: InventoryStockOperationMode;
-  results: InventoryStockBulkLineResult[];
-  errors: InventoryStockBulkLineError[];
 }
 
 export interface AdminReportFiltersInput {
@@ -1833,173 +1761,6 @@ export interface AdminActionsEnvelope {
 
 export interface SecurityPostureEnvelope {
   data: SecurityPostureSummary;
-  meta?: Record<string, unknown>;
-}
-
-export interface SecurityPermissionSummary {
-  code: string;
-  label: string;
-  description?: string;
-  moduleId: string;
-  action: string;
-  supportedScopes: string[];
-  isSystem: boolean;
-  isActive: boolean;
-}
-
-export interface SecurityScopeSummary {
-  code: string;
-  label: string;
-  description?: string;
-  precedence: number;
-  isSystem: boolean;
-  isActive: boolean;
-}
-
-export interface SecurityModuleSummary {
-  code: string;
-  label: string;
-  description?: string;
-  surface: AccessSurface;
-  route: string;
-  navGroup: string;
-  isSystem: boolean;
-  isActive: boolean;
-}
-
-export interface SecurityNavigationGroupSummary {
-  code: string;
-  label: string;
-  surface: AccessSurface;
-  sortOrder: number;
-  isSystem: boolean;
-  isActive: boolean;
-}
-
-export interface SecurityNavigationItemSummary {
-  moduleCode: string;
-  navigationGroupCode?: string;
-  labelOverride?: string;
-  icon?: string;
-  sortOrder: number;
-  isVisible: boolean;
-}
-
-export interface SecurityCatalogSummary {
-  permissions: SecurityPermissionSummary[];
-  scopes: SecurityScopeSummary[];
-  modules: SecurityModuleSummary[];
-  navigationGroups: SecurityNavigationGroupSummary[];
-  navigationItems: SecurityNavigationItemSummary[];
-}
-
-export interface SecurityRolePermissionGrantSummary {
-  permissionCode: string;
-  scopeCode: string;
-}
-
-export interface SecurityRoleSummary {
-  id: string;
-  code: string;
-  name: string;
-  description?: string;
-  surface: AccessSurface;
-  isSystem: boolean;
-  isAssignable: boolean;
-  isActive: boolean;
-  permissionGrants: SecurityRolePermissionGrantSummary[];
-}
-
-export interface SecurityRoleCreateInput {
-  code: string;
-  name: string;
-  description?: string;
-  surface: AccessSurface;
-  isAssignable?: boolean;
-  isActive?: boolean;
-  permissionGrants: SecurityRolePermissionGrantSummary[];
-}
-
-export interface SecurityRoleUpdateInput {
-  name?: string;
-  description?: string;
-  surface?: AccessSurface;
-  isAssignable?: boolean;
-  isActive?: boolean;
-  permissionGrants?: SecurityRolePermissionGrantSummary[];
-}
-
-export interface SecurityUserRoleAssignmentInput {
-  roleIds: string[];
-  primaryRoleId?: string;
-}
-
-export interface SecurityUserRoleAssignmentSummary {
-  userId: string;
-  roleIds: string[];
-  primaryRoleId?: string;
-}
-
-export interface SecurityOverrideSummary {
-  id: string;
-  userId: string;
-  permissionCode: string;
-  scopeCode: string;
-  effect: "grant" | "revoke";
-  expiresAt: string;
-  status: string;
-  reason: string;
-  approvedByUserId: string;
-  createdByUserId: string;
-  startsAt: string;
-}
-
-export interface SecurityOverrideCreateInput {
-  permissionCode: string;
-  scopeCode: string;
-  effect: "grant" | "revoke";
-  reason: string;
-  approvedByUserId: string;
-  createdByUserId: string;
-  startsAt: string;
-  expiresAt: string;
-}
-
-export interface SecurityNavigationItemUpdateInput {
-  moduleCode: string;
-  navigationGroupCode: string;
-  labelOverride?: string;
-  icon?: string;
-  sortOrder?: number;
-  isVisible?: boolean;
-}
-
-export interface SecurityNavigationUpdateInput {
-  items: SecurityNavigationItemUpdateInput[];
-}
-
-export interface SecurityCatalogEnvelope {
-  data: SecurityCatalogSummary;
-  meta?: Record<string, unknown>;
-}
-
-export interface SecurityRolesEnvelope {
-  data: SecurityRoleSummary[];
-  meta?: Record<string, unknown>;
-}
-
-export interface SecurityRoleEnvelope {
-  data: SecurityRoleSummary;
-  meta?: Record<string, unknown>;
-}
-
-export interface SecurityOverrideEnvelope {
-  data: SecurityOverrideSummary;
-  meta?: Record<string, unknown>;
-}
-
-export interface SecurityNavigationEnvelope {
-  data: SecurityNavigationItemSummary[];
   meta?: Record<string, unknown>;
 }
 

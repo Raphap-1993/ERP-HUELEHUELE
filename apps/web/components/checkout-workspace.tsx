@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { gsap } from "gsap";
 import {
   CHECKOUT_DOCUMENT_TYPE_OPTIONS,
@@ -35,6 +34,7 @@ import {
   fetchSession
 } from "../lib/api";
 import { YapePaymentModal } from "./yape-payment-modal";
+import { HuelePublicPage, HueleSection } from "./huele-public-ui";
 import {
   cloudflareImageLoader,
   isRemoteStorefrontMediaUrl,
@@ -55,6 +55,7 @@ type CheckoutStep = 1 | 2 | 3;
 type StepTwoSection = 1 | 2 | 3 | 4;
 type IdentityLookupStatus = "idle" | "loading" | "verified" | "matched" | "manual" | "error";
 type CheckoutCatalogVariant = NonNullable<CatalogProduct["variants"]>[number];
+const PRODUCT_VARIANTS_SECTION_ID = "product-variants";
 
 type ResolvedCheckoutLineItem = {
   key: string;
@@ -100,28 +101,24 @@ const CHECKOUT_STEPS: Array<{
   label: string;
   title: string;
   navTitle: string;
-  description: string;
 }> = [
   {
     id: 1,
     label: "Pedido",
     title: "Revisa tu pedido",
-    navTitle: "Revisa pedido",
-    description: "Ajusta cantidades y deja lista tu compra."
+    navTitle: "Revisa pedido"
   },
   {
     id: 2,
     label: "Entrega",
     title: "Datos y entrega",
-    navTitle: "Datos y entrega",
-    description: "Documento, entrega, ubicación y WhatsApp, en ese orden."
+    navTitle: "Datos y entrega"
   },
   {
     id: 3,
     label: "Pago",
     title: "Confirma y paga",
-    navTitle: "Confirma pago",
-    description: "Comprueba todo, copia el número y sube tu comprobante."
+    navTitle: "Confirma pago"
   }
 ];
 
@@ -179,6 +176,15 @@ function resolveCheckoutProductImage(product?: CatalogProduct) {
   };
 }
 
+function requiresCheckoutVariantSelection(product?: CatalogProduct) {
+  const variantCount = Math.max(product?.variantCount ?? 0, product?.variants?.length ?? 0);
+  return variantCount > 1;
+}
+
+function resolveCheckoutVariantSelectionHref(slug: string) {
+  return `/producto/${slug}#${PRODUCT_VARIANTS_SECTION_ID}`;
+}
+
 function getCheckoutItemKey(item: Pick<CheckoutItemInput, "slug" | "variantId">) {
   return `${item.slug}::${item.variantId ?? ""}`;
 }
@@ -189,14 +195,6 @@ function resolveCheckoutVariant(product?: CatalogProduct, variantId?: string) {
   }
 
   return product.variants.find((variant) => variant.id === variantId);
-}
-
-function getCheckoutActiveVariants(product?: CatalogProduct) {
-  return (product?.variants ?? []).filter((variant) => variant.status === "active");
-}
-
-function requiresCheckoutVariantSelection(product?: CatalogProduct) {
-  return getCheckoutActiveVariants(product).length > 1;
 }
 
 function getCheckoutAvailableStock(product?: CatalogProduct, variant?: CheckoutCatalogVariant) {
@@ -427,7 +425,6 @@ export function CheckoutWorkspace() {
   const checkoutRequestIdRef = useRef<string | null>(null);
   const lastDocumentLookupRef = useRef<string | null>(null);
   const shellRef = useRef<HTMLDivElement | null>(null);
-  const progressBarRef = useRef<HTMLDivElement | null>(null);
   const stepPanelRef = useRef<HTMLDivElement | null>(null);
   const successCardRef = useRef<HTMLDivElement | null>(null);
   const identityPanelRef = useRef<HTMLDivElement | null>(null);
@@ -650,9 +647,16 @@ export function CheckoutWorkspace() {
       return;
     }
 
+    const removedSelectionRequiredNames = new Set<string>();
     const nextItems = items.flatMap((item) => {
       const product = productBySlug.get(item.slug);
       const variant = resolveCheckoutVariant(product, item.variantId);
+      const requiresVariantSelection = requiresCheckoutVariantSelection(product);
+
+      if (requiresVariantSelection && !item.variantId) {
+        removedSelectionRequiredNames.add(product?.name ?? item.slug);
+        return [];
+      }
 
       if (item.variantId && product?.variants?.length && !variant) {
         return [];
@@ -682,6 +686,17 @@ export function CheckoutWorkspace() {
     if (changed) {
       writeStoredCart(nextItems);
       setItems(nextItems);
+
+      if (removedSelectionRequiredNames.size > 0) {
+        const invalidProducts = Array.from(removedSelectionRequiredNames);
+        const subject =
+          invalidProducts.length === 1
+            ? invalidProducts[0]
+            : "Algunos productos de tu checkout";
+        const verb = invalidProducts.length === 1 ? "requiere" : "requieren";
+
+        setQuoteError(`${subject} ${verb} elegir aroma o presentación antes de agregarse al checkout.`);
+      }
     }
   }, [items, productBySlug]);
 
@@ -817,9 +832,16 @@ export function CheckoutWorkspace() {
         const response = await fetchCheckoutQuote({
           items: activeItems,
           paymentMethod,
-          shipping: {
-            deliveryMode: "standard"
-          }
+          shipping: provinceShalomPickup
+            ? {
+                deliveryMode: "province_shalom_pickup",
+                carrier: "shalom",
+                agencyName: address.agencyName.trim() || undefined,
+                payOnPickup: true
+              }
+            : {
+                deliveryMode: "standard"
+              }
         });
 
         if (active) {
@@ -844,7 +866,7 @@ export function CheckoutWorkspace() {
     return () => {
       active = false;
     };
-  }, [activeItems, paymentMethod]);
+  }, [activeItems, address.agencyName, paymentMethod, provinceShalomPickup]);
 
   useEffect(() => {
     if (!shellRef.current) {
@@ -871,14 +893,6 @@ export function CheckoutWorkspace() {
       return;
     }
 
-    const progressTween = progressBarRef.current
-      ? gsap.to(progressBarRef.current, {
-          width: `${(activeStep / CHECKOUT_STEPS.length) * 100}%`,
-          duration: 0.45,
-          ease: "power2.out"
-        })
-      : null;
-
     const panelTween = gsap.fromTo(
       stepPanelRef.current,
       { autoAlpha: 0, y: 22 },
@@ -886,7 +900,6 @@ export function CheckoutWorkspace() {
     );
 
     return () => {
-      progressTween?.kill();
       panelTween.kill();
     };
   }, [activeStep]);
@@ -931,15 +944,20 @@ export function CheckoutWorkspace() {
     );
   }, [activeItems, resolvedProducts]);
   const productPickerItems = useMemo(() => {
-    return resolvedProducts
-      .filter((product) => isCheckoutProductPurchasable(product))
-      .map((product) => ({
+    return availableToAdd.map((product) => {
+      const requiresVariantSelection = requiresCheckoutVariantSelection(product);
+      const selectedVariantCount = activeItems.filter((item) => item.slug === product.slug && Boolean(item.variantId)).length;
+
+      return {
         product,
         image: resolveCheckoutProductImage(product),
-        requiresVariantSelection: requiresCheckoutVariantSelection(product),
-        selected: !requiresCheckoutVariantSelection(product) && activeItems.some((item) => item.slug === product.slug)
-      }));
-  }, [activeItems, resolvedProducts]);
+        requiresVariantSelection,
+        selected: !requiresVariantSelection && activeItems.some((item) => item.slug === product.slug),
+        selectedVariantCount,
+        selectionHref: resolveCheckoutVariantSelectionHref(product.slug)
+      };
+    });
+  }, [activeItems, availableToAdd]);
   const productSlideCount = productPickerItems.length;
   const activeProductSlide = productPickerItems[productSlideIndex] ?? productPickerItems[0] ?? null;
   const quoteItemsByKey = useMemo(() => {
@@ -978,9 +996,6 @@ export function CheckoutWorkspace() {
   const summaryOverflowCount = Math.max(activeItems.length - summaryPreviewItems.length, 0);
   const summaryOverflowUnits = useMemo(() => {
     return activeLineItems.slice(summaryPreviewItems.length).reduce((total, line) => total + line.item.quantity, 0);
-  }, [activeLineItems, summaryPreviewItems.length]);
-  const summaryOverflowTotal = useMemo(() => {
-    return activeLineItems.slice(summaryPreviewItems.length).reduce((total, line) => total + line.lineTotal, 0);
   }, [activeLineItems, summaryPreviewItems.length]);
 
   useEffect(() => {
@@ -1072,7 +1087,9 @@ export function CheckoutWorkspace() {
       ? "Compártenos tu número de pedido y te ayudamos a confirmar más rápido."
       : successHasCheckoutUrl
         ? "Si necesitas ayuda, también puedes escribirnos por WhatsApp con tu número de pedido."
-        : "Si prefieres, también puedes escribirnos por WhatsApp con tu número de pedido.";
+        : provinceShalomPickup
+          ? "Si prefieres, también puedes escribirnos por WhatsApp para coordinar el envío por Shalom."
+          : "Si prefieres, también puedes escribirnos por WhatsApp con tu número de pedido.";
   const successWhatsappTitle = "Coordinación por WhatsApp";
   const successWhatsappSupport = successHasCheckoutUrl
     ? "Si quieres, escríbenos con tu número de pedido y te ayudamos a completar el pago y coordinar la entrega."
@@ -1103,24 +1120,29 @@ export function CheckoutWorkspace() {
     address.departmentCode &&
       address.provinceCode &&
       address.districtCode &&
-      address.line1.trim()
+      address.line1.trim() &&
+      (!provinceShalomPickup || address.agencyName.trim())
   );
   const contactCompleted = Boolean(customer.fullName.trim() && customer.phone.trim());
   const availableDepartments = useMemo(() => {
-    return departments.filter((option) => isCheckoutStandardDeliveryDepartmentCode(option.code));
-  }, [departments]);
+    return provinceShalomPickup
+      ? departments
+      : departments.filter((option) => isCheckoutStandardDeliveryDepartmentCode(option.code));
+  }, [departments, provinceShalomPickup]);
   const availableProvinces = useMemo(() => {
-    return provinces.filter((option) => isCheckoutStandardDeliveryProvinceCode(option.code));
-  }, [provinces]);
-  const deliveryModeSummary = "Delivery Lima y Callao";
+    return provinceShalomPickup
+      ? provinces
+      : provinces.filter((option) => isCheckoutStandardDeliveryProvinceCode(option.code));
+  }, [provinceShalomPickup, provinces]);
+  const deliveryModeSummary = provinceShalomPickup ? "Shalom provincias" : "Delivery Lima y Callao";
   const fieldClassName =
     "w-full rounded-[20px] border border-[rgba(26,58,46,0.12)] bg-white px-4 py-3.5 text-[15px] text-[#173126] outline-none transition placeholder:text-[#94a39a] focus:border-[#61a740] focus:ring-4 focus:ring-[#61a740]/15";
   const labelClassName =
     "mb-2 block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5f6f66]";
   const sectionCardClassName =
-    "rounded-[28px] border border-[rgba(26,58,46,0.08)] bg-white/98 p-5 shadow-[0_18px_44px_rgba(16,33,24,0.05)] sm:p-6";
+    "rounded-[28px] border border-[rgba(26,58,46,0.08)] bg-white/[0.98] p-5 shadow-[0_18px_44px_rgba(16,33,24,0.05)] sm:p-6";
   const stepTwoPrimaryButtonClassName =
-    "inline-flex items-center justify-center rounded-full bg-[#f15a29] px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-[#da4d1e] disabled:cursor-not-allowed disabled:opacity-50";
+    "inline-flex items-center justify-center rounded-full bg-[var(--hh-public-sun)] px-6 py-3.5 text-sm font-black text-[#062615] shadow-[0_12px_28px_rgba(255,199,70,0.22)] transition hover:bg-[#f5b832] disabled:cursor-not-allowed disabled:opacity-50";
   const canAdvanceFromDocument = documentCompleted;
   const canAdvanceFromLocation = locationCompleted;
   const canAdvanceFromContact = contactCompleted;
@@ -1173,7 +1195,7 @@ export function CheckoutWorkspace() {
       normalized.includes("provincia") ||
       normalized.includes("distrito") ||
       normalized.includes("dirección") ||
-      normalized.includes("agencia")
+      normalized.includes("shalom")
     ) {
       return 3;
     }
@@ -1221,13 +1243,16 @@ export function CheckoutWorkspace() {
     });
   }
 
-  function addItem(product?: CatalogProduct) {
-    if (!product) {
-      return;
-    }
+  function addItem(slug: string) {
+    const product = resolvedProducts.find((candidate) => candidate.slug === slug);
 
     if (requiresCheckoutVariantSelection(product)) {
-      window.location.assign(`/producto/${product.slug}#product-variants`);
+      setQuoteError("Elige la variante en el detalle del producto antes de agregarla al checkout.");
+
+      if (typeof window !== "undefined") {
+        window.location.assign(resolveCheckoutVariantSelectionHref(slug));
+      }
+
       return;
     }
 
@@ -1236,7 +1261,7 @@ export function CheckoutWorkspace() {
       return;
     }
 
-    const next = addStoredCartItem({ slug: product.slug, quantity: 1 });
+    const next = addStoredCartItem({ slug, quantity: 1 });
     setItems(next);
     setQuoteError(null);
   }
@@ -1513,7 +1538,13 @@ export function CheckoutWorkspace() {
     }
 
     if (!address.line1.trim()) {
-      return "Ingresa la dirección de entrega.";
+      return provinceShalomPickup ? "Ingresa una dirección o referencia del cliente." : "Ingresa la dirección de entrega.";
+    }
+
+    if (provinceShalomPickup) {
+      if (!address.agencyName.trim()) {
+        return "Indica la sucursal de Shalom más cercana.";
+      }
     }
 
     return null;
@@ -1559,9 +1590,10 @@ export function CheckoutWorkspace() {
         region: address.provinceName.trim() || address.departmentName.trim(),
         postalCode: "",
         countryCode: "PE",
-        deliveryMode: "standard",
-        carrier: undefined,
-        agencyName: undefined,
+        deliveryMode: provinceShalomPickup ? "province_shalom_pickup" : "standard",
+        carrier: provinceShalomPickup ? "shalom" : undefined,
+        agencyName: provinceShalomPickup ? address.agencyName.trim() : undefined,
+        payOnPickup: provinceShalomPickup ? true : undefined,
         departmentCode: address.departmentCode || undefined,
         departmentName: address.departmentName || undefined,
         provinceCode: address.provinceCode || undefined,
@@ -1590,6 +1622,10 @@ export function CheckoutWorkspace() {
   }
 
   const shippingNote = useMemo(() => {
+    if (provinceShalomPickup) {
+      return "Envío exclusivo por Shalom. No pagas el flete ahora; lo cancelas al momento de recoger con tu documento.";
+    }
+
     if (!siteSettings) {
       return "El costo de envío se calcula según el total de tu pedido.";
     }
@@ -1611,7 +1647,7 @@ export function CheckoutWorkspace() {
     }
 
     return "El costo de envío se calcula según el total de tu pedido.";
-  }, [shippingFlatRate, shippingThreshold, siteSettings, summary.shipping]);
+  }, [provinceShalomPickup, shippingFlatRate, shippingThreshold, siteSettings, summary.shipping]);
 
   function handleContinueFromStepOne() {
     if (activeItems.length === 0) {
@@ -1672,14 +1708,18 @@ export function CheckoutWorkspace() {
   }
 
   return (
-    <div
-      data-checkout-fullscreen="true"
-      className="relative overflow-hidden bg-[hsl(var(--background))] lg:flex lg:h-full lg:min-h-0 lg:flex-col"
+    <HuelePublicPage
+      className="hh-checkout-page"
+      title="Finaliza tu compra"
     >
+      <HueleSection className="hh-checkout-section pt-0">
       <div
-        ref={shellRef}
-        className="relative mx-auto flex max-w-[1440px] flex-1 flex-col px-4 py-6 sm:px-6 lg:min-h-0 lg:h-full lg:px-8 lg:py-4"
+        className="relative overflow-hidden rounded-[34px] border border-white/60 bg-[#f6f8ee] p-3 shadow-[0_30px_90px_rgba(3,28,14,0.20)] lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:p-4"
       >
+        <div
+          ref={shellRef}
+          className="relative mx-auto flex max-w-[1440px] flex-1 flex-col px-0 py-0 lg:min-h-0 lg:h-full"
+        >
         {result ? (
           <div ref={successCardRef} className="mx-auto max-w-[760px]">
             <div className="rounded-[36px] border border-[rgba(26,58,46,0.1)] bg-white/95 p-8 shadow-[0_28px_80px_rgba(16,33,24,0.10)] backdrop-blur sm:p-10">
@@ -1704,9 +1744,13 @@ export function CheckoutWorkspace() {
                 </h2>
                 <p className="mx-auto mt-4 max-w-[520px] text-sm leading-7 text-[#5f6f66]">
                   {successOrderStatus === "payment_under_review"
-                    ? "Ya recibimos tu comprobante. Si quieres agilizar la confirmación, escríbenos por WhatsApp con tu número de pedido."
+                    ? provinceShalomPickup
+                      ? "Ya recibimos tu comprobante. Si quieres agilizar la confirmación, escríbenos por WhatsApp con tu número de pedido y coordinamos el despacho por Shalom."
+                      : "Ya recibimos tu comprobante. Si quieres agilizar la confirmación, escríbenos por WhatsApp con tu número de pedido."
                     : successHasCheckoutUrl
                       ? "Tu pedido ya quedó registrado. Completa el pago para dejarlo confirmado y, si quieres ayuda, escríbenos por WhatsApp con tu número de pedido."
+                    : provinceShalomPickup
+                      ? "Gracias por tu compra. Puedes escribirnos por WhatsApp para recalcar tu pedido y coordinar el envío por Shalom."
                       : "Gracias por tu compra. Puedes escribirnos por WhatsApp para recalcar tu pedido y coordinar la entrega."}
                 </p>
               </div>
@@ -1742,7 +1786,7 @@ export function CheckoutWorkspace() {
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#61a740]">
                     {successWhatsappTitle}
                   </p>
-                  <p className="mt-2 text-sm leading-7 text-[#163126]/78">{successWhatsappSupport}</p>
+                  <p className="mt-2 text-sm leading-7 text-[#163126]/[0.78]">{successWhatsappSupport}</p>
                 </div>
               ) : null}
 
@@ -1780,13 +1824,13 @@ export function CheckoutWorkspace() {
             </div>
           </div>
         ) : (
-	          <div className="grid flex-1 gap-5 lg:min-h-0 lg:grid-cols-[minmax(0,1.7fr)_316px] xl:grid-cols-[minmax(0,1.84fr)_336px]">
+	          <div className="grid flex-1 gap-5 lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_380px]">
             <div className="lg:flex lg:min-h-0 lg:flex-col">
               <section
                 data-checkout-intro
-                className="rounded-[30px] border border-[rgba(26,58,46,0.08)] bg-white/96 shadow-[0_24px_60px_rgba(16,33,24,0.06)] lg:flex lg:min-h-0 lg:flex-1 lg:flex-col"
+                className="rounded-[30px] border border-[rgba(16,82,43,0.13)] bg-[#fffdf5] shadow-[0_24px_60px_rgba(16,33,24,0.10)] lg:flex lg:min-h-0 lg:flex-1 lg:flex-col"
               >
-	                <div className="border-b border-[rgba(26,58,46,0.08)] px-5 py-3.5 sm:px-6 sm:py-4">
+	                <div className="border-b border-[rgba(16,82,43,0.12)] bg-white/55 px-5 py-4 sm:px-6 sm:py-5">
 	                  <div className="space-y-3">
 		                    <div className="grid gap-3 xl:grid-cols-[minmax(0,1.06fr)_minmax(340px,430px)] xl:items-start">
 		                      <div>
@@ -1794,7 +1838,6 @@ export function CheckoutWorkspace() {
 		                        <h2 className="mt-1 font-sans text-[2rem] font-semibold tracking-[-0.04em] text-[#163126] sm:text-[2.25rem]">
 		                          {currentStep.title}
 		                        </h2>
-		                        <p className="mt-1 text-sm leading-6 text-[#5f6f66]">{currentStep.description}</p>
 		                      </div>
 
 	                      <div className="grid grid-cols-3 gap-2 rounded-[22px] border border-[rgba(26,58,46,0.08)] bg-[#fbfaf6] p-2 sm:hidden">
@@ -1848,9 +1891,9 @@ export function CheckoutWorkspace() {
 	                              type="button"
 	                              disabled={!isReachable}
 	                              onClick={() => setActiveStep(step.id)}
-	                              className={`min-h-[96px] rounded-[18px] border px-3 py-3 text-left transition sm:min-h-[104px] sm:px-4 ${
+	                              className={`min-h-[76px] rounded-[18px] border px-3 py-3 text-left transition sm:min-h-[84px] sm:px-4 ${
 	                                isActive
-	                                  ? "border-[#61a740] bg-[#61a740] text-white shadow-[0_14px_30px_rgba(97,167,64,0.22)]"
+	                                  ? "border-[#249244] bg-[#249244] text-white shadow-[0_10px_22px_rgba(36,146,68,0.18)]"
 	                                  : isComplete
 	                                    ? "border-[rgba(97,167,64,0.14)] bg-[#f4fbf6] text-[#163126]"
 	                                    : "border-[rgba(26,58,46,0.08)] bg-[#fbfaf6] text-[#5f6f66] disabled:cursor-not-allowed"
@@ -1883,18 +1926,6 @@ export function CheckoutWorkspace() {
 
                   </div>
 
-	                  <div className="mt-2 flex items-center gap-3">
-                    <div className="h-2 flex-1 rounded-full bg-[#e5ece4]">
-                      <div
-                        ref={progressBarRef}
-                        className="h-full rounded-full bg-[linear-gradient(90deg,#61a740_0%,#61a740_100%)]"
-                        style={{ width: `${(activeStep / CHECKOUT_STEPS.length) * 100}%` }}
-                      />
-                    </div>
-                    <span className="inline-flex items-center rounded-full bg-[#fbfaf6] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#5f6f66]">
-                      {activeStep}/{CHECKOUT_STEPS.length}
-                    </span>
-                  </div>
                 </div>
 
 	                <div className={`px-5 py-4 sm:px-6 sm:py-4 lg:min-h-0 lg:flex-1 ${activeStep === 1 ? "lg:overflow-hidden" : "lg:overflow-y-auto"}`}>
@@ -1908,7 +1939,7 @@ export function CheckoutWorkspace() {
                       {activeStep === 1 ? (
 	                        <div className="space-y-2.5">
 	                          <div className="grid gap-3 xl:grid-cols-[minmax(0,1.1fr)_minmax(300px,350px)] xl:items-start">
-	                            <div className="space-y-2.5">
+	                            <div className="space-y-3">
                               {activeItems.length === 0 ? (
                                 <div className="rounded-[28px] border border-dashed border-[rgba(26,58,46,0.14)] bg-white px-6 py-12 text-center">
                                   <p className="text-lg font-semibold text-[#163126]">Tu checkout todavía no tiene productos.</p>
@@ -1928,9 +1959,9 @@ export function CheckoutWorkspace() {
                                     return (
 	                                      <div
 		                                        key={line.key}
-		                                        className="rounded-[22px] border border-[rgba(26,58,46,0.08)] bg-white px-4 py-3.5 shadow-[0_14px_34px_rgba(16,33,24,0.04)] sm:px-5"
+		                                        className="rounded-[24px] border border-[rgba(16,82,43,0.12)] bg-white px-4 py-4 shadow-[0_14px_34px_rgba(16,33,24,0.06)] sm:px-5"
 	                                      >
-	                                        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+	                                        <div className="grid gap-4">
 	                                          <div className="flex min-w-0 items-center gap-4">
 	                                            <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-[20px] border border-[rgba(97,167,64,0.08)] bg-[linear-gradient(180deg,#f9fcf7_0%,#eef4ea_100%)] sm:h-24 sm:w-24">
 	                                              {image.src ? (
@@ -1954,7 +1985,15 @@ export function CheckoutWorkspace() {
 	                                            </div>
 
 	                                            <div className="min-w-0">
-	                                              <h3 className="font-sans text-[1.05rem] font-semibold leading-tight text-[#163126] sm:text-[1.18rem]">
+	                                              <h3
+                                                  className="max-w-[34rem] font-sans text-[1.05rem] font-semibold leading-tight text-[#163126] sm:text-[1.18rem]"
+                                                  style={{
+                                                    display: "-webkit-box",
+                                                    WebkitLineClamp: 2,
+                                                    WebkitBoxOrient: "vertical",
+                                                    overflow: "hidden"
+                                                  }}
+                                                >
 	                                                {line.displayName}
 	                                              </h3>
                                                 {line.flavorLabel || line.presentationLabel ? (
@@ -1991,7 +2030,7 @@ export function CheckoutWorkspace() {
 	                                            </div>
 	                                          </div>
 
-	                                          <div className="flex flex-wrap items-center gap-3 lg:justify-end">
+	                                          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] bg-[#f6f8ee] px-3 py-3">
 	                                            <div className="inline-flex items-center justify-center rounded-full border border-[rgba(26,58,46,0.1)] bg-[#f6f4ed] p-1">
 	                                              <button
 	                                                type="button"
@@ -2014,7 +2053,7 @@ export function CheckoutWorkspace() {
 	                                              </button>
 	                                            </div>
 
-	                                            <div className="text-left lg:min-w-[120px] lg:text-right">
+	                                            <div className="text-left">
 	                                              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#5f6f66]">Total</p>
 	                                              <p className="mt-1 font-sans text-lg font-semibold tracking-[-0.03em] text-[#163126]">
 	                                                {formatCurrency(line.lineTotal, line.product?.currencyCode ?? summary.currencyCode)}
@@ -2040,8 +2079,8 @@ export function CheckoutWorkspace() {
 		                            <div className="px-1 py-0.5">
 		                              <div className="flex items-center justify-between gap-3">
 		                                <div>
-		                                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8c6331]">Extras</p>
-		                                  <p className="mt-0.5 text-sm text-[#5f6f66]">Si quieres, suma otro formato.</p>
+		                                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7c641c]">Extras</p>
+		                                  <p className="mt-0.5 text-sm font-medium text-[#405649]">Si quieres, suma otro formato.</p>
 		                                </div>
 	                                {availableToAdd.length === 0 ? (
 	                                  <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8c6331]">
@@ -2111,38 +2150,42 @@ export function CheckoutWorkspace() {
 	                                            <span className="inline-flex items-center rounded-full bg-[#fff7e8] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8c6331]">
 	                                              {productSlideIndex + 1} / {productSlideCount}
 			                                            </span>
-                                                {resolveCheckoutStockLabel(activeProductSlide.product) ? (
+                                                {activeProductSlide.requiresVariantSelection ? (
+                                                  <span className="inline-flex items-center rounded-full bg-[#eef6e8] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#1a3a2e]">
+                                                    Stock por variante
+                                                  </span>
+                                                ) : resolveCheckoutStockLabel(activeProductSlide.product) ? (
                                                   <span className="inline-flex items-center rounded-full bg-[#fff7e8] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8c6331]">
                                                     {resolveCheckoutStockLabel(activeProductSlide.product)}
                                                   </span>
                                                 ) : null}
+                                                {activeProductSlide.selectedVariantCount > 0 ? (
+                                                  <span className="inline-flex items-center rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#1a3a2e]">
+                                                    {activeProductSlide.selectedVariantCount}{" "}
+                                                    {activeProductSlide.selectedVariantCount === 1 ? "variante elegida" : "variantes elegidas"}
+                                                  </span>
+                                                ) : null}
 			                                          </div>
-                                            {activeProductSlide.requiresVariantSelection ? (
-                                              <p className="mt-1 text-xs leading-5 text-[#8c6331]">
-                                                Este producto tiene varias variantes activas. Elige aroma o presentación en la ficha antes de sumarlo.
-                                              </p>
-                                            ) : null}
 			                                        </div>
 			                                      </div>
 
-			                                      {!activeProductSlide.selected ? (
-				                                        activeProductSlide.requiresVariantSelection ? (
-                                              <Link
-                                                href={`/producto/${activeProductSlide.product.slug}#product-variants`}
-                                                className="mt-3 inline-flex h-10 items-center justify-center self-start rounded-full bg-[#163126] px-4 text-sm font-semibold text-white transition hover:bg-[#0f2216] sm:absolute sm:right-12 sm:top-1/2 sm:mt-0 sm:-translate-y-1/2"
-                                              >
-                                                Elegir aroma
-                                              </Link>
-                                            ) : (
-                                              <button
-                                                type="button"
-                                                onClick={() => addItem(activeProductSlide.product)}
-                                                aria-label={`Sumar ${activeProductSlide.product.name}`}
-                                                className="mt-2 inline-flex h-11 w-11 items-center justify-center self-center rounded-full bg-[#61a740] text-xl font-semibold text-white transition hover:bg-[#577e2f] sm:absolute sm:right-12 sm:top-1/2 sm:mt-0 sm:-translate-y-1/2"
-                                              >
-                                                +
-                                              </button>
-                                            )
+			                                      {activeProductSlide.requiresVariantSelection ? (
+			                                        <a
+			                                          href={activeProductSlide.selectionHref}
+			                                          aria-label={`Elegir variante de ${activeProductSlide.product.name}`}
+			                                          className="mt-3 inline-flex min-h-[40px] items-center justify-center self-start rounded-full border border-[rgba(97,167,64,0.18)] bg-[#f7fbf5] px-4 text-sm font-semibold text-[#1a3a2e] transition hover:border-[#61a740] hover:bg-white"
+			                                        >
+			                                          Elegir variante
+			                                        </a>
+			                                      ) : !activeProductSlide.selected ? (
+				                                        <button
+				                                          type="button"
+				                                          onClick={() => addItem(activeProductSlide.product.slug)}
+				                                          aria-label={`Sumar ${activeProductSlide.product.name}`}
+				                                          className="mt-2 inline-flex h-11 w-11 items-center justify-center self-center rounded-full bg-[#61a740] text-xl font-semibold text-white transition hover:bg-[#577e2f] sm:absolute sm:right-12 sm:top-1/2 sm:mt-0 sm:-translate-y-1/2"
+				                                        >
+				                                          +
+				                                        </button>
 				                                      ) : (
 				                                        <div className="hidden sm:absolute sm:right-12 sm:top-1/2 sm:h-11 sm:w-11 sm:-translate-y-1/2 sm:rounded-full" aria-hidden="true" />
 				                                      )}
@@ -2181,7 +2224,7 @@ export function CheckoutWorkspace() {
 	                            </div>
 	                          </div>
 
-	                          <div className="flex flex-col gap-3 border-t border-[rgba(26,58,46,0.08)] pt-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex flex-col gap-3 border-t border-[rgba(16,82,43,0.12)] pt-4 sm:flex-row sm:items-center sm:justify-between">
                             <a
                               href="/catalogo"
                               className="inline-flex items-center justify-center rounded-full border border-[rgba(97,167,64,0.16)] px-5 py-3 text-sm font-semibold text-[#163126] transition hover:bg-[#f4fbf6]"
@@ -2192,7 +2235,7 @@ export function CheckoutWorkspace() {
 	                              type="button"
 	                              onClick={handleContinueFromStepOne}
 	                              disabled={activeItems.length === 0 || hasBlockedStock}
-		                              className="inline-flex min-h-[58px] items-center justify-center rounded-full bg-[#f15a29] px-7 py-3 text-[15px] font-semibold text-white shadow-[0_14px_34px_rgba(241,90,41,0.28)] transition hover:-translate-y-0.5 hover:bg-[#da4d1e] hover:shadow-[0_18px_42px_rgba(241,90,41,0.34)] disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-[300px]"
+		                              className="inline-flex min-h-[58px] items-center justify-center rounded-full bg-[var(--hh-public-sun)] px-7 py-3 text-[15px] font-black text-[#062615] shadow-[0_14px_34px_rgba(255,199,70,0.24)] transition hover:-translate-y-0.5 hover:bg-[#f5b832] hover:shadow-[0_18px_42px_rgba(255,199,70,0.30)] disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-[300px]"
 		                            >
 		                              Seguir con mis datos
 		                            </button>
@@ -2209,7 +2252,7 @@ export function CheckoutWorkspace() {
                                   <div className="max-w-[760px]">
                                     <div className="flex flex-wrap items-center gap-3">
                                       <span className="rounded-full bg-[#61a740] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white">
-                                        Paso 1
+                                        Documento
                                       </span>
                                       <span className="rounded-full bg-rose-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-rose-600">
                                         Obligatorio
@@ -2368,22 +2411,98 @@ export function CheckoutWorkspace() {
                                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                                   <div className="max-w-[760px]">
                                     <span className="rounded-full bg-[#61a740] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white">
-                                      Paso 2
+                                      Entrega
                                     </span>
                                     <h3 className="mt-3 font-sans text-2xl font-semibold text-[#163126] sm:text-[2.2rem]">
-                                      Entrega en Lima y Callao
+                                      ¿Cómo lo recibes?
                                     </h3>
                                     <p className="mt-2 text-sm leading-6 text-[#5f6f66]">
-                                      Este checkout web hoy procesa entregas en Lima y Callao.
+                                      Elige una sola opción.
                                     </p>
                                   </div>
-                                  <div className="rounded-full bg-[#f4fbf6] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#61a740]">
-                                    Delivery Lima y Callao
+                                  <div
+                                    className={`rounded-full px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] ${
+                                      provinceShalomPickup
+                                        ? "bg-[#fff7e8] text-[#7a5e1c]"
+                                        : "bg-[#f4fbf6] text-[#61a740]"
+                                    }`}
+                                  >
+                                    {provinceShalomPickup ? "Shalom provincias" : "Delivery Lima y Callao"}
                                   </div>
                                 </div>
 
-                                <div className="mt-6 rounded-[24px] border border-[rgba(97,167,64,0.10)] bg-[#f4fbf6] px-5 py-4 text-sm leading-7 text-[#61a740]">
-                                  Completa una dirección válida en Lima o Callao y te lo enviamos al domicilio que indiques.
+                                <div className="mt-6 grid gap-4 xl:grid-cols-2" role="radiogroup" aria-label="Tipo de entrega">
+                                  <button
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={!provinceShalomPickup}
+                                    onClick={() => handleProvinceModeChange(false)}
+                                    className={`min-h-[164px] rounded-[24px] border p-5 text-left transition ${
+                                      !provinceShalomPickup
+                                        ? "border-[#61a740] bg-[#61a740] text-white shadow-[0_18px_34px_rgba(97,167,64,0.22)] ring-2 ring-[#61a740]/30"
+                                        : "border-[rgba(26,58,46,0.08)] bg-[#fbfaf6] text-[#163126] hover:border-[#61a740]/30"
+                                    }`}
+                                  >
+                                    <div className="flex items-start justify-between gap-4">
+                                      <div>
+                                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] opacity-80">
+                                          Opción 1
+                                        </p>
+                                        <h4 className="mt-3 font-sans text-[1.75rem] font-semibold">
+                                          Delivery Lima y Callao
+                                        </h4>
+                                        <p className="mt-2 max-w-[320px] text-sm leading-6 opacity-85">
+                                          Solo para Lima y Callao. Lo llevamos a tu dirección.
+                                        </p>
+                                      </div>
+                                      <span
+                                        className={`mt-1 flex h-10 w-10 items-center justify-center rounded-full border text-base font-bold ${
+                                          !provinceShalomPickup
+                                            ? "border-white bg-white text-[#163126]"
+                                            : "border-[rgba(26,58,46,0.14)] bg-white text-transparent"
+                                        }`}
+                                        aria-hidden="true"
+                                      >
+                                        ✓
+                                      </span>
+                                    </div>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={provinceShalomPickup}
+                                    onClick={() => handleProvinceModeChange(true)}
+                                    className={`min-h-[164px] rounded-[24px] border p-5 text-left transition ${
+                                      provinceShalomPickup
+                                        ? "border-[#61a740] bg-[#61a740] text-white shadow-[0_18px_34px_rgba(97,167,64,0.22)] ring-2 ring-[#61a740]/30"
+                                        : "border-[rgba(26,58,46,0.08)] bg-[#fbfaf6] text-[#163126] hover:border-[#61a740]/30"
+                                    }`}
+                                  >
+                                    <div className="flex items-start justify-between gap-4">
+                                      <div>
+                                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] opacity-80">
+                                          Opción 2
+                                        </p>
+                                        <h4 className="mt-3 font-sans text-[1.75rem] font-semibold">
+                                          Shalom provincias
+                                        </h4>
+                                        <p className="mt-2 max-w-[320px] text-sm leading-6 opacity-85">
+                                          Para provincias. Lo recoges en agencia y el flete se paga al retirar.
+                                        </p>
+                                      </div>
+                                      <span
+                                        className={`mt-1 flex h-10 w-10 items-center justify-center rounded-full border text-base font-bold ${
+                                          provinceShalomPickup
+                                            ? "border-white bg-white text-[#163126]"
+                                            : "border-[rgba(26,58,46,0.14)] bg-white text-transparent"
+                                        }`}
+                                        aria-hidden="true"
+                                      >
+                                        ✓
+                                      </span>
+                                    </div>
+                                  </button>
                                 </div>
 
                                 <div className="mt-6 flex flex-col gap-3 border-t border-[rgba(26,58,46,0.08)] pt-5 sm:flex-row sm:items-center sm:justify-between">
@@ -2410,13 +2529,15 @@ export function CheckoutWorkspace() {
                                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                                   <div className="max-w-[760px]">
                                     <span className="rounded-full bg-[#61a740] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white">
-                                      Paso 3
+                                      Ubicación
                                     </span>
                                     <h3 className="mt-3 font-sans text-2xl font-semibold text-[#163126] sm:text-[2.2rem]">
-                                      ¿A dónde lo enviamos en Lima o Callao?
+                                      {provinceShalomPickup ? "¿En qué ciudad y agencia lo recoges?" : "¿A dónde lo enviamos en Lima o Callao?"}
                                     </h3>
                                     <p className="mt-2 text-sm leading-6 text-[#5f6f66]">
-                                      Elige tu ubigeo de Lima o Callao y completa la referencia final.
+                                      {provinceShalomPickup
+                                        ? "Elige tu ubigeo y completa la referencia final."
+                                        : "Elige tu ubigeo de Lima o Callao y completa la referencia final."}
                                     </p>
                                   </div>
                                   <div className="rounded-[22px] border border-[rgba(26,58,46,0.08)] bg-[#fbfaf6] px-4 py-3 text-sm font-medium text-[#163126]">
@@ -2436,7 +2557,9 @@ export function CheckoutWorkspace() {
                                         <option value="">
                                           {departmentsLoading
                                             ? "Cargando departamentos..."
-                                            : "Selecciona Lima o Callao"}
+                                            : provinceShalomPickup
+                                              ? "Selecciona departamento"
+                                              : "Selecciona Lima o Callao"}
                                         </option>
                                         {availableDepartments.map((option) => (
                                           <option key={option.code} value={option.code}>
@@ -2507,15 +2630,34 @@ export function CheckoutWorkspace() {
                                   </div>
 
                                   <div className="lg:col-span-2">
-                                    <label className={labelClassName}>Dirección de entrega *</label>
+                                    <label className={labelClassName}>
+                                      {provinceShalomPickup ? "Dirección o referencia *" : "Dirección de entrega *"}
+                                    </label>
                                     <input
                                       className={fieldClassName}
                                       type="text"
-                                      placeholder="Calle, número, urbanización, referencia"
+                                      placeholder={
+                                        provinceShalomPickup
+                                          ? "Calle, referencia o zona donde te encuentras"
+                                          : "Calle, número, urbanización, referencia"
+                                      }
                                       value={address.line1}
                                       onChange={(event) => setAddress((current) => ({ ...current, line1: event.target.value }))}
                                     />
                                   </div>
+
+                                  {provinceShalomPickup ? (
+                                    <div>
+                                      <label className={labelClassName}>Sucursal Shalom *</label>
+                                      <input
+                                        className={fieldClassName}
+                                        type="text"
+                                        placeholder="Ej: Shalom Juliaca Centro"
+                                        value={address.agencyName}
+                                        onChange={(event) => setAddress((current) => ({ ...current, agencyName: event.target.value }))}
+                                      />
+                                    </div>
+                                  ) : null}
                                 </div>
 
                                 <div className="mt-6 flex flex-col gap-3 border-t border-[rgba(26,58,46,0.08)] pt-5 sm:flex-row sm:items-center sm:justify-between">
@@ -2543,7 +2685,7 @@ export function CheckoutWorkspace() {
                                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                                   <div className="max-w-[760px]">
                                     <span className="rounded-full bg-[#61a740] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white">
-                                      Paso 4
+                                      Contacto
                                     </span>
                                     <h3 className="mt-3 font-sans text-2xl font-semibold text-[#163126] sm:text-[2.2rem]">
                                       ¿Por dónde te avisamos?
@@ -2630,11 +2772,14 @@ export function CheckoutWorkspace() {
                                 Ubicación y entrega
                               </p>
                               <h3 className="mt-2 font-sans text-lg font-semibold text-[#163126]">
-                                Entrega convencional
+                                {provinceShalomPickup ? "Recojo en provincia" : "Entrega convencional"}
                               </h3>
                               <div className="mt-3 space-y-1.5 text-sm leading-6 text-[#5f6f66]">
                                 <p>{address.line1 || "Dirección pendiente"}</p>
                                 <p>{locationSummary || "Ubigeo pendiente"}</p>
+                                {provinceShalomPickup ? (
+                                  <p>Sucursal Shalom: {address.agencyName || "Pendiente"}</p>
+                                ) : null}
                               </div>
                             </div>
                           </div>
@@ -2646,7 +2791,7 @@ export function CheckoutWorkspace() {
                             <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-end">
                               <div>
                                 <h3 className="font-sans text-xl font-semibold">Pago manual con billetera virtual</h3>
-                                <p className="mt-1 max-w-[520px] text-sm leading-6 text-[#163126]/78">
+                                <p className="mt-1 max-w-[520px] text-sm leading-6 text-[#163126]/[0.78]">
                                   Toca pagar ahora, haz tu pago con billetera virtual y luego sube tu comprobante para confirmar el pedido.
                                 </p>
                                 <div className="mt-4 rounded-[22px] border border-[#163126]/10 bg-[#eef6e8] px-4 py-4">
@@ -2660,15 +2805,15 @@ export function CheckoutWorkspace() {
                                           {paymentWalletNumber}
                                         </p>
                                       ) : (
-                                        <p className="mt-2 text-sm text-[#163126]/72">
+                                        <p className="mt-2 text-sm text-[#163126]/[0.72]">
                                           Aún no hay un número configurado para recibir el pago.
                                         </p>
                                       )}
                                       {paymentWalletOwner ? (
-                                        <p className="mt-2 text-sm text-[#163126]/78">Titular: {paymentWalletOwner}</p>
+                                        <p className="mt-2 text-sm text-[#163126]/[0.78]">Titular: {paymentWalletOwner}</p>
                                       ) : null}
-                                      <p className="mt-3 text-xs font-medium leading-6 text-[#163126]/72">
-                                        Paso 1: paga con tu billetera virtual. Paso 2: sube tu comprobante.
+                                     <p className="mt-3 text-xs font-medium leading-6 text-[#163126]/[0.72]">
+                                        Paga con tu billetera virtual y sube tu comprobante.
                                       </p>
                                     </div>
 
@@ -2706,14 +2851,6 @@ export function CheckoutWorkspace() {
                                   </div>
                                 </div>
                               </div>
-                              <div className="rounded-[22px] bg-[#577e2f] px-5 py-4 text-left text-white">
-                                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/68">
-                                  Total a pagar ahora
-                                </p>
-                                <p className="mt-2 font-sans text-4xl font-extrabold tracking-[-0.03em]">
-                                  {formatCurrency(summary.grandTotal, summary.currencyCode)}
-                                </p>
-                              </div>
                             </div>
                           </div>
 
@@ -2740,7 +2877,7 @@ export function CheckoutWorkspace() {
               </div>
 
 	              <aside data-checkout-intro className="lg:flex lg:min-h-0 lg:flex-col">
-	                <div className="rounded-[30px] border border-[rgba(26,58,46,0.08)] bg-white/96 p-5 shadow-[0_24px_60px_rgba(16,33,24,0.06)] lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+	                <div className="rounded-[30px] border border-[rgba(16,82,43,0.13)] bg-[#fffdf5] p-5 shadow-[0_24px_60px_rgba(16,33,24,0.10)] lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
 	                  <div>
 	                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#61a740]">
 	                      Resumen
@@ -2748,7 +2885,7 @@ export function CheckoutWorkspace() {
 	                    <h3 className="mt-1 font-sans text-xl font-semibold text-[#163126]">Tu pedido</h3>
 	                  </div>
 
-	                  <div className="mt-4 rounded-[22px] border border-[rgba(26,58,46,0.08)] bg-[#fbfaf6] p-4 lg:min-h-0 lg:flex-1">
+	                  <div className="mt-4 rounded-[22px] border border-[rgba(16,82,43,0.10)] bg-white p-4 lg:min-h-0">
 	                    <div className="flex items-center justify-between gap-3">
 	                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#61a740]">Productos</p>
 	                      <span className="text-xs font-medium text-[#5f6f66]">{activeItemUnits} uds</span>
@@ -2760,7 +2897,7 @@ export function CheckoutWorkspace() {
 	                      ) : (
 	                        <>
 	                          {summaryPreviewItems.map((line) => (
-	                            <div key={line.key} className="flex items-start justify-between gap-3 rounded-[18px] bg-white px-3 py-3">
+	                            <div key={line.key} className="flex items-start justify-between gap-3 rounded-[18px] bg-[#f6f8ee] px-3 py-3">
 	                              <div className="min-w-0 flex-1">
 	                                <p className="truncate text-sm font-semibold text-[#163126]">{line.displayName}</p>
                                   {line.flavorLabel || line.presentationLabel ? (
@@ -2773,20 +2910,14 @@ export function CheckoutWorkspace() {
                                   {line.variantName ? <p className="truncate text-xs text-[#163126]">Variante: {line.variantName}</p> : null}
 	                                <p className="text-xs text-[#5f6f66]">x {line.item.quantity}</p>
 	                              </div>
-	                              <p className="text-sm font-semibold text-[#163126]">
-	                                {formatCurrency(line.lineTotal, line.product?.currencyCode ?? summary.currencyCode)}
-	                              </p>
 	                            </div>
 	                          ))}
 	                          {summaryOverflowCount > 0 ? (
-	                            <div className="flex items-start justify-between gap-3 rounded-[18px] border border-dashed border-[rgba(26,58,46,0.08)] bg-white/70 px-3 py-3">
+	                            <div className="flex items-start justify-between gap-3 rounded-[18px] border border-dashed border-[rgba(16,82,43,0.14)] bg-[#f6f8ee] px-3 py-3">
 	                              <div className="min-w-0 flex-1">
 	                                <p className="text-sm font-semibold text-[#163126]">+{summaryOverflowCount} producto{summaryOverflowCount > 1 ? "s" : ""} más</p>
 	                                <p className="text-xs text-[#5f6f66]">{summaryOverflowUnits} uds</p>
 	                              </div>
-	                              <p className="text-sm font-semibold text-[#163126]">
-	                                {formatCurrency(summaryOverflowTotal, summary.currencyCode)}
-	                              </p>
 	                            </div>
 	                          ) : null}
 	                        </>
@@ -2794,25 +2925,30 @@ export function CheckoutWorkspace() {
 	                    </div>
 	                  </div>
 
-                  <div className="mt-4 space-y-3 border-t border-[rgba(26,58,46,0.08)] pt-4">
+                  <div className="mt-4 space-y-3 border-t border-[rgba(16,82,43,0.12)] pt-4">
                     <SummaryLine label="Subtotal" value={formatCurrency(summary.subtotal, summary.currencyCode)} />
                     <SummaryLine
-                      label="Envío"
-                      value={formatCurrency(summary.shipping, summary.currencyCode)}
+                      label={provinceShalomPickup ? "Envío Shalom" : "Envío"}
+                      value={provinceShalomPickup ? "Pago al recoger" : formatCurrency(summary.shipping, summary.currencyCode)}
                     />
                     <SummaryLine
-                      label="Total"
+                      label={provinceShalomPickup ? "Total ahora" : "Total"}
                       value={formatCurrency(summary.grandTotal, summary.currencyCode)}
                       strong
                     />
                   </div>
 
-                  <div className="mt-4 rounded-[22px] border border-[rgba(26,58,46,0.08)] bg-[#fbfaf6] p-4">
+                  <div className="mt-4 rounded-[22px] border border-[rgba(16,82,43,0.10)] bg-white p-4">
                     {activeItems.length === 0 ? (
                       <p className="text-sm leading-6 text-[#5f6f66]">Sin productos en el carrito.</p>
                     ) : (
                       <>
-                        {shippingThreshold > 0 ? (
+                        {provinceShalomPickup ? (
+                          <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#61a740]">Envío a provincia</p>
+                            <p className="mt-2 text-sm leading-6 text-[#5f6f66]">{shippingNote}</p>
+                          </div>
+                        ) : shippingThreshold > 0 ? (
                           <div>
                             <div className="flex items-center justify-between gap-3 text-xs font-medium text-[#5f6f66]">
                               <span>{shippingRemaining > 0 ? "Progreso para envío gratis" : "Envío gratis desbloqueado"}</span>
@@ -2868,8 +3004,10 @@ export function CheckoutWorkspace() {
           }}
           onClose={() => setShowYapeModal(false)}
         />
+        </div>
       </div>
-    </div>
+      </HueleSection>
+    </HuelePublicPage>
   );
 }
 
@@ -2883,7 +3021,7 @@ function SummaryLine({
   strong?: boolean;
 }) {
   return (
-    <div className={`flex items-center justify-between gap-4 ${strong ? "text-base font-semibold text-[#163126]" : "text-sm text-[#5f6f66]"}`}>
+    <div className={`flex items-center justify-between gap-4 ${strong ? "rounded-[18px] bg-[#eef6e8] px-4 py-3 text-base font-semibold text-[#163126]" : "text-sm text-[#5f6f66]"}`}>
       <span>{label}</span>
       <span className={strong ? "font-sans text-2xl font-extrabold tracking-[-0.03em]" : "font-semibold text-[#163126]"}>{value}</span>
     </div>

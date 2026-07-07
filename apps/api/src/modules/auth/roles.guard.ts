@@ -1,9 +1,8 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
-import { RoleCode, hasEffectivePermission, type AuthSessionSummary } from "@huelegood/shared";
+import { RoleCode, type AuthSessionSummary } from "@huelegood/shared";
 import { isProductionRuntime } from "../../common/env";
-import { AccessControlService } from "./access-control.service";
-import { AUTH_PERMISSIONS_KEY, AUTH_ROLES_KEY, type RequiredPermission } from "./auth-rbac";
+import { AUTH_ROLES_KEY } from "./auth-rbac";
 import { resolveSession } from "./auth-session";
 
 interface AuthenticatedRequest {
@@ -53,22 +52,15 @@ function buildLocalAdminSession(): AuthSessionSummary {
 
 @Injectable()
 export class RolesGuard implements CanActivate {
-  constructor(
-    private readonly reflector: Reflector,
-    private readonly accessControlService: AccessControlService
-  ) {}
+  constructor(private readonly reflector: Reflector) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const requiredRoles = this.reflector.getAllAndOverride<RoleCode[]>(AUTH_ROLES_KEY, [
       context.getHandler(),
       context.getClass()
     ]);
-    const requiredPermissions = this.reflector.getAllAndOverride<RequiredPermission[]>(AUTH_PERMISSIONS_KEY, [
-      context.getHandler(),
-      context.getClass()
-    ]);
 
-    if (!requiredRoles?.length && !requiredPermissions?.length) {
+    if (!requiredRoles?.length) {
       return true;
     }
 
@@ -93,33 +85,10 @@ export class RolesGuard implements CanActivate {
 
     const roleCodes = getRoleCodes(session);
     const isSuperAdmin = roleCodes.includes(RoleCode.SuperAdmin);
-    const roleAllowed = !requiredRoles?.length || isSuperAdmin || requiredRoles.some((role) => roleCodes.includes(role));
-    if (!roleAllowed) {
+    const isAllowed = isSuperAdmin || requiredRoles.some((role) => roleCodes.includes(role));
+
+    if (!isAllowed) {
       throw new ForbiddenException("Tu rol no tiene permisos para acceder a este recurso.");
-    }
-
-    if (requiredPermissions?.length && !isSuperAdmin) {
-      const effectivePermissions =
-        session.user.effectivePermissions?.length
-          ? session.user.effectivePermissions
-          : await this.accessControlService.resolveEffectivePermissions(session.user.id);
-      const permissionAllowed = requiredPermissions.every((permission) =>
-        hasEffectivePermission(effectivePermissions, permission)
-      );
-
-      if (!permissionAllowed) {
-        throw new ForbiddenException("Tu usuario no tiene permisos para acceder a este recurso.");
-      }
-
-      request.authSession = {
-        ...session,
-        user: {
-          ...session.user,
-          effectivePermissions
-        }
-      };
-      request.authUser = request.authSession.user;
-      return true;
     }
 
     request.authSession = session;

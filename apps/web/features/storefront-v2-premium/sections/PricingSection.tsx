@@ -225,7 +225,7 @@ export function PricingSection({
             Simple. Natural. Tuyo.
           </h2>
           <p className="max-w-xl text-base leading-relaxed text-[#6b7280]">
-            Elige el que va contigo. El checkout web hoy procesa delivery rápido en Lima y Callao. Si estás en provincia, escríbenos y te ayudamos a coordinar tu pedido.
+            Elige el que va contigo. Envíos rápidos a todo el Perú vía Olva Courier y Shalom.
           </p>
         </StorefrontReveal>
 
@@ -250,7 +250,7 @@ export function PricingSection({
         </StorefrontReveal>
 
         <StorefrontReveal className="mt-10 text-center text-sm text-[#6b7280]">
-          <p>💳 Aceptamos billetera virtual y transferencia · 🚚 Delivery web 24-72h en Lima y Callao</p>
+          <p>💳 Aceptamos billetera virtual, transferencia y contra-entrega · 🚚 Envíos en 24-72h a todo el Perú</p>
         </StorefrontReveal>
       </div>
     </section>

@@ -1,13 +1,7 @@
 "use client";
 
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
-import {
-  RoleCode,
-  canAccessAdminSurface,
-  hasAdminAccess,
-  type AuthCredentialsInput,
-  type RequiredAccessPermission
-} from "@huelegood/shared";
+import { RoleCode, hasAdminAccess, type AuthCredentialsInput } from "@huelegood/shared";
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from "@huelegood/ui";
 import { useAdminSession } from "./admin-session-provider";
 
@@ -15,7 +9,6 @@ type AdminAuthGateProps = {
   title?: string;
   description?: string;
   allowedRoles?: readonly RoleCode[];
-  allowedPermissions?: readonly RequiredAccessPermission[];
   children: ReactNode;
 };
 
@@ -31,7 +24,7 @@ const roleLabels: Record<RoleCode, string> = {
   [RoleCode.Cliente]: "Cliente"
 };
 
-export function AdminAuthGate({ title, description, allowedRoles, allowedPermissions, children }: AdminAuthGateProps) {
+export function AdminAuthGate({ title, description, allowedRoles, children }: AdminAuthGateProps) {
   const { session, loading, login, logout } = useAdminSession();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,22 +41,14 @@ export function AdminAuthGate({ title, description, allowedRoles, allowedPermiss
     return allowedRoles.map((role) => roleLabels[role]);
   }, [allowedRoles]);
 
-  const permissionList = useMemo(
-    () => allowedPermissions?.map((permission) => `${permission.permissionCode}${permission.scope ? `:${permission.scope}` : ""}`) ?? [],
-    [allowedPermissions]
-  );
-
   const isAuthorized = useMemo(() => {
     if (!session) {
       return false;
     }
 
     const sessionRoles = session.user.roles.map((role) => role.code);
-    return (
-      canAccessAdminSurface(session.user.surfaces, sessionRoles) &&
-      hasAdminAccess(sessionRoles, allowedRoles, session.user.effectivePermissions, allowedPermissions)
-    );
-  }, [allowedPermissions, allowedRoles, session]);
+    return hasAdminAccess(sessionRoles, allowedRoles);
+  }, [allowedRoles, session]);
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -202,19 +187,6 @@ export function AdminAuthGate({ title, description, allowedRoles, allowedPermiss
               </div>
             ) : null}
 
-            {permissionList.length ? (
-              <div className="mt-5 space-y-2">
-                <p className="text-[11px] uppercase tracking-[0.07em] text-[#6b7280]">Permisos requeridos</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {permissionList.map((permission) => (
-                    <span key={permission} className="rounded-full bg-[#eef6f1] px-2.5 py-0.5 text-[11px] font-medium text-[#315244]">
-                      {permission}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
             <p className="mt-4 text-center text-[11px] text-[#6b7280]">
               ¿Problemas para ingresar?{" "}
               <a href="mailto:admin@huelegood.com" className="font-medium text-[#2d6a4f]">
@@ -238,11 +210,6 @@ export function AdminAuthGate({ title, description, allowedRoles, allowedPermiss
           <CardContent className="space-y-4 text-sm text-black/60">
             <div className="flex flex-wrap gap-2">
               {roleList.length ? roleList.map((role) => <Badge key={role}>{role}</Badge>) : <Badge>Sin roles requeridos</Badge>}
-              {permissionList.map((permission) => (
-                <Badge key={permission} tone="info">
-                  {permission}
-                </Badge>
-              ))}
             </div>
             <div className="rounded-[1.25rem] border border-rose-200 bg-rose-50 px-4 py-3 text-rose-700">
               Sesión activa: {session.user.name} ({session.user.email})

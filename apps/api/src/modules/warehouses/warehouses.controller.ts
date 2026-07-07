@@ -1,9 +1,9 @@
 import { Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post } from "@nestjs/common";
-import { adminModulePermissions, type WarehouseUpsertInput } from "@huelegood/shared";
-import { RequirePermissions } from "../auth/auth-rbac";
+import { adminAccessRoles, type WarehouseUpsertInput } from "@huelegood/shared";
+import { RequireRoles } from "../auth/auth-rbac";
 import { WarehousesService } from "./warehouses.service";
 
-@RequirePermissions(...adminModulePermissions.warehouses.read)
+@RequireRoles(...adminAccessRoles.warehouses)
 @Controller("admin/warehouses")
 export class WarehousesController {
   constructor(private readonly warehousesService: WarehousesService) {}
@@ -24,19 +24,16 @@ export class WarehousesController {
   }
 
   @Post()
-  @RequirePermissions(...adminModulePermissions.warehouses.manage!)
   createWarehouse(@Body() body: WarehouseUpsertInput) {
     return this.warehousesService.createWarehouse(body);
   }
 
   @Patch(":id")
-  @RequirePermissions(...adminModulePermissions.warehouses.manage!)
   patchWarehouse(@Param("id") id: string, @Body() body: Partial<WarehouseUpsertInput>) {
     return this.warehousesService.patchWarehouse(id, body);
   }
 
   @Delete(":id")
-  @RequirePermissions(...adminModulePermissions.warehouses.manage!)
   deleteWarehouse(@Param("id") id: string) {
     return this.warehousesService.deleteWarehouse(id);
   }

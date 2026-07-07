@@ -208,13 +208,10 @@ Usar escala basada en múltiplos de 4 con énfasis en ritmos de 8 para layout.
 
 ## Componentes base obligatorios
 
-La bajada operativa del storefront publico vive en [storefront-component-state-spec.md](./storefront-component-state-spec.md). Este documento visual no reemplaza ese contrato.
-
 La capa visual debe contemplar al menos:
 
 - `ProductCard`
 - `ProductGrid`
-- `StockBadge`
 - `PromoBanner`
 - `SellerCodeInput`
 - `CheckoutSummary`
@@ -226,10 +223,6 @@ La capa visual debe contemplar al menos:
 - `CommissionTable`
 - `FAQAccordion`
 - `HeroSection`
-- `PublicHeader`
-- `PublicFooter`
-- `PDPMediaGallery`
-- `ProductVariantSelector`
 - `WholesalePlanCard`
 
 ## Uso esperado de `Preline`

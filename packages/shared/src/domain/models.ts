@@ -20,7 +20,6 @@ import type {
   WholesaleLeadStatus,
   WholesaleQuoteStatus
 } from "./enums";
-import type { RequiredAccessPermission } from "./access-control";
 
 export interface Money {
   amount: number;
@@ -32,7 +31,6 @@ export interface NavigationItem {
   href: string;
   external?: boolean;
   requiredRoles?: readonly RoleCode[];
-  requiredPermissions?: readonly RequiredAccessPermission[];
 }
 
 export interface ProductDetailAttribute {

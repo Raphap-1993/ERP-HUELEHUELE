@@ -1,29 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import Link from "next/link";
 import {
   CommissionPayoutStatus,
   CommissionStatus,
   OrderStatus,
   PaymentStatus,
+  RoleCode,
   VendorStatus,
   type AuthCredentialsInput,
   type AuthSessionSummary,
   type SellerPanelOverviewSummary
 } from "@huelegood/shared";
 import { fetchSellerPanelOverview, fetchSession, login, logout } from "../lib/api";
-import { hasSellerPortalAccess } from "../lib/portal-access";
 import { clearStoredSessionToken, readStoredSessionToken, writeStoredSessionToken } from "../lib/session";
-import {
-  HueleBadge,
-  HueleButton,
-  HueleButtonLink,
-  HueleFieldShell,
-  HuelePanel,
-  HuelePublicPage,
-  HueleSection,
-  HueleStatusCard
-} from "./huele-public-ui";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("es-PE", {
@@ -31,6 +22,12 @@ function formatCurrency(value: number) {
     currency: "PEN",
     maximumFractionDigits: 0
   }).format(value);
+}
+
+function hasSellerAccess(session: AuthSessionSummary | null) {
+  if (!session) return false;
+  const roles = session.user.roles.map((role) => role.code);
+  return roles.includes(RoleCode.Vendedor) || roles.includes(RoleCode.SellerManager);
 }
 
 function formatDateTime(value?: string) {
@@ -136,9 +133,9 @@ function statusTone(status: string): "green" | "neutral" | "amber" | "danger" {
 
 function SPCard({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <HuelePanel tone="cream" className={className}>
+    <div className={`rounded-[1.5rem] border border-[#162117]/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(249,245,237,0.92)_100%)] shadow-[0_18px_55px_rgba(22,33,23,0.05)] ${className}`}>
       {children}
-    </HuelePanel>
+    </div>
   );
 }
 
@@ -155,22 +152,22 @@ function SPMetricCard({
 }) {
   const tones = {
     green: {
-      surface: "bg-[var(--hh-public-surface)]",
+      surface: "bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(249,245,237,0.92)_100%)]",
       accent: "bg-[#61a740]",
       value: "text-[#1a3a2e]"
     },
     sage: {
-      surface: "bg-[#eef6e8]",
+      surface: "bg-[linear-gradient(180deg,#ffffff_0%,#eef3ed_100%)]",
       accent: "bg-[#8f9f80]",
       value: "text-[#243829]"
     },
     gold: {
-      surface: "bg-[#fff7d8]",
+      surface: "bg-[linear-gradient(180deg,#ffffff_0%,#fff7e8_100%)]",
       accent: "bg-[#c9a84c]",
       value: "text-[#6d5520]"
     },
     clay: {
-      surface: "bg-[#ffe9df]",
+      surface: "bg-[linear-gradient(180deg,#ffffff_0%,#fff2ec_100%)]",
       accent: "bg-[#d97845]",
       value: "text-[#7b3f24]"
     }
@@ -187,17 +184,17 @@ function SPMetricCard({
 }
 
 function SPBadge({ children, tone = "default" }: { children: ReactNode; tone?: "default" | "green" | "neutral" | "amber" | "danger" }) {
-  const tones: Record<string, "cream" | "green" | "sun" | "coral"> = {
-    default: "cream",
-    green: "green",
-    neutral: "cream",
-    amber: "sun",
-    danger: "coral"
+  const styles: Record<string, string> = {
+    default: "border border-[#162117]/8 bg-[#e7ede3] text-[#4a6047]",
+    green: "border border-[#162117]/8 bg-[#e7ede3] text-[#4a6047]",
+    neutral: "border border-[#162117]/8 bg-white/70 text-[#5f675d]",
+    amber: "border border-[#c7a066]/25 bg-[#fff4df] text-[#7d5623]",
+    danger: "border border-rose-200 bg-rose-50 text-rose-700"
   };
   return (
-    <HueleBadge tone={tones[tone]}>
+    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${styles[tone]}`}>
       {children}
-    </HueleBadge>
+    </span>
   );
 }
 
@@ -213,7 +210,7 @@ function SPTable({
   rows: ReactNode[][];
 }) {
   return (
-    <HuelePanel tone="cream" className="overflow-hidden p-0">
+    <div className="overflow-hidden rounded-[1.5rem] border border-[#162117]/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(249,245,237,0.92)_100%)] shadow-[0_18px_55px_rgba(22,33,23,0.05)]">
       <div className="border-b border-[#162117]/8 bg-[#fbfaf6] px-6 py-5">
         <h3 className="font-serif text-[1.35rem] font-semibold text-[#1a3a2e]">{title}</h3>
         {description && <p className="mt-0.5 text-sm text-[#6b7280]">{description}</p>}
@@ -250,7 +247,7 @@ function SPTable({
           </tbody>
         </table>
       </div>
-    </HuelePanel>
+    </div>
   );
 }
 
@@ -299,7 +296,7 @@ export function SellerPanelWorkspace() {
 
         setSession(sessionResponse.data);
 
-        if (!hasSellerPortalAccess(sessionResponse.data)) {
+        if (!hasSellerAccess(sessionResponse.data)) {
           setOverview(null);
           setLoading(false);
           return;
@@ -425,64 +422,75 @@ export function SellerPanelWorkspace() {
   const metricTones: Array<"green" | "sage" | "gold" | "clay"> = ["green", "sage", "gold", "clay"];
 
   return (
-    <HuelePublicPage
-      eyebrow="Panel vendedor"
-      title="Ventas, pedidos y liquidaciones"
-      description="Consulta tu codigo vendedor, pedidos atribuidos, comisiones y pagos desde un panel operativo."
-      actions={
-        <>
-          {session ? (
-            <HueleButton type="button" tone="ghost" onClick={() => void handleLogout()}>
-              Cerrar sesion
-            </HueleButton>
-          ) : null}
-          <HueleButton
-            type="button"
-            tone="primary"
-            onClick={() => setRefreshKey((current) => current + 1)}
-            disabled={loading}
-          >
-            Refrescar
-          </HueleButton>
-        </>
-      }
-    >
-      <HueleSection
-        eyebrow="Workspace"
-        title="Estado comercial"
-        description="El contenido principal se mantiene en tablas y metricas para lectura rapida."
-        actions={<HueleBadge tone={overview ? "green" : "cream"}>{overview ? "Overview activo" : "Esperando acceso"}</HueleBadge>}
-      >
-      <div className="space-y-8">
+    <div className="min-h-screen bg-[linear-gradient(180deg,#f7f1e7_0%,#f2ede3_48%,#f7f3eb_100%)] py-8 md:py-12">
+      <div className="mx-auto max-w-[1180px] space-y-8 px-4 md:px-6">
+
+        {/* Header */}
+        <div className="rounded-[1.75rem] border border-[#162117]/8 bg-white/72 px-6 py-7 shadow-[0_18px_55px_rgba(22,33,23,0.05)] backdrop-blur md:px-8">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="mb-3 inline-flex rounded-full bg-[#eef6e8] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#3d7c2c]">
+              Espacio comercial
+            </p>
+            <h1 className="font-serif text-3xl font-black leading-tight text-[#1a3a2e] md:text-4xl">
+              Panel vendedor
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#6b7280]">
+              Consulta el rendimiento de tu código, tus pedidos atribuidos y el estado de tus liquidaciones.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 sm:justify-end">
+            {session ? (
+              <button
+                type="button"
+                onClick={() => { void handleLogout(); }}
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-[#1a3a2e]/12 bg-white px-5 py-2.5 text-sm font-medium text-[#1a3a2e] shadow-[0_10px_24px_rgba(26,58,46,0.05)] transition hover:border-[#1a3a2e]/28 hover:bg-[#fbfaf6] sm:w-auto"
+              >
+                Cerrar sesión
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setRefreshKey((current) => current + 1)}
+              disabled={loading}
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-[#61a740]/22 bg-[#eef6e8] px-5 py-2.5 text-sm font-semibold text-[#1a3a2e] shadow-[0_10px_24px_rgba(26,58,46,0.05)] transition hover:border-[#61a740]/55 hover:bg-white disabled:opacity-40 sm:w-auto"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="1 4 1 10 7 10" />
+                <path d="M3.51 15a9 9 0 1 0 .49-3.42" />
+              </svg>
+              Refrescar
+            </button>
+          </div>
+          </div>
+        </div>
+
         {/* Loading */}
         {loading && (
-          <HueleStatusCard title="Cargando panel" tone="cream">
-            <div className="flex items-center gap-3">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#61a740] border-t-transparent" />
-              <span className="text-sm text-[#6b7280]">Cargando panel vendedor...</span>
-            </div>
-          </HueleStatusCard>
+          <div className="flex items-center gap-3 rounded-[1.5rem] border border-[#162117]/8 bg-white/90 px-6 py-8 shadow-[0_18px_55px_rgba(22,33,23,0.05)]">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#61a740] border-t-transparent" />
+            <span className="text-sm text-[#6b7280]">Cargando panel vendedor...</span>
+          </div>
         )}
 
         {/* No session */}
         {!loading && !session && (
           <SPCard className="grid overflow-hidden lg:grid-cols-[0.9fr_1.1fr]">
-            <div className="bg-[var(--hh-public-green-950)] px-8 py-10 text-white md:px-10">
-              <HueleBadge tone="mint">Acceso comercial</HueleBadge>
-              <h2 className="mt-4 text-3xl leading-tight text-white">Entra a tu panel vendedor</h2>
-              <p className="mt-3 max-w-sm text-sm leading-7 text-white/72">
+            <div className="bg-[linear-gradient(145deg,#f0f2eb_0%,#f7f1e6_58%,#dce2d6_100%)] px-8 py-10 text-[#162117] md:px-10">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#4a6047]">Acceso comercial</p>
+              <h2 className="mt-4 font-serif text-3xl font-bold leading-tight text-[#162117]">Entra a tu panel vendedor</h2>
+              <p className="mt-3 max-w-sm text-sm leading-7 text-[#5f675d]">
                 Usa tu cuenta aprobada para consultar tus ventas atribuidas, ganancias pendientes y liquidaciones pagadas.
               </p>
-              <div className="mt-8 grid gap-3 text-sm text-white/72">
-                <div className="rounded-[1rem] border border-white/14 bg-white/8 px-4 py-3">Ventas y pedidos por codigo.</div>
-                <div className="rounded-[1rem] border border-white/14 bg-white/8 px-4 py-3">Comisiones y liquidaciones en un solo lugar.</div>
-                <div className="rounded-[1rem] border border-white/14 bg-white/8 px-4 py-3">Acceso desde la web publica.</div>
+              <div className="mt-8 grid gap-3 text-sm text-[#5f675d]">
+                <div className="rounded-[1rem] border border-[#162117]/8 bg-white/60 px-4 py-3">Ventas y pedidos por código.</div>
+                <div className="rounded-[1rem] border border-[#162117]/8 bg-white/60 px-4 py-3">Comisiones y liquidaciones en un solo lugar.</div>
+                <div className="rounded-[1rem] border border-[#162117]/8 bg-white/60 px-4 py-3">Acceso desde la web pública.</div>
               </div>
             </div>
 
             <div className="bg-[#fffdf8] px-8 py-8 md:px-10">
-              <HueleBadge tone="sun">Ingreso</HueleBadge>
-              <h3 className="mt-4 text-2xl text-[#1a3a2e]">Ingresar</h3>
+              <h3 className="font-serif text-2xl font-bold text-[#1a3a2e]">Ingresar</h3>
               <p className="mt-1 text-sm text-[#6b7280]">Credenciales comerciales de Huelegood.</p>
 
               {authError ? (
@@ -492,7 +500,8 @@ export function SellerPanelWorkspace() {
               ) : null}
 
               <form className="mt-6 space-y-4" onSubmit={handleLogin}>
-                <HueleFieldShell label="Correo electronico">
+                <label className="block space-y-1.5">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Correo electrónico</span>
                   <input
                     type="email"
                     autoComplete="username"
@@ -500,9 +509,11 @@ export function SellerPanelWorkspace() {
                     value={loginForm.email}
                     onChange={(event) => setLoginForm((current) => ({ ...current, email: event.target.value }))}
                     placeholder="vendedor@correo.com"
+                    className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#61a740] focus:bg-white"
                   />
-                </HueleFieldShell>
-                <HueleFieldShell label="Contrasena">
+                </label>
+                <label className="block space-y-1.5">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.07em] text-[#6b7280]">Contraseña</span>
                   <input
                     type="password"
                     autoComplete="current-password"
@@ -510,28 +521,38 @@ export function SellerPanelWorkspace() {
                     value={loginForm.password}
                     onChange={(event) => setLoginForm((current) => ({ ...current, password: event.target.value }))}
                     placeholder="••••••••"
+                    className="w-full rounded-[11px] border-[1.5px] border-[rgba(26,58,46,0.12)] bg-[#f8faf9] px-4 py-3 text-[14px] text-[#1c1c1c] placeholder:text-[#b0bbb5] outline-none transition focus:border-[#61a740] focus:bg-white"
                   />
-                </HueleFieldShell>
-                <HueleButton
+                </label>
+                <button
                   type="submit"
                   disabled={submittingLogin}
-                  tone="dark"
-                  className="w-full"
+                  className="w-full rounded-full bg-[#577e2f] py-3.5 text-[15px] font-semibold text-white shadow-[0_14px_30px_rgba(87,126,47,0.18)] transition hover:bg-[#61a740] hover:-translate-y-px disabled:opacity-60"
                 >
                   {submittingLogin ? "Validando..." : "Entrar al panel"}
-                </HueleButton>
+                </button>
               </form>
 
               <div className="mt-6 flex flex-wrap gap-3">
-                <HueleButtonLink href="/trabaja-con-nosotros" tone="secondary">Solicitar acceso</HueleButtonLink>
-                <HueleButtonLink href="/cuenta" tone="secondary">Mi cuenta</HueleButtonLink>
+                <Link
+                  href="/trabaja-con-nosotros"
+                  className="inline-flex items-center gap-2 rounded-full border border-[#1a3a2e]/20 px-5 py-2.5 text-sm font-medium text-[#1a3a2e] transition hover:border-[#61a740] hover:bg-[#eef6e8]"
+                >
+                  Solicitar acceso
+                </Link>
+                <Link
+                  href="/cuenta"
+                  className="inline-flex items-center gap-2 rounded-full border border-[#1a3a2e]/20 px-5 py-2.5 text-sm font-medium text-[#1a3a2e] transition hover:border-[#61a740] hover:bg-[#eef6e8]"
+                >
+                  Mi cuenta
+                </Link>
               </div>
             </div>
           </SPCard>
         )}
 
         {/* No access */}
-        {!loading && session && !hasSellerPortalAccess(session) && (
+        {!loading && session && !hasSellerAccess(session) && (
           <SPCard className="p-8">
             <h2 className="mb-1 font-serif text-xl font-bold text-[#1a3a2e]">Cuenta sin acceso comercial</h2>
             <p className="mb-4 text-sm text-[#6b7280]">Tu cuenta aún no tiene acceso a esta sección.</p>
@@ -544,20 +565,25 @@ export function SellerPanelWorkspace() {
               ))}
             </div>
             <div className="flex flex-wrap gap-3">
-              <HueleButtonLink href="/cuenta" tone="secondary">Volver a mi cuenta</HueleButtonLink>
-              <HueleButton
+              <Link
+                href="/cuenta"
+                className="inline-flex items-center gap-2 rounded-full border border-[#1a3a2e]/20 px-5 py-2.5 text-sm font-medium text-[#1a3a2e] transition hover:border-[#61a740] hover:bg-[#eef6e8]"
+              >
+                Volver a mi cuenta
+              </Link>
+              <button
                 type="button"
                 onClick={() => { void handleLogout(); }}
-                tone="secondary"
+                className="inline-flex items-center gap-2 rounded-full border border-rose-200 px-5 py-2.5 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
               >
                 Cerrar sesión
-              </HueleButton>
+              </button>
             </div>
           </SPCard>
         )}
 
         {/* Main panel */}
-        {!loading && session && hasSellerPortalAccess(session) && overview && (
+        {!loading && session && hasSellerAccess(session) && overview && (
           <>
             {/* Identity + metrics */}
             <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
@@ -648,12 +674,16 @@ export function SellerPanelWorkspace() {
             <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               {error}
             </div>
-            <HueleButtonLink href="/trabaja-con-nosotros" tone="secondary">Contactar al equipo comercial</HueleButtonLink>
+            <Link
+              href="/trabaja-con-nosotros"
+              className="inline-flex items-center gap-2 rounded-full border border-[#1a3a2e]/20 px-5 py-2.5 text-sm font-medium text-[#1a3a2e] transition hover:border-[#61a740] hover:bg-[#eef6e8]"
+            >
+              Contactar al equipo comercial
+            </Link>
           </SPCard>
         )}
 
       </div>
-      </HueleSection>
-    </HuelePublicPage>
+    </div>
   );
 }

@@ -1,6 +1,6 @@
 import { ReportsWorkspace } from "../../components/reports-workspace";
 import { AdminAuthGate } from "../../components/admin-auth-gate";
-import { adminAccessRoles, adminModulePermissions } from "@huelegood/shared";
+import { adminAccessRoles } from "@huelegood/shared";
 
 export default function ReportesPage() {
   return (
@@ -8,7 +8,6 @@ export default function ReportesPage() {
       title="Reportes"
       description="Análisis de pedidos, ingresos y conversión por periodo."
       allowedRoles={adminAccessRoles.dashboard}
-      allowedPermissions={adminModulePermissions.reports.read}
     >
       <ReportsWorkspace />
     </AdminAuthGate>

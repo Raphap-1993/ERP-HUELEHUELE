@@ -2,7 +2,7 @@ import { Body, Controller, Get, NotFoundException, Param, Patch, Post, UploadedF
 import { FileInterceptor } from "@nestjs/platform-express";
 import { memoryStorage } from "multer";
 import {
-  adminModulePermissions,
+  adminAccessRoles,
   type CmsBannerInput,
   type CmsFaqInput,
   type CmsHeroCopyInput,
@@ -13,9 +13,9 @@ import {
   type CmsTestimonialInput
 } from "@huelegood/shared";
 import { CmsService } from "./cms.service";
-import { RequirePermissions } from "../auth/auth-rbac";
+import { RequireRoles } from "../auth/auth-rbac";
 
-@RequirePermissions(...adminModulePermissions.cms.read)
+@RequireRoles(...adminAccessRoles.cms)
 @Controller("admin/cms")
 export class AdminCmsController {
   constructor(private readonly cmsService: CmsService) {}
@@ -31,13 +31,11 @@ export class AdminCmsController {
   }
 
   @Patch("site-settings")
-  @RequirePermissions(...adminModulePermissions.cms.manage!)
   updateSiteSettings(@Body() body: CmsSiteSettingsInput) {
     return this.cmsService.updateSiteSettings(body);
   }
 
   @Post("site-settings/logo")
-  @RequirePermissions(...adminModulePermissions.cms.manage!)
   @UseInterceptors(
     FileInterceptor("file", {
       storage: memoryStorage(),
@@ -52,7 +50,6 @@ export class AdminCmsController {
   }
 
   @Post("site-settings/admin-sidebar-logo")
-  @RequirePermissions(...adminModulePermissions.cms.manage!)
   @UseInterceptors(
     FileInterceptor("file", {
       storage: memoryStorage(),
@@ -67,7 +64,6 @@ export class AdminCmsController {
   }
 
   @Post("site-settings/hero-image")
-  @RequirePermissions(...adminModulePermissions.cms.manage!)
   @UseInterceptors(
     FileInterceptor("file", {
       storage: memoryStorage(),
@@ -82,14 +78,12 @@ export class AdminCmsController {
   }
 
   @Post("site-settings/loading-image")
-  @RequirePermissions(...adminModulePermissions.cms.manage!)
   @UseInterceptors(FileInterceptor("file", { storage: memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 1 } }))
   uploadLoadingImage(@UploadedFile() file: { buffer: Buffer; mimetype?: string; originalname?: string } | undefined) {
     return this.cmsService.uploadLoadingImage(file);
   }
 
   @Post("site-settings/favicon")
-  @RequirePermissions(...adminModulePermissions.cms.manage!)
   @UseInterceptors(FileInterceptor("file", { storage: memoryStorage(), limits: { fileSize: 2 * 1024 * 1024, files: 1 } }))
   uploadFavicon(@UploadedFile() file: { buffer: Buffer; mimetype?: string; originalname?: string } | undefined) {
     return this.cmsService.uploadFavicon(file);
@@ -101,7 +95,6 @@ export class AdminCmsController {
   }
 
   @Patch("hero-copy")
-  @RequirePermissions(...adminModulePermissions.cms.manage!)
   updateHeroCopy(@Body() body: CmsHeroCopyInput) {
     return this.cmsService.updateHeroCopy(body);
   }
@@ -112,7 +105,6 @@ export class AdminCmsController {
   }
 
   @Patch("navigation")
-  @RequirePermissions(...adminModulePermissions.cms.manage!)
   updateNavigation(@Body() body: CmsNavigationInput) {
     return this.cmsService.updateNavigation(body);
   }
@@ -133,13 +125,11 @@ export class AdminCmsController {
   }
 
   @Patch("pages/:slug")
-  @RequirePermissions(...adminModulePermissions.cms.manage!)
   upsertPage(@Param("slug") slug: string, @Body() body: CmsPageInput) {
     return this.cmsService.upsertPage(slug, body);
   }
 
   @Patch("pages/:slug/blocks")
-  @RequirePermissions(...adminModulePermissions.cms.manage!)
   updatePageBlocks(@Param("slug") slug: string, @Body() body: { blocks: CmsPageBlockInput[] }) {
     return this.cmsService.updatePageBlocks(slug, body.blocks ?? []);
   }
@@ -150,13 +140,11 @@ export class AdminCmsController {
   }
 
   @Post("banners")
-  @RequirePermissions(...adminModulePermissions.cms.manage!)
   createBanner(@Body() body: CmsBannerInput) {
     return this.cmsService.createBanner(body);
   }
 
   @Patch("banners/:id")
-  @RequirePermissions(...adminModulePermissions.cms.manage!)
   updateBanner(@Param("id") id: string, @Body() body: CmsBannerInput) {
     return this.cmsService.updateBanner(id, body);
   }
@@ -167,13 +155,11 @@ export class AdminCmsController {
   }
 
   @Post("faqs")
-  @RequirePermissions(...adminModulePermissions.cms.manage!)
   createFaq(@Body() body: CmsFaqInput) {
     return this.cmsService.createFaq(body);
   }
 
   @Patch("faqs/:id")
-  @RequirePermissions(...adminModulePermissions.cms.manage!)
   updateFaq(@Param("id") id: string, @Body() body: CmsFaqInput) {
     return this.cmsService.updateFaq(id, body);
   }
@@ -184,13 +170,11 @@ export class AdminCmsController {
   }
 
   @Post("testimonials")
-  @RequirePermissions(...adminModulePermissions.cms.manage!)
   createTestimonial(@Body() body: CmsTestimonialInput) {
     return this.cmsService.createTestimonial(body);
   }
 
   @Patch("testimonials/:id")
-  @RequirePermissions(...adminModulePermissions.cms.manage!)
   updateTestimonial(@Param("id") id: string, @Body() body: CmsTestimonialInput) {
     return this.cmsService.updateTestimonial(id, body);
   }

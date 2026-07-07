@@ -17,8 +17,8 @@ Este mapa describe los modulos reales del backend y las superficies que los cons
 
 | Modulo | Estado | Duenio de | Persistencia | Consumido por |
 | --- | --- | --- | --- | --- |
-| `auth` | vigente | login, sesion, roles, catalogos de acceso y resolucion de permisos | Prisma + store de sesion | web, admin, API |
-| `security` | vigente | postura, controles operativos y administracion de acceso sensible | lectura audit + catalogos de acceso | admin |
+| `auth` | vigente | login, sesion, roles y guards | Prisma + store de sesion | web, admin, API |
+| `security` | vigente | postura y controles operativos | lectura audit | admin |
 | `audit` | vigente | acciones sensibles | PostgreSQL | todos |
 | `health` | vigente | liveness/readiness/operational | PostgreSQL/Redis checks | deploy, monitoreo |
 | `observability` | vigente | telemetria HTTP y colas | Redis/BullMQ | admin |

@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Cormorant_Garamond, Manrope } from "next/font/google";
-import { siteSetting as fallbackSetting, webNavigation, type NavigationItem } from "@huelegood/shared";
+import { Baloo_2, Cormorant_Garamond, Manrope, Nunito } from "next/font/google";
+import {
+  siteSetting as fallbackSetting,
+  webNavigation as fallbackNavigation,
+  type NavigationItem
+} from "@huelegood/shared";
 import "./globals.css";
 import { PrelineScript } from "../components/preline-script";
 import { MobileNav } from "../components/mobile-nav";
 import { LoadingScreen } from "../components/loading-screen";
-import { fetchCmsSiteSettings } from "../lib/api";
+import { fetchCmsNavigation, fetchCmsSiteSettings } from "../lib/api";
 
 const bodyFont = Manrope({
   subsets: ["latin"],
@@ -22,9 +26,36 @@ const displayFont = Cormorant_Garamond({
   display: "swap"
 });
 
-const navigationGroups = webNavigation;
-const links = navigationGroups.flatMap((group) => group.items);
+const hueleDisplayFont = Baloo_2({
+  subsets: ["latin"],
+  weight: ["600", "700", "800"],
+  variable: "--font-hh-display",
+  display: "swap"
+});
+
+const hueleBodyFont = Nunito({
+  subsets: ["latin"],
+  weight: ["400", "600", "700", "800"],
+  variable: "--font-hh-sans",
+  display: "swap"
+});
+
 const currentYear = new Date().getFullYear();
+const publicLogoUrl = "/brand/logo-hh.png";
+
+function resolvePublicLogoUrl(value?: string) {
+  const logoUrl = value?.trim();
+  if (!logoUrl) {
+    return publicLogoUrl;
+  }
+
+  const normalizedLogoUrl = decodeURIComponent(logoUrl).toLowerCase();
+  if (normalizedLogoUrl.includes("logo 2.png")) {
+    return publicLogoUrl;
+  }
+
+  return logoUrl;
+}
 
 function isExternal(item: NavigationItem) {
   return Boolean(item.external) || /^https?:\/\//.test(item.href);
@@ -83,14 +114,29 @@ async function resolveRuntimeSettings() {
   }
 }
 
+async function resolveRuntimePublicChrome() {
+  const [settingsResponse, navigationResponse] = await Promise.all([
+    fetchCmsSiteSettings().catch(() => null),
+    fetchCmsNavigation().catch(() => null)
+  ]);
+
+  return {
+    settings: settingsResponse?.data ?? fallbackSetting,
+    navigationGroups:
+      navigationResponse?.data && navigationResponse.data.length > 0
+        ? navigationResponse.data
+        : fallbackNavigation
+  };
+}
+
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await resolveRuntimeSettings();
-  const siteIconUrl = settings.faviconUrl?.trim() || settings.headerLogoUrl?.trim() || undefined;
+  const siteIconUrl = settings.faviconUrl?.trim() || resolvePublicLogoUrl(settings.headerLogoUrl);
 
   return {
     title: "Huele Huele | Inhalador Herbal Aromático — Frescura Natural para el Perú",
     description:
-      "Huele Huele: el inhalador herbal aromático que alivia el soroche, los mareos y la fatiga mental. 100% natural, de bolsillo y acción doble. Checkout web con delivery en Lima y Callao.",
+      "Huele Huele: el inhalador herbal aromático que alivia el soroche, los mareos y la fatiga mental. 100% natural, de bolsillo y acción doble. Envíos a todo el Perú.",
     icons: siteIconUrl
       ? {
           icon: [{ url: siteIconUrl }],
@@ -102,37 +148,42 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const settings = await resolveRuntimeSettings();
-  const headerLogoUrl = settings.headerLogoUrl?.trim();
+  const { settings, navigationGroups } = await resolveRuntimePublicChrome();
+  const links = navigationGroups.flatMap((group) => group.items);
+  const headerLogoUrl = resolvePublicLogoUrl(settings.headerLogoUrl);
   const loadingImageUrl = settings.loadingImageUrl?.trim() || undefined;
 
   return (
     <html lang="es">
-      <body className={`${bodyFont.variable} ${displayFont.variable} antialiased`} suppressHydrationWarning>
+      <body
+        data-huele-chrome="true"
+        className={`${bodyFont.variable} ${displayFont.variable} ${hueleDisplayFont.variable} ${hueleBodyFont.variable} antialiased`}
+        suppressHydrationWarning
+      >
         <LoadingScreen imageUrl={loadingImageUrl} />
-        <div className="flex min-h-screen flex-col overflow-x-clip bg-[hsl(var(--background))]">
+        <div className="hh-public-root flex min-h-screen flex-col overflow-x-clip">
 
           {/* ── Header ──────────────────────────────────── */}
-          <header className="sticky top-0 z-40 shrink-0 px-4 pt-3 md:px-6 md:pt-4">
-            <div className="mx-auto max-w-[1376px]">
-              <div className="flex items-center justify-between gap-4 rounded-2xl border border-black/6 bg-white/90 px-4 py-3 shadow-[0_4px_24px_rgba(26,58,46,0.08)] backdrop-blur-xl md:px-5">
+          <header data-site-header="true" className="hh-public-site-header">
+            <div className="hh-public-header-frame">
+              <div className="hh-public-header-shell">
                 {/* Brand */}
-                <Link href="/" className="flex items-center gap-2 shrink-0">
+                <Link href="/" className="hh-public-brand">
                   {headerLogoUrl ? (
                     <>
                       <img
                         src={headerLogoUrl}
                         alt={settings.brandName}
-                        className="h-10 w-auto max-w-[216px] object-contain"
+                        className="hh-public-brand-logo"
                       />
                       <span className="sr-only">{settings.brandName}</span>
                     </>
                   ) : (
                     <>
-                      <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#577e2f] text-sm">
+                      <span className="hh-public-brand-mark">
                         🦜
                       </span>
-                      <span className="font-serif text-base font-bold text-[#1a3a2e]">
+                      <span className="hh-public-brand-name">
                         {settings.brandName}
                       </span>
                     </>
@@ -140,7 +191,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                 </Link>
 
                 {/* Nav links */}
-                <nav className="hidden items-center gap-1 md:flex">
+                <nav className="hh-public-desktop-nav">
                   {links.map((item) => (
                     <NavLink
                       key={`${item.href}-${item.label}`}
@@ -148,8 +199,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                       compact={Boolean(compactHeaderIcons[item.href])}
                       className={
                         compactHeaderIcons[item.href]
-                          ? "inline-flex h-10 w-10 items-center justify-center rounded-full text-black/60 transition hover:bg-[#eef6e8] hover:text-[#1a3a2e]"
-                          : "rounded-full px-3.5 py-2 text-sm text-black/60 transition hover:bg-[#eef6e8] hover:text-[#1a3a2e]"
+                          ? "hh-public-nav-link hh-public-nav-link--icon"
+                          : "hh-public-nav-link"
                       }
                     />
                   ))}
@@ -161,7 +212,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                 {/* CTA */}
                 <Link
                   href="/catalogo"
-                  className="hidden shrink-0 rounded-full bg-[#61a740] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#577e2f] md:inline-flex"
+                  className="hh-public-header-cta"
                 >
                   Comprar ahora
                 </Link>
@@ -173,40 +224,41 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <main className="flex-1">{children}</main>
 
           {/* ── Footer ──────────────────────────────────── */}
-          <footer className="bg-[#eef6e8] px-4 py-12 text-[#163126] md:px-6">
-            <div className="mx-auto max-w-[1200px]">
-              <div className="grid gap-10 md:grid-cols-[2fr_1fr_1fr_1fr]">
+          <footer data-site-footer="true" className="hh-public-site-footer">
+            <div className="hh-public-footer-inner">
+              <div className="hh-public-footer-grid">
                 {/* Brand column */}
-                <div>
-                  <div className="mb-4 flex items-center gap-2">
+                <div className="hh-public-footer-brand">
+                  <div className="hh-public-footer-lockup">
                     {headerLogoUrl ? (
                       <img
                         src={headerLogoUrl}
                         alt={settings.brandName}
-                        className="h-10 w-auto max-w-[216px] object-contain"
+                        className="hh-public-footer-logo"
                       />
                     ) : (
-                      <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#61a740]/20 text-sm">🦜</span>
+                      <span className="hh-public-footer-mark">🦜</span>
                     )}
-                    <span className="font-serif text-base font-bold">{settings.brandName}</span>
+                    <span className="hh-public-footer-name">{settings.brandName}</span>
                   </div>
-                  <p className="max-w-xs text-sm leading-7 text-[#163126]/68">
-                    Tu aliado natural para respirar bien, sentirte bien y moverte por la vida sin que nada te detenga.
+                  <p className="hh-public-footer-tagline">
+                    {settings.tagline ||
+                      "Tu aliado natural para respirar bien, sentirte bien y moverte por la vida sin que nada te detenga."}
                   </p>
                 </div>
 
                 {/* Nav groups */}
                 {navigationGroups.map((group) => (
                   <div key={group.title}>
-                    <p className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-[#163126]/45">
+                    <p className="hh-public-footer-title">
                       {group.title}
                     </p>
-                    <div className="flex flex-col gap-2">
+                    <div className="hh-public-footer-links">
                       {group.items.map((item) => (
                         <NavLink
                           key={`footer-${item.href}-${item.label}`}
                           item={item}
-                          className="text-sm text-[#163126]/72 transition hover:text-[#61a740]"
+                          className="hh-public-footer-link"
                         />
                       ))}
                     </div>
@@ -214,7 +266,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                 ))}
               </div>
 
-              <div className="mt-10 flex flex-col gap-2 border-t border-[#163126]/10 pt-6 text-xs text-[#163126]/48 md:flex-row md:justify-between">
+              <div className="hh-public-footer-bottom">
                 <span>© {currentYear} {settings.brandName}. Todos los derechos reservados.</span>
                 <span>Hecho con 💚 en Perú</span>
               </div>

@@ -1,6 +1,6 @@
 import { NotificationsWorkspace } from "../../components/notifications-workspace";
 import { AdminAuthGate } from "../../components/admin-auth-gate";
-import { adminAccessRoles, adminModulePermissions } from "@huelegood/shared";
+import { adminAccessRoles } from "@huelegood/shared";
 
 export default function NotificationsPage() {
   return (
@@ -8,7 +8,6 @@ export default function NotificationsPage() {
       title="Notificaciones"
       description="Mensajes internos y logs de envío."
       allowedRoles={adminAccessRoles.notifications}
-      allowedPermissions={adminModulePermissions.notifications.read}
     >
       <NotificationsWorkspace />
     </AdminAuthGate>

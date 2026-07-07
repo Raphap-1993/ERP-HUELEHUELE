@@ -1,4 +1,4 @@
-import { adminAccessRoles, adminModulePermissions } from "@huelegood/shared";
+import { adminAccessRoles } from "@huelegood/shared";
 import { AdminAuthGate } from "../../components/admin-auth-gate";
 import { CommercialAccessesWorkspace } from "../../components/commercial-accesses-workspace";
 
@@ -8,7 +8,6 @@ export default function CommercialAccessesPage() {
       title="Accesos comerciales"
       description="Credenciales web para vendedores y mayoristas."
       allowedRoles={adminAccessRoles.commercialAccesses}
-      allowedPermissions={adminModulePermissions.commercialAccesses.read}
     >
       <CommercialAccessesWorkspace />
     </AdminAuthGate>

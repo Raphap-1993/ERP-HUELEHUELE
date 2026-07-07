@@ -19,7 +19,6 @@ La documentacion vigente empieza en:
 - [Arquitectura general](./docs/architecture/overview.md)
 - [Diagramas del sistema](./docs/architecture/system-diagrams.md)
 - [Mapa de modulos](./docs/architecture/modules.md)
-- [Control de acceso y gobernanza de navegacion](./docs/architecture/access-control-and-navigation-governance.md)
 - [Modelo de dominio](./docs/data/domain-model.md)
 - [API v1](./docs/api/api-v1-outline.md)
 - [Despliegue y homologacion](./docs/infra/deployment-strategy.md)

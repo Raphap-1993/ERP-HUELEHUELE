@@ -82,16 +82,6 @@ import type {
   PeruDistrictSummary,
   PeruUbigeoCatalog,
   PeruProvinceSummary,
-  SecurityCatalogEnvelope,
-  SecurityNavigationEnvelope,
-  SecurityNavigationUpdateInput,
-  SecurityOverrideCreateInput,
-  SecurityOverrideEnvelope,
-  SecurityRoleCreateInput,
-  SecurityRoleEnvelope,
-  SecurityRoleUpdateInput,
-  SecurityRolesEnvelope,
-  SecurityUserRoleAssignmentInput,
   WarehouseActionEnvelope,
   WarehouseTransferActionEnvelope,
   WarehouseTransferCancelInput,
@@ -967,56 +957,6 @@ export async function fetchAuditActions() {
 export async function fetchSecurityPosture() {
   return requestJson<SecurityPostureEnvelope>("/admin/security", {
     cache: "no-store"
-  });
-}
-
-export async function fetchSecurityCatalog() {
-  return requestJson<SecurityCatalogEnvelope>("/admin/security/catalog", {
-    cache: "no-store"
-  });
-}
-
-export async function fetchSecurityRoles() {
-  return requestJson<SecurityRolesEnvelope>("/admin/security/roles", {
-    cache: "no-store"
-  });
-}
-
-export async function createSecurityRole(body: SecurityRoleCreateInput) {
-  return requestJson<SecurityRoleEnvelope>("/admin/security/roles", {
-    method: "POST",
-    body: JSON.stringify(body)
-  });
-}
-
-export async function updateSecurityRole(id: string, body: SecurityRoleUpdateInput) {
-  return requestJson<SecurityRoleEnvelope>(`/admin/security/roles/${encodeURIComponent(id)}`, {
-    method: "PATCH",
-    body: JSON.stringify(body)
-  });
-}
-
-export async function assignSecurityUserRoles(userId: string, body: SecurityUserRoleAssignmentInput) {
-  return requestJson<{ data: import("@huelegood/shared").SecurityUserRoleAssignmentSummary; meta?: Record<string, unknown> }>(
-    `/admin/security/users/${encodeURIComponent(userId)}/roles`,
-    {
-      method: "POST",
-      body: JSON.stringify(body)
-    }
-  );
-}
-
-export async function createSecurityOverride(userId: string, body: SecurityOverrideCreateInput) {
-  return requestJson<SecurityOverrideEnvelope>(`/admin/security/users/${encodeURIComponent(userId)}/overrides`, {
-    method: "POST",
-    body: JSON.stringify(body)
-  });
-}
-
-export async function updateSecurityNavigation(body: SecurityNavigationUpdateInput) {
-  return requestJson<SecurityNavigationEnvelope>("/admin/security/navigation", {
-    method: "PATCH",
-    body: JSON.stringify(body)
   });
 }
 

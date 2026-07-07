@@ -13,12 +13,8 @@ import {
   type PromoBanner
 } from "@huelegood/shared";
 import { fetchCatalogSummary, fetchCmsSnapshot } from "../../../lib/api";
-import {
-  curateStorefrontProducts,
-  isStorefrontStaticFallbackEnabled
-} from "../../../lib/storefront-runtime";
 
-const allowStaticStorefrontFallbacks = isStorefrontStaticFallbackEnabled();
+const allowStaticStorefrontFallbacks = process.env.NODE_ENV !== "production";
 
 export interface StorefrontV2Metric {
   label: string;
@@ -97,6 +93,31 @@ async function loadStorefrontCatalog() {
   } catch {
     return [];
   }
+}
+
+function curateStorefrontProducts(
+  products: CatalogProduct[],
+  featuredProductSlugs: string[] | undefined
+) {
+  if (products.length === 0) {
+    return [];
+  }
+
+  const bySlug = new Map(products.map((product) => [product.slug, product] as const));
+  const curated = (featuredProductSlugs ?? [])
+    .map((slug) => bySlug.get(slug))
+    .filter((product): product is CatalogProduct => Boolean(product));
+
+  if (curated.length > 0) {
+    return curated;
+  }
+
+  const featured = products.filter((product) => product.isFeatured);
+  if (featured.length > 0) {
+    return featured;
+  }
+
+  return products;
 }
 
 function mapBanner(banner: CmsBanner): PromoBanner {

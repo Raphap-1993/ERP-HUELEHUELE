@@ -7,8 +7,8 @@ const FAQS: FaqItem[] = [
     answer: "Cada inhalador tiene una vida útil de aproximadamente 300 inhalaciones o hasta 6 meses desde su apertura. La intensidad del aroma puede reducirse con el tiempo, pero la eficacia se mantiene durante ese período si lo guardas con la tapa puesta y alejado del calor directo.",
   },
   {
-    question: "🚚 ¿A dónde hacen envíos desde la web?",
-    answer: "El checkout web hoy procesa entregas en Lima y Callao con billetera virtual o transferencia bancaria. Si estás en provincia, escríbenos por Instagram @huele.good y te ayudamos a coordinar tu pedido.",
+    question: "🚚 ¿Hacen envíos a todo el Perú?",
+    answer: "Sí. Enviamos a todo el territorio peruano vía Olva Courier y Shalom. Lima y Callao: 24-48 horas. Provincias: 48-96 horas. Aceptamos billetera virtual, transferencia bancaria y contra-entrega (en zonas seleccionadas). También puedes coordinarlo por nuestro Instagram @huele.good.",
   },
   {
     question: "🌿 ¿De qué está hecho exactamente?",

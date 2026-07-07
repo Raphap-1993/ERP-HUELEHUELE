@@ -1,4 +1,4 @@
-import { adminAccessRoles, adminModulePermissions } from "@huelegood/shared";
+import { adminAccessRoles } from "@huelegood/shared";
 import { AdminAuthGate } from "../../../../components/admin-auth-gate";
 import { OrderDispatchLabelView } from "../../../../components/order-dispatch-label-view";
 
@@ -18,7 +18,6 @@ export default async function OrderDispatchLabelRoute({
       title="Sticker operativo"
       description="Vista print-ready de caja para operación y despacho."
       allowedRoles={adminAccessRoles.dispatch}
-      allowedPermissions={adminModulePermissions.dispatch.read}
     >
       <OrderDispatchLabelView orderNumber={decodeURIComponent(resolvedParams.orderNumber)} source={source} />
     </AdminAuthGate>

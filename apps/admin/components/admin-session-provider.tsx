@@ -28,13 +28,11 @@ const localBypassSession: AuthSessionSummary = {
     id: "local-admin-bypass",
     name: "Admin Local",
     email: "admin@huelegood.local",
-    primaryRoleCode: RoleCode.SuperAdmin,
     roles: [
-      { code: RoleCode.SuperAdmin, label: "Super Admin", isSystem: true },
-      { code: RoleCode.Admin, label: "Admin", isSystem: true }
+      { code: RoleCode.SuperAdmin, label: "Super Admin" },
+      { code: RoleCode.Admin, label: "Admin" }
     ],
-    accountType: "admin",
-    surfaces: ["internal_admin"]
+    accountType: "admin"
   }
 };
 

@@ -6,7 +6,6 @@ import {
   CHECKOUT_DOCUMENT_TYPE_OPTIONS,
   CrmStage,
   OrderStatus,
-  adminModulePermissions,
   adminAccessRoles,
   hasAdminAccess,
   type AdminOrderDetail,
@@ -702,7 +701,7 @@ export function OrdersWorkspace() {
   const canConfirmOnlinePayment = Boolean(activeOrder && activeOrder.paymentMethod === "openpay" && activeOrder.paymentStatus !== "paid");
   const canAccessDispatchModule = useMemo(() => {
     const roleCodes = session?.user.roles.map((role) => role.code) ?? [];
-    return hasAdminAccess(roleCodes, adminAccessRoles.dispatch, session?.user.effectivePermissions, adminModulePermissions.dispatch.read);
+    return hasAdminAccess(roleCodes, adminAccessRoles.dispatch);
   }, [session]);
   const canOpenDispatchLabel = canAccessDispatchModule && Boolean(activeOrder?.dispatchLabel?.available);
   const dispatchLabelBlockReason =

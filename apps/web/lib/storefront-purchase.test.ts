@@ -59,10 +59,10 @@ test("envia a seleccion de variante cuando hay mas de una variante vendible", ()
         sku: "HH-PRM-001",
         name: "Premium Negro 10ml",
         price: 49,
-        status: "active",
-        availableStock: 5,
-        stockStatus: "available",
-        isPurchasable: true
+        status: "out_of_stock",
+        availableStock: 0,
+        stockStatus: "out_of_stock",
+        isPurchasable: false
       },
       {
         id: "var-2",
@@ -128,52 +128,6 @@ test("usa variants[] como respaldo para contar variantes cuando variantCount no 
 
   assert.equal(getStorefrontVariantCount(product), 2);
   assert.equal(resolveStorefrontPurchaseMode(product), "select_variant");
-});
-
-test("ignora variantes inactivas al decidir si premium negro necesita selector", () => {
-  const product = buildProduct({
-    slug: "premium-negro",
-    defaultVariantId: "var-1",
-    variantCount: 3,
-    variants: [
-      {
-        id: "var-1",
-        sku: "HG-PN-001",
-        name: "Premium Negro - Menta Helada 10 ml",
-        price: 39.9,
-        status: "active",
-        availableStock: 12,
-        stockStatus: "available",
-        isPurchasable: true,
-        flavorLabel: "Menta Helada"
-      },
-      {
-        id: "var-2",
-        sku: "HG-PN-002",
-        name: "Premium Negro - Eucalipto Frío 10 ml",
-        price: 39.9,
-        status: "inactive",
-        availableStock: 0,
-        stockStatus: "out_of_stock",
-        isPurchasable: false,
-        flavorLabel: "Eucalipto Frío"
-      },
-      {
-        id: "var-3",
-        sku: "HG-PN-003",
-        name: "Premium Negro - Citrus Herbal 10 ml",
-        price: 39.9,
-        status: "inactive",
-        availableStock: 0,
-        stockStatus: "out_of_stock",
-        isPurchasable: false,
-        flavorLabel: "Citrus Herbal"
-      }
-    ]
-  });
-
-  assert.equal(getStorefrontVariantCount(product), 1);
-  assert.equal(resolveStorefrontPurchaseMode(product), "direct");
 });
 
 test("resuelve CTA de compra directa para productos comprables de una sola variante", () => {

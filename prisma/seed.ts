@@ -2,13 +2,6 @@ import "dotenv/config";
 import { LifecycleStatus, Prisma, PrismaClient, VendorCodeStatus, VendorStatus } from "@prisma/client";
 import { scryptSync } from "node:crypto";
 import { RoleCode } from "@huelegood/shared";
-import {
-  systemAccessModules,
-  systemAccessScopes,
-  systemPermissionCatalog,
-  systemRoleCatalog,
-  systemRolePermissionGrants
-} from "./access-control-catalog";
 import { localDemoCategories, localDemoCmsSnapshot, localDemoProducts } from "./demo-content";
 
 const prisma = new PrismaClient();
@@ -175,8 +168,8 @@ function inferVariantAttributes(productSlug: string) {
 
   if (productSlug === "premium-negro") {
     return {
-      flavorCode: "menta-helada",
-      flavorLabel: "Menta Helada",
+      flavorCode: "negro-intenso",
+      flavorLabel: "Negro Intenso",
       presentationCode: "unitario",
       presentationLabel: "Unitario"
     };
@@ -214,225 +207,43 @@ async function seedSiteSettings() {
   });
 }
 
-function navigationGroupLabel(group: string) {
-  const labels: Record<string, string> = {
-    general: "General",
-    ventas: "Ventas",
-    operacion: "Operación",
-    catalogo: "Catálogo",
-    comercial: "Comercial",
-    growth: "Growth",
-    gobernanza: "Gobernanza",
-    portal: "Portal"
-  };
+async function seedRolesAndPermissions() {
+  const roles = [
+    { code: "super_admin", name: "Super Admin" },
+    { code: "admin", name: "Admin" },
+    { code: "operador_pagos", name: "Operador de pagos" },
+    { code: "ventas", name: "Ventas" },
+    { code: "marketing", name: "Marketing" },
+    { code: "seller_manager", name: "Seller Manager" },
+    { code: "vendedor", name: "Vendedor" },
+    { code: "mayorista", name: "Mayorista" },
+    { code: "cliente", name: "Cliente" }
+  ];
 
-  return labels[group] ?? group;
-}
-
-async function seedAccessControlCatalog() {
-  for (const scope of systemAccessScopes) {
-    await prisma.accessScope.upsert({
-      where: { code: scope.code },
-      update: {
-        label: scope.label,
-        description: scope.description,
-        precedence: scope.precedence,
-        isSystem: scope.isSystem,
-        isActive: true
-      },
-      create: {
-        code: scope.code,
-        label: scope.label,
-        description: scope.description,
-        precedence: scope.precedence,
-        isSystem: scope.isSystem,
-        isActive: true
-      }
-    });
-  }
-
-  for (const role of systemRoleCatalog) {
+  for (const role of roles) {
     await prisma.role.upsert({
       where: { code: role.code },
-      update: {
-        name: role.name,
-        description: role.description,
-        surface: role.surface,
-        isSystem: role.isSystem,
-        isAssignable: role.isAssignable,
-        isActive: role.isActive
-      },
-      create: {
-        code: role.code,
-        name: role.name,
-        description: role.description,
-        surface: role.surface,
-        isSystem: role.isSystem,
-        isAssignable: role.isAssignable,
-        isActive: role.isActive
-      }
+      update: { name: role.name, isSystem: true },
+      create: { code: role.code, name: role.name, isSystem: true }
     });
   }
 
-  const groups = Array.from(
-    new Map(
-      systemAccessModules.map((module) => [
-        `${module.surface}:${module.navGroup}`,
-        {
-          code: `${module.surface}:${module.navGroup}`,
-          label: navigationGroupLabel(module.navGroup),
-          surface: module.surface
-        }
-      ])
-    ).values()
-  );
+  const permissions = [
+    { code: "cms.read", name: "Leer CMS", module: "cms" },
+    { code: "cms.write", name: "Editar CMS", module: "cms" },
+    { code: "catalog.write", name: "Editar catálogo", module: "catalog" },
+    { code: "orders.manage", name: "Gestionar pedidos", module: "orders" },
+    { code: "payments.review", name: "Revisar pagos", module: "payments" },
+    { code: "vendors.manage", name: "Gestionar vendedores", module: "vendors" },
+    { code: "commissions.manage", name: "Gestionar comisiones", module: "commissions" },
+    { code: "marketing.execute", name: "Ejecutar campañas", module: "marketing" }
+  ];
 
-  for (const group of groups) {
-    await prisma.accessNavigationGroup.upsert({
-      where: { code: group.code },
-      update: {
-        label: group.label,
-        surface: group.surface,
-        isSystem: true,
-        isActive: true
-      },
-      create: {
-        code: group.code,
-        label: group.label,
-        surface: group.surface,
-        isSystem: true,
-        isActive: true
-      }
-    });
-  }
-
-  const groupRecords = await prisma.accessNavigationGroup.findMany({
-    where: {
-      code: {
-        in: groups.map((group) => group.code)
-      }
-    }
-  });
-  const groupIdByCode = new Map(groupRecords.map((group) => [group.code, group.id]));
-
-  for (const module of systemAccessModules) {
-    await prisma.accessModule.upsert({
-      where: { code: module.code },
-      update: {
-        label: module.label,
-        description: module.description,
-        surface: module.surface,
-        route: module.route,
-        navGroup: module.navGroup,
-        isSystem: module.isSystem,
-        isActive: module.isActive
-      },
-      create: {
-        code: module.code,
-        label: module.label,
-        description: module.description,
-        surface: module.surface,
-        route: module.route,
-        navGroup: module.navGroup,
-        isSystem: module.isSystem,
-        isActive: module.isActive
-      }
-    });
-  }
-
-  for (const permission of systemPermissionCatalog) {
+  for (const permission of permissions) {
     await prisma.permission.upsert({
       where: { code: permission.code },
-      update: {
-        name: permission.label,
-        description: permission.description,
-        action: permission.action,
-        module: permission.moduleId,
-        supportedScopes: permission.supportedScopes as unknown as Prisma.InputJsonValue,
-        isSystem: permission.isSystem,
-        isActive: permission.isActive
-      },
-      create: {
-        code: permission.code,
-        name: permission.label,
-        description: permission.description,
-        action: permission.action,
-        module: permission.moduleId,
-        supportedScopes: permission.supportedScopes as unknown as Prisma.InputJsonValue,
-        isSystem: permission.isSystem,
-        isActive: permission.isActive
-      }
-    });
-  }
-
-  for (const module of systemAccessModules) {
-    const groupCode = `${module.surface}:${module.navGroup}`;
-    const navigationGroupId = groupIdByCode.get(groupCode);
-
-    if (!navigationGroupId) {
-      continue;
-    }
-
-    await prisma.accessNavigationItem.upsert({
-      where: {
-        moduleCode_navigationGroupId: {
-          moduleCode: module.code,
-          navigationGroupId
-        }
-      },
-      update: {
-        labelOverride: module.label,
-        isVisible: true
-      },
-      create: {
-        moduleCode: module.code,
-        navigationGroupId,
-        labelOverride: module.label,
-        isVisible: true
-      }
-    });
-  }
-
-  const roles = await prisma.role.findMany({
-    where: {
-      code: {
-        in: systemRoleCatalog.map((role) => role.code)
-      }
-    }
-  });
-  const permissions = await prisma.permission.findMany({
-    where: {
-      code: {
-        in: systemPermissionCatalog.map((permission) => permission.code)
-      }
-    }
-  });
-
-  const roleIdByCode = new Map(roles.map((role) => [role.code, role.id]));
-  const permissionIdByCode = new Map(permissions.map((permission) => [permission.code, permission.id]));
-
-  for (const grant of systemRolePermissionGrants) {
-    const roleId = roleIdByCode.get(grant.roleCode);
-    const permissionId = permissionIdByCode.get(grant.permissionCode);
-
-    if (!roleId || !permissionId) {
-      continue;
-    }
-
-    await prisma.rolePermission.upsert({
-      where: {
-        roleId_permissionId_scopeCode: {
-          roleId,
-          permissionId,
-          scopeCode: grant.scopeCode
-        }
-      },
-      update: {},
-      create: {
-        roleId,
-        permissionId,
-        scopeCode: grant.scopeCode
-      }
+      update: { name: permission.name, module: permission.module },
+      create: permission
     });
   }
 }
@@ -452,15 +263,8 @@ async function seedOperationalUsers() {
       email: bootstrapEnv("BOOTSTRAP_SELLER_EMAIL", "monica@seller.com"),
       password: bootstrapEnv("BOOTSTRAP_SELLER_PASSWORD", "huelegood123"),
       accountType: "seller" as const,
-      roles: [RoleCode.Vendedor],
+      roles: [RoleCode.SellerManager, RoleCode.Vendedor],
       vendorCode: bootstrapEnv("BOOTSTRAP_SELLER_VENDOR_CODE", "VEND-014")
-    },
-    {
-      name: bootstrapEnv("BOOTSTRAP_WHOLESALE_NAME", "Mayorista Huelegood"),
-      email: bootstrapEnv("BOOTSTRAP_WHOLESALE_EMAIL", "mayorista@huelegood.com"),
-      password: bootstrapEnv("BOOTSTRAP_WHOLESALE_PASSWORD", "huelegood123"),
-      accountType: "wholesale" as const,
-      roles: [RoleCode.Mayorista]
     },
     {
       name: bootstrapEnv("BOOTSTRAP_PAYMENTS_NAME", "Operador de Pagos"),
@@ -512,10 +316,9 @@ async function seedOperationalUsers() {
       data: account.roles
         .map((code) => roleIdByCode.get(code))
         .filter((roleId): roleId is string => Boolean(roleId))
-        .map((roleId, index) => ({
+        .map((roleId) => ({
           userId: user.id,
-          roleId,
-          isPrimary: index === 0
+          roleId
         }))
     });
 
@@ -907,7 +710,7 @@ async function seedCmsSnapshot() {
 
 async function main() {
   await seedSiteSettings();
-  await seedAccessControlCatalog();
+  await seedRolesAndPermissions();
   await seedOperationalUsers();
   await seedCatalog();
   await seedCmsTables();

@@ -371,7 +371,6 @@ function buildOrderItems(items: CheckoutQuoteSummary["items"]): OrderItemSummary
     name: item.name,
     sku: item.sku,
     variantId: item.variantId,
-    variantName: item.variantName,
     quantity: item.quantity,
     unitPrice: item.unitPrice,
     lineTotal: item.lineTotal,

@@ -17,7 +17,7 @@ import {
   WholesaleLeadStatus,
   WholesaleQuoteStatus
 } from "./domain/enums";
-import { adminAccessRoles, adminModulePermissions } from "./domain/admin-access";
+import { adminAccessRoles } from "./domain/admin-access";
 import type {
   AdminMetric,
   AdminNavigationGroup,
@@ -89,59 +89,53 @@ export const adminNavigation: AdminNavigationGroup[] = [
   {
     title: "Operación diaria",
     items: [
-      { label: "Dashboard", href: "/", requiredRoles: adminAccessRoles.dashboard, requiredPermissions: adminModulePermissions.dashboard.read },
-      { label: "Pedidos", href: "/pedidos", requiredRoles: adminAccessRoles.orders, requiredPermissions: adminModulePermissions.orders.read },
-      { label: "Despachos", href: "/despachos", requiredRoles: adminAccessRoles.dispatch, requiredPermissions: adminModulePermissions.dispatch.read },
-      { label: "Pagos", href: "/pagos", requiredRoles: adminAccessRoles.payments, requiredPermissions: adminModulePermissions.payments.read }
+      { label: "Dashboard", href: "/", requiredRoles: adminAccessRoles.dashboard },
+      { label: "Pedidos", href: "/pedidos", requiredRoles: adminAccessRoles.orders },
+      { label: "Despachos", href: "/despachos", requiredRoles: adminAccessRoles.dispatch },
+      { label: "Pagos", href: "/pagos", requiredRoles: adminAccessRoles.payments }
     ]
   },
   {
-    title: "Inventario y logística",
+    title: "Inventario y reportes",
     items: [
-      { label: "Inventario", href: "/inventario", requiredRoles: adminAccessRoles.inventory, requiredPermissions: adminModulePermissions.inventory.read },
-      { label: "Transferencias", href: "/transferencias", requiredRoles: adminAccessRoles.transfers, requiredPermissions: adminModulePermissions.transfers.read },
-      { label: "Almacenes", href: "/almacenes", requiredRoles: adminAccessRoles.warehouses, requiredPermissions: adminModulePermissions.warehouses.read },
-      { label: "Reportes", href: "/reportes", requiredRoles: adminAccessRoles.dashboard, requiredPermissions: adminModulePermissions.reports.read }
+      { label: "Inventario", href: "/inventario", requiredRoles: adminAccessRoles.inventory },
+      { label: "Transferencias", href: "/transferencias", requiredRoles: adminAccessRoles.transfers },
+      { label: "Almacenes", href: "/almacenes", requiredRoles: adminAccessRoles.warehouses },
+      { label: "Reportes", href: "/reportes", requiredRoles: adminAccessRoles.dashboard }
     ]
   },
   {
     title: "Catálogo",
     items: [
-      { label: "Productos", href: "/productos", requiredRoles: adminAccessRoles.products, requiredPermissions: adminModulePermissions.products.read },
-      { label: "CMS", href: "/cms", requiredRoles: adminAccessRoles.cms, requiredPermissions: adminModulePermissions.cms.read }
+      { label: "Productos", href: "/productos", requiredRoles: adminAccessRoles.products },
+      { label: "CMS", href: "/cms", requiredRoles: adminAccessRoles.cms }
     ]
   },
   {
     title: "Comercial",
     items: [
-      { label: "Vendedores", href: "/vendedores", requiredRoles: adminAccessRoles.vendors, requiredPermissions: adminModulePermissions.vendors.read },
-      { label: "Comisiones", href: "/comisiones", requiredRoles: adminAccessRoles.commissions, requiredPermissions: adminModulePermissions.commissions.read },
-      { label: "Mayoristas", href: "/mayoristas", requiredRoles: adminAccessRoles.wholesale, requiredPermissions: adminModulePermissions.wholesale.read },
-      { label: "Accesos", href: "/accesos", requiredRoles: adminAccessRoles.commercialAccesses, requiredPermissions: adminModulePermissions.commercialAccesses.read }
+      { label: "Vendedores", href: "/vendedores", requiredRoles: adminAccessRoles.vendors },
+      { label: "Comisiones", href: "/comisiones", requiredRoles: adminAccessRoles.commissions },
+      { label: "Mayoristas", href: "/mayoristas", requiredRoles: adminAccessRoles.wholesale },
+      { label: "Accesos", href: "/accesos", requiredRoles: adminAccessRoles.commercialAccesses }
     ]
   },
   {
     title: "Clientes",
     items: [
-      { label: "Clientes", href: "/crm", requiredRoles: adminAccessRoles.crm, requiredPermissions: adminModulePermissions.crm.read },
-      { label: "Fidelización", href: "/loyalty", requiredRoles: adminAccessRoles.loyalty, requiredPermissions: adminModulePermissions.loyalty.read },
-      { label: "Marketing", href: "/marketing", requiredRoles: adminAccessRoles.marketing, requiredPermissions: adminModulePermissions.marketing.read },
-      { label: "Cupones", href: "/cupones", requiredRoles: adminAccessRoles.coupons, requiredPermissions: adminModulePermissions.coupons.read }
+      { label: "Clientes", href: "/crm", requiredRoles: adminAccessRoles.crm },
+      { label: "Fidelización", href: "/loyalty", requiredRoles: adminAccessRoles.loyalty },
+      { label: "Marketing", href: "/marketing", requiredRoles: adminAccessRoles.marketing },
+      { label: "Cupones", href: "/cupones", requiredRoles: adminAccessRoles.coupons }
     ]
   },
   {
     title: "Sistema",
     items: [
-      { label: "Notificaciones", href: "/notificaciones", requiredRoles: adminAccessRoles.notifications, requiredPermissions: adminModulePermissions.notifications.read },
-      { label: "Observabilidad", href: "/observabilidad", requiredRoles: adminAccessRoles.observability, requiredPermissions: adminModulePermissions.observability.read },
-      { label: "Auditoría", href: "/auditoria", requiredRoles: adminAccessRoles.audit, requiredPermissions: adminModulePermissions.audit.read },
-      { label: "Configuración", href: "/configuracion", requiredRoles: adminAccessRoles.configuration, requiredPermissions: adminModulePermissions.configuration.read },
-      {
-        label: "Seguridad",
-        href: "/seguridad",
-        requiredRoles: adminAccessRoles.security,
-        requiredPermissions: adminModulePermissions.security.read
-      }
+      { label: "Notificaciones", href: "/notificaciones", requiredRoles: adminAccessRoles.notifications },
+      { label: "Observabilidad", href: "/observabilidad", requiredRoles: adminAccessRoles.observability },
+      { label: "Auditoría", href: "/auditoria", requiredRoles: adminAccessRoles.audit },
+      { label: "Configuración", href: "/configuracion", requiredRoles: adminAccessRoles.configuration }
     ]
   }
 ];

@@ -1,11 +1,11 @@
 import { Body, Controller, Get, Param, Post } from "@nestjs/common";
 import {
-  adminModulePermissions,
+  adminAccessRoles,
   type LoyaltyPointsInput,
   type LoyaltyRedemptionInput,
   type LoyaltyRedemptionStatusInput
 } from "@huelegood/shared";
-import { RequirePermissions } from "../auth/auth-rbac";
+import { RequireRoles } from "../auth/auth-rbac";
 import { LoyaltyService } from "./loyalty.service";
 
 @Controller("store/me/loyalty")
@@ -18,7 +18,7 @@ export class LoyaltyController {
   }
 }
 
-@RequirePermissions(...adminModulePermissions.loyalty.read)
+@RequireRoles(...adminAccessRoles.loyalty)
 @Controller("admin/loyalty")
 export class AdminLoyaltyController {
   constructor(private readonly loyaltyService: LoyaltyService) {}
@@ -29,7 +29,7 @@ export class AdminLoyaltyController {
   }
 }
 
-@RequirePermissions(...adminModulePermissions.loyalty.read)
+@RequireRoles(...adminAccessRoles.loyalty)
 @Controller("admin/loyalty/movements")
 export class LoyaltyMovementsController {
   constructor(private readonly loyaltyService: LoyaltyService) {}
@@ -40,13 +40,12 @@ export class LoyaltyMovementsController {
   }
 
   @Post()
-  @RequirePermissions(...adminModulePermissions.loyalty.manage!)
   assignPoints(@Body() body: LoyaltyPointsInput) {
     return this.loyaltyService.assignPoints(body);
   }
 }
 
-@RequirePermissions(...adminModulePermissions.loyalty.read)
+@RequireRoles(...adminAccessRoles.loyalty)
 @Controller("admin/loyalty/redemptions")
 export class LoyaltyRedemptionsController {
   constructor(private readonly loyaltyService: LoyaltyService) {}
@@ -57,19 +56,17 @@ export class LoyaltyRedemptionsController {
   }
 
   @Post()
-  @RequirePermissions(...adminModulePermissions.loyalty.manage!)
   create(@Body() body: LoyaltyRedemptionInput) {
     return this.loyaltyService.createRedemption(body);
   }
 
   @Post(":id/status")
-  @RequirePermissions(...adminModulePermissions.loyalty.manage!)
   updateStatus(@Param("id") id: string, @Body() body: LoyaltyRedemptionStatusInput) {
     return this.loyaltyService.updateRedemptionStatus(id, body);
   }
 }
 
-@RequirePermissions(...adminModulePermissions.loyalty.read)
+@RequireRoles(...adminAccessRoles.loyalty)
 @Controller("admin/loyalty/rules")
 export class LoyaltyRulesController {
   constructor(private readonly loyaltyService: LoyaltyService) {}

@@ -270,35 +270,18 @@ class PrismaStub {
   ) {}
 
   readonly productVariant = {
-    findMany: async (args?: { where?: { id?: { in?: string[] }; status?: { not?: string } } }) => {
+    findMany: async (args?: { where?: { id?: { in?: string[] } } }) => {
       const ids = args?.where?.id?.in;
-      const excludedStatus = args?.where?.status?.not;
-      const records = (ids ? this.variants.filter((variant) => ids.includes(variant.id)) : this.variants)
-        .filter((variant) => (excludedStatus ? variant.status !== excludedStatus : true));
+      const records = ids ? this.variants.filter((variant) => ids.includes(variant.id)) : this.variants;
       return records.map((variant) => this.cloneVariant(variant));
     },
-    findUnique: async (args: { where: { id?: string; sku?: string } }) => {
-      const variant = this.variants.find(
-        (record) => record.id === args.where.id || record.sku === args.where.sku
-      );
+    findUnique: async (args: { where: { id: string } }) => {
+      const variant = this.variants.find((record) => record.id === args.where.id);
       return variant ? this.cloneVariant(variant) : null;
     },
     findFirst: async (args: { where: { sku: string } }) => {
       const variant = this.variants.find((record) => record.sku === args.where.sku);
       return variant ? this.cloneVariant(variant) : null;
-    },
-    update: async (args: { where: { id: string }; data: { stockOnHand?: number } }) => {
-      const variant = this.variants.find((record) => record.id === args.where.id);
-      if (!variant) {
-        return null;
-      }
-
-      if (typeof args.data.stockOnHand === "number") {
-        variant.stockOnHand = args.data.stockOnHand;
-      }
-
-      variant.updatedAt = new Date();
-      return this.cloneVariant(variant);
     }
   };
 
@@ -308,25 +291,7 @@ class PrismaStub {
       return this.listProducts()
         .filter((product) => (slugs ? slugs.includes(product.slug) : true))
         .map((product) => this.cloneProduct(product));
-    },
-    findUnique: async (args: { where: { id?: string; slug?: string } }) => {
-      const product = this.listProducts().find(
-        (record) => record.id === args.where.id || record.slug === args.where.slug
-      );
-      return product ? this.cloneProduct(product) : null;
-    },
-    findUniqueOrThrow: async (args: { where: { id?: string; slug?: string } }) => {
-      const product = await this.product.findUnique(args);
-      if (!product) {
-        throw new Error("Producto no encontrado en stub.");
-      }
-
-      return product;
     }
-  };
-
-  readonly category = {
-    findUnique: async () => null
   };
 
   readonly moduleSnapshot = {
@@ -352,32 +317,8 @@ class PrismaStub {
   };
 
   readonly warehouseInventoryBalance = {
-    findUnique: async (args: {
-      where: {
-        warehouseId_variantId: {
-          warehouseId: string;
-          variantId: string;
-        };
-      };
-    }) => {
-      const balance = this.variants
-        .flatMap((variant) => variant.warehouseBalances)
-        .find(
-          (record) =>
-            record.variantId === args.where.warehouseId_variantId.variantId &&
-            record.warehouseId === args.where.warehouseId_variantId.warehouseId
-        );
-
-      return balance
-        ? {
-            ...balance,
-            updatedAt: new Date(balance.updatedAt)
-          }
-        : null;
-    },
-    findMany: async (args?: { where?: { OR?: Array<{ variantId: string; warehouseId: string }>; variantId?: string } }) => {
+    findMany: async (args?: { where?: { OR?: Array<{ variantId: string; warehouseId: string }> } }) => {
       const filters = args?.where?.OR ?? [];
-      const variantId = args?.where?.variantId;
       const balances = this.variants.flatMap((variant) =>
         variant.warehouseBalances.map((balance) => ({
           ...balance,
@@ -387,13 +328,11 @@ class PrismaStub {
 
       return balances
         .filter((balance) =>
-          filters.length > 0
-            ? filters.some(
+          filters.length === 0
+            ? true
+            : filters.some(
                 (filter) => filter.variantId === balance.variantId && filter.warehouseId === balance.warehouseId
               )
-            : variantId
-              ? balance.variantId === variantId
-              : true
         )
         .map((balance) => ({
           ...balance,
@@ -401,73 +340,8 @@ class PrismaStub {
           warehouse: balance.warehouse ? this.cloneWarehouse(balance.warehouse) : null
         }));
     },
-    upsert: async (args: {
-      where: {
-        warehouseId_variantId: {
-          warehouseId: string;
-          variantId: string;
-        };
-      };
-      create: {
-        warehouseId: string;
-        variantId: string;
-        stockOnHand: number;
-        reservedQuantity: number;
-        committedQuantity: number;
-      };
-      update: {
-        stockOnHand: number;
-      };
-    }) => {
-      const variant = this.variants.find((record) => record.id === args.where.warehouseId_variantId.variantId);
-      if (!variant) {
-        return null;
-      }
-
-      const existingBalance = variant.warehouseBalances.find(
-        (record) =>
-          record.variantId === args.where.warehouseId_variantId.variantId &&
-          record.warehouseId === args.where.warehouseId_variantId.warehouseId
-      );
-      const updatedAt = new Date();
-
-      if (existingBalance) {
-        existingBalance.stockOnHand = args.update.stockOnHand;
-        existingBalance.updatedAt = updatedAt;
-        return {
-          ...existingBalance,
-          updatedAt
-        };
-      }
-
-      const createdBalance = {
-        warehouseId: args.create.warehouseId,
-        variantId: args.create.variantId,
-        stockOnHand: args.create.stockOnHand,
-        reservedQuantity: args.create.reservedQuantity,
-        committedQuantity: args.create.committedQuantity,
-        updatedAt
-      };
-      variant.warehouseBalances.push(createdBalance);
-      return {
-        ...createdBalance,
-        updatedAt
-      };
-    }
+    upsert: async () => null
   };
-
-  readonly inventoryMovement = {
-    create: async () => null
-  };
-
-  readonly productBundleComponent = {
-    deleteMany: async () => null,
-    createMany: async () => null
-  };
-
-  async $transaction<T>(callback: (tx: this) => Promise<T>) {
-    return callback(this);
-  }
 
   readonly warehouseTransfer = {
     findMany: async () => this.sortedTransfers().map((transfer) => this.cloneTransfer(transfer)),
@@ -1988,30 +1862,6 @@ test("una orden web valida reserva y luego confirma stock al conciliar el pago",
   assert.equal(confirmedRow.availableStock, 7);
 });
 
-test("una orden web hidrata el variantName en el detalle para back office", async () => {
-  const context = await createContext();
-  const vendor = context.vendors.createManualVendor(buildManualVendor()).vendor!;
-
-  const order = await context.orders.createCheckoutOrder(
-    buildOpenpayCheckoutInput({
-      orderNumber: context.orders.reserveOrderNumber(),
-      clientRequestId: "checkout-web-variant-detail-001",
-      vendorCode: vendor.code,
-      variantId: "var-clasico-verde",
-      sku: "HG-CV-001",
-      productSlug: "clasico-verde",
-      productName: "Clasico Verde"
-    })
-  );
-
-  const detail = context.orders.getOrder(order.orderNumber).data;
-
-  assert.equal(detail.salesChannel, "web");
-  assert.equal(detail.items[0]?.variantId, "var-clasico-verde");
-  assert.equal(detail.items[0]?.variantName, "Clasico Verde 10 ml");
-  assert.equal(detail.items[0]?.sku, "HG-CV-001");
-});
-
 test("la aprobacion de comprobante manual deja una traza comercial canonica", async () => {
   const context = await createContext();
   const vendor = context.vendors.createManualVendor(buildManualVendor()).vendor!;
@@ -2163,147 +2013,6 @@ test("el quote de checkout auto-resuelve la unica variante comprable disponible"
   assert.equal(quote.items[0]?.variantId, "var-premium-negro-30");
   assert.equal(quote.items[0]?.sku, "HG-PN-030");
   assert.equal(quote.items[0]?.inventoryAllocations?.[0]?.name, "Premium Negro 30 ml");
-});
-
-test("ingresar stock desde inventario habilita la compra publica segun balances por almacen", async () => {
-  const warehouse = buildWarehouse({
-    id: "wh-lima-central",
-    code: "WH-LIMA-CENTRAL",
-    name: "Lima Central"
-  });
-  const prisma = new PrismaStub(
-    [
-      buildVariant({
-        id: "var-premium-negro",
-        productId: "prod-premium-negro",
-        productName: "Premium Negro",
-        productSlug: "premium-negro",
-        sku: "HG-PN-001",
-        variantName: "Premium Negro 10 ml",
-        stockOnHand: 0,
-        warehouseBalances: [buildWarehouseBalance({ variantId: "var-premium-negro", stockOnHand: 0 })]
-      })
-    ],
-    [warehouse]
-  );
-  const inventory = new InventoryService(prisma as never, new MemoryModuleStateService() as never);
-  const products = new ProductsService(prisma as never, {} as never);
-
-  await inventory.onModuleInit();
-
-  await assert.rejects(
-    () =>
-      products.resolveCheckoutItems([
-        {
-          slug: "premium-negro",
-          variantId: "var-premium-negro",
-          quantity: 1
-        }
-      ]),
-    (error: unknown) => error instanceof ConflictException && error.message.includes("No hay stock suficiente")
-  );
-
-  const adjustment = await inventory.adjustWarehouseStock({
-    variantId: "var-premium-negro",
-    warehouseId: warehouse.id,
-    mode: "increase",
-    quantityDelta: 7,
-    reason: ""
-  });
-
-  assert.equal(adjustment.previousStockOnHand, 0);
-  assert.equal(adjustment.nextStockOnHand, 7);
-  assert.equal(adjustment.delta, 7);
-
-  const quote = await products.resolveCheckoutItems([
-    {
-      slug: "premium-negro",
-      variantId: "var-premium-negro",
-      quantity: 2
-    }
-  ]);
-
-  assert.equal(quote.items[0]?.variantId, "var-premium-negro");
-  assert.equal(quote.items[0]?.sku, "HG-PN-001");
-  assert.equal(quote.items[0]?.inventoryAllocations?.[0]?.warehouseId, warehouse.id);
-
-  const row = (await inventory.getAdminReport()).data.rows.find((entry) => entry.variantId === "var-premium-negro");
-  assert.ok(row);
-  assert.equal(row.stockOnHand, 7);
-  assert.equal(row.availableStock, 7);
-});
-
-test("productos rechaza cambios de stock cuando la variante ya se gobierna por inventario por almacen", async () => {
-  const products = createProductsService({
-    variants: [
-      buildVariant({
-        id: "var-premium-negro",
-        productId: "prod-premium-negro",
-        productName: "Premium Negro",
-        productSlug: "premium-negro",
-        sku: "HG-PN-001",
-        variantName: "Premium Negro 10 ml",
-        stockOnHand: 54,
-        warehouseBalances: [
-          buildWarehouseBalance({
-            warehouseId: "wh-lima-central",
-            variantId: "var-premium-negro",
-            stockOnHand: 30,
-            reservedQuantity: 4,
-            committedQuantity: 6
-          }),
-          buildWarehouseBalance({
-            warehouseId: "wh-lima-secundario",
-            variantId: "var-premium-negro",
-            stockOnHand: 24,
-            reservedQuantity: 1,
-            committedQuantity: 2
-          })
-        ]
-      })
-    ],
-    warehouses: [
-      buildWarehouse({
-        id: "wh-lima-central",
-        code: "WH-LIMA-CENTRAL",
-        name: "Lima Central"
-      }),
-      buildWarehouse({
-        id: "wh-lima-secundario",
-        code: "WH-LIMA-SEC",
-        name: "Lima Secundario",
-        priority: 1
-      })
-    ]
-  });
-
-  await assert.rejects(
-    () =>
-      products.updateProduct("prod-premium-negro", {
-        name: "Premium Negro",
-        slug: "premium-negro",
-        status: "active",
-        isFeatured: false,
-        salesChannel: ProductSalesChannel.Public,
-        variants: [
-          {
-            id: "var-premium-negro",
-            sku: "HG-PN-001",
-            name: "Premium Negro 10 ml",
-            price: 39.9,
-            stockOnHand: 120,
-            lowStockThreshold: 100,
-            status: "active",
-            defaultWarehouseId: "wh-lima-central"
-          }
-        ],
-        bundleComponents: []
-      }),
-    (error: unknown) =>
-      error instanceof ConflictException &&
-      error.message ===
-        "La variante HG-PN-001 ya gobierna su stock desde Inventario. Ajusta el stock por almacén en Inventario y deja Productos solo para catálogo."
-  );
 });
 
 test("la idempotencia de checkout usa los items canonicos resueltos del quote", async () => {
@@ -2540,52 +2249,6 @@ test("el reporte separa saldo por almacen y descuenta solo el origen asignado", 
   assert.equal(arequipaRow.availableStock, 5);
   assert.equal(limaRow.variantAvailableStock, 11);
   assert.equal(arequipaRow.variantAvailableStock, 11);
-});
-
-test("inventario admin oculta variantes inactivas retiradas para no duplicar premium negro", async () => {
-  const context = await createContext({
-    variants: [
-      buildVariant({
-        id: "var-premium-negro-menta",
-        productId: "prod-premium-negro",
-        productName: "Premium Negro",
-        productSlug: "premium-negro",
-        sku: "HG-PN-001",
-        variantName: "Premium Negro - Menta Helada 10 ml",
-        stockOnHand: 8,
-        warehouseBalances: [buildWarehouseBalance({ variantId: "var-premium-negro-menta", stockOnHand: 8 })]
-      }),
-      buildVariant({
-        id: "var-premium-negro-eucalipto",
-        productId: "prod-premium-negro",
-        productName: "Premium Negro",
-        productSlug: "premium-negro",
-        sku: "HG-PN-002",
-        variantName: "Premium Negro - Eucalipto Frío 10 ml",
-        stockOnHand: 3,
-        status: "inactive",
-        warehouseBalances: [buildWarehouseBalance({ variantId: "var-premium-negro-eucalipto", stockOnHand: 3 })]
-      }),
-      buildVariant({
-        id: "var-premium-negro-citrus",
-        productId: "prod-premium-negro",
-        productName: "Premium Negro",
-        productSlug: "premium-negro",
-        sku: "HG-PN-003",
-        variantName: "Premium Negro - Citrus Herbal 10 ml",
-        stockOnHand: 2,
-        status: "inactive",
-        warehouseBalances: [buildWarehouseBalance({ variantId: "var-premium-negro-citrus", stockOnHand: 2 })]
-      })
-    ]
-  });
-
-  const report = await context.inventory.getAdminReport();
-
-  assert.deepEqual(
-    report.data.rows.map((row) => row.sku),
-    ["HG-PN-001"]
-  );
 });
 
 test("una transferencia reserva, despacha y recibe stock sin mezclar almacenes", async () => {

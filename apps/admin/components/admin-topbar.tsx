@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { adminNavigation, filterNavigationGroupsByPermissions } from "@huelegood/shared";
+import { adminNavigation, filterNavigationGroupsByRoles } from "@huelegood/shared";
 import { useAdminSession } from "./admin-session-provider";
 
 type AdminTopbarProps = {
@@ -15,9 +15,7 @@ export function AdminTopbar({ onMenuClick }: AdminTopbarProps) {
   const [period, setPeriod] = useState<"semana" | "mes" | "año">("semana");
 
   const roleCodes = session?.user.roles.map((role) => role.code) ?? [];
-  const visibleNavigation = session
-    ? filterNavigationGroupsByPermissions(adminNavigation, session.user.effectivePermissions, roleCodes)
-    : [];
+  const visibleNavigation = session ? filterNavigationGroupsByRoles(adminNavigation, roleCodes) : [];
   const visibleLinks = visibleNavigation.flatMap((group) => group.items);
   const currentItem = visibleLinks.find(
     (item) => pathname === item.href || (item.href !== "/" && pathname.startsWith(`${item.href}/`))

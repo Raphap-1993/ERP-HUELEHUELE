@@ -4,8 +4,6 @@
 
 Definir el modelo mínimo de acceso para Huelegood a nivel funcional.
 
-Este documento resume el alcance de negocio por persona. La fuente técnica vigente para runtime, autorización, scopes, overrides y gobernanza de menú vive en [docs/architecture/access-control-and-navigation-governance.md](../architecture/access-control-and-navigation-governance.md).
-
 ## Roles mínimos
 
 - `super_admin`
@@ -15,7 +13,6 @@ Este documento resume el alcance de negocio por persona. La fuente técnica vige
 - `marketing`
 - `seller_manager`
 - `vendedor`
-- `mayorista`
 - `cliente`
 
 ## Principios
@@ -23,30 +20,28 @@ Este documento resume el alcance de negocio por persona. La fuente técnica vige
 - Todo acceso interno debe pasar por permisos explícitos.
 - `super_admin` no debe usarse para operación cotidiana.
 - El rol `vendedor` pertenece al canal comercial, no al staff interno.
-- El rol `mayorista` pertenece al portal comercial externo, no al staff interno.
 - `cliente` solo actúa sobre sus propios recursos.
 
 ## Matriz funcional
 
-| Capacidad | super_admin | admin | operador_pagos | ventas | marketing | seller_manager | vendedor | mayorista | cliente |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Gestionar usuarios internos y roles | Sí | Limitado | No | No | No | No | No | No | No |
-| Configurar CMS | Sí | Sí | No | No | Sí | No | No | No | No |
-| Gestionar catálogo | Sí | Sí | No | Sí | No | No | No | No | No |
-| Gestionar promociones y cupones | Sí | Sí | No | Sí | Sí | No | No | No | No |
-| Ver pedidos | Sí | Sí | Sí | Sí | Limitado | Limitado | Solo propios atribuidos | Solo propios comerciales | Solo propios |
-| Resolver pagos manuales | Sí | Sí | Sí | No | No | No | No | No | No |
-| Gestionar vendedores | Sí | Sí | No | Limitado | No | Sí | No | No | No |
-| Configurar reglas de comisión | Sí | Sí | No | Limitado | No | Sí | No | No | No |
-| Ejecutar liquidaciones | Sí | Sí | No | No | No | Sí | No | No | No |
-| Gestionar leads mayoristas | Sí | Sí | No | Sí | Limitado | No | No | No | No |
-| Gestionar campañas y segmentos | Sí | Sí | No | Limitado | Sí | No | No | No | No |
-| Ver auditoría | Sí | Sí | Limitado | No | No | No | No | No | No |
-| Consultar panel de vendedor | Sí | Sí | No | No | No | Sí | Sí | No | No |
-| Consultar portal mayorista propio | Sí | Sí | No | No | No | No | No | Sí | No |
-| Gestionar cuenta y pedidos propios | No | No | No | No | No | No | No | Solo propios comerciales | Sí |
-| Gestionar direcciones propias | No | No | No | No | No | No | No | Sí | Sí |
-| Ver puntos y canjes propios | No | No | No | No | No | No | No | No | Sí |
+| Capacidad | super_admin | admin | operador_pagos | ventas | marketing | seller_manager | vendedor | cliente |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Gestionar usuarios internos y roles | Sí | Limitado | No | No | No | No | No | No |
+| Configurar CMS | Sí | Sí | No | No | Sí | No | No | No |
+| Gestionar catálogo | Sí | Sí | No | Sí | No | No | No | No |
+| Gestionar promociones y cupones | Sí | Sí | No | Sí | Sí | No | No | No |
+| Ver pedidos | Sí | Sí | Sí | Sí | Limitado | Limitado | Solo propios atribuidos | Solo propios |
+| Resolver pagos manuales | Sí | Sí | Sí | No | No | No | No | No |
+| Gestionar vendedores | Sí | Sí | No | Limitado | No | Sí | No | No |
+| Configurar reglas de comisión | Sí | Sí | No | Limitado | No | Sí | No | No |
+| Ejecutar liquidaciones | Sí | Sí | No | No | No | Sí | No | No |
+| Gestionar leads mayoristas | Sí | Sí | No | Sí | Limitado | No | No | No |
+| Gestionar campañas y segmentos | Sí | Sí | No | Limitado | Sí | No | No | No |
+| Ver auditoría | Sí | Sí | Limitado | No | No | No | No | No |
+| Consultar panel de vendedor | Sí | Sí | No | No | No | Sí | Sí | No |
+| Gestionar cuenta y pedidos propios | No | No | No | No | No | No | No | Sí |
+| Gestionar direcciones propias | No | No | No | No | No | No | No | Sí |
+| Ver puntos y canjes propios | No | No | No | No | No | No | No | Sí |
 
 ## Detalle por rol
 
@@ -90,12 +85,6 @@ Este documento resume el alcance de negocio por persona. La fuente técnica vige
 - ve su código o códigos asignados
 - revisa pedidos atribuidos, comisiones y payout histórico
 - no accede a datos de otros vendedores ni a operación interna
-
-### mayorista
-
-- consulta su portal comercial y condiciones asignadas
-- revisa pedidos, direcciones y referencias propias del canal B2B
-- no accede a operación interna ni a información de otros mayoristas
 
 ### cliente
 
